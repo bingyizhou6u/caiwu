@@ -17,6 +17,14 @@ export type Env = {
 export type AppVariables = {
   userId?: string
   userRole?: string
+  userPosition?: {
+    id: string
+    code: string
+    name: string
+    level: string
+    scope: string
+    permissions: any
+  }
 }
 
 // 已移除固定超级管理员

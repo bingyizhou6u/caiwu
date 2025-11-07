@@ -84,5 +84,7 @@ export const cacheKeys = {
   currencies: 'currencies:all',
   positions: 'positions:all',
   employees: 'employees:active',
+  rolePermissions: 'role_permissions:all',
+  rolePermissionsByRole: (role: string) => `role_permissions:${role}`,
 }
 

@@ -5,6 +5,7 @@ import { getSessionWithUserAndPosition } from './utils/db.js'
 // Auth middleware
 // 优化版本：使用单个JOIN查询获取session、user和position信息，减少数据库往返次数
 // 同时直接返回计算好的role，避免重复计算
+// 将position信息也存储到context中，供后续路由使用
 export function createAuthMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
     if (['/api/health','/api/init-if-empty','/api/auth/login','/api/auth/login-password','/api/auth/change-password-first','/api/auth/get-totp-qr','/api/auth/bind-totp-first','/api/me'].includes(c.req.path)) return next()
@@ -25,6 +26,8 @@ export function createAuthMiddleware() {
     
     // 直接使用已计算的role，避免重复计算
     c.set('userRole', sessionData.role)
+    // 存储position信息，供后续路由使用（避免重复查询）
+    c.set('userPosition', sessionData.position)
     await next()
   }
 }
