@@ -1,0 +1,4 @@
+biz_date,type,account_id,amount,site_id,department_id,counterparty,memo,category_id,voucher_no,method
+2025-01-15,income,account-id-001,1000.00,site-id-001,dept-id-001,客户A,销售收款,category-id-001,JZ20250115-001,cash
+2025-01-16,expense,account-id-002,500.00,site-id-002,dept-id-001,供应商B,采购付款,category-id-002,JZ20250116-001,bank
+

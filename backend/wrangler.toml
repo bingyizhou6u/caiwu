@@ -1,0 +1,30 @@
+name = "caiwu-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-21"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "caiwu-db"
+database_id = "582b2cc8-fb7f-47a3-9b12-a264621c2eeb"
+
+[[r2_buckets]]
+binding = "VOUCHERS"
+bucket_name = "caiwu-vouchers"
+
+[[send_email]]
+name = "EMAIL"
+
+[vars]
+CF_ACCOUNT_ID = "611d1a2e53f6c6d0922ff231e6a63211"
+CF_ZONE_ID = "18ecc2631881b0e9e03b3ab259d69249"
+CF_IP_LIST_ID = "d506362da37b45a2a510eb348d8f1ed2"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
