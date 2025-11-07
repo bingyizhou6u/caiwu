@@ -8,6 +8,7 @@ import { EyeOutlined, UploadOutlined, ReloadOutlined } from '@ant-design/icons'
 import { apiGet, apiPost, apiPut, apiDelete, safeApiCall, handleConflictError } from '../utils/api'
 import { formatAmount } from '../utils/formatters'
 import { loadCurrencies, loadAccounts, loadExpenseCategories, loadEmployees } from '../utils/loaders'
+import { convertToWebP, uploadImageAsWebP } from '../utils/image'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -129,60 +130,8 @@ export function ExpenseReimbursement({ userRole }: { userRole?: string }) {
     loadMasterData()
   }, [])
 
-  const convertToWebP = async (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const img = new Image()
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width
-          canvas.height = img.height
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            reject(new Error('无法创建canvas上下文'))
-            return
-          }
-          ctx.drawImage(img, 0, 0)
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error('图片转换失败'))
-                return
-              }
-              const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' })
-              resolve(webpFile)
-            },
-            'image/webp',
-            0.85
-          )
-        }
-        img.onerror = () => reject(new Error('图片加载失败'))
-        img.src = e.target?.result as string
-      }
-      reader.onerror = () => reject(new Error('文件读取失败'))
-      reader.readAsDataURL(file)
-    })
-  }
-
   const uploadVoucher = async (file: File): Promise<string> => {
-    const webpFile = await convertToWebP(file)
-    const formData = new FormData()
-    formData.append('file', webpFile)
-
-    const res = await fetch(api.upload.voucher, {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-    })
-
-    if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.error || '上传失败')
-    }
-
-    const result = await res.json()
-    return result.url
+    return uploadImageAsWebP(file, api.upload.voucher)
   }
 
   const handleCreate = async () => {

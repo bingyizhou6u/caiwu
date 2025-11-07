@@ -8,6 +8,7 @@ import { formatAmount } from '../utils/formatters'
 import { loadCurrencies, loadDepartments, loadAccounts, loadExpenseCategories, loadEmployees } from '../utils/loaders'
 import { apiGet } from '../utils/api'
 import type { RentalProperty, RentalPayableBill, DormitoryAllocation, SelectOption } from '../types/rental'
+import { uploadImageAsWebP, isSupportedImageType } from '../utils/image'
 
 const { TextArea } = Input
 
@@ -173,70 +174,15 @@ export function RentalManagement({ userRole }: { userRole?: string }) {
   const handleUpload = async (file: File) => {
     setUploading(true)
     try {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-      if (!allowedTypes.includes(file.type)) {
+      if (!isSupportedImageType(file)) {
         message.error('只允许上传图片格式（JPEG、PNG、GIF、WebP）')
         setUploading(false)
         return false
       }
       
-      let fileToUpload: File | Blob = file
-      
-      if (file.type !== 'image/webp') {
-        const img = new Image()
-        const imageUrl = URL.createObjectURL(file)
-        
-        await new Promise((resolve, reject) => {
-          img.onload = resolve
-          img.onerror = reject
-          img.src = imageUrl
-        })
-        
-        const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          message.error('无法创建Canvas上下文')
-          setUploading(false)
-          URL.revokeObjectURL(imageUrl)
-          return false
-        }
-        
-        ctx.drawImage(img, 0, 0)
-        
-        const webpBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error('转换失败'))
-            }
-          }, 'image/webp', 0.85)
-        })
-        
-        fileToUpload = new File([webpBlob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
-        URL.revokeObjectURL(imageUrl)
-      }
-      
-      const formData = new FormData()
-      formData.append('file', fileToUpload)
-      
-      const res = await fetch(api.upload.voucher, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      })
-      
-      const data = await res.json()
-      if (!res.ok) {
-        message.error(data.error || '上传失败')
-        setUploading(false)
-        return false
-      }
-      
-      setVoucherFile(fileToUpload as File)
-      paymentForm.setFieldValue('voucher_url', data.url)
+      const url = await uploadImageAsWebP(file, api.upload.voucher)
+      setVoucherFile(file)
+      paymentForm.setFieldValue('voucher_url', url)
       setFileList([{ uid: '1', name: file.name, status: 'done' }])
       message.success('凭证上传成功（已转换为WebP格式）')
       setUploading(false)

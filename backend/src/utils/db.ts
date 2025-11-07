@@ -82,29 +82,113 @@ export async function getUserEmployeeId(db: D1Database, userId: string): Promise
 
 // 获取用户的职位信息（必须从员工记录获取）
 // 如果用户没有员工记录，返回null（不允许访问系统）
+// 优化版本：使用单个JOIN查询，减少数据库往返次数
 export async function getUserPosition(db: D1Database, userId: string): Promise<{ id: string, code: string, name: string, level: string, scope: string, permissions: any } | null> {
-  const user = await getUserById(db, userId)
-  if (!user || !user.email) return null
+  // 使用单个JOIN查询获取用户、员工和职位信息
+  const result = await db.prepare(`
+    select 
+      p.id,
+      p.code,
+      p.name,
+      p.level,
+      p.scope,
+      p.permissions
+    from users u
+    inner join employees e on e.email = u.email and e.active = 1
+    inner join positions p on p.id = e.position_id and p.active = 1
+    where u.id = ?
+  `).bind(userId).first<{
+    id: string
+    code: string
+    name: string
+    level: string
+    scope: string
+    permissions: string
+  }>()
   
-  // 必须从员工记录获取职位（员工记录是唯一权威来源）
-  const employee = await db.prepare('select position_id from employees where email=? and active=1').bind(user.email).first<{ position_id: string }>()
-  if (!employee?.position_id) {
-    // 没有员工记录，不允许访问系统
-    return null
-  }
-  
-  const position = await db.prepare('select * from positions where id=? and active=1').bind(employee.position_id).first<any>()
-  if (!position) {
+  if (!result) {
     return null
   }
   
   return {
-    id: position.id,
-    code: position.code,
-    name: position.name,
-    level: position.level,
-    scope: position.scope,
-    permissions: JSON.parse(position.permissions || '{}')
+    id: result.id,
+    code: result.code,
+    name: result.name,
+    level: result.level,
+    scope: result.scope,
+    permissions: JSON.parse(result.permissions || '{}')
+  }
+}
+
+// 优化版本：一次性获取session、user和position信息，并计算role
+export async function getSessionWithUserAndPosition(db: D1Database, sessionId: string): Promise<{
+  session: { id: string, user_id: string, expires_at: number } | null
+  user: { id: string, email: string, name: string } | null
+  position: { id: string, code: string, name: string, level: string, scope: string, permissions: any } | null
+  role: string | null
+} | null> {
+  const result = await db.prepare(`
+    select 
+      s.id as session_id,
+      s.user_id,
+      s.expires_at,
+      u.id as user_id,
+      u.email,
+      u.name,
+      p.id as position_id,
+      p.code as position_code,
+      p.name as position_name,
+      p.level as position_level,
+      p.scope as position_scope,
+      p.permissions as position_permissions
+    from sessions s
+    inner join users u on u.id = s.user_id
+    left join employees e on e.email = u.email and e.active = 1
+    left join positions p on p.id = e.position_id and p.active = 1
+    where s.id = ? and s.expires_at > ?
+  `).bind(sessionId, Date.now()).first<{
+    session_id: string
+    user_id: string
+    expires_at: number
+    email: string
+    name: string
+    position_id: string | null
+    position_code: string | null
+    position_name: string | null
+    position_level: string | null
+    position_scope: string | null
+    position_permissions: string | null
+  }>()
+  
+  if (!result) {
+    return null
+  }
+  
+  const position = result.position_id ? {
+    id: result.position_id,
+    code: result.position_code!,
+    name: result.position_name!,
+    level: result.position_level!,
+    scope: result.position_scope!,
+    permissions: JSON.parse(result.position_permissions || '{}')
+  } : null
+  
+  // 计算role（如果position存在）
+  const role = position ? getRoleByPositionCode(position.code) : null
+  
+  return {
+    session: {
+      id: result.session_id,
+      user_id: result.user_id,
+      expires_at: result.expires_at
+    },
+    user: {
+      id: result.user_id,
+      email: result.email,
+      name: result.name
+    },
+    position,
+    role
   }
 }
 

@@ -7,6 +7,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { formatAmount } from '../utils/formatters'
 import dayjs from 'dayjs'
 import { loadCurrencies, loadAccounts, loadEmployees } from '../utils/loaders'
+import { uploadImageAsWebP, isSupportedImageType } from '../utils/image'
 
 const { TextArea } = Input
 
@@ -255,18 +256,10 @@ export function AllowancePayments({ userRole }: { userRole?: string }) {
   }
 
   const handleUpload = async (file: File): Promise<string> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await fetch(api.upload.voucher, {
-      method: 'POST',
-      body: formData,
-    })
-    const d = await res.json()
-    if (res.ok) {
-      return d.url
-    } else {
-      throw new Error(d.error || '上传失败')
+    if (!isSupportedImageType(file)) {
+      throw new Error('只允许上传图片格式（JPEG、PNG、GIF、WebP）')
     }
+    return uploadImageAsWebP(file, api.upload.voucher)
   }
 
   const columns: ColumnsType<AllowancePayment> = [

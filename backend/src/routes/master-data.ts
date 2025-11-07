@@ -13,6 +13,7 @@ import { createDepartmentSchema, createSiteSchema, updateDepartmentSchema, updat
 import { createCurrencySchema, updateCurrencySchema, createCategorySchema, updateCategorySchema, createCashFlowSchema, createArApDocSchema, createSettlementSchema, confirmArApDocSchema } from '../schemas/business.schema.js'
 import { dateQuerySchema, idQuerySchema, docIdQuerySchema, csvImportQuerySchema } from '../schemas/common.schema.js'
 import type { z } from 'zod'
+import { getCache, setCache, deleteCache, cacheKeys } from '../utils/cache.js'
 
 export const master_dataRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -693,8 +694,21 @@ master_dataRoutes.delete('/currencies/:code', async (c) => {
 
 master_dataRoutes.get('/categories', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
+  
+  // 尝试从缓存获取
+  const cached = getCache<any[]>(cacheKeys.categories)
+  if (cached) {
+    return c.json({ results: cached })
+  }
+  
+  // 查询数据库
   const rows = await c.env.DB.prepare('select * from categories order by kind,name').all()
-  return c.json({ results: rows.results ?? [] })
+  const results = rows.results ?? []
+  
+  // 缓存5分钟
+  setCache(cacheKeys.categories, results, 5 * 60 * 1000)
+  
+  return c.json({ results })
 })
 
 
@@ -709,6 +723,11 @@ master_dataRoutes.post('/categories', validateJson(createCategorySchema), async 
   const id = uuid()
   await c.env.DB.prepare('insert into categories(id,name,kind,parent_id) values(?,?,?,?)')
     .bind(id, body.name, body.kind, body.parent_id ?? null).run()
+  
+  // 清除缓存
+  deleteCache(cacheKeys.categories)
+  deleteCache(cacheKeys.categoriesByKind(body.kind))
+  
   logAuditAction(c, 'create', 'category', id, JSON.stringify({ name: body.name, kind: body.kind }))
   return c.json({ id, ...body })
 })
@@ -732,8 +751,17 @@ master_dataRoutes.put('/categories/:id', validateJson(updateCategorySchema), asy
     updates.push('kind=?'); binds.push(body.kind)
   }
   
+  if (updates.length === 0) return c.json({ ok: true })
+  
   binds.push(id)
   await c.env.DB.prepare(`update categories set ${updates.join(',')} where id=?`).bind(...binds).run()
+  
+  // 清除缓存
+  deleteCache(cacheKeys.categories)
+  if (body.kind) {
+    deleteCache(cacheKeys.categoriesByKind(body.kind))
+  }
+  
   logAuditAction(c, 'update', 'category', id, JSON.stringify(body))
   return c.json({ ok: true })
 })
@@ -750,6 +778,10 @@ master_dataRoutes.delete('/categories/:id', async (c) => {
     throw Errors.BUSINESS_ERROR('无法删除，该类别还有流水记录')
   }
   await c.env.DB.prepare('delete from categories where id=?').bind(id).run()
+  
+  // 清除缓存
+  deleteCache(cacheKeys.categories)
+  
   logAuditAction(c, 'delete', 'category', id, JSON.stringify({ name: category.name }))
   return c.json({ ok: true })
 })

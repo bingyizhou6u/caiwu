@@ -183,42 +183,31 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
     }
   }, [])
 
-  // 从权限管理获取职位，根据项目/总部过滤（遵循层级划分原则）
-  const loadAvailablePositions = useCallback(async (projectId?: string) => {
+  // 根据部门获取可用职位列表
+  const loadAvailablePositions = useCallback(async (orgDepartmentId?: string) => {
+    if (!orgDepartmentId) {
+      setPositions([])
+      return
+    }
+    
     try {
-      // 从权限管理接口获取所有活跃职位
-      const results = await apiGet(api.positionPermissions)
+      // 调用后端接口获取该部门可用的职位
+      const results = await apiGet(`${api.positionsAvailable}?org_department_id=${orgDepartmentId}`)
       
-      // 根据项目/总部过滤职位
-      let filteredPositions: any[] = []
-      
-      if (!projectId) {
-        // 如果还没有选择项目，显示所有职位
-        filteredPositions = Array.isArray(results) 
-          ? results.filter((p: any) => p.active === 1)
-          : []
-      } else if (projectId === 'hq') {
-        // 总部：只显示 hq 级别的职位
-        filteredPositions = Array.isArray(results)
-          ? results.filter((p: any) => p.active === 1 && p.level === 'hq')
-          : []
-      } else {
-        // 项目：显示 project/department/group/employee 级别的职位（不包括 hq）
-        filteredPositions = Array.isArray(results)
-          ? results.filter((p: any) => p.active === 1 && p.level !== 'hq')
-          : []
-      }
+      // 确保返回的是数组
+      const filteredPositions = Array.isArray(results) 
+        ? results.filter((p: any) => p.active === 1)
+        : []
       
       setPositions(filteredPositions)
       
-      if (filteredPositions.length === 0 && projectId) {
-        const projectType = projectId === 'hq' ? '总部' : '项目'
+      if (filteredPositions.length === 0) {
         message.warning({
           content: (
             <div>
-              <p>该{projectType}暂无可用职位。</p>
+              <p>该部门暂无可用职位。</p>
               <p style={{ marginTop: 8 }}>
-                请前往 <strong style={{ color: '#1890ff' }}>权限管理</strong> 页面创建{projectType}职位并配置权限。
+                请前往 <strong style={{ color: '#1890ff' }}>权限管理</strong> 页面创建职位并配置权限。
               </p>
             </div>
           ),
@@ -502,7 +491,12 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
     })
     // 加载该项目的部门列表和职位列表（如果是总部，使用'hq'）
     loadOrgDepartments(projectId)
-    loadAvailablePositions(projectId)
+    // 如果已有部门，加载该部门的职位列表
+    if (employee.org_department_id) {
+      loadAvailablePositions(employee.org_department_id)
+    } else {
+      setPositions([])
+    }
     loadDormitoryAllocations(employee.id)
     loadRentalProperties()
     setEditOpen(true)
@@ -922,7 +916,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
               </Button>
               <Button size="small" onClick={async () => {
                 try {
-                  await apiPost(`${api.users}/${record.user_id}/toggle-active`, { active: record.user_active === 1 ? 0 : 1 })
+                  await apiPost(`${api.auth.login.replace('/login', '')}/users/${record.user_id}/toggle-active`, { active: record.user_active === 1 ? 0 : 1 })
                   message.success(record.user_active === 1 ? '已停用账号' : '已启用账号')
                   loadEmployees()
                 } catch (error: any) {
@@ -1097,10 +1091,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                       position_id: undefined,
                       department_id: value === 'hq' ? 'hq' : value
                     })
-                    // 加载对应的部门列表和职位列表
+                    // 加载对应的部门列表，职位列表等选择部门后再加载
                     if (value) {
                       loadOrgDepartments(value)
-                      loadAvailablePositions(value)
                     } else {
                       setOrgDepartments([])
                       setPositions([])
@@ -1128,8 +1121,14 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     const label = typeof option?.label === 'string' ? option.label : String(option?.label ?? '')
                     return label.toLowerCase().includes(input.toLowerCase())
                   }}
-                  onChange={() => {
-                    // 部门选择变化时，职位列表保持不变（职位已从权限管理加载）
+                  onChange={(value) => {
+                    // 部门选择变化时，清空职位选择并加载该部门的职位列表
+                    createForm.setFieldsValue({ position_id: undefined })
+                    if (value) {
+                      loadAvailablePositions(value)
+                    } else {
+                      setPositions([])
+                    }
                   }}
                 >
                   {orgDepartments.filter(d => d.active === 1).map((dept) => (
@@ -1175,8 +1174,8 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 }
               >
                 <Select 
-                  placeholder={createForm.getFieldValue('project_id') ? '请选择职位' : '请先选择项目归属或总部'}
-                  disabled={!createForm.getFieldValue('project_id')}
+                  placeholder={createForm.getFieldValue('org_department_id') ? '请选择职位' : '请先选择部门'}
+                  disabled={!createForm.getFieldValue('org_department_id')}
                   showSearch
                   filterOption={(input, option) => {
                     const children = option?.children
@@ -1646,10 +1645,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                       position_id: undefined,
                       department_id: value === 'hq' ? 'hq' : value
                     })
-                    // 加载对应的部门列表和职位列表
+                    // 加载对应的部门列表，职位列表等选择部门后再加载
                     if (value) {
                       loadOrgDepartments(value)
-                      loadAvailablePositions(value)
                     } else {
                       setOrgDepartments([])
                       setPositions([])
@@ -1677,8 +1675,14 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     const label = typeof option?.label === 'string' ? option.label : String(option?.label ?? '')
                     return label.toLowerCase().includes(input.toLowerCase())
                   }}
-                  onChange={() => {
-                    // 部门选择变化时，职位列表保持不变（职位已从权限管理加载）
+                  onChange={(value) => {
+                    // 部门选择变化时，清空职位选择并加载该部门的职位列表
+                    editForm.setFieldsValue({ position_id: undefined })
+                    if (value) {
+                      loadAvailablePositions(value)
+                    } else {
+                      setPositions([])
+                    }
                   }}
                 >
                   {orgDepartments.filter(d => d.active === 1).map((dept) => (
@@ -1724,8 +1728,8 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 }
               >
                 <Select 
-                  placeholder={editForm.getFieldValue('project_id') ? '请选择职位' : '请先选择项目归属或总部'}
-                  disabled={!editForm.getFieldValue('project_id')}
+                  placeholder={editForm.getFieldValue('org_department_id') ? '请选择职位' : '请先选择部门'}
+                  disabled={!editForm.getFieldValue('org_department_id')}
                   showSearch
                   filterOption={(input, option) => {
                     const children = option?.children
@@ -2341,7 +2345,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
       <Modal title={resetUser ? `重置密码：${resetUser.email}` : '重置密码'} open={resetUserOpen} onCancel={() => setResetUserOpen(false)} onOk={async () => {
         if (!resetUser || !resetUser.user_id) return
         try {
-          await apiPost(`${api.users}/${resetUser.user_id}/reset-password`, {})
+          await apiPost(`${api.auth.login.replace('/login', '')}/users/${resetUser.user_id}/reset-password`, {})
           message.success('密码已重置，新密码已发送至邮箱')
           setResetUserOpen(false)
           setResetUser(null)

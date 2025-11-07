@@ -438,49 +438,32 @@ authRoutes.get('/me', async (c) => {
     
     if (!sid) return c.json({ loggedIn: false })
     
-    // 优化：使用JOIN一次查询获取session和用户信息
-    const result = await c.env.DB.prepare(`
-      select 
-        s.id as session_id,
-        s.user_id,
-        s.expires_at,
-        u.id,
-        u.name,
-        u.email,
-        u.role
-      from sessions s
-      left join users u on u.id = s.user_id
-      where s.id = ? and s.expires_at > ?
-    `).bind(sid, Date.now()).first<any>()
+    // 使用优化的函数一次性获取所有信息
+    const { getSessionWithUserAndPosition } = await import('../utils/db.js')
+    const sessionData = await getSessionWithUserAndPosition(c.env.DB, sid)
     
-    if (!result || !result.user_id) return c.json({ loggedIn: false })
+    if (!sessionData || !sessionData.session || !sessionData.user) {
+      return c.json({ loggedIn: false })
+    }
     
-    // 必须基于员工记录获取职位和角色
-    const { getUserPosition } = await import('../utils/db.js')
-    const { getRoleByPositionCode } = await import('../utils/db.js')
-    const position = await getUserPosition(c.env.DB, result.id)
-    
-    if (!position) {
+    if (!sessionData.position || !sessionData.role) {
       // 没有员工记录，返回未登录状态
       return c.json({ loggedIn: false, error: 'employee record not found' })
     }
     
-    // 基于职位确定角色
-    const userRole = getRoleByPositionCode(position.code)
-    
     return c.json({ 
       loggedIn: true, 
-      id: result.id, 
-      name: result.name, 
-      email: result.email, 
-      role: userRole,
+      id: sessionData.user.id, 
+      name: sessionData.user.name, 
+      email: sessionData.user.email, 
+      role: sessionData.role,
       position: {
-        id: position.id,
-        code: position.code,
-        name: position.name,
-        level: position.level,
-        scope: position.scope,
-        canViewReports: position.code === 'hq_admin' || position.code === 'hq_finance' || position.permissions?.reports === true
+        id: sessionData.position.id,
+        code: sessionData.position.code,
+        name: sessionData.position.name,
+        level: sessionData.position.level,
+        scope: sessionData.position.scope,
+        canViewReports: sessionData.position.code === 'hq_admin' || sessionData.position.code === 'hq_finance' || sessionData.position.permissions?.reports === true
       }
     })
   } catch (error: any) {
