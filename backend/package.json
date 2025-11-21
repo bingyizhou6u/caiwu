@@ -8,13 +8,17 @@
     "deploy": "wrangler deploy src/index.ts",
     "migrate": "wrangler d1 execute caiwu-db --file src/db/schema.sql",
     "migrate:all": "bash -c 'for file in src/db/migration_*.sql; do echo \"Running: $file\"; wrangler d1 execute caiwu-db --remote --file=\"$file\" || echo \"Failed or already applied: $file\"; done'",
-    "migrate:remote": "bash -c 'for file in src/db/migration_*.sql; do echo \"Running: $file\"; wrangler d1 execute caiwu-db --remote --file=\"$file\" || echo \"Failed or already applied: $file\"; done'"
+    "migrate:remote": "bash -c 'for file in src/db/migration_*.sql; do echo \"Running: $file\"; wrangler d1 execute caiwu-db --remote --file=\"$file\" || echo \"Failed or already applied: $file\"; done'",
+    "test": "vitest"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.9",
     "@cloudflare/workers-types": "^4.20251014.0",
+    "@types/node": "^24.10.1",
     "@types/uuid": "^10.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.5.4",
+    "vitest": "^3.2.4",
     "wrangler": "^3.78.0"
   },
   "dependencies": {

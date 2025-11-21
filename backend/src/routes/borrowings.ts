@@ -6,6 +6,7 @@ import { uuid, getUserEmployeeId } from '../utils/db.js'
 import { applyDataScope, isEmployee, getCurrentUserId } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery } from '../utils/validator.js'
+import { isValidIPAddress } from '../utils/validation.js'
 import { createBorrowingSchema, createRepaymentSchema } from '../schemas/business.schema.js'
 import { borrowingQuerySchema, repaymentQuerySchema } from '../schemas/common.schema.js'
 import type { z } from 'zod'
@@ -17,7 +18,7 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
   if (!canRead(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof borrowingQuerySchema>>(c)
   const userId = query.user_id
-  
+
   let sql = `
     select b.*, 
       u.name as borrower_name, u.email as borrower_email,
@@ -29,7 +30,7 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
     left join users creator on creator.id=b.created_by
   `
   const binds: any[] = []
-  
+
   // employee角色只能查看自己的借款记录
   if (await isEmployee(c)) {
     const currentUserId = getCurrentUserId(c)
@@ -43,9 +44,9 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
     sql += ' where b.user_id=?'
     binds.push(userId)
   }
-  
+
   sql += ' order by b.borrow_date desc, b.created_at desc'
-  
+
   const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
@@ -54,36 +55,36 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
 borrowingsRoutes.post('/borrowings', validateJson(createBorrowingSchema), async (c) => {
   if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createBorrowingSchema>>(c)
-  
+
   // 验证用户存在
   const user = await c.env.DB.prepare('select * from users where id=?').bind(body.user_id).first<any>()
   if (!user) throw Errors.NOT_FOUND('用户')
   if (user.active === 0) throw Errors.BUSINESS_ERROR('用户已停用')
-  
+
   // 验证账户存在
   const account = await c.env.DB.prepare('select * from accounts where id=?').bind(body.account_id).first<any>()
   if (!account) throw Errors.NOT_FOUND('账户')
   if (account.active === 0) throw Errors.BUSINESS_ERROR('账户已停用')
-  
+
   // 验证账户币种匹配
   if (account.currency !== body.currency) {
     throw Errors.BUSINESS_ERROR('账户币种不匹配')
   }
-  
+
   // 验证币种存在
   const currency = await c.env.DB.prepare('select * from currencies where code=?').bind(body.currency).first<any>()
   if (!currency) throw Errors.NOT_FOUND('币种')
-  
+
   const id = uuid()
   const currentUserId = c.get('userId') as string | undefined
   const amountCents = Math.round(body.amount * 100)
-  
+
   // 优先使用 user_id，如果没有则使用 borrower_id（向后兼容）
   await c.env.DB.prepare('insert into borrowings(id,user_id,borrower_id,account_id,amount_cents,currency,borrow_date,memo,created_by,created_at) values(?,?,?,?,?,?,?,?,?,?)')
     .bind(id, body.user_id, body.user_id, body.account_id, amountCents, body.currency, body.borrow_date, body.memo || null, currentUserId || null, Date.now()).run()
-  
+
   logAuditAction(c, 'create', 'borrowing', id, JSON.stringify({ user_id: body.user_id, account_id: body.account_id, amount_cents: amountCents }))
-  
+
   const created = await c.env.DB.prepare(`
     select b.*, 
       u.name as borrower_name, u.email as borrower_email,
@@ -95,7 +96,7 @@ borrowingsRoutes.post('/borrowings', validateJson(createBorrowingSchema), async 
     left join users creator on creator.id=b.created_by
     where b.id=?
   `).bind(id).first()
-  
+
   return c.json(created)
 })
 
@@ -104,7 +105,7 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
   if (!canRead(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof repaymentQuerySchema>>(c)
   const borrowingId = query.borrowing_id
-  
+
   let sql = `
     select r.*, b.user_id, u.name as borrower_name, u.email as borrower_email,
       a.name as account_name, a.currency as account_currency,
@@ -116,7 +117,7 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
     left join users creator on creator.id=r.created_by
   `
   const binds: any[] = []
-  
+
   // employee角色只能查看自己的还款记录（通过borrowing关联）
   if (await isEmployee(c)) {
     const currentUserId = getCurrentUserId(c)
@@ -130,9 +131,9 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
     sql += ' where r.borrowing_id=?'
     binds.push(borrowingId)
   }
-  
+
   sql += ' order by r.repay_date desc, r.created_at desc'
-  
+
   const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
@@ -141,39 +142,39 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
 borrowingsRoutes.post('/repayments', validateJson(createRepaymentSchema), async (c) => {
   if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createRepaymentSchema>>(c)
-  
+
   // 验证借款记录存在
   const borrowing = await c.env.DB.prepare('select * from borrowings where id=?').bind(body.borrowing_id).first<any>()
   if (!borrowing) throw Errors.NOT_FOUND('borrowing')
-  
+
   // 验证账户存在
   const account = await c.env.DB.prepare('select * from accounts where id=?').bind(body.account_id).first<any>()
   if (!account) throw Errors.NOT_FOUND('账户')
   if (account.active === 0) throw Errors.BUSINESS_ERROR('账户已停用')
-  
+
   // 验证币种匹配
   if (borrowing.currency !== body.currency) {
     throw Errors.BUSINESS_ERROR('币种与借款币种不匹配')
   }
-  
+
   // 验证账户币种匹配
   if (account.currency !== body.currency) {
     throw Errors.BUSINESS_ERROR('账户币种不匹配')
   }
-  
+
   // 验证币种存在
   const currency = await c.env.DB.prepare('select * from currencies where code=?').bind(body.currency).first<any>()
   if (!currency) throw Errors.NOT_FOUND('币种')
-  
+
   const id = uuid()
   const userId = c.get('userId') as string | undefined
   const amountCents = Math.round(body.amount * 100)
-  
+
   await c.env.DB.prepare('insert into repayments(id,borrowing_id,account_id,amount_cents,currency,repay_date,memo,created_by,created_at) values(?,?,?,?,?,?,?,?,?)')
     .bind(id, body.borrowing_id, body.account_id, amountCents, body.currency, body.repay_date, body.memo || null, userId || null, Date.now()).run()
-  
+
   logAuditAction(c, 'create', 'repayment', id, JSON.stringify({ borrowing_id: body.borrowing_id, account_id: body.account_id, amount_cents: amountCents }))
-  
+
   const created = await c.env.DB.prepare(`
     select r.*, b.user_id, u.name as borrower_name, u.email as borrower_email,
       a.name as account_name, a.currency as account_currency,
@@ -185,14 +186,14 @@ borrowingsRoutes.post('/repayments', validateJson(createRepaymentSchema), async 
     left join users creator on creator.id=r.created_by
     where r.id=?
   `).bind(id).first()
-  
+
   return c.json(created)
 })
 
 // 借款统计 - 查询每个人的借款余额
 borrowingsRoutes.get('/borrowings/balance', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
-  
+
   // 使用 user_id 计算每个用户的借款余额
   const sql = `
     select 
@@ -224,7 +225,7 @@ borrowingsRoutes.get('/borrowings/balance', async (c) => {
     having balance_cents != 0
     order by u.name, b.currency
   `
-  
+
   // 应用数据权限过滤
   const scoped = await applyDataScope(c, sql, [])
   const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
@@ -281,9 +282,9 @@ async function getOrCreateIPList(env: Env): Promise<string | null> {
 
     if (listResponse.ok) {
       const listData = await listResponse.json<{ result: Array<{ id: string, name: string }> }>()
-      const existingList = listData.result?.find(list => 
-        list.name === 'caiwu-whitelist' || 
-        list.name === 'caiwu_whitelist' || 
+      const existingList = listData.result?.find(list =>
+        list.name === 'caiwu-whitelist' ||
+        list.name === 'caiwu_whitelist' ||
         list.name === 'IP Whitelist' ||
         list.name === 'caiwu-whitelist' ||
         list.name.toLowerCase().includes('caiwu') && list.name.toLowerCase().includes('whitelist')
@@ -381,12 +382,12 @@ async function addIPToCloudflareList(env: Env, ip: string, description?: string)
     }
 
     const data = await response.json<{ result: { operation_id?: string, id?: string } | Array<{ id: string }> }>()
-    
+
     // Cloudflare API 可能返回两种格式：
     // 1. { result: { operation_id: "..." } } - 异步操作
     // 2. { result: [{ id: "..." }] } - 同步操作，直接返回 ID
     let itemId: string | null = null
-    
+
     if (Array.isArray(data.result)) {
       // 格式 2: 直接返回数组
       itemId = data.result[0]?.id || null
@@ -394,12 +395,12 @@ async function addIPToCloudflareList(env: Env, ip: string, description?: string)
       // 格式 1: 返回 operation_id，需要等待操作完成并查询列表获取 ID
       // 等待一小段时间让操作完成
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // 查询列表获取最新添加的 IP 的 ID
       const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
         headers: authHeaders,
       })
-      
+
       if (listResponse.ok) {
         const listData = await listResponse.json<{ result: Array<{ id: string, ip: string }> }>()
         // 查找匹配的 IP
@@ -412,7 +413,7 @@ async function addIPToCloudflareList(env: Env, ip: string, description?: string)
       // 直接返回 ID
       itemId = data.result.id
     }
-    
+
     if (!itemId) {
       console.error('Failed to get item ID from Cloudflare API response:', {
         ip,
@@ -420,7 +421,7 @@ async function addIPToCloudflareList(env: Env, ip: string, description?: string)
       })
       return { success: false, error: 'Cloudflare API returned no item ID' }
     }
-    
+
     return { success: true, itemId }
   } catch (error: any) {
     console.error('Error adding IP to Cloudflare list:', {
@@ -470,17 +471,17 @@ async function removeIPFromCloudflareList(env: Env, itemId: string): Promise<boo
 
     // 检查响应格式
     const data = await response.json<{ result: { operation_id?: string } | null, success: boolean }>()
-    
+
     // 如果返回 operation_id，等待操作完成
     if (data.result && typeof data.result === 'object' && 'operation_id' in data.result) {
       // 等待一小段时间让删除操作完成
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // 验证删除是否成功（查询列表确认 IP 已不存在）
       const verifyResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
         headers: authHeaders,
       })
-      
+
       if (verifyResponse.ok) {
         const listData = await verifyResponse.json<{ result: Array<{ id: string }> }>()
         const stillExists = listData.result?.some(item => item.id === itemId)
@@ -657,12 +658,12 @@ async function getOrCreateWhitelistRule(env: Env): Promise<{ ruleId: string, rul
         ...authHeaders,
         'Content-Type': 'application/json',
       },
-        body: JSON.stringify({
-          action: 'block',
-          expression: 'not ip.src in $caiwu_whitelist',
-          description: 'Block IPs not in whitelist',
-          enabled: false, // 默认停用
-        }),
+      body: JSON.stringify({
+        action: 'block',
+        expression: 'not ip.src in $caiwu_whitelist',
+        description: 'Block IPs not in whitelist',
+        enabled: false, // 默认停用
+      }),
     })
 
     if (!createRuleResponse.ok) {
@@ -806,32 +807,6 @@ async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boolean, rul
   }
 
   return { enabled: false }
-}
-
-// IP 地址验证函数（支持 IPv4 和 IPv6）
-function isValidIPAddress(ip: string): boolean {
-  // IPv4 验证
-  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/
-  if (ipv4Regex.test(ip)) {
-    return true
-  }
-
-  // IPv6 验证（包括完整格式、压缩格式、IPv4映射格式、CIDR）
-  // 完整格式：2001:0db8:85a3:0000:0000:8a2e:0370:7334
-  // 压缩格式：2001:db8:85a3::8a2e:370:7334
-  // IPv4映射：::ffff:192.168.1.1 或 ::ffff:c0a8:101
-  // CIDR：2001:db8::/32
-  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^::(?:[0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,7}::(?:[0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,6}::(?:[0-9a-fA-F]{1,4}:){0,4}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,5}::(?:[0-9a-fA-F]{1,4}:){0,3}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,4}::(?:[0-9a-fA-F]{1,4}:){0,2}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,3}::(?:[0-9a-fA-F]{1,4}:){0,1}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,2}::[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,2}::(?:[0-9a-fA-F]{1,4}:){1,4}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,3}::(?:[0-9a-fA-F]{1,4}:){1,3}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,4}::(?:[0-9a-fA-F]{1,4}:){1,2}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,5}::[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,5}::(?:[0-9a-fA-F]{1,4}:){1,2}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,6}::[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,6}::(?:[0-9a-fA-F]{1,4}:){1}[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^(?:[0-9a-fA-F]{1,4}:){1,7}::[0-9a-fA-F]{1,4}(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$|^::(?:[0-9a-fA-F]{1,4}:){0,5}(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$|^(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$|^::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$|^(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/
-  
-  // 简化版本：更实用的IPv6验证
-  // 匹配标准IPv6格式（包括压缩格式和CIDR）
-  const ipv6SimpleRegex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$/i
-  
-  if (ipv6SimpleRegex.test(ip)) {
-    return true
-  }
-
-  return false
 }
 
 // IP 白名单管理 - 列表

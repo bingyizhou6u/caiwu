@@ -110,6 +110,15 @@ export function ReportEmployeeSalary() {
       key: 'month',
       width: 80,
       render: (m: number) => `${m}月`,
+      sorter: (a, b) => {
+        // 首先按年份降序
+        if (a.year !== b.year) {
+          return b.year - a.year
+        }
+        // 然后按月份降序（最新月份优先）
+        return b.month - a.month
+      },
+      defaultSortOrder: 'descend',
     },
     {
       title: '基础工资',

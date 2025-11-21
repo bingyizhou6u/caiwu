@@ -1,9 +1,10 @@
-import { Layout, Menu, Button, Form, Input, Card, Space, message, Tabs, Spin } from 'antd'
+import { Layout, Menu, Button, Form, Input, Card, Space, message, Tabs, Spin, Dropdown, Avatar } from 'antd'
 import type { MenuProps } from 'antd'
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { CloseOutlined } from '@ant-design/icons'
+import { CloseOutlined, UserOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons'
 import { api } from '../config/api'
-import { initPermissions, clearPermissionsCache } from '../utils/permissions'
+import { AuthProvider, useAuth } from '../context/AuthContext'
+import { buildMenuItems, pageTitles } from '../config/menu'
 
 // 代码分割：按需加载页面组件
 const Dashboard = lazy(() => import('./Dashboard').then(m => ({ default: m.Dashboard })))
@@ -35,7 +36,6 @@ const FixedAssetPurchase = lazy(() => import('./FixedAssetPurchase').then(m => (
 const FixedAssetSale = lazy(() => import('./FixedAssetSale').then(m => ({ default: m.FixedAssetSale })))
 const FixedAssetAllocation = lazy(() => import('./FixedAssetAllocation').then(m => ({ default: m.FixedAssetAllocation })))
 const RentalManagement = lazy(() => import('./RentalManagement').then(m => ({ default: m.RentalManagement })))
-const RolePermissionsManagement = lazy(() => import('./RolePermissionsManagement').then(m => ({ default: m.RolePermissionsManagement })))
 const PositionPermissionsManagement = lazy(() => import('./PositionPermissionsManagement').then(m => ({ default: m.PositionPermissionsManagement })))
 const EmailNotificationSettings = lazy(() => import('./EmailNotificationSettings').then(m => ({ default: m.EmailNotificationSettings })))
 const SiteConfigManagement = lazy(() => import('./SiteConfigManagement'))
@@ -53,61 +53,15 @@ const ReportEmployeeSalary = lazy(() => import('./reports/ReportEmployeeSalary')
 
 const { Header, Sider, Content } = Layout
 
-// 页面标题映射
-const pageTitles: Record<string, string> = {
-  'dashboard': '首页',
-  'flows': '收支记账',
-  'account-transfer': '账户转账',
-  'account-transactions': '账户明细',
-  'import': '数据导入',
-  'ar': '应收账款',
-  'ap': '应付账款',
-  'report-dept-cash': '项目汇总报表',
-  'report-site-growth': '站点增长报表',
-  'report-ar-summary': '应收账款汇总',
-  'report-ar-detail': '应收账款明细',
-  'report-ap-summary': '应付账款汇总',
-  'report-ap-detail': '应付账款明细',
-  'report-expense-summary': '日常支出汇总',
-  'report-expense-detail': '日常支出明细',
-  'report-account-balance': '账户余额报表',
-  'report-borrowing': '借款统计报表',
-  'employee': '员工管理',
-  'employee-salary': '员工薪资报表',
-  'salary-payments': '薪资发放管理',
-  'allowance-payments': '补贴发放管理',
-  'employee-leave': '请假管理',
-  'expense-reimbursement': '报销管理',
-  'site-management': '站点管理',
-  'site-bills': '站点账单',
-  'department': '项目管理',
-  'org-department': '部门管理',
-  'category': '类别管理',
-  'account': '账户管理',
-  'currency': '币种管理',
-  'vendor': '供应商管理',
-  'fixed-assets': '资产列表',
-  'fixed-asset-purchase': '资产买入',
-  'fixed-asset-sale': '资产卖出',
-  'fixed-asset-allocation': '资产分配',
-  'rental-management': '租房管理',
-  'borrowings': '借款管理',
-  'repayments': '还款管理',
-  'role-permissions': '角色权限管理',
-  'position-permissions': '权限管理',
-  'email-notification': '邮件提醒设置',
-  'site-config': '网站配置',
-  'ip-whitelist': 'IP白名单',
-  'audit': '审计日志',
-}
-
 interface TabItem {
   key: string
   label: string
   closable: boolean
 }
 
-export function App() {
+function AppContent() {
+  const { user, loggedIn, loading, login, logout } = useAuth()
+
   // 从 localStorage 恢复标签页状态
   const [tabs, setTabs] = useState<TabItem[]>(() => {
     const saved = localStorage.getItem('tabs')
@@ -121,7 +75,7 @@ export function App() {
     }
     return [{ key: 'dashboard', label: '首页', closable: false }]
   })
-  
+
   // 从 localStorage 恢复选中的页面，如果没有则默认为 dashboard
   const [selected, setSelected] = useState(() => {
     const saved = localStorage.getItem('selectedPage')
@@ -132,19 +86,13 @@ export function App() {
     return saved ? JSON.parse(saved) : []
   })
   const [apiOk, setApiOk] = useState(false)
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true)
-  const [userRole, setUserRole] = useState<string>('')
-  const [userInfo, setUserInfo] = useState<{ name?: string; email?: string; role?: string; position?: { code: string; name: string; canViewReports?: boolean } | null } | null>(null)
+
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginStep, setLoginStep] = useState<'login' | 'changePassword' | 'twoFactor'>('login')
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [totpData, setTotpData] = useState<any>(null)
   const [hasTotp, setHasTotp] = useState(false)
-  const [contextMenuVisible, setContextMenuVisible] = useState(false)
-  const [contextMenuKey, setContextMenuKey] = useState<string>('')
-  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
 
   useEffect(() => {
     // 确保当前选中的页面在标签列表中
@@ -162,32 +110,6 @@ export function App() {
 
   useEffect(() => {
     fetch(api.health).then(r => r.json()).then(d => setApiOk(!!d.db)).catch(() => setApiOk(false))
-    // 检查当前用户状态（仅在首次加载时检查）
-    // 后端现在返回 200，即使未登录也不会报错
-    fetch(api.me, { credentials: 'include' })
-      .then(async (r) => {
-        if (r.ok) {
-          const data = await r.json()
-          if (data.loggedIn) {
-            setLoggedIn(true)
-            setUserRole(data.role || '')
-            setUserInfo({
-              name: data.name || '',
-              email: data.email || '',
-              role: data.role || '',
-              position: data.position || null
-            })
-            // 初始化权限
-            await initPermissions()
-          }
-        }
-      })
-      .catch(() => {
-        // 网络错误等，静默处理
-      })
-      .finally(() => {
-        setCheckingAuth(false)
-      })
   }, [])
 
   const onLogin = async (v: any) => {
@@ -195,15 +117,15 @@ export function App() {
     if (!v?.password) return message.error('请输入密码')
     setLoginLoading(true)
     try {
-      const payload = { 
-        email: v.email.trim(), 
+      const payload = {
+        email: v.email.trim(),
         password: v.password
       }
-      const res = await fetch(api.auth.loginPassword, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload), 
-        credentials: 'include' 
+      const res = await fetch(api.auth.loginPassword, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include'
       })
       const data = await res.json()
       if (res.ok) {
@@ -229,15 +151,7 @@ export function App() {
           message.info('请输入Google验证码')
         } else {
           // 登录成功
-          setLoggedIn(true)
-          setUserRole(data.user?.role || '')
-          setUserInfo({
-            name: data.user?.name || '',
-            email: data.user?.email || '',
-            role: data.user?.role || ''
-          })
-          // 初始化权限
-          await initPermissions()
+          await login(data)
           message.success('登录成功')
         }
       } else {
@@ -255,15 +169,15 @@ export function App() {
     if (v.newPassword.length < 6) return message.error('密码至少6位')
     setLoginLoading(true)
     try {
-      const res = await fetch(api.auth.changePasswordFirst, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ 
-          email: loginEmail, 
-          oldPassword: v.oldPassword, 
-          newPassword: v.newPassword 
-        }), 
-        credentials: 'include' 
+      const res = await fetch(api.auth.changePasswordFirst, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loginEmail,
+          oldPassword: v.oldPassword,
+          newPassword: v.newPassword
+        }),
+        credentials: 'include'
       })
       const data = await res.json()
       if (res.ok) {
@@ -305,7 +219,7 @@ export function App() {
         setLoginLoading(false)
         return
       }
-      
+
       // 如果已绑定TOTP，验证验证码后登录
       if (hasTotp) {
         const res = await fetch(api.auth.loginPassword, {
@@ -316,15 +230,7 @@ export function App() {
         })
         const data = await res.json()
         if (res.ok) {
-          setLoggedIn(true)
-          setUserRole(data.user?.role || '')
-          setUserInfo({
-            name: data.user?.name || '',
-            email: data.user?.email || '',
-            role: data.user?.role || ''
-          })
-          // 初始化权限
-          await initPermissions()
+          await login(data)
           message.success('登录成功')
         } else {
           message.error(data.error || '验证失败')
@@ -339,15 +245,7 @@ export function App() {
         })
         const data = await res.json()
         if (res.ok) {
-          setLoggedIn(true)
-          setUserRole(data.user?.role || '')
-          setUserInfo({
-            name: data.user?.name || '',
-            email: data.user?.email || '',
-            role: data.user?.role || ''
-          })
-          // 初始化权限
-          await initPermissions()
+          await login(data)
           message.success('Google验证码已绑定，登录成功')
         } else {
           message.error(data.error || '绑定失败')
@@ -387,54 +285,26 @@ export function App() {
       loadTotpStatus()
     }
   }, [loginStep])
-  
-  const onLogout = async () => {
-    try {
-      await fetch(api.auth.logout, { method: 'POST', credentials: 'include' })
-    } catch (e) {
-      // 忽略错误
-    }
-    setLoggedIn(false)
-    setUserRole('')
-    setUserInfo(null)
+
+  const handleLogout = async () => {
+    await logout()
     setLoginStep('login')
     setLoginEmail('')
     setLoginPassword('')
     setTotpData(null)
     setHasTotp(false)
-    clearPermissionsCache()
-    // 清除保存的页面状态
-    localStorage.removeItem('selectedPage')
-    localStorage.removeItem('openMenuKeys')
-    localStorage.removeItem('tabs')
     setSelected('dashboard')
     setOpenKeys([])
     setTabs([{ key: 'dashboard', label: '首页', closable: false }])
-    message.success('已退出登录')
   }
 
-  if (checkingAuth) {
-    // 正在检查认证状态，显示加载状态
+  if (loading) {
     return (
-      <Layout style={{ minHeight: '100vh' }}>
-        <Header 
-          style={{ 
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            color: 'white',
-            zIndex: 1000,
-            height: 64,
-            lineHeight: '64px',
-            padding: '0 24px'
-          }}
-        >
-          AR公司管理系统 {apiOk ? '' : '（API未连接）'}
-        </Header>
-        <Content style={{ padding: 24, marginTop: 64, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ textAlign: 'center', color: '#666' }}>加载中...</div>
-        </Content>
+      <Layout style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16, color: '#666', fontSize: 16 }}>正在加载系统资源...</div>
+        </div>
       </Layout>
     )
   }
@@ -442,8 +312,8 @@ export function App() {
   if (!loggedIn) {
     return (
       <Layout style={{ minHeight: '100vh' }}>
-        <Header 
-          style={{ 
+        <Header
+          style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -460,7 +330,7 @@ export function App() {
         <Content style={{ padding: 24, marginTop: 64, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           {loginStep === 'login' ? (
             <Card title="登录" style={{ width: 360 }}>
-              <Form layout="vertical" onFinish={onLogin} onFinishFailed={()=> message.error('请检查表单填写')}>
+              <Form layout="vertical" onFinish={onLogin} onFinishFailed={() => message.error('请检查表单填写')}>
                 <Form.Item name="email" label="邮箱" rules={[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '邮箱格式不正确' }]}>
                   <Input placeholder="请输入邮箱地址" />
                 </Form.Item>
@@ -476,7 +346,7 @@ export function App() {
             </Card>
           ) : loginStep === 'changePassword' ? (
             <Card title="首次登录 - 修改密码" style={{ width: 360 }}>
-              <Form layout="vertical" onFinish={onChangePassword} onFinishFailed={()=> message.error('请检查表单填写')}>
+              <Form layout="vertical" onFinish={onChangePassword} onFinishFailed={() => message.error('请检查表单填写')}>
                 <Form.Item>
                   <div style={{ marginBottom: 16, color: '#666' }}>
                     邮箱：<strong>{loginEmail}</strong>
@@ -537,7 +407,7 @@ export function App() {
                   </Button>
                 </div>
               ) : (
-                <Form layout="vertical" onFinish={onTwoFactor} onFinishFailed={()=> message.error('请检查表单填写')}>
+                <Form layout="vertical" onFinish={onTwoFactor} onFinishFailed={() => message.error('请检查表单填写')}>
                   {!hasTotp && totpData && (
                     <Form.Item>
                       <div style={{ textAlign: 'center', marginBottom: 16 }}>
@@ -561,148 +431,6 @@ export function App() {
         </Content>
       </Layout>
     )
-  }
-
-  const buildMenuItems = (): MenuProps['items'] => {
-    const items: MenuProps['items'] = []
-    
-    // 首页
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read', 'employee'].includes(userRole)) {
-      items.push({ key: 'dashboard', label: '首页', icon: null })
-    }
-    
-    // 日常业务
-    const dailyBusiness: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
-      dailyBusiness.push({ key: 'flows', label: '收支记账' })
-      dailyBusiness.push({ key: 'account-transfer', label: '账户转账' })
-      dailyBusiness.push({ key: 'account-transactions', label: '账户明细' })
-    }
-    if (!userRole || ['manager', 'finance'].includes(userRole)) {
-      dailyBusiness.push({ key: 'import', label: '数据导入' })
-    }
-    if (dailyBusiness.length > 0) {
-      items.push({ key: 'daily', label: '日常业务', children: dailyBusiness })
-    }
-    
-    // 往来账款
-    const arAp: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
-      arAp.push({ key: 'ar', label: '应收账款' })
-      arAp.push({ key: 'ap', label: '应付账款' })
-    }
-    if (arAp.length > 0) {
-      items.push({ key: 'arap', label: '往来账款', children: arAp })
-    }
-    
-    // 报表（只有总部人员可以查看）
-    const reports: MenuProps['items'] = []
-    // 检查是否可以查看报表：完全基于职位权限
-    const canViewReports = userInfo?.position?.canViewReports === true
-    if (canViewReports) {
-      reports.push({ key: 'report-dept-cash', label: '项目汇总报表' })
-      reports.push({ key: 'report-site-growth', label: '站点增长报表' })
-      reports.push({ key: 'report-ar-summary', label: '应收账款汇总' })
-      reports.push({ key: 'report-ar-detail', label: '应收账款明细' })
-      reports.push({ key: 'report-ap-summary', label: '应付账款汇总' })
-      reports.push({ key: 'report-ap-detail', label: '应付账款明细' })
-      reports.push({ key: 'report-expense-summary', label: '日常支出汇总' })
-      reports.push({ key: 'report-expense-detail', label: '日常支出明细' })
-      reports.push({ key: 'report-account-balance', label: '账户余额报表' })
-      reports.push({ key: 'report-borrowing', label: '借款统计报表' })
-    }
-    if (reports.length > 0) {
-      items.push({ key: 'reports', label: '报表中心', children: reports })
-    }
-    
-    // 借款管理
-    const borrowing: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
-      borrowing.push({ key: 'borrowings', label: '借款管理' })
-      borrowing.push({ key: 'repayments', label: '还款管理' })
-    }
-    if (borrowing.length > 0) {
-      items.push({ key: 'borrowing', label: '借款管理', children: borrowing })
-    }
-    
-    // 站点管理（独立一级菜单）
-    const sites: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
-      sites.push({ key: 'site-management', label: '站点管理' })
-      sites.push({ key: 'site-bills', label: '站点账单' })
-    }
-    if (sites.length > 0) {
-      items.push({ key: 'sites', label: '站点管理', children: sites })
-    }
-    
-    // 基础数据
-    const settings: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance'].includes(userRole)) {
-      settings.push({ key: 'department', label: '项目管理' })
-      settings.push({ key: 'org-department', label: '部门管理' })
-      settings.push({ key: 'category', label: '类别管理' })
-      settings.push({ key: 'account', label: '账户管理' })
-      settings.push({ key: 'currency', label: '币种管理' })
-      settings.push({ key: 'vendor', label: '供应商管理' })
-    }
-    if (settings.length > 0) {
-      items.push({ key: 'settings', label: '基础数据', children: settings })
-    }
-    
-    // 资产管理（独立一级菜单）
-    const fixedAssets: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
-      fixedAssets.push({ key: 'fixed-assets', label: '资产列表' })
-      if (userRole === 'finance' || userRole === 'manager') {
-        fixedAssets.push({ key: 'fixed-asset-purchase', label: '资产买入' })
-        fixedAssets.push({ key: 'fixed-asset-sale', label: '资产卖出' })
-      }
-      if (userRole === 'finance' || userRole === 'manager' || userRole === 'hr') {
-        fixedAssets.push({ key: 'fixed-asset-allocation', label: '资产分配' })
-      }
-      if (userRole === 'finance' || userRole === 'manager') {
-        fixedAssets.push({ key: 'rental-management', label: '租房管理' })
-      }
-    }
-    if (fixedAssets.length > 0) {
-      items.push({ key: 'fixed-assets-menu', label: '资产管理', children: fixedAssets })
-    }
-    
-    // 员工管理（整合用户权限）
-    const employees: MenuProps['items'] = []
-    // employee角色：只能查看自己的请假和报销
-    if (userRole === 'employee') {
-      employees.push({ key: 'employee-leave', label: '我的请假' })
-      employees.push({ key: 'expense-reimbursement', label: '我的报销' })
-    } else if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
-      // hr角色：可以管理员工、查看薪资表、审批请假和报销
-      if (userRole === 'hr' || !userRole || ['manager', 'finance', 'hr'].includes(userRole)) {
-        employees.push({ key: 'employee', label: '员工管理' })
-      }
-      employees.push({ key: 'employee-salary', label: '员工薪资报表' })
-      employees.push({ key: 'salary-payments', label: '薪资发放管理' })
-      employees.push({ key: 'allowance-payments', label: '补贴发放管理' })
-      employees.push({ key: 'employee-leave', label: '请假管理' })
-      employees.push({ key: 'expense-reimbursement', label: '报销管理' })
-    }
-    if (employees.length > 0) {
-      items.push({ key: 'employees', label: '人员管理', children: employees })
-    }
-    
-    // 系统管理（仅保留系统级配置）
-    const system: MenuProps['items'] = []
-    if (userRole && ['manager'].includes(userRole)) {
-      system.push({ key: 'position-permissions', label: '权限管理' })
-      system.push({ key: 'email-notification', label: '邮件提醒设置' })
-      system.push({ key: 'site-config', label: '网站配置' })
-      system.push({ key: 'ip-whitelist', label: 'IP白名单' })
-      system.push({ key: 'audit', label: '审计日志' })
-    }
-    if (system.length > 0) {
-      items.push({ key: 'system', label: '系统管理', children: system })
-    }
-    
-    return items
   }
 
   // 添加或激活标签页
@@ -729,16 +457,16 @@ export function App() {
     if (targetKey === 'dashboard') {
       return // 首页标签不能关闭
     }
-    
+
     setTabs(prevTabs => {
       const newTabs = prevTabs.filter(tab => tab.key !== targetKey)
       localStorage.setItem('tabs', JSON.stringify(newTabs))
-      
+
       // 如果关闭的是当前激活的标签，切换到其他标签
       if (targetKey === selected) {
         const currentIndex = prevTabs.findIndex(tab => tab.key === targetKey)
         let newSelected = 'dashboard'
-        
+
         if (currentIndex > 0) {
           // 切换到前一个标签
           newSelected = prevTabs[currentIndex - 1].key
@@ -746,11 +474,11 @@ export function App() {
           // 切换到第一个标签
           newSelected = newTabs[0].key
         }
-        
+
         setSelected(newSelected)
         localStorage.setItem('selectedPage', newSelected)
       }
-      
+
       return newTabs
     })
   }
@@ -777,7 +505,7 @@ export function App() {
   const closeLeftTabs = (targetKey: string) => {
     const currentIndex = tabs.findIndex(tab => tab.key === targetKey)
     if (currentIndex <= 0) return // 没有左侧标签或点击的是第一个标签
-    
+
     // 保留当前标签及右侧的所有标签（包括首页）
     const newTabs = tabs.filter((tab, index) => index >= currentIndex || tab.key === 'dashboard')
     setTabs(newTabs)
@@ -790,7 +518,7 @@ export function App() {
   const closeRightTabs = (targetKey: string) => {
     const currentIndex = tabs.findIndex(tab => tab.key === targetKey)
     if (currentIndex < 0 || currentIndex >= tabs.length - 1) return // 没有右侧标签或点击的是最后一个标签
-    
+
     // 保留当前标签及左侧的所有标签
     const newTabs = tabs.filter((tab, index) => index <= currentIndex)
     setTabs(newTabs)
@@ -807,267 +535,173 @@ export function App() {
     localStorage.setItem('selectedPage', 'dashboard')
   }
 
-  // 处理标签右键菜单
-  const handleTabContextMenu = (e: React.MouseEvent, key: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setContextMenuKey(key)
-    setContextMenuPosition({ x: e.clientX, y: e.clientY })
-    setContextMenuVisible(true)
+  const renderContent = () => {
+    return (
+      <Suspense fallback={
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100%',
+          minHeight: 400,
+          background: '#fff',
+          borderRadius: 4
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16, color: '#999' }}>页面加载中...</div>
+          </div>
+        </div>
+      }>
+        {selected === 'dashboard' && <Dashboard userRole={user?.role} userInfo={user} />}
+        {selected === 'flows' && <Flows />}
+        {selected === 'account-transactions' && <AccountTransactions />}
+        {selected === 'account-transfer' && <AccountTransfer />}
+        {selected === 'ar' && <AR />}
+        {selected === 'ap' && <AP />}
+        {selected === 'import' && <ImportCenter />}
+        {selected === 'org-department' && <OrgDepartmentManagement />}
+        {selected === 'department' && <DepartmentManagement />}
+        {selected === 'site-management' && <SiteManagement />}
+        {selected === 'site-bills' && <SiteBills />}
+        {selected === 'category' && <CategoryManagement />}
+        {selected === 'account' && <AccountManagement />}
+        {selected === 'currency' && <CurrencyManagement />}
+        {selected === 'audit' && <AuditLogs />}
+        {selected === 'vendor' && <VendorManagement />}
+        {selected === 'employee' && <EmployeeManagement />}
+        {selected === 'borrowings' && <BorrowingManagement />}
+        {selected === 'repayments' && <RepaymentManagement />}
+        {selected === 'employee-leave' && <LeaveManagement />}
+        {selected === 'expense-reimbursement' && <ExpenseReimbursement />}
+        {selected === 'salary-payments' && <SalaryPayments />}
+        {selected === 'allowance-payments' && <AllowancePayments />}
+        {selected === 'ip-whitelist' && <IPWhitelistManagement />}
+        {selected === 'fixed-assets' && <FixedAssetsManagement />}
+        {selected === 'fixed-asset-purchase' && <FixedAssetPurchase />}
+        {selected === 'fixed-asset-sale' && <FixedAssetSale />}
+        {selected === 'fixed-asset-allocation' && <FixedAssetAllocation />}
+        {selected === 'rental-management' && <RentalManagement />}
+        {selected === 'position-permissions' && <PositionPermissionsManagement />}
+        {selected === 'email-notification' && <EmailNotificationSettings />}
+        {selected === 'site-config' && <SiteConfigManagement />}
+        {selected === 'report-dept-cash' && <ReportDepartmentCash />}
+        {selected === 'report-site-growth' && <ReportSiteGrowth />}
+        {selected === 'report-ar-summary' && <ReportARSummary />}
+        {selected === 'report-ar-detail' && <ReportARDetail />}
+        {selected === 'report-ap-summary' && <ReportAPSummary />}
+        {selected === 'report-ap-detail' && <ReportAPDetail />}
+        {selected === 'report-expense-summary' && <ReportExpenseSummary />}
+        {selected === 'report-expense-detail' && <ReportExpenseDetail />}
+        {selected === 'report-account-balance' && <ReportAccountBalance />}
+        {selected === 'report-borrowing' && <ReportBorrowing />}
+        {selected === 'report-employee-salary' && <ReportEmployeeSalary />}
+      </Suspense>
+    )
   }
 
-  // 关闭右键菜单
-  const handleContextMenuClose = () => {
-    setContextMenuVisible(false)
-  }
+  const userMenu: MenuProps['items'] = [
+    {
+      key: 'profile',
+      label: (
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ fontWeight: 'bold' }}>{user?.name}</div>
+          <div style={{ fontSize: '12px', color: '#888' }}>{user?.email}</div>
+          <div style={{ fontSize: '12px', color: '#888' }}>{user?.role}</div>
+        </div>
+      ),
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: handleLogout,
+    },
+  ]
 
-  // 切换标签页
-  const onChangeTab = (key: string) => {
-    setSelected(key)
-    localStorage.setItem('selectedPage', key)
-  }
-
-  const menuItems = buildMenuItems() || []
-
-  const handleOpenChange = (keys: string[]) => {
-    // 获取当前展开的最后一个菜单键（即最新点击的菜单）
-    const latestOpenKey = keys.find(key => openKeys.indexOf(key) === -1)
-    // 如果展开了新菜单，则只保留这个新菜单，收起其他所有菜单
-    if (latestOpenKey) {
-      setOpenKeys([latestOpenKey])
-      localStorage.setItem('openMenuKeys', JSON.stringify([latestOpenKey]))
-    } else {
-      // 如果收起了菜单，更新状态
-      setOpenKeys(keys)
-      localStorage.setItem('openMenuKeys', JSON.stringify(keys))
-    }
-  }
-
-  const siderWidth = 200
-  
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        width={siderWidth}
-        style={{
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          overflow: 'auto',
-          height: '100vh',
-          zIndex: 1000
-        }}
-      >
-        <div style={{ color: 'white', padding: 12, fontWeight: 600 }}>财务记账</div>
-        <Menu 
-          theme="dark" 
-          mode="inline" 
+      <Sider width={220} theme="dark" style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0 }}>
+        <div style={{ height: 64, margin: 16, background: 'rgba(255, 255, 255, 0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+          AR公司管理系统
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
           selectedKeys={[selected]}
           openKeys={openKeys}
-          onOpenChange={handleOpenChange}
-          onClick={(e) => {
-            // 检查是否是父级菜单（有children的项）
-            const parentItem = menuItems.find(item => item?.key === e.key)
-            if (parentItem && (parentItem as any).children) {
-              // 如果有子菜单，不设置selected，让用户点击子菜单
-              return
-            }
-            addOrActivateTab(e.key)
+          onOpenChange={(keys) => {
+            setOpenKeys(keys)
+            localStorage.setItem('openMenuKeys', JSON.stringify(keys))
           }}
-          items={menuItems}
+          items={buildMenuItems(user?.role || '', user)}
+          onClick={({ key }) => addOrActivateTab(key)}
         />
       </Sider>
-      <Layout style={{ marginLeft: siderWidth }}>
-        <Header 
-          style={{ 
-            position: 'fixed',
-            top: 0,
-            left: siderWidth,
-            right: 0,
-            color: 'white', 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            zIndex: 999,
-            height: 64,
-            lineHeight: '64px',
-            padding: '0 24px'
-          }}
-        >
-          <div>AR公司管理系统</div>
-          <Space>
-            <Button onClick={onLogout}>退出登录</Button>
-          </Space>
-        </Header>
-        <Content style={{ padding: 16, marginTop: 64, minHeight: 'calc(100vh - 64px)' }}>
-          <Tabs
-            type="editable-card"
-            activeKey={selected}
-            onChange={onChangeTab}
-            hideAdd
-            onEdit={(targetKey, action) => {
-              if (action === 'remove') {
-                removeTab(targetKey as string)
-              }
-            }}
-            items={tabs.map(tab => ({
-              key: tab.key,
-              label: (
-                <span
-                  onContextMenu={(e) => handleTabContextMenu(e, tab.key)}
-                  style={{ display: 'inline-block', width: '100%' }}
-                >
-                  {tab.label}
-                </span>
-              ),
-              closable: tab.closable,
-              closeIcon: tab.closable ? <CloseOutlined /> : null,
-            }))}
-            style={{ marginBottom: 16 }}
-          />
-          {contextMenuVisible && (
-            <>
-              {/* 点击其他地方关闭右键菜单 */}
-              <div
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 9998
-                }}
-                onClick={handleContextMenuClose}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  handleContextMenuClose()
-                }}
-              />
-              {/* 自定义右键菜单 */}
-              <div
-                style={{
-                  position: 'fixed',
-                  left: contextMenuPosition.x,
-                  top: contextMenuPosition.y,
-                  zIndex: 9999,
-                  background: 'white',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '4px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  minWidth: 120,
-                }}
-              >
-                <Menu
-                  mode="vertical"
-                  selectedKeys={[]}
-                  items={(() => {
-                    const currentIndex = tabs.findIndex(tab => tab.key === contextMenuKey)
-                    const hasLeftTabs = currentIndex > 0
-                    const hasRightTabs = currentIndex >= 0 && currentIndex < tabs.length - 1
-                    const hasOtherTabs = tabs.filter(tab => tab.key !== contextMenuKey && tab.key !== 'dashboard').length > 0
-                    
-                    return [
-                      {
-                        key: 'close',
-                        label: '关闭',
-                        disabled: contextMenuKey === 'dashboard',
-                        onClick: () => {
-                          removeTab(contextMenuKey)
-                          handleContextMenuClose()
-                        }
-                      },
-                      {
-                        key: 'close-others',
-                        label: '关闭其他',
-                        disabled: !hasOtherTabs,
-                        onClick: () => {
-                          closeOtherTabs(contextMenuKey)
-                          handleContextMenuClose()
-                        }
-                      },
-                      {
-                        key: 'close-left',
-                        label: '关闭左侧',
-                        disabled: !hasLeftTabs,
-                        onClick: () => {
-                          closeLeftTabs(contextMenuKey)
-                          handleContextMenuClose()
-                        }
-                      },
-                      {
-                        key: 'close-right',
-                        label: '关闭右侧',
-                        disabled: !hasRightTabs,
-                        onClick: () => {
-                          closeRightTabs(contextMenuKey)
-                          handleContextMenuClose()
-                        }
-                      },
-                      {
-                        key: 'close-all',
-                        label: '关闭全部',
-                        disabled: tabs.length <= 1,
-                        onClick: () => {
-                          closeAllTabs()
-                          handleContextMenuClose()
-                        }
-                      }
-                    ]
-                  })()}
-                />
+      <Layout style={{ marginLeft: 220 }}>
+        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,21,41,0.08)', zIndex: 1 }}>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <Tabs
+              hideAdd
+              type="editable-card"
+              activeKey={selected}
+              items={tabs.map(tab => ({
+                key: tab.key,
+                label: (
+                  <Dropdown
+                    menu={{
+                      items: [
+                        { key: 'close', label: '关闭当前', disabled: tab.key === 'dashboard', onClick: (e) => removeTab(tab.key, e as any) },
+                        { key: 'closeOther', label: '关闭其他', onClick: () => closeOtherTabs(tab.key) },
+                        { key: 'closeLeft', label: '关闭左侧', disabled: tabs.findIndex(t => t.key === tab.key) <= 0, onClick: () => closeLeftTabs(tab.key) },
+                        { key: 'closeRight', label: '关闭右侧', disabled: tabs.findIndex(t => t.key === tab.key) >= tabs.length - 1, onClick: () => closeRightTabs(tab.key) },
+                        { key: 'closeAll', label: '关闭全部', onClick: closeAllTabs },
+                      ]
+                    }}
+                    trigger={['contextMenu']}
+                  >
+                    <span>{tab.label}</span>
+                  </Dropdown>
+                ),
+                closable: tab.closable,
+              }))}
+              onChange={(key) => {
+                setSelected(key)
+                localStorage.setItem('selectedPage', key)
+              }}
+              onEdit={(targetKey, action) => {
+                if (action === 'remove') {
+                  removeTab(targetKey as string)
+                }
+              }}
+              tabBarStyle={{ margin: 0, border: 'none' }}
+            />
+          </div>
+          <div style={{ marginLeft: 16 }}>
+            <Dropdown menu={{ items: userMenu }} placement="bottomRight">
+              <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff', marginRight: 8 }} />
+                <span style={{ marginRight: 8 }}>{user?.name}</span>
+                <DownOutlined style={{ fontSize: 12 }} />
               </div>
-            </>
-          )}
-          <Suspense fallback={<div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>}>
-            {selected === 'dashboard' && <Dashboard userRole={userRole} userInfo={userInfo} />}
-            {selected === 'flows' && <Flows />}
-            {selected === 'account-transfer' && <AccountTransfer />}
-            {selected === 'account-transactions' && <AccountTransactions />}
-            {selected === 'ar' && <AR />}
-            {selected === 'ap' && <AP />}
-            {selected === 'import' && <ImportCenter />}
-            {selected === 'report-dept-cash' && <ReportDepartmentCash />}
-            {selected === 'report-site-growth' && <ReportSiteGrowth />}
-            {selected === 'report-ar-summary' && <ReportARSummary />}
-            {selected === 'report-ar-detail' && <ReportARDetail />}
-            {selected === 'report-ap-summary' && <ReportAPSummary />}
-            {selected === 'report-ap-detail' && <ReportAPDetail />}
-            {selected === 'report-expense-summary' && <ReportExpenseSummary />}
-            {selected === 'report-expense-detail' && <ReportExpenseDetail />}
-            {selected === 'report-account-balance' && <ReportAccountBalance />}
-            {selected === 'report-borrowing' && <ReportBorrowing />}
-            {selected === 'employee' && <EmployeeManagement userRole={userRole} />}
-            {selected === 'employee-salary' && <ReportEmployeeSalary />}
-            {selected === 'salary-payments' && <SalaryPayments userRole={userRole} />}
-            {selected === 'allowance-payments' && <AllowancePayments userRole={userRole} />}
-            {selected === 'employee-leave' && <LeaveManagement userRole={userRole} />}
-            {selected === 'expense-reimbursement' && <ExpenseReimbursement userRole={userRole} />}
-            {selected === 'site-management' && <SiteManagement userRole={userRole} />}
-            {selected === 'site-bills' && <SiteBills userRole={userRole} />}
-            {selected === 'department' && <DepartmentManagement userRole={userRole} />}
-            {selected === 'org-department' && <OrgDepartmentManagement userRole={userRole} />}
-            {selected === 'category' && <CategoryManagement userRole={userRole} />}
-            {selected === 'account' && <AccountManagement userRole={userRole} />}
-            {selected === 'currency' && <CurrencyManagement userRole={userRole} />}
-            {selected === 'vendor' && <VendorManagement userRole={userRole} />}
-            {selected === 'fixed-assets' && <FixedAssetsManagement userRole={userRole} />}
-            {selected === 'fixed-asset-purchase' && <FixedAssetPurchase userRole={userRole} />}
-            {selected === 'fixed-asset-sale' && <FixedAssetSale userRole={userRole} />}
-            {selected === 'fixed-asset-allocation' && <FixedAssetAllocation userRole={userRole} />}
-            {selected === 'rental-management' && <RentalManagement userRole={userRole} />}
-            {selected === 'borrowings' && <BorrowingManagement userRole={userRole} />}
-            {selected === 'repayments' && <RepaymentManagement userRole={userRole} />}
-            {selected === 'role-permissions' && <RolePermissionsManagement />}
-            {selected === 'position-permissions' && <PositionPermissionsManagement />}
-            {selected === 'email-notification' && <EmailNotificationSettings />}
-            {selected === 'site-config' && <SiteConfigManagement />}
-            {selected === 'ip-whitelist' && <IPWhitelistManagement />}
-            {selected === 'audit' && <AuditLogs />}
-          </Suspense>
+            </Dropdown>
+          </div>
+        </Header>
+        <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+          <div style={{ padding: 24, background: '#fff', minHeight: 360, borderRadius: 4 }}>
+            {renderContent()}
+          </div>
         </Content>
       </Layout>
     </Layout>
   )
 }
 
-
+export function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  )
+}

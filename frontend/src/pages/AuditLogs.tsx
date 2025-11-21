@@ -238,6 +238,8 @@ interface AuditLog {
   entity: string
   entity_id?: string
   detail?: string
+  ip?: string
+  ip_location?: string
 }
 
 export function AuditLogs() {
@@ -352,6 +354,18 @@ export function AuditLogs() {
       filters: allEntities.map(e => ({ text: ENTITY_LABELS[e] || e, value: e })),
       filteredValue: filterEntity ? [filterEntity] : null,
       onFilter: (value, record) => record.entity === value,
+    },
+    { 
+      title: 'IP地址', 
+      dataIndex: 'ip',
+      width: 150,
+      render: (v: string) => v || '-',
+    },
+    { 
+      title: 'IP归属地', 
+      dataIndex: 'ip_location',
+      width: 180,
+      render: (v: string) => v || '-',
     },
     { 
       title: '详情', 

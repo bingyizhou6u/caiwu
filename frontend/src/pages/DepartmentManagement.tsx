@@ -38,7 +38,10 @@ export function DepartmentManagement({ userRole }: { userRole?: string }) {
       message.success('删除成功')
       loadDept()
     } catch (error: any) {
-      message.error(error.message || '删除失败')
+      // 显示后端返回的具体错误信息
+      const errorMessage = error.message || error.error || '删除失败'
+      message.error(errorMessage)
+      console.error('Delete department error:', error)
     }
   }, [loadDept])
 
@@ -75,7 +78,7 @@ export function DepartmentManagement({ userRole }: { userRole?: string }) {
             {isManager && (
               <Popconfirm
                 title={`确定要删除项目"${r.name}"吗？`}
-                description="删除后该项目将被永久删除，如果有站点使用此项目，将无法删除。"
+                description="删除后该项目将被永久删除。如果该项目下还有站点、员工或组织部门，将无法删除。"
                 onConfirm={() => deleteDept(r.id, r.name)}
                 okText="确定"
                 cancelText="取消"

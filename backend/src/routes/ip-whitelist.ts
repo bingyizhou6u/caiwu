@@ -2,10 +2,12 @@ import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { requireRole, requirePermission, canRead, canWrite } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
-import { getUserByEmail, getOrCreateDefaultHQ, ensureDefaultCurrencies } from '../utils/db.js'
+import { getUserByEmail } from '../utils/db.js'
+import { SystemService } from '../services/SystemService.js'
 import { applyDataScope } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData } from '../utils/validator.js'
+import { isValidIPAddress } from '../utils/validation.js'
 import { createIPWhitelistSchema, batchCreateIPWhitelistSchema, batchDeleteIPWhitelistSchema, toggleIPWhitelistRuleSchema } from '../schemas/business.schema.js'
 import type { z } from 'zod'
 import {
@@ -16,18 +18,17 @@ import {
   fetchCloudflareIPListItems,
   getWhitelistRuleStatus,
   getOrCreateWhitelistRule,
-  toggleWhitelistRule,
-  isValidIPAddress
+  toggleWhitelistRule
 } from '../utils/cloudflare.js'
 
 export const ip_whitelistRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
 ip_whitelistRoutes.get('/ip-whitelist', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   // 直接从 Cloudflare 拉取 IP 列表
   const cfItems = await fetchCloudflareIPListItems(c.env)
-  
+
   // 转换为前端需要的格式
   const items = cfItems.map((item, index) => ({
     id: item.id, // 使用 Cloudflare 的 item ID
@@ -37,7 +38,7 @@ ip_whitelistRoutes.get('/ip-whitelist', async (c) => {
     created_at: Date.now() - (cfItems.length - index) * 1000, // 模拟创建时间，按顺序递减
     updated_at: Date.now() - (cfItems.length - index) * 1000,
   }))
-  
+
   return c.json(items)
 })
 
@@ -45,7 +46,7 @@ ip_whitelistRoutes.get('/ip-whitelist', async (c) => {
 
 ip_whitelistRoutes.post('/ip-whitelist', validateJson(createIPWhitelistSchema), async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   try {
     const body = getValidatedData<z.infer<typeof createIPWhitelistSchema>>(c)
 
@@ -66,13 +67,13 @@ ip_whitelistRoutes.post('/ip-whitelist', validateJson(createIPWhitelistSchema), 
     if (!result.success) {
       console.error('Failed to add IP to Cloudflare list:', result.error)
       if (result && typeof result === 'object' && 'statusCode' in result) throw result
-    throw Errors.INTERNAL_ERROR(result.error || '添加IP到Cloudflare列表失败')
+      throw Errors.INTERNAL_ERROR(result.error || '添加IP到Cloudflare列表失败')
     }
 
     // 返回 Cloudflare 的实际数据
     const now = Date.now()
     logAuditAction(c, 'create', 'ip_whitelist', result.itemId || '', JSON.stringify({ ip_address: body.ip_address }))
-    
+
     return c.json({
       id: result.itemId,
       ip_address: body.ip_address,
@@ -92,7 +93,7 @@ ip_whitelistRoutes.post('/ip-whitelist', validateJson(createIPWhitelistSchema), 
 
 ip_whitelistRoutes.post('/ip-whitelist/batch', validateJson(batchCreateIPWhitelistSchema), async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   try {
     const body = getValidatedData<z.infer<typeof batchCreateIPWhitelistSchema>>(c)
 
@@ -112,31 +113,31 @@ ip_whitelistRoutes.post('/ip-whitelist/batch', validateJson(batchCreateIPWhiteli
     const cfItems = await fetchCloudflareIPListItems(c.env)
     const existingIPs = new Set(cfItems.map(item => item.ip))
     const duplicateIPs = body.ips.filter(item => existingIPs.has(item.ip))
-    
+
     if (duplicateIPs.length > 0) {
-      return c.json({ 
-        error: `IP addresses already exist: ${duplicateIPs.map(item => item.ip).join(', ')}` 
+      return c.json({
+        error: `IP addresses already exist: ${duplicateIPs.map(item => item.ip).join(', ')}`
       }, 409)
     }
 
     // 批量添加到 Cloudflare IP List
     const result = await addIPsToCloudflareList(c.env, body.ips)
-    
+
     if (!result.success) {
-      return c.json({ 
-        error: 'Batch add failed', 
+      return c.json({
+        error: 'Batch add failed',
         successCount: result.successCount,
         failedCount: result.failedCount,
         errors: result.errors
       }, 500)
     }
 
-    logAuditAction(c, 'batch_create', 'ip_whitelist', '', JSON.stringify({ 
+    logAuditAction(c, 'batch_create', 'ip_whitelist', '', JSON.stringify({
       count: body.ips.length,
       successCount: result.successCount,
       failedCount: result.failedCount
     }))
-    
+
     return c.json({
       success: true,
       successCount: result.successCount,
@@ -154,16 +155,16 @@ ip_whitelistRoutes.post('/ip-whitelist/batch', validateJson(batchCreateIPWhiteli
 
 ip_whitelistRoutes.delete('/ip-whitelist/batch', validateJson(batchDeleteIPWhitelistSchema), async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   try {
     const body = getValidatedData<z.infer<typeof batchDeleteIPWhitelistSchema>>(c)
 
     // 批量从 Cloudflare IP List 删除
     const result = await removeIPsFromCloudflareList(c.env, body.ids)
-    
+
     if (!result.success) {
-      return c.json({ 
-        error: 'Batch delete failed', 
+      return c.json({
+        error: 'Batch delete failed',
         successCount: result.successCount,
         failedCount: result.failedCount
       }, 500)
@@ -178,13 +179,13 @@ ip_whitelistRoutes.delete('/ip-whitelist/batch', validateJson(batchDeleteIPWhite
       })
       .filter(Boolean)
 
-    logAuditAction(c, 'batch_delete', 'ip_whitelist', '', JSON.stringify({ 
+    logAuditAction(c, 'batch_delete', 'ip_whitelist', '', JSON.stringify({
       count: body.ids.length,
       successCount: result.successCount,
       failedCount: result.failedCount,
       deletedIPs
     }))
-    
+
     return c.json({
       success: true,
       successCount: result.successCount,
@@ -204,7 +205,7 @@ ip_whitelistRoutes.post('/ip-whitelist/sync', async (c) => {
 
   // 直接从 Cloudflare 拉取 IP 列表（不再同步到数据库）
   const cfItems = await fetchCloudflareIPListItems(c.env)
-  
+
   logAuditAction(c, 'sync', 'ip_whitelist', '', JSON.stringify({ count: cfItems.length }))
   return c.json({ message: 'sync completed', synced: cfItems.length })
 })
@@ -244,7 +245,7 @@ ip_whitelistRoutes.get('/ip-whitelist/rule', async (c) => {
 
 ip_whitelistRoutes.post('/ip-whitelist/rule/create', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   const result = await getOrCreateWhitelistRule(c.env)
   if (!result) {
     throw Errors.INTERNAL_ERROR('创建规则失败')
@@ -258,7 +259,7 @@ ip_whitelistRoutes.post('/ip-whitelist/rule/create', async (c) => {
 
 ip_whitelistRoutes.post('/ip-whitelist/rule/toggle', validateJson(toggleIPWhitelistRuleSchema), async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   try {
     const body = getValidatedData<z.infer<typeof toggleIPWhitelistRuleSchema>>(c)
 

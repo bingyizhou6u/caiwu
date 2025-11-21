@@ -197,6 +197,7 @@ export const accountTransferQuerySchema = z.object({
   to_account_id: uuidSchema.optional(),
   start_date: dateSchema.optional(),
   end_date: dateSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
 })
 
 /**

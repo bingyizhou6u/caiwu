@@ -2,8 +2,10 @@ import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { requireRole, canRead } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
-import { uuid, getUserDepartmentId } from '../utils/db.js'
-import { getOrCreateDefaultHQ, ensureDefaultCurrencies } from '../utils/db.js'
+import { uuid } from '../utils/db.js'
+import { SystemService } from '../services/SystemService.js'
+import { FinanceService } from '../services/FinanceService.js'
+import { UserService } from '../services/UserService.js'
 import { applyDataScope } from '../utils/permissions.js'
 import { parseCsv } from '../utils/csv.js'
 import { buildUpdateFields, buildUpdateSql } from '../utils/sql.js'
@@ -47,7 +49,8 @@ importRoutes.post('/init-if-empty', async (c) => {
   }
   // 已移除默认admin创建逻辑
   // 系统初始化后，必须通过员工管理创建第一个管理员账号
-  await ensureDefaultCurrencies(c.env.DB)
+  const systemService = new SystemService(c.env.DB)
+  await systemService.ensureDefaultCurrencies()
   return c.json({ created })
 })
 
@@ -74,25 +77,26 @@ importRoutes.get('/departments', async (c) => {
 
 importRoutes.post('/departments', validateJson(createDepartmentSchema), async (c) => {
   try {
-    if (!(await requireRole(c, ['finance','auditor']))) throw Errors.FORBIDDEN()
-    
+    if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+
     const body = getValidatedData<z.infer<typeof createDepartmentSchema>>(c)
-    const hq = body.hq_id ? { id: body.hq_id } : await getOrCreateDefaultHQ(c.env.DB)
-    
+    const systemService = new SystemService(c.env.DB)
+    const hq = body.hq_id ? { id: body.hq_id } : await systemService.getOrCreateDefaultHQ()
+
     // 检查项目名称是否全局唯一
     const existed = await c.env.DB.prepare('select id from departments where name=?').bind(body.name).first<{ id: string }>()
     if (existed?.id) throw Errors.DUPLICATE('部门名称')
-    
+
     const id = uuid()
     await c.env.DB.prepare('insert into departments(id,hq_id,name,active) values(?,?,?,1)')
       .bind(id, hq.id, body.name).run()
-    
+
     // 确保userId存在后再记录审计日志
     const userId = c.get('userId') as string | undefined
     if (userId) {
       await logAudit(c.env.DB, userId, 'create', 'department', id, JSON.stringify({ name: body.name, hq_id: hq.id }))
     }
-    
+
     return c.json({ id, hq_id: hq.id, name: body.name })
   } catch (e: any) {
     if (e && typeof e === 'object' && 'statusCode' in e) throw e
@@ -108,19 +112,19 @@ importRoutes.get('/sites', async (c) => {
 
 importRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
   try {
-    if (!(await requireRole(c, ['finance','auditor']))) throw Errors.FORBIDDEN()
-    
+    if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+
     const body = getValidatedData<z.infer<typeof createSiteSchema>>(c)
-    
+
     // 同一项目下站点重名校验
     const existed = await c.env.DB.prepare('select id from sites where department_id=? and name=? and active=1')
       .bind(body.department_id, body.name).first<{ id: string }>()
     if (existed?.id) throw Errors.DUPLICATE('站点名称')
-    
+
     const id = uuid()
     await c.env.DB.prepare('insert into sites(id,department_id,name,active) values(?,?,?,1)')
       .bind(id, body.department_id, body.name).run()
-    
+
     logAuditAction(c, 'create', 'site', id, JSON.stringify({ name: body.name, department_id: body.department_id }))
     return c.json({ id, ...body })
   } catch (e: any) {
@@ -131,113 +135,113 @@ importRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
 
 // Update and delete operations
 importRoutes.put('/hq/:id', async (c) => {
-  if (!(await requireRole(c, ['finance','auditor']))) throw Errors.FORBIDDEN()
+  if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ name?: string, active?: number }>()
-  
+
   const { updates, binds } = buildUpdateFields(body)
   if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   const hq = await c.env.DB.prepare('select name from headquarters where id=?').bind(id).first<{ name: string }>()
   const { sql, binds: finalBinds } = buildUpdateSql('headquarters', id, updates, binds)
   await c.env.DB.prepare(sql).bind(...finalBinds).run()
-  
+
   logAuditAction(c, 'update', 'headquarters', id, JSON.stringify(body))
   return c.json({ ok: true })
 })
 
 importRoutes.delete('/hq/:id', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   const id = c.req.param('id')
   const dept = await c.env.DB.prepare('select name from headquarters where id=?').bind(id).first<{ name: string }>()
   if (!dept) throw Errors.NOT_FOUND('总部')
-  
+
   await c.env.DB.prepare('update headquarters set active=0 where id=?').bind(id).run()
   logAuditAction(c, 'delete', 'headquarters', id, JSON.stringify({ name: dept.name }))
   return c.json({ ok: true })
 })
 
 importRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), async (c) => {
-  if (!(await requireRole(c, ['finance','auditor']))) throw Errors.FORBIDDEN()
-  
+  if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateDepartmentSchema>>(c)
-  
+
   // 如果更新名称，检查是否与其他项目重复
   if (body.name !== undefined) {
     const existed = await c.env.DB.prepare('select id from departments where name=? and id!=?').bind(body.name, id).first<{ id: string }>()
     if (existed?.id) throw Errors.DUPLICATE('部门名称')
   }
-  
+
   const { updates, binds } = buildUpdateFields(body)
   if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   const dept = await c.env.DB.prepare('select name from departments where id=?').bind(id).first<{ name: string }>()
   if (!dept) throw Errors.NOT_FOUND('部门')
-  
+
   const { sql, binds: finalBinds } = buildUpdateSql('departments', id, updates, binds)
   await c.env.DB.prepare(sql).bind(...finalBinds).run()
-  
+
   // 确保userId存在后再记录审计日志
   const userId = c.get('userId') as string | undefined
   if (userId) {
     await logAudit(c.env.DB, userId, 'update', 'department', id, JSON.stringify(body))
   }
-  
+
   return c.json({ ok: true })
 })
 
 importRoutes.delete('/departments/:id', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   const id = c.req.param('id')
   const dept = await c.env.DB.prepare('select name from departments where id=?').bind(id).first<{ name: string }>()
   if (!dept) throw Errors.NOT_FOUND('部门')
-  
+
   // 检查是否有站点使用此项目（包括所有站点，不只是active的）
   const sites = await c.env.DB.prepare('select count(1) as cnt from sites where department_id=?').bind(id).first<{ cnt: number }>()
   if (sites && Number(sites.cnt) > 0) {
     throw Errors.BUSINESS_ERROR('无法删除，该部门下还有站点')
   }
-  
+
   await c.env.DB.prepare('delete from departments where id=?').bind(id).run()
-  
+
   // 确保userId存在后再记录审计日志
   const userId = c.get('userId') as string | undefined
   if (userId) {
     await logAudit(c.env.DB, userId, 'delete', 'department', id, JSON.stringify({ name: dept.name }))
   }
-  
+
   return c.json({ ok: true })
 })
 
 importRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) => {
-  if (!(await requireRole(c, ['finance','auditor']))) throw Errors.FORBIDDEN()
-  
+  if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateSiteSchema>>(c)
-  
+
   const { updates, binds } = buildUpdateFields(body)
   if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   const site = await c.env.DB.prepare('select name from sites where id=?').bind(id).first<{ name: string }>()
   if (!site) throw Errors.NOT_FOUND('站点')
-  
+
   const { sql, binds: finalBinds } = buildUpdateSql('sites', id, updates, binds)
   await c.env.DB.prepare(sql).bind(...finalBinds).run()
-  
+
   logAuditAction(c, 'update', 'site', id, JSON.stringify(body))
   return c.json({ ok: true })
 })
 
 importRoutes.delete('/sites/:id', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   const id = c.req.param('id')
   const site = await c.env.DB.prepare('select name from sites where id=?').bind(id).first<{ name: string }>()
   if (!site) throw Errors.NOT_FOUND('站点')
-  
+
   await c.env.DB.prepare('delete from sites where id=?').bind(id).run()
   logAuditAction(c, 'delete', 'site', id, JSON.stringify({ name: site.name }))
   return c.json({ ok: true })
@@ -268,7 +272,7 @@ importRoutes.get('/accounts/:id/transactions', async (c) => {
     const accountId = c.req.param('id')
     const limit = parseInt(c.req.query('limit') || '100')
     const offset = parseInt(c.req.query('offset') || '0')
-    
+
     const rows = await c.env.DB.prepare(`
       select 
         t.id, t.transaction_date, t.transaction_type, t.amount_cents,
@@ -282,7 +286,7 @@ importRoutes.get('/accounts/:id/transactions', async (c) => {
       order by t.transaction_date desc, t.created_at desc
       limit ? offset ?
     `).bind(accountId, limit, offset).all<any>()
-    
+
     return c.json({ results: rows.results ?? [] })
   } catch (err: any) {
     console.error('Account transactions error:', err)
@@ -357,29 +361,29 @@ importRoutes.get('/currencies', async (c) => {
 })
 
 importRoutes.post('/currencies', validateJson(createCurrencySchema), async (c) => {
-  if (!(await requireRole(c, ['manager','finance']))) throw Errors.FORBIDDEN()
+  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createCurrencySchema>>(c)
   const code = body.code
-  
+
   // 检查币种代码是否已存在
   const existed = await c.env.DB.prepare('select code from currencies where code=?').bind(code).first<{ code: string }>()
   if (existed?.code) throw Errors.DUPLICATE('币种代码')
-  
+
   await c.env.DB.prepare('insert into currencies(code,name,active) values(?,?,1)').bind(code, body.name).run()
   logAuditAction(c, 'create', 'currency', code, JSON.stringify({ name: body.name }))
   return c.json({ code, name: body.name })
 })
 
 importRoutes.put('/currencies/:code', validateJson(updateCurrencySchema), async (c) => {
-  if (!(await requireRole(c, ['manager','finance']))) throw Errors.FORBIDDEN()
+  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
   const code = c.req.param('code').toUpperCase()
   const body = getValidatedData<z.infer<typeof updateCurrencySchema>>(c)
-  
+
   const updates: string[] = []
   const binds: any[] = []
   if (body.name !== undefined) { updates.push('name=?'); binds.push(body.name) }
   if (body.active !== undefined) { updates.push('active=?'); binds.push(body.active ? 1 : 0) }
-  
+
   binds.push(code)
   await c.env.DB.prepare(`update currencies set ${updates.join(',')} where code=?`).bind(...binds).run()
   logAuditAction(c, 'update', 'currency', code, JSON.stringify(body))
@@ -411,11 +415,11 @@ importRoutes.get('/categories', async (c) => {
 importRoutes.post('/categories', validateJson(createCategorySchema), async (c) => {
   if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createCategorySchema>>(c)
-  
+
   // 检查类别名称是否已存在
   const existed = await c.env.DB.prepare('select id from categories where name=?').bind(body.name).first<{ id: string }>()
   if (existed?.id) throw Errors.DUPLICATE('类别名称')
-  
+
   const id = uuid()
   await c.env.DB.prepare('insert into categories(id,name,kind,parent_id) values(?,?,?,?)')
     .bind(id, body.name, body.kind, body.parent_id ?? null).run()
@@ -428,7 +432,7 @@ importRoutes.put('/categories/:id', validateJson(updateCategorySchema), async (c
   if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateCategorySchema>>(c)
-  
+
   const updates: string[] = []
   const binds: any[] = []
   if (body.name !== undefined) {
@@ -440,7 +444,7 @@ importRoutes.put('/categories/:id', validateJson(updateCategorySchema), async (c
   if (body.kind !== undefined) {
     updates.push('kind=?'); binds.push(body.kind)
   }
-  
+
   binds.push(id)
   await c.env.DB.prepare(`update categories set ${updates.join(',')} where id=?`).bind(...binds).run()
   logAuditAction(c, 'update', 'category', id, JSON.stringify(body))
@@ -482,34 +486,34 @@ importRoutes.get('/flows', async (c) => {
 // 文件上传：凭证上传
 importRoutes.post('/upload/voucher', async (c) => {
   if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
-  
+
   const formData = await c.req.formData()
   const file = formData.get('file') as File
   if (!file) throw Errors.VALIDATION_ERROR('文件必填')
-  
+
   // 限制文件大小（10MB）
   const maxSize = 10 * 1024 * 1024
   if (file.size > maxSize) throw Errors.VALIDATION_ERROR('文件过大（最大10MB）')
-  
+
   // 限制文件类型：只允许图片格式
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     throw Errors.VALIDATION_ERROR('只允许上传图片格式（JPEG、PNG、GIF、WebP）')
   }
-  
+
   // 后端只接收WebP格式（前端已转换）
   // 如果不是WebP格式，返回错误
   if (file.type !== 'image/webp') {
     throw Errors.VALIDATION_ERROR('请在前端将图片转换为WebP格式后上传')
   }
-  
+
   try {
     // 生成唯一文件名：时间戳-随机字符串.webp
     const timestamp = Date.now()
     const random = Math.random().toString(36).substring(2, 8)
     const fileName = `${timestamp}-${random}.webp`
     const key = `vouchers/${fileName}`
-    
+
     // 上传到R2（已经是WebP格式）
     const bucket = c.env.VOUCHERS as R2Bucket
     await bucket.put(key, file, {
@@ -523,7 +527,7 @@ importRoutes.post('/upload/voucher', async (c) => {
         uploadedAt: new Date().toISOString(),
       },
     })
-    
+
     // 返回文件URL（使用相对路径，通过Pages Functions代理）
     const url = `/api/vouchers/${key}`
     return c.json({ url, key })
@@ -536,16 +540,16 @@ importRoutes.post('/upload/voucher', async (c) => {
 // 文件下载：凭证访问 - 使用通配符路由
 importRoutes.get('/vouchers/*', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
-  
+
   // 获取完整路径（去掉 /api/vouchers/ 前缀）
   const requestPath = c.req.path
   const fullPath = requestPath.replace('/api/vouchers/', '')
-  
+
   // 如果路径为空或格式不正确，返回错误
   if (!fullPath || !fullPath.startsWith('vouchers/')) {
     throw Errors.VALIDATION_ERROR(`无效路径: ${fullPath}`)
   }
-  
+
   try {
     const bucket = c.env.VOUCHERS as R2Bucket
     const object = await bucket.get(fullPath)
@@ -553,11 +557,11 @@ importRoutes.get('/vouchers/*', async (c) => {
       // 返回更详细的错误信息用于调试
       throw Errors.NOT_FOUND('凭证文件')
     }
-    
+
     const headers = new Headers()
     headers.set('Content-Type', 'image/webp') // 统一返回WebP格式
     headers.set('Cache-Control', 'public, max-age=31536000')
-    
+
     return new Response(object.body, { headers })
   } catch (error: any) {
     if (error && typeof error === 'object' && 'statusCode' in error) throw error
@@ -565,23 +569,7 @@ importRoutes.get('/vouchers/*', async (c) => {
   }
 })
 
-// 计算账户当前余额（账变前金额）
-async function getAccountBalanceBefore(db: D1Database, accountId: string, transactionDate: string, transactionTime: number): Promise<number> {
-  // 期初余额
-  const ob = await db.prepare('select coalesce(sum(case when type="account" and ref_id=? then amount_cents else 0 end),0) as ob from opening_balances')
-    .bind(accountId).first<{ ob: number }>()
-  
-  // 计算账变前的所有交易
-  // 需要考虑同一天的情况：只计算在此交易时间之前的交易
-  const pre = await db.prepare(`
-    select coalesce(sum(case when type='income' then amount_cents when type='expense' then -amount_cents else 0 end),0) as s
-    from cash_flows 
-    where account_id=? 
-    and (biz_date < ? or (biz_date = ? and created_at < ?))
-  `).bind(accountId, transactionDate, transactionDate, transactionTime).first<{ s: number }>()
-  
-  return (ob?.ob ?? 0) + (pre?.s ?? 0)
-}
+
 
 importRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
   if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
@@ -589,7 +577,7 @@ importRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
   const id = uuid()
   const now = Date.now()
   const amount = body.amount_cents
-  
+
   // 支持单个URL或URL数组，转换为JSON字符串存储
   let voucherUrls: string[] = []
   if (body.voucher_urls && Array.isArray(body.voucher_urls)) {
@@ -601,7 +589,7 @@ importRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
   const voucherUrlJson = JSON.stringify(voucherUrls)
 
   // 归属规则：owner_scope=hq => department_id=null；owner_scope=department => 需提供 department_id 或 site_id
-  let ownerScope = body.owner_scope as ('hq'|'department'|undefined)
+  let ownerScope = body.owner_scope as ('hq' | 'department' | undefined)
   let departmentId = body.department_id ?? null
   if (!departmentId && body.site_id) {
     const r = await c.env.DB.prepare('select department_id from sites where id=?').bind(body.site_id).first<{ department_id: string }>()
@@ -626,14 +614,15 @@ importRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
     const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
     voucherNo = `JZ${day}-${seq}`
   }
-  
+
   // 计算账变前金额
-  const balanceBefore = await getAccountBalanceBefore(c.env.DB, body.account_id, body.biz_date, now)
-  
+  const financeService = new FinanceService(c.env.DB)
+  const balanceBefore = await financeService.getAccountBalanceBefore(body.account_id, body.biz_date, now)
+
   // 计算账变金额（收入为正，支出为负）
   const delta = body.type === 'income' ? amount : (body.type === 'expense' ? -amount : 0)
   const balanceAfter = balanceBefore + delta
-  
+
   // 插入流水记录
   await c.env.DB.prepare(`
     insert into cash_flows(
@@ -645,7 +634,7 @@ importRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
     amount, body.site_id ?? null, departmentId, body.counterparty ?? null, body.memo ?? null,
     voucherUrlJson, body.created_by ?? 'system', now
   ).run()
-  
+
   // 生成账变记录
   const transactionId = uuid()
   await c.env.DB.prepare(`
@@ -657,17 +646,17 @@ importRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
     transactionId, body.account_id, id, body.biz_date, body.type, amount,
     balanceBefore, balanceAfter, now
   ).run()
-  
+
   logAuditAction(c, 'create', 'cash_flow', id, JSON.stringify({ voucher_no: voucherNo, type: body.type, amount_cents: amount }))
   return c.json({ id })
 })
 
 // ================= AR/AP =================
-function todayStr() { const d = new Date(); const y=d.getFullYear(); const m=('0'+(d.getMonth()+1)).slice(-2); const dd=('0'+d.getDate()).slice(-2); return `${y}-${m}-${dd}` }
-async function nextDocNo(db: D1Database, kind: 'AR'|'AP', date: string) {
-  const count = await db.prepare('select count(1) as n from ar_ap_docs where kind=? and issue_date=?').bind(kind, date).first<{ n:number }>()
-  const seq = ((count?.n ?? 0) + 1).toString().padStart(3,'0')
-  const day = date.replace(/-/g,'')
+function todayStr() { const d = new Date(); const y = d.getFullYear(); const m = ('0' + (d.getMonth() + 1)).slice(-2); const dd = ('0' + d.getDate()).slice(-2); return `${y}-${m}-${dd}` }
+async function nextDocNo(db: D1Database, kind: 'AR' | 'AP', date: string) {
+  const count = await db.prepare('select count(1) as n from ar_ap_docs where kind=? and issue_date=?').bind(kind, date).first<{ n: number }>()
+  const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
+  const day = date.replace(/-/g, '')
   return `${kind}${day}-${seq}`
 }
 
@@ -682,7 +671,7 @@ importRoutes.get('/ar/docs', async (c) => {
   if (status) { conds.push('d.status=?'); binds.push(status) }
   if (conds.length) sql += ' where ' + conds.join(' and ')
   sql += ' order by d.issue_date desc'
-  
+
   // 应用数据权限过滤
   const scoped = await applyDataScope(c, sql, binds)
   const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
@@ -695,7 +684,7 @@ importRoutes.post('/ar/docs', async (c) => {
   const id = uuid()
   const issue = body.issue_date ?? todayStr()
   const amount = Number(body.amount_cents)
-  if (!body.kind || !['AR','AP'].includes(body.kind)) throw Errors.VALIDATION_ERROR('kind必须为AR或AP')
+  if (!body.kind || !['AR', 'AP'].includes(body.kind)) throw Errors.VALIDATION_ERROR('kind必须为AR或AP')
   if (!amount || amount <= 0) throw Errors.VALIDATION_ERROR('amount_cents必须大于0')
   const docNo = body.doc_no ?? await nextDocNo(c.env.DB, body.kind, issue)
   await c.env.DB.prepare(`
@@ -715,9 +704,9 @@ importRoutes.get('/ar/settlements', async (c) => {
 })
 
 async function refreshDocStatus(db: D1Database, docId: string) {
-  const doc = await db.prepare('select amount_cents from ar_ap_docs where id=?').bind(docId).first<{ amount_cents:number }>()
+  const doc = await db.prepare('select amount_cents from ar_ap_docs where id=?').bind(docId).first<{ amount_cents: number }>()
   if (!doc) return
-  const s = await db.prepare('select coalesce(sum(settle_amount_cents),0) as s from settlements where doc_id=?').bind(docId).first<{ s:number }>()
+  const s = await db.prepare('select coalesce(sum(settle_amount_cents),0) as s from settlements where doc_id=?').bind(docId).first<{ s: number }>()
   const total = s?.s ?? 0
   const status = total <= 0 ? 'open' : (total < (doc.amount_cents ?? 0) ? 'partially_settled' : 'settled')
   await db.prepare('update ar_ap_docs set status=? where id=?').bind(status, docId).run()
@@ -745,7 +734,7 @@ importRoutes.get('/ar/statement', async (c) => {
   if (!docId) throw Errors.VALIDATION_ERROR('doc_id参数必填')
   const doc = await c.env.DB.prepare('select * from ar_ap_docs where id=?').bind(docId).first<any>()
   const settlements = await c.env.DB.prepare('select * from settlements where doc_id=? order by settle_date asc').bind(docId).all<any>()
-  const settled = (settlements.results ?? []).reduce((a:number,b:any)=>a+(b.settle_amount_cents||0),0)
+  const settled = (settlements.results ?? []).reduce((a: number, b: any) => a + (b.settle_amount_cents || 0), 0)
   const remaining = (doc?.amount_cents ?? 0) - settled
   return c.json({ doc, settlements: settlements.results ?? [], settled_cents: settled, remaining_cents: remaining })
 })
@@ -756,30 +745,30 @@ importRoutes.post('/ar/confirm', async (c) => {
   const body = await c.req.json<any>()
   const docId = body.doc_id
   if (!docId) throw Errors.VALIDATION_ERROR('doc_id参数必填')
-  
+
   // 获取文档信息
   const doc = await c.env.DB.prepare('select * from ar_ap_docs where id=?').bind(docId).first<any>()
   if (!doc) throw Errors.NOT_FOUND('单据')
   if (doc.status === 'confirmed') throw Errors.BUSINESS_ERROR('单据已确认')
-  
+
   // 验证必要字段
   if (!body.account_id) throw Errors.VALIDATION_ERROR('account_id参数必填')
   if (!body.category_id) throw Errors.VALIDATION_ERROR('category_id参数必填')
   if (!body.biz_date) throw Errors.VALIDATION_ERROR('biz_date参数必填')
   if (!body.voucher_url) throw Errors.VALIDATION_ERROR('voucher_url参数必填（凭证上传是必填的）')
-  
+
   // 验证账户存在且币种匹配
   const account = await c.env.DB.prepare('select * from accounts where id=?').bind(body.account_id).first<any>()
   if (!account) throw Errors.NOT_FOUND('账户')
   if (account.active === 0) throw Errors.BUSINESS_ERROR('账户已停用')
-  
+
   // 确定交易类型：AR -> income, AP -> expense
   const transactionType = doc.kind === 'AR' ? 'income' : 'expense'
-  
+
   const flowId = uuid()
   const now = Date.now()
   const amount = doc.amount_cents
-  
+
   // 生成凭证号
   const day = String(body.biz_date).replace(/-/g, '')
   const count = await c.env.DB
@@ -787,14 +776,15 @@ importRoutes.post('/ar/confirm', async (c) => {
     .bind(body.biz_date).first<{ n: number }>()
   const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
   const voucherNo = `JZ${day}-${seq}`
-  
+
   // 计算账变前金额
-  const balanceBefore = await getAccountBalanceBefore(c.env.DB, body.account_id, body.biz_date, now)
-  
+  const financeService = new FinanceService(c.env.DB)
+  const balanceBefore = await financeService.getAccountBalanceBefore(body.account_id, body.biz_date, now)
+
   // 计算账变金额（收入为正，支出为负）
   const delta = transactionType === 'income' ? amount : -amount
   const balanceAfter = balanceBefore + delta
-  
+
   // 插入cash_flow记录
   await c.env.DB.prepare(`
     insert into cash_flows(
@@ -807,7 +797,7 @@ importRoutes.post('/ar/confirm', async (c) => {
     doc.party_id ?? null, body.memo ?? doc.memo ?? null, body.voucher_url,
     body.created_by ?? c.get('userId') ?? 'system', now
   ).run()
-  
+
   // 生成账变记录
   const transactionId = uuid()
   await c.env.DB.prepare(`
@@ -819,21 +809,21 @@ importRoutes.post('/ar/confirm', async (c) => {
     transactionId, body.account_id, flowId, body.biz_date, transactionType, amount,
     balanceBefore, balanceAfter, now
   ).run()
-  
+
   // 更新文档状态为confirmed
   await c.env.DB.prepare('update ar_ap_docs set status=? where id=?').bind('confirmed', docId).run()
-  
+
   // 创建settlement记录（确认时全额核销）
   const settlementId = uuid()
   await c.env.DB.prepare('insert into settlements(id,doc_id,flow_id,settle_amount_cents,settle_date) values(?,?,?,?,?)')
     .bind(settlementId, docId, flowId, amount, body.biz_date).run()
-  
+
   await refreshDocStatus(c.env.DB, docId)
-  
-  logAuditAction(c, 'confirm', 'ar_ap_doc', docId, JSON.stringify({ 
-    kind: doc.kind, flow_id: flowId, transaction_type: transactionType, amount_cents: amount 
+
+  logAuditAction(c, 'confirm', 'ar_ap_doc', docId, JSON.stringify({
+    kind: doc.kind, flow_id: flowId, transaction_type: transactionType, amount_cents: amount
   }))
-  
+
   return c.json({ ok: true, flow_id: flowId, voucher_no: voucherNo })
 })
 
@@ -844,7 +834,7 @@ importRoutes.get('/reports/department-cash', async (c) => {
   const start = c.req.query('start')
   const end = c.req.query('end')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
-  
+
   const role = c.get('userRole') as string | undefined
   const userId = c.get('userId') as string | undefined
   let sql = `
@@ -855,19 +845,21 @@ importRoutes.get('/reports/department-cash', async (c) => {
     left join cash_flows f on f.department_id=d.id and f.biz_date>=? and f.biz_date<=?
   `
   let binds: any[] = [start, end]
-  
+
   // 应用数据权限过滤
   if (role !== 'manager' && role !== 'finance' && userId) {
-    const deptId = await getUserDepartmentId(c.env.DB, userId)
+    const userService = new UserService(c.env.DB)
+    const deptIds = await userService.getUserDepartmentIds(userId)
+    const deptId = deptIds[0]
     if (deptId) {
       sql += ' where d.id=?'
       binds.push(deptId)
     }
   }
-  
+
   sql += ' group by d.id, d.name order by d.name'
   const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-  const mapped = (rows.results ?? []).map((r:any)=>({ ...r, net_cents: (r.income_cents||0) - (r.expense_cents||0) }))
+  const mapped = (rows.results ?? []).map((r: any) => ({ ...r, net_cents: (r.income_cents || 0) - (r.expense_cents || 0) }))
   return c.json({ rows: mapped })
 })
 
@@ -879,15 +871,15 @@ importRoutes.get('/reports/site-growth', async (c) => {
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
   const startDate = new Date(start + 'T00:00:00Z')
   const endDate = new Date(end + 'T00:00:00Z')
-  const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime())/86400000)+1)
+  const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1)
   const prevEnd = new Date(startDate.getTime() - 86400000)
-  const prevStart = new Date(prevEnd.getTime() - (days-1)*86400000)
-  const prevStartStr = prevStart.toISOString().slice(0,10)
-  const prevEndStr = prevEnd.toISOString().slice(0,10)
+  const prevStart = new Date(prevEnd.getTime() - (days - 1) * 86400000)
+  const prevStartStr = prevStart.toISOString().slice(0, 10)
+  const prevEndStr = prevEnd.toISOString().slice(0, 10)
 
   const role = c.get('userRole') as string | undefined
   const userId = c.get('userId') as string | undefined
-  
+
   let curSql = `
     select s.id as site_id, s.name as site_name,
       coalesce(sum(case when f.type='income' then f.amount_cents end),0) as income_cents,
@@ -896,7 +888,7 @@ importRoutes.get('/reports/site-growth', async (c) => {
     left join cash_flows f on f.site_id=s.id and f.biz_date>=? and f.biz_date<=?
   `
   let curBinds: any[] = [start, end]
-  
+
   let prevSql = `
     select s.id as site_id,
       coalesce(sum(case when f.type='income' then f.amount_cents end),0) as income_cents
@@ -904,10 +896,12 @@ importRoutes.get('/reports/site-growth', async (c) => {
     left join cash_flows f on f.site_id=s.id and f.biz_date>=? and f.biz_date<=?
   `
   let prevBinds: any[] = [prevStartStr, prevEndStr]
-  
+
   // 应用数据权限过滤
   if (role !== 'manager' && role !== 'finance' && userId) {
-    const deptId = await getUserDepartmentId(c.env.DB, userId)
+    const userService = new UserService(c.env.DB)
+    const deptIds = await userService.getUserDepartmentIds(userId)
+    const deptId = deptIds[0]
     if (deptId) {
       curSql += ' where s.department_id=?'
       curBinds.push(deptId)
@@ -915,18 +909,18 @@ importRoutes.get('/reports/site-growth', async (c) => {
       prevBinds.push(deptId)
     }
   }
-  
+
   curSql += ' group by s.id, s.name'
   prevSql += ' group by s.id'
-  
+
   const cur = await c.env.DB.prepare(curSql).bind(...curBinds).all<any>()
   const prev = await c.env.DB.prepare(prevSql).bind(...prevBinds).all<any>()
-  
-  const prevMap = new Map((prev.results ?? []).map((r:any)=>[r.site_id, r.income_cents||0]))
-  const rows = (cur.results ?? []).map((r:any)=>{
-    const net = (r.income_cents||0) - (r.expense_cents||0)
+
+  const prevMap = new Map((prev.results ?? []).map((r: any) => [r.site_id, r.income_cents || 0]))
+  const rows = (cur.results ?? []).map((r: any) => {
+    const net = (r.income_cents || 0) - (r.expense_cents || 0)
     const prevIncome = prevMap.get(r.site_id) || 0
-    const growth_rate = prevIncome === 0 ? (r.income_cents>0? 1 : 0) : (r.income_cents - prevIncome)/prevIncome
+    const growth_rate = prevIncome === 0 ? (r.income_cents > 0 ? 1 : 0) : (r.income_cents - prevIncome) / prevIncome
     return { ...r, net_cents: net, prev_income_cents: prevIncome, growth_rate }
   })
   return c.json({ rows, prev_range: { start: prevStartStr, end: prevEndStr } })
@@ -938,7 +932,7 @@ importRoutes.get('/reports/ar-summary', async (c) => {
   const kind = c.req.query('kind') // AR|AP
   const start = c.req.query('start')
   const end = c.req.query('end')
-  if (!kind || !['AR','AP'].includes(kind)) throw Errors.VALIDATION_ERROR('kind AR|AP参数必填')
+  if (!kind || !['AR', 'AP'].includes(kind)) throw Errors.VALIDATION_ERROR('kind AR|AP参数必填')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
   let sql = `
     select d.*, coalesce(s.sum_settle,0) as settled_cents
@@ -947,18 +941,18 @@ importRoutes.get('/reports/ar-summary', async (c) => {
     where d.kind=? and d.issue_date>=? and d.issue_date<=?
   `
   let binds: any[] = [kind, start, end]
-  
+
   // 应用数据权限过滤
   const scoped = await applyDataScope(c, sql, binds)
   const docs = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
-  
+
   const rows = docs.results ?? []
   const byStatus: Record<string, number> = {}
   let total = 0, settled = 0
   for (const r of rows) {
     total += r.amount_cents || 0
     settled += r.settled_cents || 0
-    byStatus[r.status] = (byStatus[r.status]||0) + (r.amount_cents||0)
+    byStatus[r.status] = (byStatus[r.status] || 0) + (r.amount_cents || 0)
   }
   return c.json({ total_cents: total, settled_cents: settled, by_status: byStatus, rows })
 })
@@ -982,7 +976,7 @@ importRoutes.get('/reports/ar-detail', async (c) => {
       binds.push(start, end)
     }
     sql += ' order by d.issue_date desc, d.doc_no desc'
-    
+
     // 应用数据权限过滤
     const scoped = await applyDataScope(c, sql, binds)
     const docs = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
@@ -1007,18 +1001,18 @@ importRoutes.get('/reports/ap-summary', async (c) => {
     where d.kind='AP' and d.issue_date>=? and d.issue_date<=?
   `
   let binds: any[] = [start, end]
-  
+
   // 应用数据权限过滤
   const scoped = await applyDataScope(c, sql, binds)
   const docs = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
-  
+
   const rows = docs.results ?? []
   const byStatus: Record<string, number> = {}
   let total = 0, settled = 0
   for (const r of rows) {
     total += r.amount_cents || 0
     settled += r.settled_cents || 0
-    byStatus[r.status] = (byStatus[r.status]||0) + (r.amount_cents||0)
+    byStatus[r.status] = (byStatus[r.status] || 0) + (r.amount_cents || 0)
   }
   return c.json({ total_cents: total, settled_cents: settled, by_status: byStatus, rows })
 })
@@ -1042,7 +1036,7 @@ importRoutes.get('/reports/ap-detail', async (c) => {
       binds.push(start, end)
     }
     sql += ' order by d.issue_date desc, d.doc_no desc'
-    
+
     // 应用数据权限过滤
     const scoped = await applyDataScope(c, sql, binds)
     const docs = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
@@ -1060,10 +1054,10 @@ importRoutes.get('/reports/expense-summary', async (c) => {
   const start = c.req.query('start')
   const end = c.req.query('end')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
-  
+
   const role = c.get('userRole') as string | undefined
   const userId = c.get('userId') as string | undefined
-  
+
   let sql = `
     select c.id as category_id, c.name as category_name,
       coalesce(sum(f.amount_cents),0) as total_cents,
@@ -1073,19 +1067,21 @@ importRoutes.get('/reports/expense-summary', async (c) => {
     where c.kind='expense'
   `
   let binds: any[] = [start, end]
-  
+
   // 应用数据权限过滤
   if (role !== 'manager' && role !== 'finance' && userId) {
-    const deptId = await getUserDepartmentId(c.env.DB, userId)
+    const userService = new UserService(c.env.DB)
+    const deptIds = await userService.getUserDepartmentIds(userId)
+    const deptId = deptIds[0]
     if (deptId) {
       sql += ' and (f.department_id=? or f.department_id is null)'
       binds.push(deptId)
     }
   }
-  
+
   sql += ' group by c.id, c.name having count(*) > 0 order by total_cents desc'
   const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
-  
+
   let total = 0
   for (const r of rows.results ?? []) {
     total += r.total_cents || 0
@@ -1100,10 +1096,10 @@ importRoutes.get('/reports/expense-detail', async (c) => {
   const end = c.req.query('end')
   const categoryId = c.req.query('category_id')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
-  
+
   const role = c.get('userRole') as string | undefined
   const userId = c.get('userId') as string | undefined
-  
+
   let sql = `
     select f.id, f.voucher_no, f.biz_date, f.amount_cents, f.counterparty, f.memo,
       c.name as category_name, a.name as account_name,
@@ -1116,21 +1112,23 @@ importRoutes.get('/reports/expense-detail', async (c) => {
     where f.type='expense' and f.biz_date>=? and f.biz_date<=?
   `
   let binds: any[] = [start, end]
-  
+
   if (categoryId) {
     sql += ' and f.category_id=?'
     binds.push(categoryId)
   }
-  
+
   // 应用数据权限过滤
   if (role !== 'manager' && role !== 'finance' && userId) {
-    const deptId = await getUserDepartmentId(c.env.DB, userId)
+    const userService = new UserService(c.env.DB)
+    const deptIds = await userService.getUserDepartmentIds(userId)
+    const deptId = deptIds[0]
     if (deptId) {
       sql += ' and (f.department_id=? or f.department_id is null)'
       binds.push(deptId)
     }
   }
-  
+
   sql += ' order by f.biz_date desc, f.created_at desc'
   const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
   return c.json({ rows: rows.results ?? [] })
@@ -1142,23 +1140,23 @@ importRoutes.get('/reports/account-balance', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
   const asOf = c.req.query('as_of') // YYYY-MM-DD，查询截至日期的余额
   if (!asOf) throw Errors.VALIDATION_ERROR('as_of参数必填（格式：YYYY-MM-DD）')
-  
+
   // 获取所有活跃账户
   const accounts = await c.env.DB.prepare('select id, name, type, currency, account_number from accounts where active=1 order by name').all<any>()
-  
+
   const rows = []
   for (const acc of (accounts.results || [])) {
     // 期初余额：opening_balances + 截至asOf之前的交易
     const ob = await c.env.DB.prepare('select coalesce(sum(case when type="account" and ref_id=? then amount_cents else 0 end),0) as ob from opening_balances')
       .bind(acc.id).first<{ ob: number }>()
-    
+
     const pre = await c.env.DB.prepare(`
       select coalesce(sum(case when type='income' then amount_cents when type='expense' then -amount_cents else 0 end),0) as s
       from cash_flows where account_id=? and biz_date<?
     `).bind(acc.id, asOf).first<{ s: number }>()
-    
+
     const opening = (ob?.ob ?? 0) + (pre?.s ?? 0)
-    
+
     // 截至asOf当天的交易
     const period = await c.env.DB.prepare(`
       select 
@@ -1166,9 +1164,9 @@ importRoutes.get('/reports/account-balance', async (c) => {
         coalesce(sum(case when type='expense' then amount_cents else 0 end),0) as expense_cents
       from cash_flows where account_id=? and biz_date=?
     `).bind(acc.id, asOf).first<{ income_cents: number, expense_cents: number }>()
-    
+
     const closing = opening + (period?.income_cents ?? 0) - (period?.expense_cents ?? 0)
-    
+
     rows.push({
       account_id: acc.id,
       account_name: acc.name,
@@ -1181,7 +1179,7 @@ importRoutes.get('/reports/account-balance', async (c) => {
       closing_cents: closing
     })
   }
-  
+
   return c.json({ rows, as_of: asOf })
 })
 
@@ -1191,7 +1189,7 @@ importRoutes.get('/reports/employee-salary', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
   const year = c.req.query('year') || new Date().getFullYear().toString()
   const month = c.req.query('month') // 可选，如果提供则只显示该月
-  
+
   // 查询所有活跃员工
   const employees = await c.env.DB.prepare(`
     select 
@@ -1209,33 +1207,33 @@ importRoutes.get('/reports/employee-salary', async (c) => {
     where e.active = 1
     order by d.name, e.name
   `).all<any>()
-  
+
   const rows = []
   const yearNum = parseInt(year)
   const monthNum = month ? parseInt(month) : null
-  
+
   for (const emp of (employees.results || [])) {
     const joinDate = new Date(emp.join_date + 'T00:00:00Z')
     const joinYear = joinDate.getFullYear()
     const joinMonth = joinDate.getMonth() + 1
-    
+
     // 如果指定了月份，只计算该月
     if (monthNum) {
       // 检查员工在该月是否在职
       if (joinYear > yearNum || (joinYear === yearNum && joinMonth > monthNum)) {
         continue // 还未入职
       }
-      
+
       // 计算该月应发工资
       let salaryCents = 0
       let workDays = 0
-      
+
       if (emp.status === 'regular' && emp.regular_date) {
         // 已转正，检查转正日期
         const regularDate = new Date(emp.regular_date + 'T00:00:00Z')
         const regularYear = regularDate.getFullYear()
         const regularMonth = regularDate.getMonth() + 1
-        
+
         if (regularYear < yearNum || (regularYear === yearNum && regularMonth < monthNum)) {
           // 转正日期早于该月，使用转正工资
           salaryCents = emp.regular_salary_cents
@@ -1256,7 +1254,7 @@ importRoutes.get('/reports/employee-salary', async (c) => {
         // 未转正，使用试用期工资
         salaryCents = emp.probation_salary_cents
       }
-      
+
       // 计算该月实际工作天数
       const daysInMonth = new Date(yearNum, monthNum, 0).getDate()
       if (joinYear === yearNum && joinMonth === monthNum) {
@@ -1265,11 +1263,11 @@ importRoutes.get('/reports/employee-salary', async (c) => {
       } else {
         workDays = daysInMonth
       }
-      
+
       // 查询该员工在该月的请假记录（仅已批准的）
       const monthStart = `${yearNum}-${String(monthNum).padStart(2, '0')}-01`
       const monthEnd = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
-      
+
       const leaves = await c.env.DB.prepare(`
         select leave_type, start_date, end_date, days
         from employee_leaves
@@ -1278,7 +1276,7 @@ importRoutes.get('/reports/employee-salary', async (c) => {
           and start_date <= ?
           and end_date >= ?
       `).bind(emp.id, monthEnd, monthStart).all<any>()
-      
+
       // 计算需要扣除的请假天数（非年假）
       let leaveDaysToDeduct = 0
       for (const leave of (leaves.results || [])) {
@@ -1288,24 +1286,24 @@ importRoutes.get('/reports/employee-salary', async (c) => {
           const leaveEnd = new Date(leave.end_date + 'T00:00:00Z')
           const monthStartDate = new Date(monthStart + 'T00:00:00Z')
           const monthEndDate = new Date(monthEnd + 'T00:00:00Z')
-          
+
           // 计算请假记录与当前月份的交集
           const overlapStart = leaveStart > monthStartDate ? leaveStart : monthStartDate
           const overlapEnd = leaveEnd < monthEndDate ? leaveEnd : monthEndDate
-          
+
           if (overlapStart <= overlapEnd) {
             const overlapDays = Math.floor((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
             leaveDaysToDeduct += overlapDays
           }
         }
       }
-      
+
       // 从工作天数中扣除非年假的请假天数
       workDays = Math.max(0, workDays - leaveDaysToDeduct)
-      
+
       // 计算应发工资（按实际工作天数）
       const actualSalaryCents = Math.round((salaryCents * workDays) / daysInMonth)
-      
+
       rows.push({
         employee_id: emp.id,
         employee_name: emp.name,
@@ -1329,16 +1327,16 @@ importRoutes.get('/reports/employee-salary', async (c) => {
         if (joinYear > yearNum || (joinYear === yearNum && joinMonth > m)) {
           continue // 还未入职
         }
-        
+
         // 计算该月应发工资
         let salaryCents = 0
         let workDays = 0
-        
+
         if (emp.status === 'regular' && emp.regular_date) {
           const regularDate = new Date(emp.regular_date + 'T00:00:00Z')
           const regularYear = regularDate.getFullYear()
           const regularMonth = regularDate.getMonth() + 1
-          
+
           if (regularYear < yearNum || (regularYear === yearNum && regularMonth < m)) {
             salaryCents = emp.regular_salary_cents
           } else if (regularYear === yearNum && regularMonth === m) {
@@ -1355,18 +1353,18 @@ importRoutes.get('/reports/employee-salary', async (c) => {
         } else {
           salaryCents = emp.probation_salary_cents
         }
-        
+
         const daysInMonth = new Date(yearNum, m, 0).getDate()
         if (joinYear === yearNum && joinMonth === m) {
           workDays = daysInMonth - joinDate.getDate() + 1
         } else {
           workDays = daysInMonth
         }
-        
+
         // 查询该员工在该月的请假记录（仅已批准的）
         const monthStart = `${yearNum}-${String(m).padStart(2, '0')}-01`
         const monthEnd = `${yearNum}-${String(m).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
-        
+
         const leaves = await c.env.DB.prepare(`
           select leave_type, start_date, end_date, days
           from employee_leaves
@@ -1375,7 +1373,7 @@ importRoutes.get('/reports/employee-salary', async (c) => {
             and start_date <= ?
             and end_date >= ?
         `).bind(emp.id, monthEnd, monthStart).all<any>()
-        
+
         // 计算需要扣除的请假天数（非年假）
         let leaveDaysToDeduct = 0
         for (const leave of (leaves.results || [])) {
@@ -1385,23 +1383,23 @@ importRoutes.get('/reports/employee-salary', async (c) => {
             const leaveEnd = new Date(leave.end_date + 'T00:00:00Z')
             const monthStartDate = new Date(monthStart + 'T00:00:00Z')
             const monthEndDate = new Date(monthEnd + 'T00:00:00Z')
-            
+
             // 计算请假记录与当前月份的交集
             const overlapStart = leaveStart > monthStartDate ? leaveStart : monthStartDate
             const overlapEnd = leaveEnd < monthEndDate ? leaveEnd : monthEndDate
-            
+
             if (overlapStart <= overlapEnd) {
               const overlapDays = Math.floor((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
               leaveDaysToDeduct += overlapDays
             }
           }
         }
-        
+
         // 从工作天数中扣除非年假的请假天数
         workDays = Math.max(0, workDays - leaveDaysToDeduct)
-        
+
         const actualSalaryCents = Math.round((salaryCents * workDays) / daysInMonth)
-        
+
         rows.push({
           employee_id: emp.id,
           employee_name: emp.name,
@@ -1421,13 +1419,13 @@ importRoutes.get('/reports/employee-salary', async (c) => {
       }
     }
   }
-  
+
   return c.json({ results: rows })
 })
 
 importRoutes.get('/reports/borrowing-summary', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
-  
+
   // 查询每个人的借款汇总（按币种分组）
   const sql = `
     select 
@@ -1459,7 +1457,7 @@ importRoutes.get('/reports/borrowing-summary', async (c) => {
     having balance_cents != 0
     order by br.name, b.currency
   `
-  
+
   const rows = await c.env.DB.prepare(sql).all()
   return c.json(rows.results ?? [])
 })
@@ -1468,11 +1466,11 @@ importRoutes.get('/reports/borrowing-summary', async (c) => {
 importRoutes.get('/reports/borrowing-detail/:borrower_id', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
   const borrowerId = c.req.param('borrower_id')
-  
+
   // 验证借款人存在
   const borrower = await c.env.DB.prepare('select * from borrowers where id=?').bind(borrowerId).first<any>()
   if (!borrower) throw Errors.NOT_FOUND('borrower')
-  
+
   // 获取借款记录
   const borrowings = await c.env.DB.prepare(`
     select b.*, 
@@ -1484,7 +1482,7 @@ importRoutes.get('/reports/borrowing-detail/:borrower_id', async (c) => {
     where b.borrower_id=?
     order by b.borrow_date desc, b.created_at desc
   `).bind(borrowerId).all()
-  
+
   // 获取还款记录（通过借款记录关联）
   const repayments = await c.env.DB.prepare(`
     select r.*, 
@@ -1498,7 +1496,7 @@ importRoutes.get('/reports/borrowing-detail/:borrower_id', async (c) => {
     where b.borrower_id=?
     order by r.repay_date desc, r.created_at desc
   `).bind(borrowerId).all()
-  
+
   return c.json({
     borrower: {
       id: borrower.id,
@@ -1517,10 +1515,10 @@ importRoutes.get('/reports/new-site-revenue', async (c) => {
   const end = c.req.query('end')
   const days = Number(c.req.query('days')) || 30 // 站点的定义：创建后N天内
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
-  
+
   const role = c.get('userRole') as string | undefined
   const userId = c.get('userId') as string | undefined
-  
+
   let sql = `
     select s.id as site_id, s.name as site_name, s.created_at as site_created_at,
       coalesce(sum(case when f.type='income' then f.amount_cents end),0) as income_cents,
@@ -1532,22 +1530,24 @@ importRoutes.get('/reports/new-site-revenue', async (c) => {
     and s.created_at is not null
   `
   let binds: any[] = [start, end, end, days]
-  
+
   // 应用数据权限过滤
   if (role !== 'manager' && role !== 'finance' && userId) {
-    const deptId = await getUserDepartmentId(c.env.DB, userId)
+    const userService = new UserService(c.env.DB)
+    const deptIds = await userService.getUserDepartmentIds(userId)
+    const deptId = deptIds[0]
     if (deptId) {
       sql += ' and s.department_id=?'
       binds.push(deptId)
     }
   }
-  
+
   sql += ' group by s.id, s.name, s.created_at order by s.created_at desc'
   const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
-  
-  const mapped = (rows.results ?? []).map((r:any)=>({ 
-    ...r, 
-    net_cents: (r.income_cents||0) - (r.expense_cents||0) 
+
+  const mapped = (rows.results ?? []).map((r: any) => ({
+    ...r,
+    net_cents: (r.income_cents || 0) - (r.expense_cents || 0)
   }))
   return c.json({ rows: mapped })
 })
@@ -1574,7 +1574,7 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
       site_id: idx('site_id'), department_id: idx('department_id'), counterparty: idx('counterparty'), memo: idx('memo'),
       category_id: idx('category_id'), voucher_no: idx('voucher_no'), method: idx('method')
     }
-    
+
     // 先按日期排序，确保账变记录的计算顺序正确
     const sortedData = [...data].sort((a, b) => {
       const dateA = a[ix.biz_date] || ''
@@ -1582,21 +1582,22 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
       if (dateA !== dateB) return dateA.localeCompare(dateB)
       return 0
     })
-    
+
     for (const r of sortedData) {
       if (!r[ix.biz_date] || !r[ix.type] || !r[ix.account_id] || !r[ix.amount]) continue
       const id = uuid()
       const amount = Math.round(Number(r[ix.amount]) * 100)
       // 使用递增的时间戳，确保同一天的记录按顺序处理
       const now = Date.now() + inserted
-      
+
       // 计算账变前金额
-      const balanceBefore = await getAccountBalanceBefore(c.env.DB, r[ix.account_id], r[ix.biz_date], now)
-      
+      const financeService = new FinanceService(c.env.DB)
+      const balanceBefore = await financeService.getAccountBalanceBefore(r[ix.account_id], r[ix.biz_date], now)
+
       // 计算账变金额（收入为正，支出为负）
       const delta = r[ix.type] === 'income' ? amount : (r[ix.type] === 'expense' ? -amount : 0)
       const balanceAfter = balanceBefore + delta
-      
+
       await c.env.DB.prepare(`
         insert into cash_flows(id,voucher_no,biz_date,type,account_id,category_id,method,amount_cents,site_id,department_id,counterparty,memo,created_by,created_at)
         values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
@@ -1605,7 +1606,7 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
         amount, r[ix.site_id] || null, r[ix.department_id] || null, r[ix.counterparty] || null, r[ix.memo] || null,
         'import', now
       ).run()
-      
+
       // 生成账变记录
       const transactionId = uuid()
       await c.env.DB.prepare(`
@@ -1617,7 +1618,7 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
         transactionId, r[ix.account_id], id, r[ix.biz_date], r[ix.type], amount,
         balanceBefore, balanceAfter, now
       ).run()
-      
+
       inserted++
     }
     logAuditAction(c, 'import', 'cash_flow', undefined, JSON.stringify({ kind, rows: inserted }))
@@ -1631,48 +1632,48 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
       issue_date: idx('issue_date'), due_date: idx('due_date'), amount: idx('amount'), party_id: idx('party_id'),
       site_id: idx('site_id'), department_id: idx('department_id'), memo: idx('memo')
     }
-    
+
     // 优化：按日期分组，批量查询每个日期的文档数量
     const dateGroups = new Map<string, number>()
     const validData = data.filter(r => r[ix.issue_date] && r[ix.amount])
-    
+
     // 收集所有唯一的日期
     const uniqueDates = new Set<string>()
     for (const r of validData) {
       uniqueDates.add(r[ix.issue_date])
     }
-    
+
     // 批量查询每个日期的文档数量
     const dateCountPromises = Array.from(uniqueDates).map(async (date) => {
       const count = await c.env.DB.prepare('select count(1) as n from ar_ap_docs where kind=? and issue_date=?')
         .bind(kind, date).first<{ n: number }>()
       return { date, count: count?.n ?? 0 }
     })
-    
+
     const dateCounts = await Promise.all(dateCountPromises)
     for (const { date, count } of dateCounts) {
       dateGroups.set(date, count)
     }
-    
+
     // 优化：批量插入AR/AP记录
     const insertStatements: any[] = []
     const dateSequences = new Map<string, number>()
-    
+
     for (const r of validData) {
       const id = uuid()
       const amount = Math.round(Number(r[ix.amount]) * 100)
       const issueDate = r[ix.issue_date]
-      
+
       // 从内存中获取该日期的当前序号
       const currentSeq = dateSequences.get(issueDate) ?? (dateGroups.get(issueDate) ?? 0)
       const nextSeq = currentSeq + 1
       dateSequences.set(issueDate, nextSeq)
-      
+
       // 生成文档编号
       const seq = nextSeq.toString().padStart(3, '0')
       const day = issueDate.replace(/-/g, '')
       const docNo = `${kind}${day}-${seq}`
-      
+
       insertStatements.push(
         c.env.DB.prepare(`
           insert into ar_ap_docs(id,kind,doc_no,party_id,site_id,department_id,issue_date,due_date,amount_cents,status,memo)
@@ -1681,11 +1682,11 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
       )
       inserted++
     }
-    
+
     if (insertStatements.length > 0) {
       await c.env.DB.batch(insertStatements)
     }
-    
+
     logAuditAction(c, 'import', 'ar_ap_doc', undefined, JSON.stringify({ kind, rows: inserted }))
     return c.json({ ok: true, inserted })
   }
@@ -1694,7 +1695,7 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
     // expected headers: type,ref_id,amount,as_of
     const idx = (name: string) => header.indexOf(name)
     const ix = { type: idx('type'), ref_id: idx('ref_id'), amount: idx('amount'), as_of: idx('as_of') }
-    
+
     // 优化：批量插入期初余额
     const insertStatements: any[] = []
     for (const r of data) {
@@ -1707,11 +1708,11 @@ importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
       )
       inserted++
     }
-    
+
     if (insertStatements.length > 0) {
       await c.env.DB.batch(insertStatements)
     }
-    
+
     logAuditAction(c, 'import', 'opening_balance', undefined, JSON.stringify({ kind, rows: inserted }))
     return c.json({ ok: true, inserted })
   }

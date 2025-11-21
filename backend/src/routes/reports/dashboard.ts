@@ -5,7 +5,7 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
 import { canRead } from '../../utils/permissions.js'
-import { getUserDepartmentId } from '../../utils/db.js'
+import { UserService } from '../../services/UserService.js'
 import { Errors } from '../../utils/errors.js'
 
 export const dashboardRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
@@ -13,20 +13,20 @@ export const dashboardRoutes = new Hono<{ Bindings: Env, Variables: AppVariables
 // Dashboard统计数据
 dashboardRoutes.get('/stats', async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
-  
+
   const today = new Date().toISOString().slice(0, 10)
   const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
   const thisMonthEnd = today
-  
+
   const role = c.get('userRole') as string | undefined
   const userId = c.get('userId') as string | undefined
-  
+
   // 优化：如果需要权限过滤，先获取部门ID（避免重复查询）
   let deptId: string | null = null
   if (role !== 'manager' && role !== 'finance' && userId) {
-    deptId = await getUserDepartmentId(c.env.DB, userId)
+    deptId = await new UserService(c.env.DB).getUserDepartmentId(userId)
   }
-  
+
   // 今日收支统计
   let todaySql = `
     select 
@@ -37,7 +37,7 @@ dashboardRoutes.get('/stats', async (c) => {
     where biz_date=?
   `
   let todayBinds: any[] = [today]
-  
+
   // 本月收支统计
   let monthSql = `
     select 
@@ -48,7 +48,7 @@ dashboardRoutes.get('/stats', async (c) => {
     where biz_date>=? and biz_date<=?
   `
   let monthBinds: any[] = [thisMonthStart, thisMonthEnd]
-  
+
   // 应收应付统计
   let arApSql = `
     select 
@@ -61,7 +61,7 @@ dashboardRoutes.get('/stats', async (c) => {
     group by kind
   `
   let arApBinds: any[] = [thisMonthStart]
-  
+
   // 最近交易记录（最近10条）
   let recentSql = `
     select f.*, a.name as account_name, a.currency as account_currency, c.name as category_name, d.name as department_name
@@ -73,7 +73,7 @@ dashboardRoutes.get('/stats', async (c) => {
     limit 10
   `
   let recentBinds: any[] = []
-  
+
   // 应用数据权限过滤
   if (deptId) {
     todaySql += ' and (department_id=? or department_id is null)'
@@ -85,7 +85,7 @@ dashboardRoutes.get('/stats', async (c) => {
     recentSql = recentSql.replace('order by', 'where (f.department_id=? or f.department_id is null) order by')
     recentBinds.push(deptId)
   }
-  
+
   // 优化：并行查询所有统计数据
   const [todayStats, monthStats, accounts, arApStats, borrowingBalance, recentFlows] = await Promise.all([
     c.env.DB.prepare(todaySql).bind(...todayBinds).first<any>(),
@@ -105,7 +105,7 @@ dashboardRoutes.get('/stats', async (c) => {
     `).first<any>(),
     c.env.DB.prepare(recentSql).bind(...recentBinds).all<any>()
   ])
-  
+
   return c.json({
     today: {
       income_cents: todayStats?.income_cents || 0,

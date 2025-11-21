@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { requireRole } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
-import { uuid, getAccountBalanceBefore } from '../utils/db.js'
+import { uuid } from '../utils/db.js'
+import { FinanceService } from '../services/FinanceService.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery, validateParam, getValidatedParams } from '../utils/validator.js'
 import { createAccountTransferSchema } from '../schemas/business.schema.js'
@@ -14,14 +15,16 @@ export const accountTransfersRoutes = new Hono<{ Bindings: Env, Variables: AppVa
 // 获取账户转账列表
 accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQuerySchema), async (c) => {
   // manager角色有完整权限，可以访问所有功能
+  // 优化：requireRole 已优化，优先使用 context 中的 userRole
   if (!(await requireRole(c, ['manager', 'finance', 'auditor']))) throw Errors.FORBIDDEN()
-  
+
   const query = getValidatedQuery<z.infer<typeof accountTransferQuerySchema>>(c)
   const fromAccountId = query.from_account_id
   const toAccountId = query.to_account_id
   const startDate = query.start_date
   const endDate = query.end_date
-  
+  const limit = query.limit || 200 // 默认限制200条，与 /api/flows 保持一致
+
   let sql = `
     select 
       t.*,
@@ -35,7 +38,7 @@ accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQu
     where 1=1
   `
   const binds: any[] = []
-  
+
   if (fromAccountId) {
     sql += ' and t.from_account_id = ?'
     binds.push(fromAccountId)
@@ -52,9 +55,10 @@ accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQu
     sql += ' and t.transfer_date <= ?'
     binds.push(endDate)
   }
-  
-  sql += ' order by t.transfer_date desc, t.created_at desc'
-  
+
+  sql += ` order by t.transfer_date desc, t.created_at desc limit ?`
+  binds.push(limit)
+
   try {
     const rows = await c.env.DB.prepare(sql).bind(...binds).all()
     return c.json({ results: rows.results ?? [] })
@@ -69,23 +73,23 @@ accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQu
 accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTransferSchema), async (c) => {
   // manager角色有完整权限，可以执行所有操作
   if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
-  
+
   const body = getValidatedData<z.infer<typeof createAccountTransferSchema>>(c)
-  
+
   // 获取账户信息
   const fromAccount = await c.env.DB.prepare('select id, name, currency, active from accounts where id=?')
     .bind(body.from_account_id).first<{ id: string, name: string, currency: string, active: number }>()
   const toAccount = await c.env.DB.prepare('select id, name, currency, active from accounts where id=?')
     .bind(body.to_account_id).first<{ id: string, name: string, currency: string, active: number }>()
-  
+
   if (!fromAccount || !fromAccount.active) {
     throw Errors.BUSINESS_ERROR('转出账户不存在或已停用')
   }
-  
+
   if (!toAccount || !toAccount.active) {
     throw Errors.BUSINESS_ERROR('转入账户不存在或已停用')
   }
-  
+
   // 计算汇率（如果未提供）
   let exchangeRate = body.exchange_rate
   if (!exchangeRate) {
@@ -95,7 +99,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
       throw Errors.VALIDATION_ERROR('不同币种转账必须提供汇率')
     }
   }
-  
+
   // 验证汇率计算的金额是否正确
   if (fromAccount.currency !== toAccount.currency) {
     const calculatedToAmount = Math.round(body.from_amount_cents * exchangeRate)
@@ -110,17 +114,17 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
       throw Errors.VALIDATION_ERROR('同币种转账，转出金额和转入金额必须相等')
     }
   }
-  
+
   // 检查转出账户余额
   const now = Date.now()
-  const balanceBefore = await getAccountBalanceBefore(c.env.DB, body.from_account_id, body.transfer_date, now)
+  const balanceBefore = await new FinanceService(c.env.DB).getAccountBalanceBefore(body.from_account_id, body.transfer_date, now)
   if (balanceBefore < body.from_amount_cents) {
     throw Errors.BUSINESS_ERROR('转出账户余额不足')
   }
-  
+
   const id = uuid()
   const userId = c.get('userId') as string | undefined
-  
+
   // 创建转账记录
   await c.env.DB.prepare(`
     insert into account_transfers(
@@ -143,11 +147,11 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
     userId ?? 'system',
     now
   ).run()
-  
+
   // 创建转出账户的现金流记录（支出）
   const fromFlowId = uuid()
   const fromBalanceAfter = balanceBefore - body.from_amount_cents
-  
+
   // 生成凭证号
   const day = String(body.transfer_date).replace(/-/g, '')
   const count = await c.env.DB
@@ -155,7 +159,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
     .bind(body.transfer_date).first<{ n: number }>()
   const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
   const voucherNo = `JZ${day}-${seq}`
-  
+
   await c.env.DB.prepare(`
     insert into cash_flows(
       id, voucher_no, biz_date, type, account_id, category_id, method, amount_cents,
@@ -178,7 +182,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
     userId ?? 'system',
     now
   ).run()
-  
+
   // 创建转出账户的账变记录
   const fromTransactionId = uuid()
   await c.env.DB.prepare(`
@@ -197,15 +201,15 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
     fromBalanceAfter,
     now
   ).run()
-  
+
   // 创建转入账户的现金流记录（收入）
   const toFlowId = uuid()
-  const toBalanceBefore = await getAccountBalanceBefore(c.env.DB, body.to_account_id, body.transfer_date, now + 1)
+  const toBalanceBefore = await new FinanceService(c.env.DB).getAccountBalanceBefore(body.to_account_id, body.transfer_date, now + 1)
   const toBalanceAfter = toBalanceBefore + body.to_amount_cents
-  
+
   const toSeq = ((count?.n ?? 0) + 2).toString().padStart(3, '0')
   const toVoucherNo = `JZ${day}-${toSeq}`
-  
+
   await c.env.DB.prepare(`
     insert into cash_flows(
       id, voucher_no, biz_date, type, account_id, category_id, method, amount_cents,
@@ -228,7 +232,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
     userId ?? 'system',
     now + 1
   ).run()
-  
+
   // 创建转入账户的账变记录
   const toTransactionId = uuid()
   await c.env.DB.prepare(`
@@ -247,7 +251,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
     toBalanceAfter,
     now + 1
   ).run()
-  
+
   logAuditAction(c, 'create', 'account_transfer', id, JSON.stringify({
     from_account: fromAccount.name,
     to_account: toAccount.name,
@@ -255,7 +259,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
     to_amount_cents: body.to_amount_cents,
     exchange_rate: exchangeRate
   }))
-  
+
   return c.json({ id })
 })
 
@@ -263,7 +267,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
 accountTransfersRoutes.get('/account-transfers/:id', validateParam(idParamSchema), async (c) => {
   // manager角色有完整权限，可以查看所有数据
   if (!(await requireRole(c, ['manager', 'finance', 'auditor']))) throw Errors.FORBIDDEN()
-  
+
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const row = await c.env.DB.prepare(`
@@ -278,11 +282,11 @@ accountTransfersRoutes.get('/account-transfers/:id', validateParam(idParamSchema
     left join accounts ta on ta.id = t.to_account_id
     where t.id = ?
   `).bind(id).first()
-  
+
   if (!row) {
     throw Errors.NOT_FOUND()
   }
-  
+
   return c.json(row)
 })
 

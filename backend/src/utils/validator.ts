@@ -16,11 +16,19 @@ export function validateJson<T extends z.ZodTypeAny>(schema: T) {
       const result = schema.safeParse(body)
       
       if (!result.success) {
+        const errors = result.error.errors.map(err => ({
+          path: err.path.join('.'),
+          message: err.message,
+          code: err.code,
+        }))
+        console.error('Validation failed:', {
+          url: c.req.url,
+          method: c.req.method,
+          body: JSON.stringify(body),
+          errors: errors
+        })
         throw Errors.VALIDATION_ERROR('请求数据验证失败', {
-          errors: result.error.errors.map(err => ({
-            path: err.path.join('.'),
-            message: err.message,
-          }))
+          errors: errors
         })
       }
       

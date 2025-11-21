@@ -53,9 +53,9 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
 
     if (listResponse.ok) {
       const listData = await listResponse.json<{ result: Array<{ id: string, name: string }> }>()
-      const existingList = listData.result?.find(list => 
-        list.name === 'caiwu-whitelist' || 
-        list.name === 'caiwu_whitelist' || 
+      const existingList = listData.result?.find(list =>
+        list.name === 'caiwu-whitelist' ||
+        list.name === 'caiwu_whitelist' ||
         list.name === 'IP Whitelist' ||
         list.name === 'caiwu-whitelist' ||
         list.name.toLowerCase().includes('caiwu') && list.name.toLowerCase().includes('whitelist')
@@ -156,12 +156,12 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
     }
 
     const data = await response.json<{ result: { operation_id?: string, id?: string } | Array<{ id: string }> }>()
-    
+
     // Cloudflare API 可能返回两种格式：
     // 1. { result: { operation_id: "..." } } - 异步操作
     // 2. { result: [{ id: "..." }] } - 同步操作，直接返回 ID
     let itemId: string | null = null
-    
+
     if (Array.isArray(data.result)) {
       // 格式 2: 直接返回数组
       itemId = data.result[0]?.id || null
@@ -169,12 +169,12 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
       // 格式 1: 返回 operation_id，需要等待操作完成并查询列表获取 ID
       // 等待一小段时间让操作完成
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // 查询列表获取最新添加的 IP 的 ID
       const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
         headers: authHeaders,
       })
-      
+
       if (listResponse.ok) {
         const listData = await listResponse.json<{ result: Array<{ id: string, ip: string }> }>()
         // 查找匹配的 IP
@@ -187,7 +187,7 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
       // 直接返回 ID
       itemId = data.result.id
     }
-    
+
     if (!itemId) {
       console.error('Failed to get item ID from Cloudflare API response:', {
         ip,
@@ -195,7 +195,7 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
       })
       return { success: false, error: 'Cloudflare API returned no item ID' }
     }
-    
+
     return { success: true, itemId }
   } catch (error: any) {
     console.error('Error adding IP to Cloudflare list:', {
@@ -252,23 +252,23 @@ export async function addIPsToCloudflareList(env: Env, ips: Array<{ ip: string, 
     }
 
     const data = await response.json<{ result: Array<{ id: string, ip?: string }> | { operation_id?: string } }>()
-    
+
     // 检查是否返回了 operation_id（异步操作）
     if (!Array.isArray(data.result) && (data.result as any).operation_id) {
       // 等待操作完成
       await new Promise(resolve => setTimeout(resolve, 2000))
-      
+
       // 重新拉取列表来验证添加结果
       const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
         headers: authHeaders,
       })
-      
+
       if (listResponse.ok) {
         const listData = await listResponse.json<{ result: Array<{ id: string, ip: string }> }>()
         const addedIPs = new Set(listData.result?.map(item => item.ip) || [])
         const successIPs = ips.filter(item => addedIPs.has(item.ip))
         const failedIPs = ips.filter(item => !addedIPs.has(item.ip))
-        
+
         return {
           success: successIPs.length > 0,
           successCount: successIPs.length,
@@ -282,7 +282,7 @@ export async function addIPsToCloudflareList(env: Env, ips: Array<{ ip: string, 
     const resultArray = Array.isArray(data.result) ? data.result : []
     const successCount = resultArray.length
     const failedCount = ips.length - successCount
-    
+
     return {
       success: successCount > 0,
       successCount,
@@ -343,7 +343,7 @@ export async function removeIPsFromCloudflareList(env: Env, itemIds: string[]): 
     }
 
     const data = await response.json<{ result: { operation_id?: string } }>()
-    
+
     // 如果返回 operation_id，等待操作完成
     if (data.result?.operation_id) {
       await new Promise(resolve => setTimeout(resolve, 2000))
@@ -353,13 +353,13 @@ export async function removeIPsFromCloudflareList(env: Env, itemIds: string[]): 
     const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
       headers: authHeaders,
     })
-    
+
     if (listResponse.ok) {
       const listData = await listResponse.json<{ result: Array<{ id: string }> }>()
       const remainingIds = new Set(listData.result?.map(item => item.id) || [])
       const successCount = itemIds.filter(id => !remainingIds.has(id)).length
       const failedCount = itemIds.length - successCount
-      
+
       return {
         success: successCount > 0,
         successCount,
@@ -420,17 +420,17 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
 
     // 检查响应格式
     const data = await response.json<{ result: { operation_id?: string } | null, success: boolean }>()
-    
+
     // 如果返回 operation_id，等待操作完成
     if (data.result && typeof data.result === 'object' && 'operation_id' in data.result) {
       // 等待一小段时间让删除操作完成
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       // 验证删除是否成功（查询列表确认 IP 已不存在）
       const verifyResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
         headers: authHeaders,
       })
-      
+
       if (verifyResponse.ok) {
         const listData = await verifyResponse.json<{ result: Array<{ id: string }> }>()
         const stillExists = listData.result?.some(item => item.id === itemId)
@@ -586,12 +586,12 @@ export async function getOrCreateWhitelistRule(env: Env): Promise<{ ruleId: stri
         ...authHeaders,
         'Content-Type': 'application/json',
       },
-        body: JSON.stringify({
-          action: 'block',
-          expression: 'not ip.src in $caiwu_whitelist',
-          description: 'Block IPs not in whitelist',
-          enabled: false, // 默认停用
-        }),
+      body: JSON.stringify({
+        action: 'block',
+        expression: 'not ip.src in $caiwu_whitelist',
+        description: 'Block IPs not in whitelist',
+        enabled: false, // 默认停用
+      }),
     })
 
     if (!createRuleResponse.ok) {
@@ -820,8 +820,8 @@ export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boole
     const existingRules = rulesetData.result?.rules || []
 
     // 步骤3: 查找匹配的规则（通过 expression 包含 'caiwu_whitelist' 或 'caiwu-whitelist'）
-    const matchingRule = existingRules.find(rule => 
-      rule.expression.includes('caiwu_whitelist') || 
+    const matchingRule = existingRules.find(rule =>
+      rule.expression.includes('caiwu_whitelist') ||
       rule.expression.includes('caiwu-whitelist')
     )
 
@@ -868,24 +868,5 @@ export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boole
   }
 
   return { enabled: false }
-}
-
-// IP 地址验证函数（支持 IPv4 和 IPv6）
-export function isValidIPAddress(ip: string): boolean {
-  // IPv4 验证
-  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/
-  if (ipv4Regex.test(ip)) {
-    return true
-  }
-
-  // IPv6 验证（简化版本：更实用的IPv6验证）
-  // 匹配标准IPv6格式（包括压缩格式和CIDR）
-  const ipv6SimpleRegex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$/i
-  
-  if (ipv6SimpleRegex.test(ip)) {
-    return true
-  }
-
-  return false
 }
 

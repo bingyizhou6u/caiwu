@@ -13,7 +13,6 @@ import { employeesRoutes } from './routes/employees.js'
 import { borrowingsRoutes } from './routes/borrowings.js'
 import { ip_whitelistRoutes } from './routes/ip-whitelist.js'
 import { auditRoutes } from './routes/audit.js'
-import { rolePermissionsRoutes } from './routes/role-permissions.js'
 import { salaryPaymentsRoutes } from './routes/salary-payments.js'
 import { fixedAssetsRoutes } from './routes/fixed-assets.js'
 import { siteBillsRoutes } from './routes/site-bills.js'
@@ -79,7 +78,6 @@ app.route('/api', employeesRoutes)
 app.route('/api', borrowingsRoutes)
 app.route('/api', ip_whitelistRoutes)
 app.route('/api', auditRoutes)
-app.route('/api', rolePermissionsRoutes)
 app.route('/api', salaryPaymentsRoutes)
 app.route('/api', fixedAssetsRoutes)
 app.route('/api', siteBillsRoutes)

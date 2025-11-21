@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { requireRole, canRead } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
-import { uuid, getAccountBalanceBefore } from '../utils/db.js'
+import { uuid } from '../utils/db.js'
+import { FinanceService } from '../services/FinanceService.js'
 import { applyDataScope } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery, validateParam, getValidatedParams } from '../utils/validator.js'
@@ -20,7 +21,7 @@ fixedAssetsRoutes.get('/fixed-assets', validateQuery(fixedAssetQuerySchema), asy
   const status = query.status
   const departmentId = query.department_id
   const category = query.category
-  
+
   let sql = `
     select 
       fa.*,
@@ -38,7 +39,7 @@ fixedAssetsRoutes.get('/fixed-assets', validateQuery(fixedAssetQuerySchema), asy
   `
   const conds: string[] = []
   const binds: any[] = []
-  
+
   if (search) {
     conds.push('(fa.name like ? or fa.asset_code like ? or fa.custodian like ?)')
     const like = `%${search}%`
@@ -56,10 +57,10 @@ fixedAssetsRoutes.get('/fixed-assets', validateQuery(fixedAssetQuerySchema), asy
     conds.push('fa.category = ?')
     binds.push(category)
   }
-  
+
   if (conds.length) sql += ' where ' + conds.join(' and ')
   sql += ' order by fa.created_at desc'
-  
+
   // 应用数据权限过滤
   const scoped = await applyDataScope(c, sql, binds)
   const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
@@ -85,7 +86,7 @@ fixedAssetsRoutes.get('/fixed-assets/allocations', validateQuery(fixedAssetAlloc
   const assetId = query.asset_id
   const employeeId = query.employee_id
   const returned = query.returned
-  
+
   let sql = `
     select 
       a.*,
@@ -103,7 +104,7 @@ fixedAssetsRoutes.get('/fixed-assets/allocations', validateQuery(fixedAssetAlloc
   `
   const conds: string[] = []
   const binds: any[] = []
-  
+
   if (assetId) {
     conds.push('a.asset_id=?')
     binds.push(assetId)
@@ -117,10 +118,10 @@ fixedAssetsRoutes.get('/fixed-assets/allocations', validateQuery(fixedAssetAlloc
   } else if (returned === 'false') {
     conds.push('a.return_date is null')
   }
-  
+
   if (conds.length) sql += ' where ' + conds.join(' and ')
   sql += ' order by a.allocation_date desc, a.created_at desc'
-  
+
   // 应用数据权限过滤
   const scoped = await applyDataScope(c, sql, binds)
   const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
@@ -148,9 +149,9 @@ fixedAssetsRoutes.get('/fixed-assets/:id', validateParam(idParamSchema), async (
     left join users u on u.id = fa.created_by
     where fa.id = ?
   `).bind(id).first()
-  
+
   if (!asset) throw Errors.NOT_FOUND()
-  
+
   // 优化：并行查询折旧记录和变动记录
   const [depreciations, changes] = await Promise.all([
     c.env.DB.prepare(`
@@ -176,7 +177,7 @@ fixedAssetsRoutes.get('/fixed-assets/:id', validateParam(idParamSchema), async (
       order by fc.change_date desc, fc.created_at desc
     `).bind(id).all()
   ])
-  
+
   return c.json({
     ...asset,
     depreciations: depreciations.results ?? [],
@@ -190,18 +191,18 @@ fixedAssetsRoutes.post('/fixed-assets', validateJson(createFixedAssetSchema), as
   const body = getValidatedData<z.infer<typeof createFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 检查资产编号是否已存在
   const existed = await c.env.DB.prepare('select id from fixed_assets where asset_code = ?')
     .bind(body.asset_code).first<{ id: string }>()
   if (existed?.id) {
     throw Errors.DUPLICATE('资产代码')
   }
-  
+
   const id = uuid()
   const purchasePrice = body.purchase_price_cents
   const currentValue = body.current_value_cents !== undefined ? body.current_value_cents : purchasePrice
-  
+
   await c.env.DB.prepare(`
     insert into fixed_assets(
       id, asset_code, name, category, purchase_date, purchase_price_cents,
@@ -230,13 +231,13 @@ fixedAssetsRoutes.post('/fixed-assets', validateJson(createFixedAssetSchema), as
     now,
     now
   ).run()
-  
+
   logAuditAction(c, 'create', 'fixed_asset', id, JSON.stringify({
     asset_code: body.asset_code,
     name: body.name,
     purchase_price_cents: purchasePrice
   }))
-  
+
   return c.json({ id, asset_code: body.asset_code })
 })
 
@@ -248,14 +249,14 @@ fixedAssetsRoutes.put('/fixed-assets/:id', validateParam(idParamSchema), validat
   const body = getValidatedData<z.infer<typeof updateFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 检查资产是否存在
   const existing = await c.env.DB.prepare('select * from fixed_assets where id = ?').bind(id).first()
   if (!existing) throw Errors.NOT_FOUND()
-  
+
   const updates: string[] = []
   const binds: any[] = []
-  
+
   if (body.name !== undefined) { updates.push('name=?'); binds.push(body.name) }
   if (body.category !== undefined) { updates.push('category=?'); binds.push(body.category || null) }
   if (body.purchase_date !== undefined) { updates.push('purchase_date=?'); binds.push(body.purchase_date || null) }
@@ -267,15 +268,15 @@ fixedAssetsRoutes.put('/fixed-assets/:id', validateParam(idParamSchema), validat
   if (body.custodian !== undefined) { updates.push('custodian=?'); binds.push(body.custodian || null) }
   if (body.status !== undefined) { updates.push('status=?'); binds.push(body.status) }
   if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
-  
+
   updates.push('updated_at=?')
   binds.push(now)
-  
+
   if (updates.length === 1) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   binds.push(id)
   await c.env.DB.prepare(`update fixed_assets set ${updates.join(',')} where id=?`).bind(...binds).run()
-  
+
   // 如果状态、项目、位置或责任人发生变化，记录变动
   if (body.status !== undefined || body.department_id !== undefined || body.site_id !== undefined || body.custodian !== undefined) {
     const changeId = uuid()
@@ -304,7 +305,7 @@ fixedAssetsRoutes.put('/fixed-assets/:id', validateParam(idParamSchema), validat
       now
     ).run()
   }
-  
+
   logAuditAction(c, 'update', 'fixed_asset', id, JSON.stringify(body))
   return c.json({ ok: true })
 })
@@ -316,18 +317,18 @@ fixedAssetsRoutes.delete('/fixed-assets/:id', validateParam(idParamSchema), asyn
   const id = params.id
   const asset = await c.env.DB.prepare('select asset_code, name from fixed_assets where id = ?').bind(id).first<{ asset_code: string, name: string }>()
   if (!asset) throw Errors.NOT_FOUND()
-  
+
   // 检查是否有折旧记录
   const depCount = await c.env.DB.prepare('select count(1) as n from fixed_asset_depreciations where asset_id = ?').bind(id).first<{ n: number }>()
   if (depCount && depCount.n > 0) {
     throw Errors.BUSINESS_ERROR('无法删除，该资产还有折旧记录')
   }
-  
+
   // 删除变动记录
   await c.env.DB.prepare('delete from fixed_asset_changes where asset_id = ?').bind(id).run()
   // 删除资产
   await c.env.DB.prepare('delete from fixed_assets where id = ?').bind(id).run()
-  
+
   logAuditAction(c, 'delete', 'fixed_asset', id, JSON.stringify({ asset_code: asset.asset_code, name: asset.name }))
   return c.json({ ok: true })
 })
@@ -340,11 +341,11 @@ fixedAssetsRoutes.post('/fixed-assets/:id/depreciations', validateParam(idParamS
   const body = getValidatedData<z.infer<typeof createDepreciationSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 检查资产是否存在
   const asset = await c.env.DB.prepare('select * from fixed_assets where id = ?').bind(id).first()
   if (!asset) throw Errors.NOT_FOUND('asset')
-  
+
   // 计算累计折旧和剩余价值
   const depreciationAmount = body.amount_cents
   const existingDep = await c.env.DB.prepare(`
@@ -352,15 +353,15 @@ fixedAssetsRoutes.post('/fixed-assets/:id/depreciations', validateParam(idParamS
     from fixed_asset_depreciations
     where asset_id = ?
   `).bind(id).first<{ total: number }>()
-  
+
   const accumulatedDepreciation = (existingDep?.total || 0) + depreciationAmount
   const remainingValue = Number(asset.purchase_price_cents) - accumulatedDepreciation
-  
+
   // 如果剩余价值小于0，不允许继续折旧
   if (remainingValue < 0) {
     throw Errors.BUSINESS_ERROR('折旧金额超过购买价格')
   }
-  
+
   const depId = uuid()
   await c.env.DB.prepare(`
     insert into fixed_asset_depreciations(
@@ -379,17 +380,17 @@ fixedAssetsRoutes.post('/fixed-assets/:id/depreciations', validateParam(idParamS
     userId || null,
     now
   ).run()
-  
+
   // 更新资产的当前净值
   await c.env.DB.prepare('update fixed_assets set current_value_cents = ?, updated_at = ? where id = ?')
     .bind(remainingValue, now, id).run()
-  
+
   logAuditAction(c, 'create', 'fixed_asset_depreciation', depId, JSON.stringify({
     asset_id: id,
     depreciation_amount_cents: depreciationAmount,
     accumulated_depreciation_cents: accumulatedDepreciation
   }))
-  
+
   return c.json({ id: depId })
 })
 
@@ -401,15 +402,15 @@ fixedAssetsRoutes.post('/fixed-assets/:id/transfer', validateParam(idParamSchema
   const body = getValidatedData<z.infer<typeof transferFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   if (!body.to_department_id && !body.to_site_id && !body.to_custodian) {
     throw Errors.VALIDATION_ERROR('transfer_date and at least one of to_department_id, to_site_id, to_custodian参数必填')
   }
-  
+
   // 检查资产是否存在
   const asset = await c.env.DB.prepare('select * from fixed_assets where id = ?').bind(id).first()
   if (!asset) throw Errors.NOT_FOUND('asset')
-  
+
   const changeId = uuid()
   await c.env.DB.prepare(`
     insert into fixed_asset_changes(
@@ -432,7 +433,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/transfer', validateParam(idParamSchema
     userId || null,
     now
   ).run()
-  
+
   // 更新资产信息
   const updates: string[] = []
   const binds: any[] = []
@@ -442,9 +443,9 @@ fixedAssetsRoutes.post('/fixed-assets/:id/transfer', validateParam(idParamSchema
   updates.push('updated_at=?')
   binds.push(now)
   binds.push(id)
-  
+
   await c.env.DB.prepare(`update fixed_assets set ${updates.join(',')} where id=?`).bind(...binds).run()
-  
+
   logAuditAction(c, 'update', 'fixed_asset', id, JSON.stringify({ transfer: body }))
   return c.json({ ok: true })
 })
@@ -455,14 +456,14 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
   const body = getValidatedData<z.infer<typeof purchaseFixedAssetWithFlowSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 检查资产编号是否已存在
   const existed = await c.env.DB.prepare('select id from fixed_assets where asset_code = ?')
     .bind(body.asset_code).first<{ id: string }>()
   if (existed?.id) {
     throw Errors.DUPLICATE('资产代码')
   }
-  
+
   // 验证账户存在且币种匹配
   const account = await c.env.DB.prepare('select * from accounts where id=?').bind(body.account_id).first<any>()
   if (!account) throw Errors.NOT_FOUND('账户')
@@ -470,12 +471,12 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
   if (account.currency !== body.currency) {
     throw Errors.BUSINESS_ERROR('账户币种不匹配')
   }
-  
+
   // 创建资产记录
   const assetId = uuid()
   const purchasePrice = Number(body.purchase_price_cents)
   const purchaseDate = body.purchase_date || new Date().toISOString().split('T')[0]
-  
+
   await c.env.DB.prepare(`
     insert into fixed_assets(
       id, asset_code, name, category, purchase_date, purchase_price_cents,
@@ -504,7 +505,7 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
     now,
     now
   ).run()
-  
+
   // 生成支出流水（购买资产）
   const flowId = uuid()
   const day = purchaseDate.replace(/-/g, '')
@@ -513,18 +514,18 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
     .bind(purchaseDate).first<{ n: number }>()
   const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
   const voucherNo = `JZ${day}-${seq}`
-  
+
   // 计算账变前金额
-  const balanceBefore = await getAccountBalanceBefore(c.env.DB, body.account_id, purchaseDate, now)
+  const balanceBefore = await new FinanceService(c.env.DB).getAccountBalanceBefore(body.account_id, purchaseDate, now)
   const balanceAfter = balanceBefore - purchasePrice
-  
+
   // 获取供应商名称
   let vendorName: string | null = null
   if (body.vendor_id) {
     const vendor = await c.env.DB.prepare('select name from vendors where id=?').bind(body.vendor_id).first<{ name: string }>()
     vendorName = vendor?.name || null
   }
-  
+
   // 插入cash_flow记录
   await c.env.DB.prepare(`
     insert into cash_flows(
@@ -540,7 +541,7 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
     userId || null,
     now
   ).run()
-  
+
   // 生成账变记录
   const transactionId = uuid()
   await c.env.DB.prepare(`
@@ -552,7 +553,7 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
     transactionId, body.account_id, flowId, purchaseDate, 'expense', purchasePrice,
     balanceBefore, balanceAfter, now
   ).run()
-  
+
   // 记录资产变动（购买）
   const changeId = uuid()
   await c.env.DB.prepare(`
@@ -571,14 +572,14 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
     userId || null,
     now
   ).run()
-  
+
   logAuditAction(c, 'purchase', 'fixed_asset', assetId, JSON.stringify({
     asset_code: body.asset_code,
     name: body.name,
     purchase_price_cents: purchasePrice,
     flow_id: flowId
   }))
-  
+
   return c.json({ id: assetId, asset_code: body.asset_code, flow_id: flowId, voucher_no: voucherNo })
 })
 
@@ -590,16 +591,16 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
   const body = getValidatedData<z.infer<typeof sellFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 检查资产是否存在
   const asset = await c.env.DB.prepare('select * from fixed_assets where id = ?').bind(id).first<any>()
   if (!asset) throw Errors.NOT_FOUND('asset')
-  
+
   // 检查资产状态（不能卖出已卖出或已报废的资产）
   if (asset.status === 'sold') {
     throw Errors.BUSINESS_ERROR('资产已出售')
   }
-  
+
   // 验证账户存在且币种匹配
   const account = await c.env.DB.prepare('select * from accounts where id=?').bind(body.account_id).first<any>()
   if (!account) throw Errors.NOT_FOUND('账户')
@@ -607,7 +608,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
   if (account.currency !== body.currency) {
     throw Errors.BUSINESS_ERROR('账户币种不匹配')
   }
-  
+
   // 更新资产状态为已卖出
   await c.env.DB.prepare(`
     update fixed_assets 
@@ -622,7 +623,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
     now,
     id
   ).run()
-  
+
   // 生成收入流水（卖出资产）
   const flowId = uuid()
   const day = body.sale_date.replace(/-/g, '')
@@ -631,12 +632,12 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
     .bind(body.sale_date).first<{ n: number }>()
   const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
   const voucherNo = `JZ${day}-${seq}`
-  
+
   // 计算账变前金额
-  const balanceBefore = await getAccountBalanceBefore(c.env.DB, body.account_id, body.sale_date, now)
+  const balanceBefore = await new FinanceService(c.env.DB).getAccountBalanceBefore(body.account_id, body.sale_date, now)
   const salePrice = Number(body.sale_price_cents)
   const balanceAfter = balanceBefore + salePrice
-  
+
   // 插入cash_flow记录
   await c.env.DB.prepare(`
     insert into cash_flows(
@@ -652,7 +653,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
     userId || null,
     now
   ).run()
-  
+
   // 生成账变记录
   const transactionId = uuid()
   await c.env.DB.prepare(`
@@ -664,7 +665,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
     transactionId, body.account_id, flowId, body.sale_date, 'income', salePrice,
     balanceBefore, balanceAfter, now
   ).run()
-  
+
   // 记录资产变动（卖出）
   const changeId = uuid()
   await c.env.DB.prepare(`
@@ -683,14 +684,14 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
     userId || null,
     now
   ).run()
-  
+
   logAuditAction(c, 'sale', 'fixed_asset', id, JSON.stringify({
     asset_code: asset.asset_code,
     name: asset.name,
     sale_price_cents: salePrice,
     flow_id: flowId
   }))
-  
+
   return c.json({ ok: true, flow_id: flowId, voucher_no: voucherNo })
 })
 
@@ -702,21 +703,21 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
   const body = getValidatedData<z.infer<typeof allocateFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 检查资产是否存在
   const asset = await c.env.DB.prepare('select * from fixed_assets where id = ?').bind(id).first<any>()
   if (!asset) throw Errors.NOT_FOUND('asset')
-  
+
   // 检查资产状态（只能分配在用或闲置的资产）
   if (asset.status !== 'in_use' && asset.status !== 'idle') {
     throw Errors.BUSINESS_ERROR('只能分配使用中或闲置的资产')
   }
-  
+
   // 检查员工是否存在
   const employee = await c.env.DB.prepare('select * from employees where id=?').bind(body.employee_id).first<any>()
   if (!employee) throw Errors.NOT_FOUND('员工')
   if (employee.active === 0) throw Errors.BUSINESS_ERROR('员工已停用')
-  
+
   // 检查是否已有未归还的分配记录
   const existingAllocation = await c.env.DB.prepare(`
     select id from fixed_asset_allocations 
@@ -725,7 +726,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
   if (existingAllocation?.id) {
     throw Errors.BUSINESS_ERROR('资产已分配且未归还')
   }
-  
+
   // 创建分配记录
   const allocationId = uuid()
   await c.env.DB.prepare(`
@@ -743,7 +744,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
     now,
     now
   ).run()
-  
+
   // 更新资产信息：设置为在用状态，更新责任人为员工姓名
   await c.env.DB.prepare(`
     update fixed_assets 
@@ -756,7 +757,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
     now,
     id
   ).run()
-  
+
   // 记录资产变动（分配）
   const changeId = uuid()
   await c.env.DB.prepare(`
@@ -777,7 +778,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
     userId || null,
     now
   ).run()
-  
+
   logAuditAction(c, 'allocate', 'fixed_asset', id, JSON.stringify({
     asset_code: asset.asset_code,
     name: asset.name,
@@ -785,7 +786,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
     employee_name: employee.name,
     allocation_type: body.allocation_type || 'employee_onboarding'
   }))
-  
+
   return c.json({ id: allocationId })
 })
 
@@ -797,7 +798,7 @@ fixedAssetsRoutes.post('/fixed-assets/allocations/:id/return', validateParam(idP
   const body = getValidatedData<z.infer<typeof returnFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 检查分配记录是否存在
   const allocation = await c.env.DB.prepare(`
     select a.*, fa.asset_code, fa.name as asset_name, e.name as employee_name
@@ -807,12 +808,12 @@ fixedAssetsRoutes.post('/fixed-assets/allocations/:id/return', validateParam(idP
     where a.id = ?
   `).bind(id).first<any>()
   if (!allocation) throw Errors.NOT_FOUND('allocation')
-  
+
   // 检查是否已归还
   if (allocation.return_date) {
     throw Errors.BUSINESS_ERROR('资产已归还')
   }
-  
+
   // 更新分配记录
   await c.env.DB.prepare(`
     update fixed_asset_allocations 
@@ -824,7 +825,7 @@ fixedAssetsRoutes.post('/fixed-assets/allocations/:id/return', validateParam(idP
     now,
     id
   ).run()
-  
+
   // 更新资产状态为闲置
   await c.env.DB.prepare(`
     update fixed_assets 
@@ -836,7 +837,7 @@ fixedAssetsRoutes.post('/fixed-assets/allocations/:id/return', validateParam(idP
     now,
     allocation.asset_id
   ).run()
-  
+
   // 记录资产变动（归还）
   const changeId = uuid()
   await c.env.DB.prepare(`
@@ -857,12 +858,12 @@ fixedAssetsRoutes.post('/fixed-assets/allocations/:id/return', validateParam(idP
     userId || null,
     now
   ).run()
-  
+
   logAuditAction(c, 'return', 'fixed_asset_allocation', id, JSON.stringify({
     asset_id: allocation.asset_id,
     asset_code: allocation.asset_code,
     employee_id: allocation.employee_id
   }))
-  
+
   return c.json({ ok: true })
 })

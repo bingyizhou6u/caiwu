@@ -38,13 +38,13 @@ const COUNTRY_CODES = [
 // 解析手机号码：从完整号码中提取区号和号码
 const parsePhone = (phone: string | undefined): { countryCode: string, phoneNumber: string } => {
   if (!phone) return { countryCode: '+971', phoneNumber: '' }
-  
+
   // 如果包含+号，尝试解析
   const match = phone.match(/^(\+\d{1,4})(.*)$/)
   if (match) {
     return { countryCode: match[1], phoneNumber: match[2].replace(/[^\d]/g, '') }
   }
-  
+
   // 如果没有+号，默认阿联酋区号
   return { countryCode: '+971', phoneNumber: phone.replace(/[^\d]/g, '') }
 }
@@ -89,6 +89,11 @@ type Employee = {
   user_role?: string  // 用户角色
   user_active?: number  // 用户账号状态
   user_last_login_at?: number  // 用户最近登录时间
+  position_id?: string  // 职位ID
+  position_code?: string  // 职位代码
+  position_name?: string  // 职位名称
+  position_level?: string  // 职位层级
+  position_scope?: string  // 职位权限范围
 }
 
 export function EmployeeManagement({ userRole }: { userRole?: string }) {
@@ -171,8 +176,8 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         }
       }
       setDepartments(departmentsList)
-      setCurrencies(currenciesData.map(c => ({ 
-        code: c.value as string, 
+      setCurrencies(currenciesData.map(c => ({
+        code: c.value as string,
         name: c.label.split(' - ')[1] || c.label,
         active: 1
       })))
@@ -189,18 +194,18 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
       setPositions([])
       return
     }
-    
+
     try {
       // 调用后端接口获取该部门可用的职位
       const results = await apiGet(`${api.positionsAvailable}?org_department_id=${orgDepartmentId}`)
-      
+
       // 确保返回的是数组
-      const filteredPositions = Array.isArray(results) 
+      const filteredPositions = Array.isArray(results)
         ? results.filter((p: any) => p.active === 1)
         : []
-      
+
       setPositions(filteredPositions)
-      
+
       if (filteredPositions.length === 0) {
         message.warning({
           content: (
@@ -291,7 +296,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
   // 使用 useCallback 优化事件处理函数
   const handleCreate = useCallback(async () => {
     const v = await createForm.validateFields()
-    
+
     // 处理多币种底薪数据（必填）
     const probationSalaries = v.probation_salaries
       .filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
@@ -299,21 +304,21 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         currency_id: s.currency_id,
         amount_cents: Math.round(s.amount_cents * 100),
       }))
-    
+
     const regularSalaries = v.regular_salaries
       .filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
       .map((s: any) => ({
         currency_id: s.currency_id,
         amount_cents: Math.round(s.amount_cents * 100),
       }))
-    
+
     // 计算默认币种底薪（用于兼容，使用第一个币种或USDT）
     const usdtProbation = probationSalaries.find((s: any) => s.currency_id === 'USDT')
     const defaultProbationCents = usdtProbation ? usdtProbation.amount_cents : probationSalaries[0]?.amount_cents || 0
-    
+
     const usdtRegular = regularSalaries.find((s: any) => s.currency_id === 'USDT')
     const defaultRegularCents = usdtRegular ? usdtRegular.amount_cents : regularSalaries[0]?.amount_cents || 0
-    
+
     try {
       const data = await apiPost(api.employees, {
         name: v.name,
@@ -334,7 +339,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         memo: v.memo,
         birthday: v.birthday.format('YYYY-MM-DD'),
       })
-      
+
       // 处理多币种补贴数据
       const livingAllowances = v.living_allowances
         ?.filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
@@ -342,28 +347,28 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
           currency_id: s.currency_id,
           amount_cents: Math.round(s.amount_cents * 100),
         })) || []
-      
+
       const housingAllowances = v.housing_allowances
         ?.filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
         .map((s: any) => ({
           currency_id: s.currency_id,
           amount_cents: Math.round(s.amount_cents * 100),
         })) || []
-      
+
       const transportationAllowances = v.transportation_allowances
         ?.filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
         .map((s: any) => ({
           currency_id: s.currency_id,
           amount_cents: Math.round(s.amount_cents * 100),
         })) || []
-      
+
       const mealAllowances = v.meal_allowances
         ?.filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
         .map((s: any) => ({
           currency_id: s.currency_id,
           amount_cents: Math.round(s.amount_cents * 100),
         })) || []
-      
+
       // 保存多币种补贴配置
       const allowancePromises = []
       if (livingAllowances.length > 0) {
@@ -373,7 +378,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
           allowances: livingAllowances,
         }))
       }
-      
+
       if (housingAllowances.length > 0) {
         allowancePromises.push(apiPut(api.employeeAllowancesBatch, {
           employee_id: data.id,
@@ -381,7 +386,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
           allowances: housingAllowances,
         }))
       }
-      
+
       if (transportationAllowances.length > 0) {
         allowancePromises.push(apiPut(api.employeeAllowancesBatch, {
           employee_id: data.id,
@@ -389,7 +394,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
           allowances: transportationAllowances,
         }))
       }
-      
+
       if (mealAllowances.length > 0) {
         allowancePromises.push(apiPut(api.employeeAllowancesBatch, {
           employee_id: data.id,
@@ -397,11 +402,11 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
           allowances: mealAllowances,
         }))
       }
-      
+
       if (allowancePromises.length > 0) {
         await Promise.all(allowancePromises)
       }
-      
+
       // 显示账号创建成功的信息
       if (data.user_account_created) {
         Modal.success({
@@ -620,22 +625,22 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
   const handleSalaryConfig = async (employee: Employee, type: 'probation' | 'regular') => {
     setCurrentEmployee(employee)
     setSalaryConfigType(type)
-    
+
     // 加载该员工的多币种底薪配置
     try {
       const salaries = await apiGet(`${api.employeeSalaries}?employee_id=${employee.id}&salary_type=${type}`)
       setEmployeeSalaries(salaries)
-      
+
       // 设置表单初始值
       salaryConfigForm.setFieldsValue({
-        salaries: salaries.length > 0 
+        salaries: salaries.length > 0
           ? salaries.map((s: any) => ({
-              currency_id: s.currency_id,
-              amount_cents: s.amount_cents / 100,
-            }))
+            currency_id: s.currency_id,
+            amount_cents: s.amount_cents / 100,
+          }))
           : [{ currency_id: undefined, amount_cents: undefined }]
       })
-      
+
       setSalaryConfigOpen(true)
     } catch (error: any) {
       message.error(error.message || '加载底薪配置失败')
@@ -644,7 +649,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
 
   const handleSaveSalaries = async () => {
     if (!currentEmployee) return
-    
+
     const v = await salaryConfigForm.validateFields()
     const salaries = v.salaries
       .filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
@@ -652,7 +657,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         currency_id: s.currency_id,
         amount_cents: Math.round(s.amount_cents * 100),
       }))
-    
+
     try {
       await apiPut(api.employeeSalariesBatch, {
         employee_id: currentEmployee.id,
@@ -673,22 +678,22 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
   const handleAllowanceConfig = async (employee: Employee, type: 'living' | 'housing' | 'transportation' | 'meal' | 'birthday') => {
     setCurrentEmployee(employee)
     setAllowanceConfigType(type)
-    
+
     // 加载该员工的多币种补贴配置
     try {
       const allowances = await apiGet(`${api.employeeAllowances}?employee_id=${employee.id}&allowance_type=${type}`)
       setEmployeeAllowances(allowances)
-      
+
       // 设置表单初始值
       allowanceConfigForm.setFieldsValue({
-        allowances: allowances.length > 0 
+        allowances: allowances.length > 0
           ? allowances.map((s: any) => ({
-              currency_id: s.currency_id,
-              amount_cents: s.amount_cents / 100,
-            }))
+            currency_id: s.currency_id,
+            amount_cents: s.amount_cents / 100,
+          }))
           : [{ currency_id: undefined, amount_cents: undefined }]
       })
-      
+
       setAllowanceConfigOpen(true)
     } catch (error: any) {
       message.error(error.message || '加载补贴配置失败')
@@ -697,7 +702,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
 
   const handleSaveAllowances = async () => {
     if (!currentEmployee) return
-    
+
     const v = await allowanceConfigForm.validateFields()
     const allowances = v.allowances
       .filter((s: any) => s.currency_id && s.amount_cents !== undefined && s.amount_cents !== null)
@@ -705,7 +710,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         currency_id: s.currency_id,
         amount_cents: Math.round(s.amount_cents * 100),
       }))
-    
+
     try {
       await apiPut(api.employeeAllowancesBatch, {
         employee_id: currentEmployee.id,
@@ -823,20 +828,41 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
       },
     },
     {
-      title: '用户账号',
-      key: 'user_account',
-      width: 120,
+      title: '账号权限',
+      key: 'account_permission',
+      width: 180,
       render: (_: any, record: Employee) => {
         if (!record.user_id) {
-          return <Tag color="default">未创建</Tag>
+          return <Tag color="default">未创建账号</Tag>
         }
         if (record.user_active === 0) {
-          return <Tag color="red">已停用</Tag>
+          return <Tag color="red">账号已停用</Tag>
         }
+        // 显示职位信息，与权限管理体系一致（所有员工必须有职位）
+        const levelLabels: Record<string, string> = {
+          hq: '总部',
+          project: '项目',
+          department: '部门',
+          group: '组',
+          employee: '员工',
+        }
+        const scopeLabels: Record<string, string> = {
+          all: '全部',
+          hq_all: '总部+所有项目',
+          project_all: '项目全部',
+          project_dept: '项目部门',
+          dept: '部门',
+          group: '组',
+          self: '自己',
+        }
+        const levelLabel = record.position_level ? levelLabels[record.position_level] || record.position_level : ''
+        const scopeLabel = record.position_scope ? scopeLabels[record.position_scope] || record.position_scope : ''
         return (
-          <Tag color="green">
-            {record.user_role ? ROLE_LABELS[record.user_role] || record.user_role : '已启用'}
-          </Tag>
+          <div>
+            <div><Tag color="green">{record.position_name}</Tag></div>
+            {levelLabel && <div style={{ fontSize: 12, color: '#666' }}>层级: {levelLabel}</div>}
+            {scopeLabel && <div style={{ fontSize: 12, color: '#666' }}>范围: {scopeLabel}</div>}
+          </div>
         )
       },
     },
@@ -970,70 +996,95 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
     >
       <div>
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 16 }}>员工管理</div>
+          <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 16 }}>人员管理</div>
           <Table
-        columns={columns}
-        dataSource={filteredEmployees}
-        rowKey="id"
-        pagination={{ pageSize: 20 }}
-        scroll={{ x: 1200 }}
-        expandable={{
-          expandedRowRender: (record) => (
-            <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
-              <Descriptions.Item label="试用期工资">{(record.probation_salary_cents / 100).toFixed(2)}</Descriptions.Item>
-              <Descriptions.Item label="转正工资">{(record.regular_salary_cents / 100).toFixed(2)}</Descriptions.Item>
-              <Descriptions.Item label="转正日期">{record.regular_date || '-'}</Descriptions.Item>
-              <Descriptions.Item label="生活补贴">{((record.living_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
-              <Descriptions.Item label="住房补贴">{((record.housing_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
-              <Descriptions.Item label="交通补贴">{((record.transportation_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
-              <Descriptions.Item label="伙食补贴">{((record.meal_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
-              <Descriptions.Item label="补贴合计">{(((record.living_allowance_cents || 0) + (record.housing_allowance_cents || 0) + (record.transportation_allowance_cents || 0) + (record.meal_allowance_cents || 0)) / 100).toFixed(2)}</Descriptions.Item>
-              {record.status === 'resigned' && (
-                <>
-                  <Descriptions.Item label="离职日期">{record.leave_date || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="离职类型">
-                    {record.leave_type === 'resigned' ? '主动离职' :
-                     record.leave_type === 'terminated' ? '被动离职' :
-                     record.leave_type === 'expired' ? '合同到期' :
-                     record.leave_type === 'retired' ? '退休' :
-                     record.leave_type === 'other' ? '其他' : '-'}
+            columns={columns}
+            dataSource={filteredEmployees}
+            rowKey="id"
+            pagination={{ pageSize: 20 }}
+            scroll={{ x: 1200 }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
+                  <Descriptions.Item label="试用期工资">{(record.probation_salary_cents / 100).toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="转正工资">{(record.regular_salary_cents / 100).toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="转正日期">{record.regular_date || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="生活补贴">{((record.living_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="住房补贴">{((record.housing_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="交通补贴">{((record.transportation_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="伙食补贴">{((record.meal_allowance_cents || 0) / 100).toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="补贴合计">{(((record.living_allowance_cents || 0) + (record.housing_allowance_cents || 0) + (record.transportation_allowance_cents || 0) + (record.meal_allowance_cents || 0)) / 100).toFixed(2)}</Descriptions.Item>
+                  {record.status === 'resigned' && (
+                    <>
+                      <Descriptions.Item label="离职日期">{record.leave_date || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="离职类型">
+                        {record.leave_type === 'resigned' ? '主动离职' :
+                          record.leave_type === 'terminated' ? '被动离职' :
+                            record.leave_type === 'expired' ? '合同到期' :
+                              record.leave_type === 'retired' ? '退休' :
+                                record.leave_type === 'other' ? '其他' : '-'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="离职原因">{record.leave_reason || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="离职备注">{record.leave_memo || '-'}</Descriptions.Item>
+                    </>
+                  )}
+                  <Descriptions.Item label="USDT地址">{record.usdt_address || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="紧急联系人">{record.emergency_contact || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="紧急联系人电话">
+                    {record.emergency_phone ? (
+                      record.emergency_phone.includes('+') ? (
+                        (() => {
+                          const match = record.emergency_phone.match(/^(\+\d{1,4})(\d+)$/)
+                          return match ? `${match[1]} ${match[2]}` : record.emergency_phone
+                        })()
+                      ) : record.emergency_phone
+                    ) : '-'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="离职原因">{record.leave_reason || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="离职备注">{record.leave_memo || '-'}</Descriptions.Item>
-                </>
-              )}
-              <Descriptions.Item label="USDT地址">{record.usdt_address || '-'}</Descriptions.Item>
-              <Descriptions.Item label="紧急联系人">{record.emergency_contact || '-'}</Descriptions.Item>
-              <Descriptions.Item label="紧急联系人电话">
-                {record.emergency_phone ? (
-                  record.emergency_phone.includes('+') ? (
-                    (() => {
-                      const match = record.emergency_phone.match(/^(\+\d{1,4})(\d+)$/)
-                      return match ? `${match[1]} ${match[2]}` : record.emergency_phone
-                    })()
-                  ) : record.emergency_phone
-                ) : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="地址" span={2}>{record.address || '-'}</Descriptions.Item>
-              <Descriptions.Item label="生日">{record.birthday || '-'}</Descriptions.Item>
-              <Descriptions.Item label="备注" span={2}>{record.memo || '-'}</Descriptions.Item>
-              {record.user_id && (
-                <>
-                  <Descriptions.Item label="用户账号状态">
-                    {record.user_active === 1 ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="用户角色">
-                    {record.user_role ? ROLE_LABELS[record.user_role] || record.user_role : '-'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="最近登录">
-                    {record.user_last_login_at ? new Date(record.user_last_login_at).toLocaleString() : '从未登录'}
-                  </Descriptions.Item>
-                </>
-              )}
-            </Descriptions>
-          ),
-        }}
-      />
+                  <Descriptions.Item label="地址" span={2}>{record.address || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="生日">{record.birthday || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="备注" span={2}>{record.memo || '-'}</Descriptions.Item>
+                  {record.user_id && (
+                    <>
+                      <Descriptions.Item label="账号状态">
+                        {record.user_active === 1 ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>}
+                      </Descriptions.Item>
+                      {record.position_name && (
+                        <>
+                          <Descriptions.Item label="职位名称">
+                            {record.position_name}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="职位代码">
+                            {record.position_code || '-'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="职位层级">
+                            {record.position_level === 'hq' ? '总部' :
+                              record.position_level === 'project' ? '项目' :
+                                record.position_level === 'department' ? '部门' :
+                                  record.position_level === 'group' ? '组' :
+                                    record.position_level === 'employee' ? '员工' :
+                                      record.position_level || '-'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="权限范围">
+                            {record.position_scope === 'all' ? '全部' :
+                              record.position_scope === 'hq_all' ? '总部+所有项目' :
+                                record.position_scope === 'project_all' ? '项目全部' :
+                                  record.position_scope === 'project_dept' ? '项目部门' :
+                                    record.position_scope === 'dept' ? '部门' :
+                                      record.position_scope === 'group' ? '组' :
+                                        record.position_scope === 'self' ? '自己' :
+                                          record.position_scope || '-'}
+                          </Descriptions.Item>
+                        </>
+                      )}
+                      <Descriptions.Item label="最近登录">
+                        {record.user_last_login_at ? new Date(record.user_last_login_at).toLocaleString() : '从未登录'}
+                      </Descriptions.Item>
+                    </>
+                  )}
+                </Descriptions>
+              ),
+            }}
+          />
         </div>
       </div>
 
@@ -1081,13 +1132,13 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 label="项目归属/总部"
                 rules={[{ required: true, message: '请选择项目归属或总部' }]}
               >
-                <Select 
+                <Select
                   placeholder="请选择项目归属或总部"
                   allowClear
                   onChange={(value) => {
                     // 清空部门和职位选择
-                    createForm.setFieldsValue({ 
-                      org_department_id: undefined, 
+                    createForm.setFieldsValue({
+                      org_department_id: undefined,
                       position_id: undefined,
                       department_id: value === 'hq' ? 'hq' : value
                     })
@@ -1113,7 +1164,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 label="部门"
                 rules={[{ required: true, message: '请选择部门' }]}
               >
-                <Select 
+                <Select
                   placeholder={createForm.getFieldValue('project_id') ? '请选择部门' : '请先选择项目归属或总部'}
                   showSearch
                   disabled={!createForm.getFieldValue('project_id')}
@@ -1153,7 +1204,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                   positions.length === 0 ? (
                     <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: 4 }}>
                       暂无可用职位，请前往{' '}
-                      <a 
+                      <a
                         href="#"
                         onClick={(e) => {
                           e.preventDefault()
@@ -1173,7 +1224,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                   )
                 }
               >
-                <Select 
+                <Select
                   placeholder={createForm.getFieldValue('org_department_id') ? '请选择职位' : '请先选择部门'}
                   disabled={!createForm.getFieldValue('org_department_id')}
                   showSearch
@@ -1253,9 +1304,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                             rules={[{ required: true, message: '请选择币种' }]}
                             style={{ marginBottom: 0, flex: 1 }}
                           >
-                            <Select 
+                            <Select
                               id={`probation_salary_currency_${name}`}
-                              placeholder="选择币种" 
+                              placeholder="选择币种"
                               style={{ width: '100%' }}
                             >
                               {currencies.map((c) => (
@@ -1329,9 +1380,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                             rules={[{ required: true, message: '请选择币种' }]}
                             style={{ marginBottom: 0, flex: 1 }}
                           >
-                            <Select 
+                            <Select
                               id={`regular_salary_currency_${name}`}
-                              placeholder="选择币种" 
+                              placeholder="选择币种"
                               style={{ width: '100%' }}
                             >
                               {currencies.map((c) => (
@@ -1372,10 +1423,10 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
               <div style={{ color: '#999', fontSize: '12px', marginTop: '-16px', marginBottom: '16px' }}>
                 提示：请至少为每种底薪类型配置一种币种，系统将使用多币种底薪配置生成薪资单
               </div>
-              
+
               <div style={{ marginTop: '24px', marginBottom: '16px', borderTop: '1px solid #e8e8e8', paddingTop: '16px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '16px' }}>补贴设置（可选）</div>
-                
+
                 <Form.Item name="living_allowances" label="生活补贴">
                   <Form.List name="living_allowances">
                     {(fields, { add, remove }) => (
@@ -1402,7 +1453,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     )}
                   </Form.List>
                 </Form.Item>
-                
+
                 <Form.Item name="housing_allowances" label="住房补贴">
                   <Form.List name="housing_allowances">
                     {(fields, { add, remove }) => (
@@ -1429,7 +1480,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     )}
                   </Form.List>
                 </Form.Item>
-                
+
                 <Form.Item name="transportation_allowances" label="交通补贴">
                   <Form.List name="transportation_allowances">
                     {(fields, { add, remove }) => (
@@ -1456,7 +1507,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     )}
                   </Form.List>
                 </Form.Item>
-                
+
                 <Form.Item name="meal_allowances" label="伙食补贴">
                   <Form.List name="meal_allowances">
                     {(fields, { add, remove }) => (
@@ -1483,7 +1534,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     )}
                   </Form.List>
                 </Form.Item>
-                
+
                 <div style={{ color: '#999', fontSize: '12px', marginTop: '16px' }}>
                   提示：补贴每月第一个工作日现金发放，不随工资一起发放
                 </div>
@@ -1497,9 +1548,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     noStyle
                     initialValue="+971"
                   >
-                    <Select 
-                      style={{ width: '30%' }} 
-                      showSearch 
+                    <Select
+                      style={{ width: '30%' }}
+                      showSearch
                       filterOption={(input, option) =>
                         (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                       }
@@ -1559,9 +1610,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     noStyle
                     initialValue="+971"
                   >
-                    <Select 
-                      style={{ width: '30%' }} 
-                      showSearch 
+                    <Select
+                      style={{ width: '30%' }}
+                      showSearch
                       filterOption={(input, option) =>
                         (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                       }
@@ -1635,13 +1686,13 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 label="项目归属/总部"
                 rules={[{ required: true, message: '请选择项目归属或总部' }]}
               >
-                <Select 
+                <Select
                   placeholder="请选择项目归属或总部"
                   allowClear
                   onChange={(value) => {
                     // 清空部门和职位选择
-                    editForm.setFieldsValue({ 
-                      org_department_id: undefined, 
+                    editForm.setFieldsValue({
+                      org_department_id: undefined,
                       position_id: undefined,
                       department_id: value === 'hq' ? 'hq' : value
                     })
@@ -1667,7 +1718,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 label="部门"
                 rules={[{ required: true, message: '请选择部门' }]}
               >
-                <Select 
+                <Select
                   placeholder={editForm.getFieldValue('project_id') ? '请选择部门' : '请先选择项目归属或总部'}
                   showSearch
                   disabled={!editForm.getFieldValue('project_id')}
@@ -1707,7 +1758,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                   positions.length === 0 ? (
                     <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: 4 }}>
                       暂无可用职位，请前往{' '}
-                      <a 
+                      <a
                         href="#"
                         onClick={(e) => {
                           e.preventDefault()
@@ -1727,7 +1778,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                   )
                 }
               >
-                <Select 
+                <Select
                   placeholder={editForm.getFieldValue('org_department_id') ? '请选择职位' : '请先选择部门'}
                   disabled={!editForm.getFieldValue('org_department_id')}
                   showSearch
@@ -1845,9 +1896,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     noStyle
                     initialValue="+971"
                   >
-                    <Select 
-                      style={{ width: '30%' }} 
-                      showSearch 
+                    <Select
+                      style={{ width: '30%' }}
+                      showSearch
                       filterOption={(input, option) =>
                         (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                       }
@@ -1907,9 +1958,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                     noStyle
                     initialValue="+971"
                   >
-                    <Select 
-                      style={{ width: '30%' }} 
-                      showSearch 
+                    <Select
+                      style={{ width: '30%' }}
+                      showSearch
                       filterOption={(input, option) =>
                         (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                       }
@@ -2194,9 +2245,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
             <Input value={currentEmployee?.name} disabled />
           </Form.Item>
           <Form.Item label="补贴类型">
-            <Input 
-              value={allowanceConfigType === 'living' ? '生活补贴' : allowanceConfigType === 'housing' ? '住房补贴' : allowanceConfigType === 'transportation' ? '交通补贴' : allowanceConfigType === 'meal' ? '伙食补贴' : '生日补贴'} 
-              disabled 
+            <Input
+              value={allowanceConfigType === 'living' ? '生活补贴' : allowanceConfigType === 'housing' ? '住房补贴' : allowanceConfigType === 'transportation' ? '交通补贴' : allowanceConfigType === 'meal' ? '伙食补贴' : '生日补贴'}
+              disabled
             />
           </Form.Item>
           <Form.Item
@@ -2275,33 +2326,33 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         open={dormitoryAllocateOpen}
         onOk={async () => {
           const v = await dormitoryAllocateForm.validateFields()
-            try {
-              const payload = {
-                employee_id: currentEmployee?.id,
-                property_id: v.property_id,
-                room_number: v.room_number || null,
-                bed_number: v.bed_number || null,
-                allocation_date: v.allocation_date ? v.allocation_date.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
-                monthly_rent_cents: v.monthly_rent_cents ? Math.round(v.monthly_rent_cents * 100) : null,
-                memo: v.memo || null,
-              }
-              
-              const property = rentalProperties.find(p => p.id === v.property_id)
-              if (!property) {
-                message.error('宿舍不存在')
-                return
-              }
-              
-              await apiPost(api.rentalPropertiesAllocateDormitory(v.property_id), payload)
-              message.success('分配成功')
-              setDormitoryAllocateOpen(false)
-              dormitoryAllocateForm.resetFields()
-              if (currentEmployee) {
-                loadDormitoryAllocations(currentEmployee.id)
-              }
-            } catch (error: any) {
-              message.error(error.message || '分配失败')
+          try {
+            const payload = {
+              employee_id: currentEmployee?.id,
+              property_id: v.property_id,
+              room_number: v.room_number || null,
+              bed_number: v.bed_number || null,
+              allocation_date: v.allocation_date ? v.allocation_date.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
+              monthly_rent_cents: v.monthly_rent_cents ? Math.round(v.monthly_rent_cents * 100) : null,
+              memo: v.memo || null,
             }
+
+            const property = rentalProperties.find(p => p.id === v.property_id)
+            if (!property) {
+              message.error('宿舍不存在')
+              return
+            }
+
+            await apiPost(api.rentalPropertiesAllocateDormitory(v.property_id), payload)
+            message.success('分配成功')
+            setDormitoryAllocateOpen(false)
+            dormitoryAllocateForm.resetFields()
+            if (currentEmployee) {
+              loadDormitoryAllocations(currentEmployee.id)
+            }
+          } catch (error: any) {
+            message.error(error.message || '分配失败')
+          }
         }}
         onCancel={() => {
           setDormitoryAllocateOpen(false)

@@ -26,7 +26,6 @@ const filesToProcess = [
   'position-permissions.ts',
   'system-config.ts',
   'site-bills.ts',
-  'role-permissions.ts',
   'rental.ts',
   'audit.ts',
 ];

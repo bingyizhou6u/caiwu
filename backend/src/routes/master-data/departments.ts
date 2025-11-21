@@ -6,8 +6,10 @@ import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
 import { requireRole, canRead } from '../../utils/permissions.js'
 import { logAudit, logAuditAction } from '../../utils/audit.js'
-import { uuid, getOrCreateDefaultHQ, createDefaultOrgDepartments } from '../../utils/db.js'
-import { Errors } from '../../utils/errors.js'
+import { uuid } from '../../utils/db.js'
+import { SystemService } from '../../services/SystemService.js'
+import { DepartmentService } from '../../services/DepartmentService.js'
+import { Errors, AppError } from '../../utils/errors.js'
 import { validateJson, getValidatedData } from '../../utils/validator.js'
 import { createDepartmentSchema, createSiteSchema, updateDepartmentSchema, updateSiteSchema } from '../../schemas/master-data.schema.js'
 import { z } from 'zod'
@@ -26,27 +28,29 @@ departmentsRoutes.get('/departments', async (c) => {
 // 创建部门
 departmentsRoutes.post('/departments', validateJson(createDepartmentSchema), async (c) => {
   if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
-  
+
   const body = getValidatedData<z.infer<typeof createDepartmentSchema>>(c)
-  const hq = body.hq_id ? { id: body.hq_id } : await getOrCreateDefaultHQ(c.env.DB)
-  
+  const systemService = new SystemService(c.env.DB)
+  const hq = body.hq_id ? { id: body.hq_id } : await systemService.getOrCreateDefaultHQ()
+
   // 检查部门名称是否全局唯一
   const existed = await c.env.DB.prepare('select id from departments where name=?').bind(body.name).first<{ id: string }>()
   if (existed?.id) throw Errors.DUPLICATE('部门名称')
-  
+
   const id = uuid()
   await c.env.DB.prepare('insert into departments(id,hq_id,name,active) values(?,?,?,1)')
     .bind(id, hq.id, body.name).run()
-  
+
   // 确保userId存在后再记录审计日志
   const userId = c.get('userId') as string | undefined
   if (userId) {
     await logAudit(c.env.DB, userId, 'create', 'department', id, JSON.stringify({ name: body.name, hq_id: hq.id }))
   }
-  
+
   // 为新创建的项目自动创建默认部门（人事部、财务部、行政部、开发部）
-  await createDefaultOrgDepartments(c.env.DB, id, userId)
-  
+  const deptService = new DepartmentService(c.env.DB)
+  await deptService.createDefaultOrgDepartments(id, userId)
+
   logAuditAction(c, 'create', 'department', id, JSON.stringify({ name: body.name, hq_id: hq.id }))
   return c.json({ id, hq_id: hq.id, name: body.name })
 })
@@ -54,22 +58,22 @@ departmentsRoutes.post('/departments', validateJson(createDepartmentSchema), asy
 // 更新部门
 departmentsRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), async (c) => {
   if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
-  
+
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateDepartmentSchema>>(c)
-  
+
   // 如果更新名称，检查是否与其他部门重复
   if (body.name !== undefined) {
     const existed = await c.env.DB.prepare('select id from departments where name=? and id!=?').bind(body.name, id).first<{ id: string }>()
     if (existed?.id) throw Errors.DUPLICATE('部门名称')
   }
-  
+
   const dept = await c.env.DB.prepare('select name from departments where id=?').bind(id).first<{ name: string }>()
   if (!dept) throw Errors.NOT_FOUND('部门')
-  
+
   const updates: string[] = []
   const binds: any[] = []
-  
+
   if (body.name !== undefined) {
     updates.push('name=?')
     binds.push(body.name)
@@ -82,12 +86,12 @@ departmentsRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), 
     updates.push('active=?')
     binds.push(body.active)
   }
-  
+
   if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   updates.push('updated_at=?')
   binds.push(Date.now(), id)
-  
+
   await c.env.DB.prepare(`update departments set ${updates.join(',')} where id=?`).bind(...binds).run()
   logAuditAction(c, 'update', 'department', id, JSON.stringify(body))
   return c.json({ ok: true })
@@ -95,21 +99,46 @@ departmentsRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), 
 
 // 删除部门
 departmentsRoutes.delete('/departments/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
-  const id = c.req.param('id')
-  const dept = await c.env.DB.prepare('select name from departments where id=?').bind(id).first<{ name: string }>()
-  if (!dept) throw Errors.NOT_FOUND('部门')
-  
-  // 检查是否有站点使用此部门
-  const sites = await c.env.DB.prepare('select count(1) as cnt from sites where department_id=?').bind(id).first<{ cnt: number }>()
-  if (sites && Number(sites.cnt) > 0) {
-    throw Errors.BUSINESS_ERROR('无法删除，该部门下还有站点')
+  try {
+    if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+
+    const id = c.req.param('id')
+    const dept = await c.env.DB.prepare('select name from departments where id=?').bind(id).first<{ name: string }>()
+    if (!dept) throw Errors.NOT_FOUND('部门')
+
+    // 检查是否有站点使用此部门
+    const sites = await c.env.DB.prepare('select count(1) as cnt from sites where department_id=?').bind(id).first<{ cnt: number }>()
+    if (sites && Number(sites.cnt) > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该项目下还有站点')
+    }
+
+    // 检查是否有员工使用此部门
+    const employees = await c.env.DB.prepare('select count(1) as cnt from employees where department_id=?').bind(id).first<{ cnt: number }>()
+    if (employees && Number(employees.cnt) > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该项目下还有员工')
+    }
+
+    // 检查是否有组织部门使用此部门（作为project_id）
+    const orgDepts = await c.env.DB.prepare('select count(1) as cnt from org_departments where project_id=?').bind(id).first<{ cnt: number }>()
+    if (orgDepts && Number(orgDepts.cnt) > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该项目下还有组织部门')
+    }
+
+    await c.env.DB.prepare('delete from departments where id=?').bind(id).run()
+    logAuditAction(c, 'delete', 'department', id, JSON.stringify({ name: dept.name }))
+    return c.json({ ok: true })
+  } catch (e: any) {
+    // 如果是AppError实例，直接抛出
+    if (e instanceof AppError) {
+      throw e
+    }
+    // 如果是包含statusCode的对象，也直接抛出（向后兼容）
+    if (e && typeof e === 'object' && 'statusCode' in e) {
+      throw e
+    }
+    console.error('Delete department error:', e)
+    throw Errors.INTERNAL_ERROR(String(e?.message || e))
   }
-  
-  await c.env.DB.prepare('delete from departments where id=?').bind(id).run()
-  logAuditAction(c, 'delete', 'department', id, JSON.stringify({ name: dept.name }))
-  return c.json({ ok: true })
 })
 
 // ========== 站点相关 ==========
@@ -129,18 +158,18 @@ departmentsRoutes.get('/sites', async (c) => {
 // 创建站点
 departmentsRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
   if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
-  
+
   const body = getValidatedData<z.infer<typeof createSiteSchema>>(c)
-  
+
   // 同一部门下站点重名校验
   const existed = await c.env.DB.prepare('select id from sites where department_id=? and name=? and active=1')
     .bind(body.department_id, body.name).first<{ id: string }>()
   if (existed?.id) throw Errors.DUPLICATE('站点名称')
-  
+
   const id = uuid()
   await c.env.DB.prepare('insert into sites(id,department_id,name,active) values(?,?,?,1)')
     .bind(id, body.department_id, body.name).run()
-  
+
   logAuditAction(c, 'create', 'site', id, JSON.stringify({ name: body.name, department_id: body.department_id }))
   return c.json({ id, ...body })
 })
@@ -148,16 +177,16 @@ departmentsRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
 // 更新站点
 departmentsRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) => {
   if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
-  
+
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateSiteSchema>>(c)
-  
+
   const site = await c.env.DB.prepare('select name from sites where id=?').bind(id).first<{ name: string }>()
   if (!site) throw Errors.NOT_FOUND('站点')
-  
+
   const updates: string[] = []
   const binds: any[] = []
-  
+
   if (body.name !== undefined) {
     updates.push('name=?')
     binds.push(body.name)
@@ -170,12 +199,12 @@ departmentsRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) =>
     updates.push('active=?')
     binds.push(body.active)
   }
-  
+
   if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   updates.push('updated_at=?')
   binds.push(Date.now(), id)
-  
+
   await c.env.DB.prepare(`update sites set ${updates.join(',')} where id=?`).bind(...binds).run()
   logAuditAction(c, 'update', 'site', id, JSON.stringify(body))
   return c.json({ ok: true })
@@ -184,11 +213,11 @@ departmentsRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) =>
 // 删除站点
 departmentsRoutes.delete('/sites/:id', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   const id = c.req.param('id')
   const site = await c.env.DB.prepare('select name from sites where id=?').bind(id).first<{ name: string }>()
   if (!site) throw Errors.NOT_FOUND('站点')
-  
+
   await c.env.DB.prepare('delete from sites where id=?').bind(id).run()
   logAuditAction(c, 'delete', 'site', id, JSON.stringify({ name: site.name }))
   return c.json({ ok: true })

@@ -561,9 +561,9 @@ export const allocateDormitorySchema = z.object({
  */
 export const updateEmployeeSchema = z.object({
   name: z.string().min(1).optional(),
-  department_id: uuidSchema.optional(),
-  org_department_id: uuidSchema.optional(),
-  position_id: uuidSchema.optional(),
+  department_id: z.string().optional(), // 允许 "hq" 或其他字符串，后端会处理
+  org_department_id: z.string().optional().nullable(), // 允许特殊值，后端会处理
+  position_id: z.string().optional().nullable(), // 允许特殊值（如 "p001"），后端会处理
   join_date: dateSchema.optional(),
   probation_salary_cents: z.number().int().nonnegative().optional(),
   regular_salary_cents: z.number().int().nonnegative().optional(),
@@ -572,14 +572,42 @@ export const updateEmployeeSchema = z.object({
   transportation_allowance_cents: z.number().int().nonnegative().optional(),
   meal_allowance_cents: z.number().int().nonnegative().optional(),
   active: z.number().int().min(0).max(1).optional(),
-  phone: z.string().optional(),
-  email: emailSchema.optional(),
-  usdt_address: z.string().optional(),
-  emergency_contact: z.string().optional(),
-  emergency_phone: z.string().optional(),
-  address: z.string().optional(),
-  memo: z.string().optional(),
-  birthday: dateSchema.optional(),
+  phone: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    // 如果只有区号（如 '+971'），也视为空
+    if (typeof val === 'string' && val.length <= 5) return null
+    return val
+  }, z.string().nullable().optional()),
+  email: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    return val
+  }, z.string().email('邮箱格式不正确').nullable().optional()),
+  usdt_address: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    return val
+  }, z.string().nullable().optional()),
+  emergency_contact: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    return val
+  }, z.string().nullable().optional()),
+  emergency_phone: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    // 如果只有区号（如 '+971'），也视为空
+    if (typeof val === 'string' && val.length <= 5) return null
+    return val
+  }, z.string().nullable().optional()),
+  address: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    return val
+  }, z.string().nullable().optional()),
+  memo: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    return val
+  }, z.string().nullable().optional()),
+  birthday: z.preprocess((val) => {
+    if (val === '' || val === undefined || val === null) return null
+    return val
+  }, z.union([dateSchema, z.null()]).optional()),
 })
 
 /**

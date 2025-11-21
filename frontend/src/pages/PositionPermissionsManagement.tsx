@@ -35,7 +35,7 @@ const MENU_ITEMS = [
   { key: 'import', label: '数据导入' },
   { key: 'ar', label: '应收账款' },
   { key: 'ap', label: '应付账款' },
-  { key: 'employees', label: '员工管理' },
+  { key: 'employees', label: '人员管理' },
   { key: 'employee-salary', label: '员工薪资报表' },
   { key: 'salary-payments', label: '薪资发放管理' },
   { key: 'allowance-payments', label: '补贴发放管理' },
@@ -61,8 +61,7 @@ const MENU_ITEMS = [
 ]
 
 const ACTION_OPTIONS = [
-  { value: 'employee', label: '员工管理' },
-  { value: 'user', label: '用户管理' },
+  { value: 'employee', label: '人员管理' },
   { value: 'finance', label: '财务管理' },
   { value: 'admin', label: '行政管理' },
   { value: 'group', label: '组管理' },

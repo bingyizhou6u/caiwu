@@ -35,7 +35,7 @@ export function BorrowingManagement({ userRole }: { userRole?: string }) {
         name: a.label.split(' (')[0],
         currency: a.currency
       })))
-      // 从员工管理获取用户列表（只获取已启用的账号）
+      // 从人员管理获取用户列表（只获取已启用的账号）
       try {
         const employeesData = await apiGet(api.employees)
         const activeUsers = employeesData

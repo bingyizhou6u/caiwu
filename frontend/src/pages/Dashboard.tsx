@@ -7,15 +7,32 @@ interface UserInfo {
   name?: string
   email?: string
   role?: string
+  position?: {
+    id: string
+    code: string
+    name: string
+    level: string
+    scope: string
+    canViewReports?: boolean
+  }
 }
 
-const roleLabels: Record<string, string> = {
-  manager: '管理员',
-  finance: '财务',
-  hr: '人事',
-  auditor: '审计',
-  read: '只读',
-  employee: '员工'
+const levelLabels: Record<string, string> = {
+  hq: '总部',
+  project: '项目',
+  department: '部门',
+  group: '组',
+  employee: '员工',
+}
+
+const scopeLabels: Record<string, string> = {
+  all: '全部',
+  hq_all: '总部+所有项目',
+  project_all: '项目全部',
+  project_dept: '项目部门',
+  dept: '部门',
+  group: '组',
+  self: '自己',
 }
 
 export function Dashboard({ userRole, userInfo }: { userRole?: string; userInfo?: UserInfo | null }) {
@@ -47,20 +64,32 @@ export function Dashboard({ userRole, userInfo }: { userRole?: string; userInfo?
               >
                 {userInfo?.email || '-'}
               </Descriptions.Item>
-              <Descriptions.Item 
-                label={
-                  <Space>
-                    <SafetyOutlined />
-                    <span>角色</span>
-                  </Space>
-                }
-              >
-                {userInfo?.role ? (
-                  <Tag color={userInfo.role === 'manager' ? 'red' : userInfo.role === 'finance' ? 'blue' : 'default'}>
-                    {roleLabels[userInfo.role] || userInfo.role}
-                  </Tag>
-                ) : '-'}
-              </Descriptions.Item>
+              {userInfo?.position && (
+                <Descriptions.Item 
+                  label={
+                    <Space>
+                      <SafetyOutlined />
+                      <span>账号权限</span>
+                    </Space>
+                  }
+                >
+                  <div>
+                    <div style={{ marginBottom: 8 }}>
+                      <Tag color="green">{userInfo.position.name}</Tag>
+                    </div>
+                    {userInfo.position.level && (
+                      <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                        层级: {levelLabels[userInfo.position.level] || userInfo.position.level}
+                      </div>
+                    )}
+                    {userInfo.position.scope && (
+                      <div style={{ fontSize: 12, color: '#666' }}>
+                        权限范围: {scopeLabels[userInfo.position.scope] || userInfo.position.scope}
+                      </div>
+                    )}
+                  </div>
+                </Descriptions.Item>
+              )}
             </Descriptions>
           </div>
         </Space>

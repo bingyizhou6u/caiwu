@@ -1,9 +1,11 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, requirePermission, canRead, canWrite, isEmployee, isHR, getCurrentUserId } from '../utils/permissions.js'
+import { requireRole, requirePermission, canRead, canWrite, isEmployee, isHR, getCurrentUserId, canReadAsync } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
-import { uuid, getAccountBalanceBefore, getUserEmployeeId, getUserDepartmentIds, getUserById, getUserPosition, getRoleByPositionCode } from '../utils/db.js'
-import {getUserByEmail, getOrCreateDefaultHQ, ensureDefaultCurrencies} from '../utils/db.js'
+import { uuid } from '../utils/db.js'
+import { SystemService } from '../services/SystemService.js'
+import { FinanceService } from '../services/FinanceService.js'
+import { UserService } from '../services/UserService.js'
 import { applyDataScope } from '../utils/permissions.js'
 import bcrypt from 'bcryptjs'
 import { generateRandomPassword, sendNewEmployeeAccountEmail } from '../utils/email.js'
@@ -16,8 +18,8 @@ import type { z } from 'zod'
 export const employeesRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
 employeesRoutes.get('/employees', validateQuery(employeeQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  
+  if (!(await canReadAsync(c))) throw Errors.FORBIDDEN()
+
   const userId = getCurrentUserId(c)
   const query = getValidatedQuery<z.infer<typeof employeeQuerySchema>>(c)
   let sql = `
@@ -29,82 +31,125 @@ employeesRoutes.get('/employees', validateQuery(employeeQuerySchema), async (c) 
       u.id as user_id,
       u.role as user_role,
       u.active as user_active,
-      u.last_login_at as user_last_login_at
+      u.last_login_at as user_last_login_at,
+      p.id as position_id,
+      p.code as position_code,
+      p.name as position_name,
+      p.level as position_level,
+      p.scope as position_scope
     from employees e
     left join departments d on e.department_id = d.id
     left join org_departments od on e.org_department_id = od.id
     left join users u on u.email = e.email
+    left join positions p on p.id = e.position_id and p.active = 1
     where 1=1
   `
   const binds: any[] = []
-  
+
   // 添加状态筛选
   const status = query.status
   if (status && status !== 'all') {
     sql += ' and e.status = ?'
     binds.push(status)
   }
-  
+
   // 添加是否在职筛选（active=1 且 status != 'resigned'）
   const activeOnly = query.active_only
   if (activeOnly === 'true') {
     sql += ' and e.active = 1 and e.status != ?'
     binds.push('resigned')
   }
-  
+
   // employee角色只能查看自己的信息（通过email匹配）
   if (await isEmployee(c) && userId) {
     sql += ' and exists (select 1 from users u where u.id = ? and u.email = e.email)'
     binds.push(userId)
   } else {
     // 其他角色：根据职位权限过滤（所有用户必须有职位）
-    const position = await getUserPosition(c.env.DB, userId!)
+    // 优化：优先使用中间件中已获取的position信息
+    let position = c.get('userPosition') as { scope: string } | undefined
     if (!position) {
-      // 如果没有职位，返回空结果（不应该发生）
-      sql += ' and 1=0'
-      return c.json({ results: [] })
+      // 如果没有，回退到数据库查询（向后兼容）
+      const userService = new UserService(c.env.DB)
+      const dbPosition = await userService.getUserPosition(userId!)
+      // 所有账号都来自员工，必须有职位
+      if (!dbPosition) {
+        sql += ' and 1=0'
+        return c.json({ results: [] })
+      }
+      position = dbPosition
     }
-    
-    // 基于职位权限过滤
+
+    // 基于职位权限过滤（中间件已保证必须有职位）
     // 总部负责人和总部级别：可以查看所有数据
     if (position.scope === 'all' || position.scope === 'hq_all') {
       // 不需要过滤
     } else if (position.scope === 'project_all') {
       // 项目负责人：只能查看本项目数据
-      const deptIds = await getUserDepartmentIds(c.env.DB, userId!)
-      if (deptIds.length > 0) {
-        const placeholders = deptIds.map(() => '?').join(',')
-        sql += ` and e.department_id in (${placeholders})`
-        binds.push(...deptIds)
-      }
-    } else if (position.scope === 'project_dept' || position.scope === 'dept') {
-      // 项目部门或部门级别：只能查看本部门数据
-      const user = await getUserById(c.env.DB, userId!)
-      if (user?.org_department_id) {
-        sql += ' and e.org_department_id = ?'
-        binds.push(user.org_department_id)
+      // 优化：优先使用中间件中已获取的employee信息
+      const employee = c.get('userEmployee') as { department_id: string | null } | undefined
+      if (employee?.department_id) {
+        sql += ' and e.department_id = ?'
+        binds.push(employee.department_id)
       } else {
-        // 如果没有设置部门，回退到项目级别
-        const deptIds = await getUserDepartmentIds(c.env.DB, userId!)
+        // 如果没有，回退到数据库查询
+        const userService = new UserService(c.env.DB)
+        const deptIds = await userService.getUserDepartmentIds(userId!)
         if (deptIds.length > 0) {
           const placeholders = deptIds.map(() => '?').join(',')
           sql += ` and e.department_id in (${placeholders})`
           binds.push(...deptIds)
         }
       }
+    } else if (position.scope === 'project_dept' || position.scope === 'dept') {
+      // 项目部门或部门级别：只能查看本部门数据
+      // 优化：优先使用中间件中已获取的employee信息
+      const employee = c.get('userEmployee') as { org_department_id: string | null, department_id: string | null } | undefined
+      if (employee?.org_department_id) {
+        sql += ' and e.org_department_id = ?'
+        binds.push(employee.org_department_id)
+      } else if (employee?.department_id) {
+        // 如果没有设置部门，回退到项目级别
+        sql += ' and e.department_id = ?'
+        binds.push(employee.department_id)
+      } else {
+        // 如果没有，回退到数据库查询
+        const userService = new UserService(c.env.DB)
+        const user = await userService.getUserById(userId!)
+        if (user?.org_department_id) {
+          sql += ' and e.org_department_id = ?'
+          binds.push(user.org_department_id)
+        } else {
+          const deptIds = await userService.getUserDepartmentIds(userId!)
+          if (deptIds.length > 0) {
+            const placeholders = deptIds.map(() => '?').join(',')
+            sql += ` and e.department_id in (${placeholders})`
+            binds.push(...deptIds)
+          }
+        }
+      }
     } else if (position.scope === 'group') {
       // 组长：只能查看组内数据
-      const user = await getUserById(c.env.DB, userId!)
-      if (user?.org_department_id) {
+      // 优化：优先使用中间件中已获取的employee信息
+      const employee = c.get('userEmployee') as { org_department_id: string | null } | undefined
+      if (employee?.org_department_id) {
         sql += ' and e.org_department_id = ?'
-        binds.push(user.org_department_id)
+        binds.push(employee.org_department_id)
+      } else {
+        // 如果没有，回退到数据库查询
+        const userService = new UserService(c.env.DB)
+        const user = await userService.getUserById(userId!)
+        if (user?.org_department_id) {
+          sql += ' and e.org_department_id = ?'
+          binds.push(user.org_department_id)
+        }
       }
     }
     // position.scope === 'self' 的情况已经在isEmployee中处理
   }
-  
+
   sql += ' order by e.name'
-  
+
   const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
@@ -113,8 +158,8 @@ employeesRoutes.get('/employees', validateQuery(employeeQuerySchema), async (c) 
 employeesRoutes.post('/employees/create-from-user', async (c) => {
   // 只有manager可以执行此操作
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
-  const body = await c.req.json<{ 
+
+  const body = await c.req.json<{
     user_id: string
     org_department_id: string
     position_id: string
@@ -123,23 +168,24 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
     regular_salary_cents: number
     birthday: string
   }>()
-  
+
   // 获取用户信息
-  const user = await getUserById(c.env.DB, body.user_id)
+  const userService = new UserService(c.env.DB)
+  const user = await userService.getUserById(body.user_id)
   if (!user) throw Errors.NOT_FOUND('用户')
-  
+
   // 检查是否已有员工记录
   const existingEmployee = await c.env.DB.prepare('select id from employees where email=?').bind(user.email).first<{ id: string }>()
   if (existingEmployee) {
     throw Errors.DUPLICATE('该用户已有员工记录')
   }
-  
+
   // 从部门信息中获取项目ID
   const orgDept = await c.env.DB.prepare('select project_id from org_departments where id=?').bind(body.org_department_id).first<{ project_id: string | null }>()
   if (!orgDept) {
     throw Errors.NOT_FOUND('组织部门')
   }
-  
+
   // 根据部门的project_id确定department_id
   let actualDepartmentId: string
   if (orgDept.project_id === null) {
@@ -148,7 +194,8 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
     if (hqDept?.id) {
       actualDepartmentId = hqDept.id
     } else {
-      const hq = await getOrCreateDefaultHQ(c.env.DB)
+      const systemService = new SystemService(c.env.DB)
+      const hq = await systemService.getOrCreateDefaultHQ()
       const newDeptId = uuid()
       await c.env.DB.prepare('insert into departments(id,hq_id,name,active) values(?,?,?,1)')
         .bind(newDeptId, hq.id, '总部').run()
@@ -157,19 +204,19 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
   } else {
     actualDepartmentId = orgDept.project_id
   }
-  
+
   // 验证项目是否存在
   const dept = await c.env.DB.prepare('select id from departments where id=?').bind(actualDepartmentId).first<{ id: string }>()
   if (!dept) throw Errors.NOT_FOUND('项目')
-  
+
   // 验证职位
   const position = await c.env.DB.prepare('select code, level, scope from positions where id=? and active=1')
     .bind(body.position_id).first<{ code: string, level: string, scope: string }>()
   if (!position) throw Errors.NOT_FOUND('职位')
-  
+
   const id = uuid()
   const now = Date.now()
-  
+
   // 创建员工记录
   await c.env.DB.prepare(`
     insert into employees(
@@ -191,11 +238,11 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
     body.birthday,
     now, now
   ).run()
-  
+
   // 更新用户账号的position_id和department_id
   await c.env.DB.prepare('update users set position_id=?, department_id=?, org_department_id=? where id=?')
     .bind(body.position_id, actualDepartmentId, body.org_department_id, body.user_id).run()
-  
+
   // 如果项目存在，插入到user_departments表（如果还没有）
   const existingUd = await c.env.DB.prepare('select id from user_departments where user_id=? and department_id=?').bind(body.user_id, actualDepartmentId).first<{ id: string }>()
   if (!existingUd) {
@@ -203,9 +250,9 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
     await c.env.DB.prepare('insert into user_departments(id,user_id,department_id,created_at) values(?,?,?,?)')
       .bind(udId, body.user_id, actualDepartmentId, now).run()
   }
-  
+
   logAuditAction(c, 'create', 'employee', id, JSON.stringify({ name: user.name, email: user.email, from_user: true }))
-  
+
   const created = await c.env.DB.prepare(`
     select 
       e.*,
@@ -217,7 +264,7 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
     left join org_departments od on e.org_department_id = od.id
     where e.id=?
   `).bind(id).first()
-  
+
   return c.json(created)
 })
 
@@ -225,56 +272,58 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
 employeesRoutes.post('/employees/migrate-admin-magi', async (c) => {
   // 只有manager可以执行此操作
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
-  
+
   const ADMIN_EMAIL_ADDR = 'bingyizhou6u@gmail.com'
   const MAGI_EMAIL_ADDR = 'magi20221102@gmail.com'
-  
+
   try {
     // 1. 查询用户信息
     const adminUserResult = await c.env.DB.prepare('select id from users where email=?').bind(ADMIN_EMAIL_ADDR).first<{ id: string }>()
     const magiUserResult = await c.env.DB.prepare('select id from users where email=?').bind(MAGI_EMAIL_ADDR).first<{ id: string }>()
-    
+
     if (!adminUserResult) throw Errors.NOT_FOUND('admin用户')
     if (!magiUserResult) throw Errors.NOT_FOUND('magi用户')
-    
-    const adminUser = await getUserById(c.env.DB, adminUserResult.id)
-    const magiUser = await getUserById(c.env.DB, magiUserResult.id)
-    
+
+    const userService = new UserService(c.env.DB)
+    const adminUser = await userService.getUserById(adminUserResult.id)
+    const magiUser = await userService.getUserById(magiUserResult.id)
+
     if (!adminUser) throw Errors.NOT_FOUND('admin用户')
     if (!magiUser) throw Errors.NOT_FOUND('magi用户')
-    
+
     // 2. 查询或创建总部部门
     let hqDept = await c.env.DB.prepare('select id, name from org_departments where project_id is null and name=? limit 1').bind('总部').first<{ id: string, name: string }>()
-    
+
     if (!hqDept) {
       const hqDeptId = uuid()
       await c.env.DB.prepare('insert into org_departments(id, project_id, name, active, created_at, updated_at) values(?,?,?,1,?,?)')
         .bind(hqDeptId, null, '总部', Date.now(), Date.now()).run()
       hqDept = await c.env.DB.prepare('select id, name from org_departments where id=?').bind(hqDeptId).first<{ id: string, name: string }>() as { id: string, name: string }
     }
-    
+
     // 3. 查询总部负责人职位
     const hqAdminPosition = await c.env.DB.prepare('select id, code, name from positions where code=? and active=1').bind('hq_admin').first<{ id: string, code: string, name: string }>()
     if (!hqAdminPosition) {
       throw Errors.NOT_FOUND('hq_admin职位')
     }
-    
+
     // 4. 查询或创建总部项目部门
     let actualDepartmentId: string
     const hqProjectDept = await c.env.DB.prepare('select id from departments where name=? and active=1 limit 1').bind('总部').first<{ id: string }>()
     if (hqProjectDept?.id) {
       actualDepartmentId = hqProjectDept.id
     } else {
-      const hq = await getOrCreateDefaultHQ(c.env.DB)
+      const systemService = new SystemService(c.env.DB)
+      const hq = await systemService.getOrCreateDefaultHQ()
       const newDeptId = uuid()
       await c.env.DB.prepare('insert into departments(id,hq_id,name,active) values(?,?,?,1)')
         .bind(newDeptId, hq.id, '总部').run()
       actualDepartmentId = newDeptId
     }
-    
+
     const now = Date.now()
     const results: any[] = []
-    
+
     // 5. 为admin创建员工记录
     const existingAdminEmployee = await c.env.DB.prepare('select id from employees where email=?').bind(ADMIN_EMAIL_ADDR).first<{ id: string }>()
     if (existingAdminEmployee) {
@@ -297,20 +346,20 @@ employeesRoutes.post('/employees/migrate-admin-magi', async (c) => {
         null, adminUser.email, null, null, null, null, null,
         '1990-01-01', now, now
       ).run()
-      
+
       await c.env.DB.prepare('update users set position_id=?, department_id=?, org_department_id=? where id=?')
         .bind(hqAdminPosition.id, actualDepartmentId, hqDept.id, adminUser.id).run()
-      
+
       const existingUd = await c.env.DB.prepare('select id from user_departments where user_id=? and department_id=?').bind(adminUser.id, actualDepartmentId).first<{ id: string }>()
       if (!existingUd) {
         const udId = uuid()
         await c.env.DB.prepare('insert into user_departments(id,user_id,department_id,created_at) values(?,?,?,?)')
           .bind(udId, adminUser.id, actualDepartmentId, now).run()
       }
-      
+
       results.push({ user: 'admin', status: 'created', employee_id: adminEmployeeId })
     }
-    
+
     // 6. 为magi创建员工记录
     const existingMagiEmployee = await c.env.DB.prepare('select id from employees where email=?').bind(MAGI_EMAIL_ADDR).first<{ id: string }>()
     if (existingMagiEmployee) {
@@ -333,20 +382,20 @@ employeesRoutes.post('/employees/migrate-admin-magi', async (c) => {
         null, magiUser.email, null, null, null, null, null,
         '1990-01-01', now, now
       ).run()
-      
+
       await c.env.DB.prepare('update users set position_id=?, department_id=?, org_department_id=? where id=?')
         .bind(hqAdminPosition.id, actualDepartmentId, hqDept.id, magiUser.id).run()
-      
+
       const existingUd2 = await c.env.DB.prepare('select id from user_departments where user_id=? and department_id=?').bind(magiUser.id, actualDepartmentId).first<{ id: string }>()
       if (!existingUd2) {
         const udId2 = uuid()
         await c.env.DB.prepare('insert into user_departments(id,user_id,department_id,created_at) values(?,?,?,?)')
           .bind(udId2, magiUser.id, actualDepartmentId, now).run()
       }
-      
+
       results.push({ user: 'magi', status: 'created', employee_id: magiEmployeeId })
     }
-    
+
     return c.json({ success: true, results })
   } catch (error: any) {
     console.error('Migration error:', error)
@@ -357,13 +406,13 @@ employeesRoutes.post('/employees/migrate-admin-magi', async (c) => {
 // 员工管理 - 创建
 employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c) => {
   const body = getValidatedData<z.infer<typeof createEmployeeSchema>>(c)
-  
+
   // 从部门信息中获取项目ID
   const orgDept = await c.env.DB.prepare('select project_id from org_departments where id=?').bind(body.org_department_id).first<{ project_id: string | null }>()
   if (!orgDept) {
     throw Errors.NOT_FOUND('组织部门')
   }
-  
+
   // 根据部门的project_id确定department_id
   let actualDepartmentId: string
   if (orgDept.project_id === null) {
@@ -373,7 +422,8 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
       actualDepartmentId = hqDept.id
     } else {
       // 如果没有"总部"项目，创建一个
-      const hq = await getOrCreateDefaultHQ(c.env.DB)
+      const systemService = new SystemService(c.env.DB)
+      const hq = await systemService.getOrCreateDefaultHQ()
       const newDeptId = uuid()
       await c.env.DB.prepare('insert into departments(id,hq_id,name,active) values(?,?,?,1)')
         .bind(newDeptId, hq.id, '总部').run()
@@ -383,30 +433,34 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
     // 项目部门：使用部门的project_id
     actualDepartmentId = orgDept.project_id
   }
-  
+
   // 如果前端也提供了department_id，验证是否一致
   if (body.department_id && body.department_id !== actualDepartmentId && body.department_id !== 'hq') {
     throw Errors.BUSINESS_ERROR('department_id与org_department不匹配')
   }
-  
+
   // 验证项目是否存在
   const dept = await c.env.DB.prepare('select id from departments where id=?').bind(actualDepartmentId).first<{ id: string }>()
   if (!dept) throw Errors.NOT_FOUND('项目')
-  
+
   // 检查姓名是否重复（同一项目内）
   const existed = await c.env.DB.prepare('select id from employees where name=? and department_id=?').bind(body.name, actualDepartmentId).first<{ id: string }>()
   if (existed?.id) throw Errors.DUPLICATE('员工姓名（同一项目内）')
-  
+
   // 检查邮箱是否已存在用户账号
-  const existingUser = await getUserByEmail(c.env.DB, body.email)
+  const userService = new UserService(c.env.DB)
+  const existingUser = await userService.getUserByEmail(body.email)
   if (existingUser) throw Errors.DUPLICATE('邮箱（用户系统中已存在）')
-  
+
   const id = uuid()
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
-  // 创建员工记录
-  await c.env.DB.prepare(`
+
+  // 准备批量执行的语句
+  const statements: D1PreparedStatement[] = []
+
+  // 1. 创建员工记录
+  statements.push(c.env.DB.prepare(`
     insert into employees(
       id, name, department_id, org_department_id, position_id, join_date, 
       probation_salary_cents, regular_salary_cents,
@@ -417,7 +471,7 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
       birthday, created_at, updated_at
     ) values(?,?,?,?,?,?,?,?,?,?,?,?,'probation',1,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
-      id, body.name, actualDepartmentId, body.org_department_id || null, body.position_id || null, body.join_date,
+    id, body.name, actualDepartmentId, body.org_department_id || null, body.position_id || null, body.join_date,
     body.probation_salary_cents, body.regular_salary_cents,
     body.living_allowance_cents || 0,
     body.housing_allowance_cents || 0,
@@ -428,8 +482,8 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
     body.address || null, body.memo || null,
     body.birthday || null,
     now, now
-  ).run()
-  
+  ))
+
   // 创建对应的员工账号
   // 根据职位自动确定用户角色
   let userRole = 'employee'
@@ -437,27 +491,65 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
     const position = await c.env.DB.prepare('select code from positions where id=? and active=1')
       .bind(body.position_id).first<{ code: string }>()
     if (position) {
-      userRole = getRoleByPositionCode(position.code)
+      userRole = userService.getRoleByPositionCode(position.code)
     }
   }
-  
+
   // 总是生成随机密码
   const password = generateRandomPassword(12)
   const hash = await bcrypt.hash(password, 10)
   const userAccountId = uuid()
-  
-  // 创建用户账号，设置must_change_password=1要求首次登录修改密码
-  await c.env.DB.prepare('insert into users(id,name,email,role,password_hash,department_id,position_id,active,must_change_password,password_changed,created_at) values(?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(userAccountId, body.name, body.email, userRole, hash, actualDepartmentId, body.position_id, 1, 1, 0, now).run()
-  
-  // 如果项目存在，插入到user_departments表
+
+  // 2. 创建用户账号，设置must_change_password=1要求首次登录修改密码
+  statements.push(c.env.DB.prepare('insert into users(id,name,email,role,password_hash,department_id,position_id,active,must_change_password,password_changed,created_at) values(?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(userAccountId, body.name, body.email, userRole, hash, actualDepartmentId, body.position_id, 1, 1, 0, now))
+
+  // 3. 如果项目存在，插入到user_departments表
   const udId = uuid()
-  await c.env.DB.prepare('insert into user_departments(id,user_id,department_id,created_at) values(?,?,?,?)')
-    .bind(udId, userAccountId, actualDepartmentId, now).run()
-  
+  statements.push(c.env.DB.prepare('insert into user_departments(id,user_id,department_id,created_at) values(?,?,?,?)')
+    .bind(udId, userAccountId, actualDepartmentId, now))
+
+  // 4. 如果提供了多币种底薪配置，创建对应的记录
+  if (body.probation_salaries && Array.isArray(body.probation_salaries) && body.probation_salaries.length > 0) {
+    for (const salary of body.probation_salaries) {
+      if (salary.currency_id && salary.amount_cents !== undefined && salary.amount_cents !== null) {
+        // 验证币种是否存在
+        const currency = await c.env.DB.prepare('select code from currencies where code=?').bind(salary.currency_id).first<{ code: string }>()
+        if (currency) {
+          const salaryId = uuid()
+          statements.push(c.env.DB.prepare(`
+            insert into employee_salaries(
+              id, employee_id, salary_type, currency_id, amount_cents, created_at, updated_at
+            ) values(?,?,?,?,?,?,?)
+          `).bind(salaryId, id, 'probation', salary.currency_id, salary.amount_cents, now, now))
+        }
+      }
+    }
+  }
+
+  if (body.regular_salaries && Array.isArray(body.regular_salaries) && body.regular_salaries.length > 0) {
+    for (const salary of body.regular_salaries) {
+      if (salary.currency_id && salary.amount_cents !== undefined && salary.amount_cents !== null) {
+        // 验证币种是否存在
+        const currency = await c.env.DB.prepare('select code from currencies where code=?').bind(salary.currency_id).first<{ code: string }>()
+        if (currency) {
+          const salaryId = uuid()
+          statements.push(c.env.DB.prepare(`
+            insert into employee_salaries(
+              id, employee_id, salary_type, currency_id, amount_cents, created_at, updated_at
+            ) values(?,?,?,?,?,?,?)
+          `).bind(salaryId, id, 'regular', salary.currency_id, salary.amount_cents, now, now))
+        }
+      }
+    }
+  }
+
+  // 执行批量事务
+  await c.env.DB.batch(statements)
+
   logAuditAction(c, 'create', 'employee', id, JSON.stringify({ name: body.name, department_id: actualDepartmentId, email: body.email }))
   logAuditAction(c, 'create', 'user', userAccountId, JSON.stringify({ email: body.email, role: userRole, department_id: actualDepartmentId }))
-  
+
   // 发送账号信息邮件（使用 waitUntil 确保异步任务完成）
   const loginUrl = c.req.header('origin') || 'https://cloudflarets.com'
   let emailSent = false
@@ -489,42 +581,7 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
       console.error(`[Employee] Error sending account email to ${body.email}:`, error)
     }
   }
-  
-  // 如果提供了多币种底薪配置，创建对应的记录
-  if (body.probation_salaries && Array.isArray(body.probation_salaries) && body.probation_salaries.length > 0) {
-    for (const salary of body.probation_salaries) {
-      if (salary.currency_id && salary.amount_cents !== undefined && salary.amount_cents !== null) {
-        // 验证币种是否存在
-        const currency = await c.env.DB.prepare('select code from currencies where code=?').bind(salary.currency_id).first<{ code: string }>()
-        if (currency) {
-          const salaryId = uuid()
-          await c.env.DB.prepare(`
-            insert into employee_salaries(
-              id, employee_id, salary_type, currency_id, amount_cents, created_at, updated_at
-            ) values(?,?,?,?,?,?,?)
-          `).bind(salaryId, id, 'probation', salary.currency_id, salary.amount_cents, now, now).run()
-        }
-      }
-    }
-  }
-  
-  if (body.regular_salaries && Array.isArray(body.regular_salaries) && body.regular_salaries.length > 0) {
-    for (const salary of body.regular_salaries) {
-      if (salary.currency_id && salary.amount_cents !== undefined && salary.amount_cents !== null) {
-        // 验证币种是否存在
-        const currency = await c.env.DB.prepare('select code from currencies where code=?').bind(salary.currency_id).first<{ code: string }>()
-        if (currency) {
-          const salaryId = uuid()
-          await c.env.DB.prepare(`
-            insert into employee_salaries(
-              id, employee_id, salary_type, currency_id, amount_cents, created_at, updated_at
-            ) values(?,?,?,?,?,?,?)
-          `).bind(salaryId, id, 'regular', salary.currency_id, salary.amount_cents, now, now).run()
-        }
-      }
-    }
-  }
-  
+
   const created = await c.env.DB.prepare(`
     select 
       e.*,
@@ -545,10 +602,10 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
   if (!(await requireRole(c, ['manager', 'hr', 'finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateEmployeeSchema>>(c)
-  
+
   const record = await c.env.DB.prepare('select * from employees where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('员工')
-  
+
   // 如果更新项目，验证项目是否存在，并处理总部
   if (body.department_id && body.department_id !== record.department_id) {
     let actualDepartmentId = body.department_id
@@ -558,7 +615,8 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
         actualDepartmentId = hqDept.id
       } else {
         // 如果没有"总部"项目，创建一个
-        const hq = await getOrCreateDefaultHQ(c.env.DB)
+        const systemService = new SystemService(c.env.DB)
+        const hq = await systemService.getOrCreateDefaultHQ()
         const newDeptId = uuid()
         await c.env.DB.prepare('insert into departments(id,hq_id,name,active) values(?,?,?,1)')
           .bind(newDeptId, hq.id, '总部').run()
@@ -570,7 +628,7 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
     // 更新department_id为实际的ID
     body.department_id = actualDepartmentId
   }
-  
+
   // 如果更新组织部门，验证它是否存在且属于当前项目（或新项目）
   if (body.org_department_id !== undefined) {
     const targetDeptId = body.department_id || record.department_id
@@ -593,14 +651,14 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
       }
     }
   }
-  
+
   // 如果更新姓名，检查是否重复（同一项目内）
   if (body.name && body.name !== record.name) {
     const deptId = body.department_id || record.department_id
     const existed = await c.env.DB.prepare('select id from employees where name=? and department_id=? and id!=?').bind(body.name, deptId, id).first<{ id: string }>()
     if (existed?.id) throw Errors.DUPLICATE('员工姓名（同一项目内）')
   }
-  
+
   const updates: string[] = []
   const binds: any[] = []
   if (body.name !== undefined) { updates.push('name=?'); binds.push(body.name) }
@@ -623,37 +681,103 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
   if (body.address !== undefined) { updates.push('address=?'); binds.push(body.address || null) }
   if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
   if (body.birthday !== undefined) { updates.push('birthday=?'); binds.push(body.birthday || null) }
-  
+
   if (updates.length === 0) {
     const current = await c.env.DB.prepare(`
       select 
         e.*,
         d.name as department_name,
         od.name as org_department_name,
-        od.code as org_department_code
+        od.code as org_department_code,
+        p.id as position_id,
+        p.code as position_code,
+        p.name as position_name,
+        p.level as position_level,
+        p.scope as position_scope
       from employees e
       left join departments d on e.department_id = d.id
       left join org_departments od on e.org_department_id = od.id
+      left join positions p on p.id = e.position_id and p.active = 1
       where e.id=?
     `).bind(id).first()
     return c.json(current)
   }
-  
+
   updates.push('updated_at=?')
   binds.push(Date.now())
   binds.push(id)
   await c.env.DB.prepare(`update employees set ${updates.join(',')} where id=?`).bind(...binds).run()
-  
+
+  // 如果更新了 department_id、org_department_id 或 position_id，同步更新用户账号
+  if (body.department_id !== undefined || body.org_department_id !== undefined || body.position_id !== undefined) {
+    try {
+      const updatedEmployee = await c.env.DB.prepare('select email, department_id, org_department_id, position_id from employees where id=?').bind(id).first<{ email: string | null, department_id: string | null, org_department_id: string | null, position_id: string | null }>()
+      if (updatedEmployee?.email) {
+        const userUpdateFields: string[] = []
+        const userUpdateBinds: any[] = []
+
+        if (body.department_id !== undefined) {
+          userUpdateFields.push('department_id=?')
+          userUpdateBinds.push(updatedEmployee.department_id)
+        }
+        if (body.org_department_id !== undefined) {
+          userUpdateFields.push('org_department_id=?')
+          userUpdateBinds.push(updatedEmployee.org_department_id)
+        }
+        if (body.position_id !== undefined) {
+          userUpdateFields.push('position_id=?')
+          userUpdateBinds.push(updatedEmployee.position_id)
+        }
+
+        if (userUpdateFields.length > 0) {
+          userUpdateBinds.push(updatedEmployee.email)
+          await c.env.DB.prepare(`update users set ${userUpdateFields.join(',')} where email=?`).bind(...userUpdateBinds).run()
+
+          // 如果更新了 department_id，更新 user_departments 表
+          if (body.department_id !== undefined && updatedEmployee.department_id) {
+            const user = await c.env.DB.prepare('select id from users where email=?').bind(updatedEmployee.email).first<{ id: string }>()
+            if (user?.id) {
+              const existingUd = await c.env.DB.prepare('select id from user_departments where user_id=? and department_id=?').bind(user.id, updatedEmployee.department_id).first<{ id: string }>()
+              if (!existingUd) {
+                const udId = uuid()
+                await c.env.DB.prepare('insert into user_departments(id,user_id,department_id,created_at) values(?,?,?,?)')
+                  .bind(udId, user.id, updatedEmployee.department_id, Date.now()).run()
+              }
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('Error syncing user account in PUT /employees/:id:', {
+        error: error.message,
+        errorStack: error.stack,
+        employeeId: id,
+        body: {
+          department_id: body.department_id,
+          org_department_id: body.org_department_id,
+          position_id: body.position_id
+        }
+      })
+      // 不抛出错误，只记录日志，因为员工信息已经更新成功
+    }
+  }
+
   logAuditAction(c, 'update', 'employee', id, JSON.stringify(body))
   const updated = await c.env.DB.prepare(`
     select 
       e.*,
       d.name as department_name,
       od.name as org_department_name,
-      od.code as org_department_code
+      od.code as org_department_code,
+      p.id as position_id,
+      p.code as position_code,
+      p.name as position_name,
+      p.level as position_level,
+      p.scope as position_scope
     from employees e
     left join departments d on e.department_id = d.id
     left join org_departments od on e.org_department_id = od.id
+    left join positions p on p.id = e.position_id and p.active = 1
     where e.id=?
   `).bind(id).first()
   return c.json(updated)
@@ -665,17 +789,17 @@ employeesRoutes.post('/employees/:id/regularize', validateJson(regularizeEmploye
   if (!(await requireRole(c, ['manager', 'hr', 'finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof regularizeEmployeeSchema>>(c)
-  
+
   const record = await c.env.DB.prepare('select * from employees where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('员工')
-  
+
   if (record.status === 'regular') {
     throw Errors.BUSINESS_ERROR('员工已经转正')
   }
-  
+
   await c.env.DB.prepare('update employees set status=?, regular_date=?, updated_at=? where id=?')
     .bind('regular', body.regular_date, Date.now(), id).run()
-  
+
   logAuditAction(c, 'update', 'employee', id, JSON.stringify({ action: 'regularize', regular_date: body.regular_date }))
   const updated = await c.env.DB.prepare(`
     select 
@@ -697,17 +821,17 @@ employeesRoutes.post('/employees/:id/leave', validateJson(leaveEmployeeSchema), 
   if (!(await requireRole(c, ['manager', 'hr', 'finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof leaveEmployeeSchema>>(c)
-  
+
   const record = await c.env.DB.prepare('select * from employees where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('员工')
-  
+
   if (record.status === 'resigned') {
     throw Errors.BUSINESS_ERROR('员工已经离职')
   }
-  
+
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 更新员工状态为离职
   await c.env.DB.prepare(`
     update employees 
@@ -722,19 +846,19 @@ employeesRoutes.post('/employees/:id/leave', validateJson(leaveEmployeeSchema), 
     now,
     id
   ).run()
-  
+
   // 如果选择禁用账号，更新对应的用户账号状态
   if (body.disable_account !== false && record.email) {
     await c.env.DB.prepare('update users set active=0 where email=?').bind(record.email).run()
   }
-  
+
   logAuditAction(c, 'leave', 'employee', id, JSON.stringify({
     leave_date: body.leave_date,
     leave_type: body.leave_type,
     leave_reason: body.leave_reason,
     disable_account: body.disable_account !== false
   }))
-  
+
   const updated = await c.env.DB.prepare(`
     select 
       e.*,
@@ -746,7 +870,7 @@ employeesRoutes.post('/employees/:id/leave', validateJson(leaveEmployeeSchema), 
     left join org_departments od on e.org_department_id = od.id
     where e.id=?
   `).bind(id).first()
-  
+
   return c.json(updated)
 })
 
@@ -755,25 +879,25 @@ employeesRoutes.post('/employees/:id/rejoin', async (c) => {
   // hr和finance可以办理重新入职，manager也可以
   if (!(await requireRole(c, ['manager', 'hr', 'finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const body = await c.req.json<{ 
+  const body = await c.req.json<{
     join_date?: string  // 新的入职日期，如果不提供则使用原入职日期
     enable_account?: boolean  // 是否启用账号
   }>()
-  
+
   const record = await c.env.DB.prepare('select * from employees where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('员工')
-  
+
   if (record.status !== 'resigned') {
     throw Errors.BUSINESS_ERROR('员工未离职，无法重新入职')
   }
-  
+
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 判断员工状态：如果原状态是regular，恢复为regular；否则恢复为probation
   const newStatus = record.regular_date ? 'regular' : 'probation'
   const newJoinDate = body.join_date || record.join_date
-  
+
   // 更新员工状态
   await c.env.DB.prepare(`
     update employees 
@@ -789,18 +913,18 @@ employeesRoutes.post('/employees/:id/rejoin', async (c) => {
     now,
     id
   ).run()
-  
+
   // 如果选择启用账号，更新对应的用户账号状态
   if (body.enable_account !== false && record.email) {
     await c.env.DB.prepare('update users set active=1 where email=?').bind(record.email).run()
   }
-  
+
   logAuditAction(c, 'rejoin', 'employee', id, JSON.stringify({
     join_date: newJoinDate,
     status: newStatus,
     enable_account: body.enable_account !== false
   }))
-  
+
   const updated = await c.env.DB.prepare(`
     select 
       e.*,
@@ -812,7 +936,7 @@ employeesRoutes.post('/employees/:id/rejoin', async (c) => {
     left join org_departments od on e.org_department_id = od.id
     where e.id=?
   `).bind(id).first()
-  
+
   return c.json(updated)
 })
 
@@ -821,12 +945,12 @@ employeesRoutes.post('/employees/:id/rejoin', async (c) => {
 employeesRoutes.delete('/employees/:id', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  
+
   const record = await c.env.DB.prepare('select * from employees where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('员工')
-  
+
   await c.env.DB.prepare('delete from employees where id=?').bind(id).run()
-  
+
   logAuditAction(c, 'delete', 'employee', id, JSON.stringify({ name: record.name }))
   return c.json({ ok: true })
 })
@@ -840,7 +964,7 @@ employeesRoutes.get('/employee-leaves', validateQuery(employeeLeaveQuerySchema),
   const startDate = query.start_date
   const endDate = query.end_date
   const userId = getCurrentUserId(c)
-  
+
   let sql = `
     select 
       l.*,
@@ -857,11 +981,12 @@ employeesRoutes.get('/employee-leaves', validateQuery(employeeLeaveQuerySchema),
     where 1=1
   `
   const binds: any[] = []
-  
+
   // employee角色只能查看自己创建的请假记录（通过employee_id关联）
   // employee角色只能查看自己的请假记录
   if (await isEmployee(c) && userId) {
-    const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
+    const userService = new UserService(c.env.DB)
+    const userEmployeeId = await userService.getUserEmployeeId(userId)
     if (userEmployeeId) {
       sql += ' and l.employee_id = ?'
       binds.push(userEmployeeId)
@@ -873,19 +998,19 @@ employeesRoutes.get('/employee-leaves', validateQuery(employeeLeaveQuerySchema),
     sql += ' and l.employee_id = ?'
     binds.push(employeeId)
   }
-  
+
   if (startDate) {
     sql += ' and l.start_date >= ?'
     binds.push(startDate)
   }
-  
+
   if (endDate) {
     sql += ' and l.end_date <= ?'
     binds.push(endDate)
   }
-  
+
   sql += ' order by l.start_date desc, l.created_at desc'
-  
+
   const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
@@ -895,7 +1020,7 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
   // employee可以创建自己的请假，hr和finance可以创建任何人的请假
   if (!(await requireRole(c, ['manager', 'hr', 'finance', 'employee']))) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createEmployeeLeaveSchema>>(c)
-  
+
   // employee角色只能为自己创建请假（通过email匹配验证）
   if (await isEmployee(c)) {
     const userId = getCurrentUserId(c)
@@ -907,15 +1032,15 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
       }
     }
   }
-  
+
   // 验证员工是否存在
   const emp = await c.env.DB.prepare('select id from employees where id=?').bind(body.employee_id).first<{ id: string }>()
   if (!emp) throw Errors.NOT_FOUND('员工')
-  
+
   const id = uuid()
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   await c.env.DB.prepare(`
     insert into employee_leaves(
       id, employee_id, leave_type, start_date, end_date, days,
@@ -925,7 +1050,7 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
     id, body.employee_id, body.leave_type, body.start_date, body.end_date,
     body.days, body.reason || null, body.memo || null, userId || null, now, now
   ).run()
-  
+
   logAuditAction(c, 'create', 'employee_leave', id, JSON.stringify({
     employee_id: body.employee_id,
     leave_type: body.leave_type,
@@ -933,7 +1058,7 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
     end_date: body.end_date,
     days: body.days
   }))
-  
+
   const created = await c.env.DB.prepare(`
     select 
       l.*,
@@ -949,7 +1074,7 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
     left join users u2 on u2.id = l.approved_by
     where l.id=?
   `).bind(id).first()
-  
+
   return c.json(created)
 })
 
@@ -966,41 +1091,41 @@ employeesRoutes.put('/employee-leaves/:id', async (c) => {
     reason?: string
     memo?: string
   }>()
-  
+
   const record = await c.env.DB.prepare('select * from employee_leaves where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('请假记录')
-  
+
   // employee角色只能更新自己创建的待审批请假
   const userId = getCurrentUserId(c)
   if (await isEmployee(c) && record.created_by !== userId) {
     throw Errors.FORBIDDEN('员工只能更新自己创建的请假')
   }
-  
+
   // 已审批的记录不允许修改
   if (record.status !== 'pending') {
     throw Errors.BUSINESS_ERROR('已审批或已拒绝的请假不能修改')
   }
-  
+
   const updates: string[] = []
   const binds: any[] = []
-  
+
   if (body.leave_type !== undefined) { updates.push('leave_type=?'); binds.push(body.leave_type) }
   if (body.start_date !== undefined) { updates.push('start_date=?'); binds.push(body.start_date) }
   if (body.end_date !== undefined) { updates.push('end_date=?'); binds.push(body.end_date) }
   if (body.days !== undefined) { updates.push('days=?'); binds.push(body.days) }
   if (body.reason !== undefined) { updates.push('reason=?'); binds.push(body.reason || null) }
   if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
-  
+
   if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   updates.push('updated_at=?')
   binds.push(Date.now())
   binds.push(id)
-  
+
   await c.env.DB.prepare(`update employee_leaves set ${updates.join(',')} where id=?`).bind(...binds).run()
-  
+
   logAuditAction(c, 'update', 'employee_leave', id, JSON.stringify(body))
-  
+
   const updated = await c.env.DB.prepare(`
     select 
       l.*,
@@ -1016,7 +1141,7 @@ employeesRoutes.put('/employee-leaves/:id', async (c) => {
     left join users u2 on u2.id = l.approved_by
     where l.id=?
   `).bind(id).first()
-  
+
   return c.json(updated)
 })
 
@@ -1026,17 +1151,17 @@ employeesRoutes.post('/employee-leaves/:id/approve', validateJson(approveEmploye
   if (!(await requireRole(c, ['manager', 'hr', 'finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof approveEmployeeLeaveSchema>>(c)
-  
+
   const record = await c.env.DB.prepare('select * from employee_leaves where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('请假记录')
-  
+
   if (record.status !== 'pending') {
     throw Errors.BUSINESS_ERROR('请假已处理')
   }
-  
+
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   await c.env.DB.prepare(`
     update employee_leaves 
     set status=?, approved_by=?, approved_at=?, updated_at=?, memo=?
@@ -1049,12 +1174,12 @@ employeesRoutes.post('/employee-leaves/:id/approve', validateJson(approveEmploye
     body.memo || record.memo || null,
     id
   ).run()
-  
+
   logAuditAction(c, 'approve', 'employee_leave', id, JSON.stringify({
     status: body.status,
     memo: body.memo
   }))
-  
+
   const updated = await c.env.DB.prepare(`
     select 
       l.*,
@@ -1070,7 +1195,7 @@ employeesRoutes.post('/employee-leaves/:id/approve', validateJson(approveEmploye
     left join users u2 on u2.id = l.approved_by
     where l.id=?
   `).bind(id).first()
-  
+
   return c.json(updated)
 })
 
@@ -1079,18 +1204,18 @@ employeesRoutes.post('/employee-leaves/:id/approve', validateJson(approveEmploye
 employeesRoutes.delete('/employee-leaves/:id', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  
+
   const record = await c.env.DB.prepare('select * from employee_leaves where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('请假记录')
-  
+
   await c.env.DB.prepare('delete from employee_leaves where id=?').bind(id).run()
-  
+
   logAuditAction(c, 'delete', 'employee_leave', id, JSON.stringify({
     employee_id: record.employee_id,
     start_date: record.start_date,
     end_date: record.end_date
   }))
-  
+
   return c.json({ ok: true })
 })
 
@@ -1105,7 +1230,7 @@ employeesRoutes.get('/expense-reimbursements', validateQuery(expenseReimbursemen
     const endDate = query.end_date
     const status = query.status
     const userId = getCurrentUserId(c)
-    
+
     let sql = `
       select 
         r.*,
@@ -1127,11 +1252,12 @@ employeesRoutes.get('/expense-reimbursements', validateQuery(expenseReimbursemen
       where 1=1
     `
     const binds: any[] = []
-    
+
     // employee角色只能查看自己创建的报销记录（通过employee_id关联）
     // employee角色只能查看自己的请假记录
-  if (await isEmployee(c) && userId) {
-      const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
+    if (await isEmployee(c) && userId) {
+      const userService = new UserService(c.env.DB)
+      const userEmployeeId = await userService.getUserEmployeeId(userId)
       if (userEmployeeId) {
         sql += ' and r.employee_id = ?'
         binds.push(userEmployeeId)
@@ -1143,24 +1269,24 @@ employeesRoutes.get('/expense-reimbursements', validateQuery(expenseReimbursemen
       sql += ' and r.employee_id = ?'
       binds.push(employeeId)
     }
-    
+
     if (startDate) {
       sql += ' and r.expense_date >= ?'
       binds.push(startDate)
     }
-    
+
     if (endDate) {
       sql += ' and r.expense_date <= ?'
       binds.push(endDate)
     }
-    
+
     if (status) {
       sql += ' and r.status = ?'
       binds.push(status)
     }
-    
+
     sql += ' order by r.expense_date desc, r.created_at desc'
-    
+
     const result = await c.env.DB.prepare(sql).bind(...binds).all()
     return c.json(result)
   } catch (error: any) {
@@ -1175,7 +1301,7 @@ employeesRoutes.post('/expense-reimbursements', validateJson(createExpenseSchema
   if (!(await requireRole(c, ['manager', 'hr', 'finance', 'employee']))) throw Errors.FORBIDDEN()
   try {
     const body = getValidatedData<z.infer<typeof createExpenseSchema>>(c)
-    
+
     // employee角色只能为自己创建报销（通过email匹配验证）
     if (await isEmployee(c)) {
       const userId = getCurrentUserId(c)
@@ -1187,19 +1313,19 @@ employeesRoutes.post('/expense-reimbursements', validateJson(createExpenseSchema
         }
       }
     }
-    
+
     // 验证员工是否存在
     const emp = await c.env.DB.prepare('select id from employees where id=?').bind(body.employee_id).first<{ id: string }>()
     if (!emp) throw Errors.NOT_FOUND('员工')
-    
+
     // 验证币种是否存在
     const currency = await c.env.DB.prepare('select code from currencies where code=?').bind(body.currency_id).first<{ code: string }>()
     if (!currency) throw Errors.NOT_FOUND('币种')
-    
+
     const id = uuid()
     const userId = c.get('userId') as string | undefined
     const now = Date.now()
-    
+
     await c.env.DB.prepare(`
       insert into expense_reimbursements(
         id, employee_id, expense_type, amount_cents, expense_date, description,
@@ -1209,14 +1335,14 @@ employeesRoutes.post('/expense-reimbursements', validateJson(createExpenseSchema
       id, body.employee_id, body.expense_type, body.amount_cents, body.expense_date,
       body.description, body.currency_id, body.voucher_url, body.memo || null, userId || null, now, now
     ).run()
-    
+
     logAuditAction(c, 'create', 'expense_reimbursement', id, JSON.stringify({
       employee_id: body.employee_id,
       expense_type: body.expense_type,
       amount_cents: body.amount_cents,
       expense_date: body.expense_date
     }))
-    
+
     const created = await c.env.DB.prepare(`
       select 
         r.*,
@@ -1237,7 +1363,7 @@ employeesRoutes.post('/expense-reimbursements', validateJson(createExpenseSchema
       left join users u2 on u2.id = r.approved_by
       where r.id=?
     `).bind(id).first()
-    
+
     return c.json(created)
   } catch (error: any) {
     console.error('Error creating expense reimbursement:', error)
@@ -1259,24 +1385,24 @@ employeesRoutes.put('/expense-reimbursements/:id', async (c) => {
     voucher_url?: string
     memo?: string
   }>()
-  
+
   const record = await c.env.DB.prepare('select * from expense_reimbursements where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('报销记录')
-  
+
   // employee角色只能更新自己创建的待审批报销
   const userId = getCurrentUserId(c)
   if (await isEmployee(c) && record.created_by !== userId) {
     throw Errors.FORBIDDEN('员工只能更新自己创建的报销')
   }
-  
+
   // 已审批或已支付的记录不允许修改
   if (record.status !== 'pending') {
     throw Errors.BUSINESS_ERROR('已审批、已拒绝或已支付的报销不能修改')
   }
-  
+
   const updates: string[] = []
   const binds: any[] = []
-  
+
   if (body.expense_type !== undefined) { updates.push('expense_type=?'); binds.push(body.expense_type) }
   if (body.amount_cents !== undefined) { updates.push('amount_cents=?'); binds.push(body.amount_cents) }
   if (body.expense_date !== undefined) { updates.push('expense_date=?'); binds.push(body.expense_date) }
@@ -1284,17 +1410,17 @@ employeesRoutes.put('/expense-reimbursements/:id', async (c) => {
   if (body.currency_id !== undefined) { updates.push('currency_id=?'); binds.push(body.currency_id) }
   if (body.voucher_url !== undefined) { updates.push('voucher_url=?'); binds.push(body.voucher_url || null) }
   if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
-  
+
   if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
+
   updates.push('updated_at=?')
   binds.push(Date.now())
   binds.push(id)
-  
+
   await c.env.DB.prepare(`update expense_reimbursements set ${updates.join(',')} where id=?`).bind(...binds).run()
-  
+
   logAuditAction(c, 'update', 'expense_reimbursement', id, JSON.stringify(body))
-  
+
   const updated = await c.env.DB.prepare(`
     select 
       r.*,
@@ -1315,7 +1441,7 @@ employeesRoutes.put('/expense-reimbursements/:id', async (c) => {
     left join users u2 on u2.id = r.approved_by
     where r.id=?
   `).bind(id).first()
-  
+
   return c.json(updated)
 })
 
@@ -1325,23 +1451,23 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
   if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ status: 'approved' | 'rejected', account_id?: string, category_id?: string, memo?: string }>()
-  
+
   if (!body.status || !['approved', 'rejected'].includes(body.status)) {
     throw Errors.VALIDATION_ERROR('status必须为approved或rejected')
   }
-  
+
   const record = await c.env.DB.prepare('select * from expense_reimbursements where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('报销记录')
-  
+
   if (record.status !== 'pending') {
     throw Errors.BUSINESS_ERROR('报销已处理')
   }
-  
+
   // 如果批准，必须提供账户和类别
   if (body.status === 'approved') {
     if (!body.account_id) throw Errors.VALIDATION_ERROR('审批时必须提供account_id')
     if (!body.category_id) throw Errors.VALIDATION_ERROR('审批时必须提供category_id')
-    
+
     // 验证账户存在且币种匹配
     const account = await c.env.DB.prepare('select * from accounts where id=?').bind(body.account_id).first<any>()
     if (!account) throw Errors.NOT_FOUND('账户')
@@ -1349,7 +1475,7 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
     if (account.currency !== record.currency_id) {
       throw Errors.BUSINESS_ERROR('账户币种与报销币种不匹配')
     }
-    
+
     // 验证类别存在
     const category = await c.env.DB.prepare('select * from categories where id=?').bind(body.category_id).first<any>()
     if (!category) throw Errors.NOT_FOUND('类别')
@@ -1357,10 +1483,10 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
       throw Errors.BUSINESS_ERROR('类别必须为支出类型')
     }
   }
-  
+
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
-  
+
   // 更新报销记录状态
   await c.env.DB.prepare(`
     update expense_reimbursements 
@@ -1375,12 +1501,12 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
     body.memo || record.memo || null,
     id
   ).run()
-  
+
   // 如果批准，生成支出记录
   if (body.status === 'approved') {
     const flowId = uuid()
     const amount = record.amount_cents
-    
+
     // 生成凭证号
     const day = String(record.expense_date).replace(/-/g, '')
     const count = await c.env.DB
@@ -1388,14 +1514,15 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
       .bind(record.expense_date).first<{ n: number }>()
     const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
     const voucherNo = `JZ${day}-${seq}`
-    
+
     // 计算账变前金额
-    const balanceBefore = await getAccountBalanceBefore(c.env.DB, body.account_id!, record.expense_date, now)
-    
+    const financeService = new FinanceService(c.env.DB)
+    const balanceBefore = await financeService.getAccountBalanceBefore(body.account_id!, record.expense_date, now)
+
     // 计算账变金额（支出为负）
     const delta = -amount
     const balanceAfter = balanceBefore + delta
-    
+
     // 插入cash_flow记录
     await c.env.DB.prepare(`
       insert into cash_flows(
@@ -1408,7 +1535,7 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
       record.employee_id, body.memo || record.description || null, record.voucher_url || null,
       userId || 'system', now
     ).run()
-    
+
     // 生成账变记录
     const transactionId = uuid()
     await c.env.DB.prepare(`
@@ -1420,7 +1547,7 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
       transactionId, body.account_id, flowId, record.expense_date, 'expense', amount,
       balanceBefore, balanceAfter, now
     ).run()
-    
+
     logAuditAction(c, 'approve', 'expense_reimbursement', id, JSON.stringify({
       status: body.status,
       account_id: body.account_id,
@@ -1435,7 +1562,7 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
       memo: body.memo
     }))
   }
-  
+
   const updated = await c.env.DB.prepare(`
     select 
       r.*,
@@ -1456,7 +1583,7 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
     left join users u2 on u2.id = r.approved_by
     where r.id=?
   `).bind(id).first()
-  
+
   return c.json(updated)
 })
 
@@ -1465,26 +1592,26 @@ employeesRoutes.post('/expense-reimbursements/:id/pay', async (c) => {
   // finance可以标记已支付，manager也可以
   if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  
+
   const record = await c.env.DB.prepare('select * from expense_reimbursements where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('报销记录')
-  
+
   if (record.status !== 'approved') {
     throw Errors.BUSINESS_ERROR('只有已批准的报销可以标记为已支付')
   }
-  
+
   const now = Date.now()
-  
+
   await c.env.DB.prepare(`
     update expense_reimbursements 
     set status='paid', paid_at=?, updated_at=?
     where id=?
   `).bind(now, now, id).run()
-  
+
   logAuditAction(c, 'pay', 'expense_reimbursement', id, JSON.stringify({
     amount_cents: record.amount_cents
   }))
-  
+
   const updated = await c.env.DB.prepare(`
     select 
       r.*,
@@ -1505,7 +1632,7 @@ employeesRoutes.post('/expense-reimbursements/:id/pay', async (c) => {
     left join users u2 on u2.id = r.approved_by
     where r.id=?
   `).bind(id).first()
-  
+
   return c.json(updated)
 })
 
@@ -1514,18 +1641,18 @@ employeesRoutes.post('/expense-reimbursements/:id/pay', async (c) => {
 employeesRoutes.delete('/expense-reimbursements/:id', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  
+
   const record = await c.env.DB.prepare('select * from expense_reimbursements where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('报销记录')
-  
+
   await c.env.DB.prepare('delete from expense_reimbursements where id=?').bind(id).run()
-  
+
   logAuditAction(c, 'delete', 'expense_reimbursement', id, JSON.stringify({
     employee_id: record.employee_id,
     amount_cents: record.amount_cents,
     expense_date: record.expense_date
   }))
-  
+
   return c.json({ ok: true })
 })
 

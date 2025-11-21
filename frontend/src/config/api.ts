@@ -114,8 +114,6 @@ export const api = {
   ipWhitelistRule: `${API_BASE}/api/ip-whitelist/rule`,
   ipWhitelistRuleCreate: `${API_BASE}/api/ip-whitelist/rule/create`,
   ipWhitelistRuleToggle: `${API_BASE}/api/ip-whitelist/rule/toggle`,
-  rolePermissions: `${API_BASE}/api/role-permissions`,
-  rolePermissionsByRole: (role: string) => `${API_BASE}/api/role-permissions/${role}`,
   myPermissions: `${API_BASE}/api/my-permissions`,
   positionPermissions: `${API_BASE}/api/position-permissions`,
   positionPermissionsById: (id: string) => `${API_BASE}/api/position-permissions/${id}`,

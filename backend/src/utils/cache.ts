@@ -84,7 +84,8 @@ export const cacheKeys = {
   currencies: 'currencies:all',
   positions: 'positions:all',
   employees: 'employees:active',
-  rolePermissions: 'role_permissions:all',
-  rolePermissionsByRole: (role: string) => `role_permissions:${role}`,
+  sites: 'sites:all',
+  orgDepartments: 'org_departments:all',
+  orgDepartmentsByProject: (projectId: string | null) => `org_departments:project:${projectId || 'hq'}`,
 }
 

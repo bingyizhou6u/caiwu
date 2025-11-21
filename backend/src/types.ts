@@ -25,6 +25,10 @@ export type AppVariables = {
     scope: string
     permissions: any
   }
+  userEmployee?: {
+    org_department_id: string | null
+    department_id: string | null
+  }
 }
 
 // 已移除固定超级管理员
