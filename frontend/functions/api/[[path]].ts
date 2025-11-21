@@ -1,47 +1,26 @@
-// Pages Functions: 代理 /api/* 请求到绑定的 Worker
-// Service Binding 名称: workers
+// Cloudflare Pages Function to proxy API requests to Workers
 export async function onRequest(context: any) {
-  try {
-    const worker = context.env?.workers as any
-    
-    if (worker) {
-      // 使用 Service Binding 调用 Worker
-      return await worker.fetch(context.request)
-    } else {
-      // 如果没有 Service Binding，回退到直接调用 Worker URL
-      const url = new URL(context.request.url)
-      const workerUrl = `https://caiwu-backend.bingyizhou6u.workers.dev${url.pathname}${url.search}`
-      
-      const workerRequest = new Request(workerUrl, {
-        method: context.request.method,
-        headers: context.request.headers,
-        body: context.request.body,
-      })
-      
-      const response = await fetch(workerRequest)
-      
-      // 创建新的响应，显式复制所有headers（包括Set-Cookie）
-      const responseHeaders = new Headers()
-      response.headers.forEach((value: string, key: string) => {
-        if (key.toLowerCase() === 'set-cookie') {
-          const cookies = response.headers.getSetCookie()
-          cookies.forEach(cookie => {
-            responseHeaders.append('Set-Cookie', cookie)
-          })
-        } else {
-          responseHeaders.set(key, value)
-        }
-      })
-      
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders,
-      })
-    }
-  } catch (error: any) {
-    console.error('Pages Function error:', error)
-    return new Response(`Error: ${error.message}`, { status: 500 })
-  }
+  const { request, env } = context
+  const url = new URL(request.url)
+  
+  // 将 /api/* 请求代理到后端 Workers
+  const backendUrl = 'https://caiwu-backend.bingyizhou6u.workers.dev' + url.pathname + url.search
+  
+  // 复制请求头
+  const headers = new Headers(request.headers)
+  headers.set('X-Forwarded-Host', url.hostname)
+  
+  // 转发请求到后端
+  const response = await fetch(backendUrl, {
+    method: request.method,
+    headers: headers,
+    body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
+  })
+  
+  // 返回响应
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  })
 }
-
