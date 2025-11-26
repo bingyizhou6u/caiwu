@@ -24,7 +24,7 @@ authRoutes.post('/auth/login-password', validateJson(loginSchema), async (c) => 
       const cookieOptions: any = {
         httpOnly: true,
         sameSite: 'Lax',
-        secure: true,
+        secure: isSecure,
         path: '/',
         maxAge: 60 * 60 * 24 * 7 // 7 days
       }
@@ -79,7 +79,7 @@ authRoutes.post('/auth/bind-totp-first', validateJson(bindTotpSchema), async (c)
     const cookieOptions: any = {
       httpOnly: true,
       sameSite: 'Lax',
-      secure: false,
+      secure: isSecure,
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // 7 days
     }
@@ -118,40 +118,42 @@ authRoutes.get('/me', async (c) => {
       }
     }
 
-    if (!sid) return c.json({ loggedIn: false })
+    if (!sid) return c.json({ user: null })
 
     const authService = new AuthService(c.env.DB)
     const session = await authService.getSession(sid)
 
-    if (!session) return c.json({ loggedIn: false })
+    if (!session) return c.json({ user: null })
 
     const userService = new UserService(c.env.DB)
     const user = await userService.getUserById(session.user_id)
-    if (!user) return c.json({ loggedIn: false })
+    if (!user) return c.json({ user: null })
 
     const position = await userService.getUserPosition(user.id)
-    if (!position) return c.json({ loggedIn: false, error: 'employee record not found' })
+    if (!position) return c.json({ user: null })
 
     const role = userService.getRoleByPositionCode(position.code)
 
     return c.json({
-      loggedIn: true,
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: role,
-      position: {
-        id: position.id,
-        code: position.code,
-        name: position.name,
-        level: position.level,
-        scope: position.scope,
-        canViewReports: position.code === 'hq_admin' || position.code === 'hq_finance' || position.permissions?.reports === true
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: role,
+        position: {
+          id: position.id,
+          code: position.code,
+          name: position.name,
+          level: position.level,
+          scope: position.scope,
+          permissions: position.permissions || {},
+          canViewReports: position.code === 'hq_admin' || position.code === 'hq_finance' || position.permissions?.reports === true
+        }
       }
     })
   } catch (error: any) {
     console.error('[GET /me] Error:', error)
-    return c.json({ loggedIn: false })
+    return c.json({ user: null })
   }
 })
 
