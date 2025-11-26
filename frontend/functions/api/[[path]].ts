@@ -3,13 +3,18 @@ export async function onRequest(context: any) {
   const { request, env } = context
   const url = new URL(request.url)
   
+  // 获取路径（从 URL 中提取 /api/ 之后的部分）
+  const apiPath = url.pathname.startsWith('/api/') 
+    ? url.pathname.substring(5) // 移除 '/api/' 前缀
+    : url.pathname.substring(1)  // 移除开头的 '/'
+  
   // 将 /api/* 请求代理到后端 Workers
-  const backendUrl = 'https://caiwu-backend.bingyizhou6u.workers.dev' + url.pathname + url.search
+  const backendUrl = 'https://caiwu-backend.bingyizhou6u.workers.dev/api/' + apiPath + url.search
   
   // 复制请求头，确保 Cookie 被正确传递
   const headers = new Headers(request.headers)
   headers.set('X-Forwarded-Host', url.hostname)
-  headers.set('X-Forwarded-Proto', url.protocol.slice(0, -1)) // 移除末尾的 ':'
+  headers.set('X-Forwarded-Proto', url.protocol.slice(0, -1))
   
   // 转发请求到后端
   const response = await fetch(backendUrl, {
@@ -26,9 +31,9 @@ export async function onRequest(context: any) {
   if (setCookieHeader) {
     // 移除 domain 设置，让浏览器使用当前域名
     const modifiedCookie = setCookieHeader
-      .replace(/;\s*domain=[^;]+/gi, '') // 移除 domain 设置
-      .replace(/;\s*secure/gi, '; Secure') // 确保 secure 标志
-      .replace(/;\s*samesite=[^;]+/gi, '; SameSite=Lax') // 确保 SameSite
+      .replace(/;\s*domain=[^;]+/gi, '')
+      .replace(/;\s*secure/gi, '; Secure')
+      .replace(/;\s*samesite=[^;]+/gi, '; SameSite=Lax')
     
     responseHeaders.set('Set-Cookie', modifiedCookie)
     responseHeaders.set('Access-Control-Allow-Credentials', 'true')
