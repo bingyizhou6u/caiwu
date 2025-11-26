@@ -11,20 +11,26 @@ export async function onRequest(context: any) {
   headers.set('X-Forwarded-Host', url.hostname)
   headers.set('X-Forwarded-Proto', url.protocol.slice(0, -1)) // 移除末尾的 ':'
   
-  // 转发请求到后端，确保 credentials 被包含
+  // 转发请求到后端
   const response = await fetch(backendUrl, {
     method: request.method,
     headers: headers,
     body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
   })
   
-  // 创建响应头，确保 CORS 和 Cookie 设置正确
+  // 创建响应头
   const responseHeaders = new Headers(response.headers)
   
-  // 确保 Set-Cookie 头被正确传递
-  // 如果后端设置了 Cookie，需要确保它被正确转发
-  if (response.headers.get('Set-Cookie')) {
-    // Set-Cookie 头会被自动传递，但我们需要确保 CORS 设置正确
+  // 处理 Set-Cookie 头：修改 domain 为前端域名
+  const setCookieHeader = response.headers.get('Set-Cookie')
+  if (setCookieHeader) {
+    // 移除 domain 设置，让浏览器使用当前域名
+    const modifiedCookie = setCookieHeader
+      .replace(/;\s*domain=[^;]+/gi, '') // 移除 domain 设置
+      .replace(/;\s*secure/gi, '; Secure') // 确保 secure 标志
+      .replace(/;\s*samesite=[^;]+/gi, '; SameSite=Lax') // 确保 SameSite
+    
+    responseHeaders.set('Set-Cookie', modifiedCookie)
     responseHeaders.set('Access-Control-Allow-Credentials', 'true')
     const origin = request.headers.get('Origin')
     if (origin) {
