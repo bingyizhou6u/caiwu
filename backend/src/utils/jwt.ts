@@ -63,7 +63,7 @@ export type AuthTokenPayload = {
   sub: string
   email: string
   name: string
-  role: string
+  role?: string  // 可选，从 position 中推导
   position?: any
   iat?: number
   exp?: number

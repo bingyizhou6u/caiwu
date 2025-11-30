@@ -1,10 +1,9 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, requirePermission, canRead, canWrite } from '../utils/permissions.js'
+import { isHQDirector, isProjectDirector } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { getUserByEmail } from '../utils/db.js'
-import { applyDataScope } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateQuery, getValidatedQuery } from '../utils/validator.js'
 import { auditLogQuerySchema } from '../schemas/common.schema.js'
@@ -13,7 +12,8 @@ import type { z } from 'zod'
 export const auditRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
 auditRoutes.get('/audit-logs', validateQuery(auditLogQuerySchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  // 只有负责人可以查看审计日志
+  if (!isHQDirector(c) && !isProjectDirector(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof auditLogQuerySchema>>(c)
   const limit = query.limit ?? 100
   const offset = query.offset ?? 0

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { requireRole, canRead } from '../../utils/permissions.js'
+import { isHQDirector, isHQFinance } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { validateJson, getValidatedData } from '../../utils/validator.js'
@@ -10,7 +10,7 @@ import { z } from 'zod'
 export const currenciesRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
 currenciesRoutes.get('/', async (c) => {
-    if (!canRead(c)) throw Errors.FORBIDDEN()
+    // 所有人都可以查看
     const search = c.req.query('search')
 
     if (search) {
@@ -28,7 +28,7 @@ currenciesRoutes.get('/', async (c) => {
 })
 
 currenciesRoutes.post('/', validateJson(createCurrencySchema), async (c) => {
-    if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+    if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
     const body = getValidatedData<z.infer<typeof createCurrencySchema>>(c)
     const code = body.code
 
@@ -42,7 +42,7 @@ currenciesRoutes.post('/', validateJson(createCurrencySchema), async (c) => {
 })
 
 currenciesRoutes.put('/:code', validateJson(updateCurrencySchema), async (c) => {
-    if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+    if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
     const code = c.req.param('code').toUpperCase()
     const body = getValidatedData<z.infer<typeof updateCurrencySchema>>(c)
 
@@ -58,7 +58,7 @@ currenciesRoutes.put('/:code', validateJson(updateCurrencySchema), async (c) => 
 })
 
 currenciesRoutes.delete('/:code', async (c) => {
-    if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+    if (!isHQDirector(c)) throw Errors.FORBIDDEN()
     const code = c.req.param('code').toUpperCase()
     const currency = await c.env.DB.prepare('select name from currencies where code=?').bind(code).first<{ name: string }>()
     if (!currency) throw Errors.NOT_FOUND('币种')

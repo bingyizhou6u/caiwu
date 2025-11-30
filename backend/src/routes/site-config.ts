@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { v4 as uuid } from 'uuid'
-import { requireRole } from '../utils/permissions.js'
+import { isHQDirector } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import type { Env } from '../types.js'
 import { Errors } from '../utils/errors.js'
@@ -12,7 +12,7 @@ const siteConfigRoutes = new Hono<{ Variables: { userId?: string, userRole?: str
 
 // 获取所有配置
 siteConfigRoutes.get('/site-config', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   
   try {
     const configs = await c.env.DB.prepare('select * from site_config order by config_key').all<{
@@ -48,7 +48,7 @@ siteConfigRoutes.get('/site-config', async (c) => {
 
 // 更新配置
 siteConfigRoutes.put('/site-config/:key', validateJson(updateSiteConfigSchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   
   try {
     const key = c.req.param('key')
@@ -81,7 +81,7 @@ siteConfigRoutes.put('/site-config/:key', validateJson(updateSiteConfigSchema), 
 
 // 批量更新配置
 siteConfigRoutes.put('/site-config', validateJson(batchUpdateSiteConfigSchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   
   try {
     const body = getValidatedData<z.infer<typeof batchUpdateSiteConfigSchema>>(c)

@@ -157,7 +157,7 @@ export const MainLayout: React.FC = () => {
                 <div style={{ padding: '4px 0' }}>
                     <div style={{ fontWeight: 'bold' }}>{user?.name}</div>
                     <div style={{ fontSize: '12px', color: '#888' }}>{user?.email}</div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>{user?.role}</div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>{user?.position?.name}</div>
                 </div>
             ),
         },
@@ -185,7 +185,7 @@ export const MainLayout: React.FC = () => {
                         setOpenKeys(keys)
                         localStorage.setItem('openMenuKeys', JSON.stringify(keys))
                     }}
-                    items={buildMenuItems(user?.role || '', user)}
+                    items={buildMenuItems(user)}
                     onClick={({ key }) => addOrActivateTab(key)}
                 />
             </Sider>

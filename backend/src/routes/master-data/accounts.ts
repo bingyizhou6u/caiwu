@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { requireRole, canRead } from '../../utils/permissions.js'
+import { isHQDirector, isHQFinance } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { uuid } from '../../utils/db.js'
 import { Errors } from '../../utils/errors.js'
@@ -11,7 +11,7 @@ import { z } from 'zod'
 export const accountsRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
 accountsRoutes.get('/', async (c) => {
-    if (!canRead(c)) throw Errors.FORBIDDEN()
+    // 所有人都可以查看
     const search = c.req.query('search')
 
     if (search) {
@@ -34,7 +34,7 @@ accountsRoutes.get('/', async (c) => {
 
 // 账户明细查询：查询指定账户的所有账变记录
 accountsRoutes.get('/:id/transactions', async (c) => {
-    if (!canRead(c)) throw Errors.FORBIDDEN()
+    // 所有人都可以查看
     try {
         const accountId = c.req.param('id')
         const limit = parseInt(c.req.query('limit') || '100')
@@ -63,7 +63,7 @@ accountsRoutes.get('/:id/transactions', async (c) => {
 })
 
 accountsRoutes.post('/', async (c) => {
-    if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+    if (!isHQFinance(c)) throw Errors.FORBIDDEN()
     const body = await c.req.json<{ name: string, type: string, currency?: string, alias?: string, account_number?: string, opening_cents?: number, manager?: string }>()
     const id = uuid()
     const currency = (body.currency ?? 'CNY').trim().toUpperCase()
@@ -76,7 +76,7 @@ accountsRoutes.post('/', async (c) => {
 })
 
 accountsRoutes.put('/:id', async (c) => {
-    if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+    if (!isHQFinance(c)) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const body = await c.req.json<{ name?: string, type?: string, currency?: string, alias?: string, account_number?: string, active?: number, manager?: string }>()
     const updates: string[] = []
@@ -101,7 +101,7 @@ accountsRoutes.put('/:id', async (c) => {
 })
 
 accountsRoutes.delete('/:id', async (c) => {
-    if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+    if (!isHQDirector(c)) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const account = await c.env.DB.prepare('select name from accounts where id=?').bind(id).first<{ name: string }>()
     if (!account) throw Errors.NOT_FOUND('账户')

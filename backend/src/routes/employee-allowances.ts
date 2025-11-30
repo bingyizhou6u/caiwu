@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, canRead } from '../utils/permissions.js'
+import { isHQDirector, isHQHR, isHQFinance, isProjectDirector } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -12,7 +12,7 @@ export const employeeAllowancesRoutes = new Hono<{ Bindings: Env, Variables: App
 
 // 获取员工的补贴配置
 employeeAllowancesRoutes.get('/employee-allowances', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看（通过数据权限过滤）
   
   const employeeId = c.req.query('employee_id')
   const allowanceType = c.req.query('allowance_type') // living, housing, transportation, meal
@@ -44,7 +44,9 @@ employeeAllowancesRoutes.get('/employee-allowances', async (c) => {
 
 // 批量更新员工的补贴配置
 employeeAllowancesRoutes.put('/employee-allowances/batch', validateJson(batchUpdateEmployeeAllowancesSchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance', 'hr']))) throw Errors.FORBIDDEN()
+  // 只有负责人和HR/财务可以修改
+  const canUpdate = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   
   const body = getValidatedData<z.infer<typeof batchUpdateEmployeeAllowancesSchema>>(c)
   
@@ -105,7 +107,9 @@ employeeAllowancesRoutes.put('/employee-allowances/batch', validateJson(batchUpd
 
 // 删除员工的补贴配置
 employeeAllowancesRoutes.delete('/employee-allowances/:id', async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance', 'hr']))) throw Errors.FORBIDDEN()
+  // 只有负责人和HR/财务可以删除
+  const canDelete = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
+  if (!canDelete) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   

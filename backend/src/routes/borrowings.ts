@@ -1,9 +1,8 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, canRead } from '../utils/permissions.js'
+import { hasPositionCode, getUserPosition, getDataAccessFilter, isTeamDeveloper, getUserId } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid, getUserEmployeeId } from '../utils/db.js'
-import { applyDataScope, isEmployee, getCurrentUserId } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery } from '../utils/validator.js'
 import { isValidIPAddress } from '../utils/validation.js'
@@ -15,7 +14,7 @@ export const borrowingsRoutes = new Hono<{ Bindings: Env, Variables: AppVariable
 
 // 借款管理 - 列表
 borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof borrowingQuerySchema>>(c)
   const userId = query.user_id
 
@@ -31,9 +30,9 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
   `
   const binds: any[] = []
 
-  // employee角色只能查看自己的借款记录
-  if (await isEmployee(c)) {
-    const currentUserId = getCurrentUserId(c)
+  // 组员只能查看自己的借款记录
+  if (isTeamDeveloper(c)) {
+    const currentUserId = getUserId(c)
     if (currentUserId) {
       sql += ' where b.user_id = ?'
       binds.push(currentUserId)
@@ -53,7 +52,7 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
 
 // 借款管理 - 创建
 borrowingsRoutes.post('/borrowings', validateJson(createBorrowingSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createBorrowingSchema>>(c)
 
   // 验证用户存在
@@ -102,7 +101,7 @@ borrowingsRoutes.post('/borrowings', validateJson(createBorrowingSchema), async 
 
 // 还款管理 - 列表
 borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof repaymentQuerySchema>>(c)
   const borrowingId = query.borrowing_id
 
@@ -118,9 +117,9 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
   `
   const binds: any[] = []
 
-  // employee角色只能查看自己的还款记录（通过borrowing关联）
-  if (await isEmployee(c)) {
-    const currentUserId = getCurrentUserId(c)
+  // 组员只能查看自己的还款记录（通过borrowing关联）
+  if (isTeamDeveloper(c)) {
+    const currentUserId = getUserId(c)
     if (currentUserId) {
       sql += ' where b.user_id = ?'
       binds.push(currentUserId)
@@ -140,7 +139,7 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
 
 // 还款管理 - 创建
 borrowingsRoutes.post('/repayments', validateJson(createRepaymentSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createRepaymentSchema>>(c)
 
   // 验证借款记录存在
@@ -192,10 +191,10 @@ borrowingsRoutes.post('/repayments', validateJson(createRepaymentSchema), async 
 
 // 借款统计 - 查询每个人的借款余额
 borrowingsRoutes.get('/borrowings/balance', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
 
   // 使用 user_id 计算每个用户的借款余额
-  const sql = `
+  let sql = `
     select 
       u.id as user_id, 
       u.name as borrower_name, 
@@ -227,8 +226,14 @@ borrowingsRoutes.get('/borrowings/balance', async (c) => {
   `
 
   // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, [])
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const { where, binds: scopeBinds } = getDataAccessFilter(c, 'u')
+  if (where !== '1=1') {
+    // SQL 中已有 where 子句，使用 AND 追加条件
+    const finalSql = sql.replace('where u.active = 1', `where u.active = 1 and ${where}`)
+    const rows = await c.env.DB.prepare(finalSql).bind(...scopeBinds).all()
+    return c.json({ results: rows.results ?? [] })
+  }
+  const rows = await c.env.DB.prepare(sql).all()
   return c.json({ results: rows.results ?? [] })
 })
 

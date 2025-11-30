@@ -1,9 +1,8 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, requirePermission, canRead, canWrite } from '../utils/permissions.js'
+import { isHQDirector, isHQFinance, isProjectDirector, isProjectFinance, getDataAccessFilter, getUserEmployee } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
-import { applyDataScope } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery, validateParam, getValidatedParams } from '../utils/validator.js'
 import { createSiteBillSchema, updateSiteBillSchema } from '../schemas/business.schema.js'
@@ -14,7 +13,7 @@ export const siteBillsRoutes = new Hono<{ Bindings: Env, Variables: AppVariables
 
 // 站点账单管理 - 列表
 siteBillsRoutes.get('/site-bills', validateQuery(siteBillQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看（通过数据权限过滤）
   const query = getValidatedQuery<z.infer<typeof siteBillQuerySchema>>(c)
   const siteId = query.site_id
   const startDate = query.start_date
@@ -69,14 +68,20 @@ siteBillsRoutes.get('/site-bills', validateQuery(siteBillQuerySchema), async (c)
   sql += ' order by sb.bill_date desc, sb.created_at desc'
   
   // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const scopeFilter = getDataAccessFilter(c, 'sb')
+  if (scopeFilter.where !== '1=1') {
+    sql += ` AND ${scopeFilter.where}`
+    binds.push(...scopeFilter.binds)
+  }
+  
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
 
 // 站点账单管理 - 创建
 siteBillsRoutes.post('/site-bills', validateJson(createSiteBillSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  const canCreate = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canCreate) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createSiteBillSchema>>(c)
   
   // 验证站点存在
@@ -159,7 +164,8 @@ siteBillsRoutes.post('/site-bills', validateJson(createSiteBillSchema), async (c
 
 // 站点账单管理 - 更新
 siteBillsRoutes.put('/site-bills/:id', validateParam(idParamSchema), validateJson(updateSiteBillSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof updateSiteBillSchema>>(c)
@@ -233,7 +239,8 @@ siteBillsRoutes.put('/site-bills/:id', validateParam(idParamSchema), validateJso
 
 // 站点账单管理 - 删除
 siteBillsRoutes.delete('/site-bills/:id', validateParam(idParamSchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  const canDelete = isHQDirector(c) || isHQFinance(c)
+  if (!canDelete) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   
@@ -252,7 +259,7 @@ siteBillsRoutes.delete('/site-bills/:id', validateParam(idParamSchema), async (c
 
 // 站点账单管理 - 获取详情
 siteBillsRoutes.get('/site-bills/:id', validateParam(idParamSchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   

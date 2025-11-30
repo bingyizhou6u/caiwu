@@ -1,12 +1,11 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, canRead } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getUserEmployee, getUserId, isHQDirector, isHQFinance, isProjectDirector, isProjectFinance, getDataAccessFilter, applyDataScope } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { SystemService } from '../services/SystemService.js'
 import { FinanceService } from '../services/FinanceService.js'
 import { UserService } from '../services/UserService.js'
-import { applyDataScope } from '../utils/permissions.js'
 import { parseCsv } from '../utils/csv.js'
 import { buildUpdateFields, buildUpdateSql } from '../utils/sql.js'
 import { Errors } from '../utils/errors.js'
@@ -59,7 +58,7 @@ importRoutes.post('/init-if-empty', async (c) => {
 
 // Minimal CRUD for headquarters/departments/sites (for scaffolding)
 importRoutes.get('/hq', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const rows = await c.env.DB.prepare('select * from headquarters').all()
   return c.json(rows.results ?? [])
 })
@@ -70,14 +69,14 @@ importRoutes.post('/hq', async (c) => {
 })
 
 importRoutes.get('/departments', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const rows = await c.env.DB.prepare('select * from departments').all()
   return c.json(rows.results ?? [])
 })
 
 importRoutes.post('/departments', validateJson(createDepartmentSchema), async (c) => {
   try {
-    if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+    if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
 
     const body = getValidatedData<z.infer<typeof createDepartmentSchema>>(c)
     const systemService = new SystemService(c.env.DB)
@@ -105,14 +104,14 @@ importRoutes.post('/departments', validateJson(createDepartmentSchema), async (c
 })
 
 importRoutes.get('/sites', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const rows = await c.env.DB.prepare('select * from sites').all()
   return c.json(rows.results ?? [])
 })
 
 importRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
   try {
-    if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+    if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
 
     const body = getValidatedData<z.infer<typeof createSiteSchema>>(c)
 
@@ -135,7 +134,7 @@ importRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
 
 // Update and delete operations
 importRoutes.put('/hq/:id', async (c) => {
-  if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ name?: string, active?: number }>()
 
@@ -151,7 +150,7 @@ importRoutes.put('/hq/:id', async (c) => {
 })
 
 importRoutes.delete('/hq/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const dept = await c.env.DB.prepare('select name from headquarters where id=?').bind(id).first<{ name: string }>()
@@ -163,7 +162,7 @@ importRoutes.delete('/hq/:id', async (c) => {
 })
 
 importRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateDepartmentSchema>>(c)
@@ -193,7 +192,7 @@ importRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), async
 })
 
 importRoutes.delete('/departments/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const dept = await c.env.DB.prepare('select name from departments where id=?').bind(id).first<{ name: string }>()
@@ -217,7 +216,7 @@ importRoutes.delete('/departments/:id', async (c) => {
 })
 
 importRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateSiteSchema>>(c)
@@ -236,7 +235,7 @@ importRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) => {
 })
 
 importRoutes.delete('/sites/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const site = await c.env.DB.prepare('select name from sites where id=?').bind(id).first<{ name: string }>()
@@ -249,7 +248,7 @@ importRoutes.delete('/sites/:id', async (c) => {
 
 // Accounts
 importRoutes.get('/accounts', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const search = c.req.query('search')
   if (search) {
     const like = `%${search.toLowerCase()}%`
@@ -267,7 +266,7 @@ importRoutes.get('/accounts', async (c) => {
 
 // 账户明细查询：查询指定账户的所有账变记录（必须在 /api/accounts/:id 之前定义）
 importRoutes.get('/accounts/:id/transactions', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   try {
     const accountId = c.req.param('id')
     const limit = parseInt(c.req.query('limit') || '100')
@@ -296,7 +295,7 @@ importRoutes.get('/accounts/:id/transactions', async (c) => {
 })
 
 importRoutes.post('/accounts', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const body = await c.req.json<{ name: string, type: string, currency?: string, alias?: string, account_number?: string, opening_cents?: number }>()
   const id = uuid()
   const currency = (body.currency ?? 'CNY').trim().toUpperCase()
@@ -309,7 +308,7 @@ importRoutes.post('/accounts', async (c) => {
 })
 
 importRoutes.put('/accounts/:id', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ name?: string, type?: string, currency?: string, alias?: string, account_number?: string, active?: number }>()
   const updates: string[] = []
@@ -333,7 +332,7 @@ importRoutes.put('/accounts/:id', async (c) => {
 })
 
 importRoutes.delete('/accounts/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const account = await c.env.DB.prepare('select name from accounts where id=?').bind(id).first<{ name: string }>()
   if (!account) throw Errors.NOT_FOUND('账户')
@@ -348,7 +347,7 @@ importRoutes.delete('/accounts/:id', async (c) => {
 })
 
 importRoutes.get('/currencies', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const search = c.req.query('search')
   if (search) {
     const like = `%${search.toUpperCase()}%`
@@ -361,7 +360,8 @@ importRoutes.get('/currencies', async (c) => {
 })
 
 importRoutes.post('/currencies', validateJson(createCurrencySchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  const canManage = isHQDirector(c) || isProjectDirector(c) || isHQFinance(c) || isProjectFinance(c)
+  if (!canManage) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createCurrencySchema>>(c)
   const code = body.code
 
@@ -375,7 +375,8 @@ importRoutes.post('/currencies', validateJson(createCurrencySchema), async (c) =
 })
 
 importRoutes.put('/currencies/:code', validateJson(updateCurrencySchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  const canManage = isHQDirector(c) || isProjectDirector(c) || isHQFinance(c) || isProjectFinance(c)
+  if (!canManage) throw Errors.FORBIDDEN()
   const code = c.req.param('code').toUpperCase()
   const body = getValidatedData<z.infer<typeof updateCurrencySchema>>(c)
 
@@ -391,7 +392,7 @@ importRoutes.put('/currencies/:code', validateJson(updateCurrencySchema), async 
 })
 
 importRoutes.delete('/currencies/:code', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const code = c.req.param('code').toUpperCase()
   const currency = await c.env.DB.prepare('select name from currencies where code=?').bind(code).first<{ name: string }>()
   if (!currency) throw Errors.NOT_FOUND('币种')
@@ -407,13 +408,13 @@ importRoutes.delete('/currencies/:code', async (c) => {
 
 // Categories
 importRoutes.get('/categories', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const rows = await c.env.DB.prepare('select * from categories order by kind,name').all()
   return c.json(rows.results ?? [])
 })
 
 importRoutes.post('/categories', validateJson(createCategorySchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createCategorySchema>>(c)
 
   // 检查类别名称是否已存在
@@ -429,7 +430,7 @@ importRoutes.post('/categories', validateJson(createCategorySchema), async (c) =
 
 // Update category (no delete allowed). Only name/kind allowed, and kind restricted to income|expense
 importRoutes.put('/categories/:id', validateJson(updateCategorySchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateCategorySchema>>(c)
 
@@ -452,7 +453,7 @@ importRoutes.put('/categories/:id', validateJson(updateCategorySchema), async (c
 })
 
 importRoutes.delete('/categories/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const category = await c.env.DB.prepare('select name from categories where id=?').bind(id).first<{ name: string }>()
   if (!category) throw Errors.NOT_FOUND('类别')
@@ -468,7 +469,7 @@ importRoutes.delete('/categories/:id', async (c) => {
 
 // Simple cash flow create/list
 importRoutes.get('/flows', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   let sql = `
     select f.*, a.name as account_name, coalesce(c.name,'') as category_name
     from cash_flows f
@@ -485,7 +486,7 @@ importRoutes.get('/flows', async (c) => {
 
 // 文件上传：凭证上传
 importRoutes.post('/upload/voucher', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
 
   const formData = await c.req.formData()
   const file = formData.get('file') as File
@@ -539,7 +540,7 @@ importRoutes.post('/upload/voucher', async (c) => {
 
 // 文件下载：凭证访问 - 使用通配符路由
 importRoutes.get('/vouchers/*', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
 
   // 获取完整路径（去掉 /api/vouchers/ 前缀）
   const requestPath = c.req.path
@@ -572,7 +573,7 @@ importRoutes.get('/vouchers/*', async (c) => {
 
 
 importRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createCashFlowSchema>>(c)
   const id = uuid()
   const now = Date.now()
@@ -661,7 +662,7 @@ async function nextDocNo(db: D1Database, kind: 'AR' | 'AP', date: string) {
 }
 
 importRoutes.get('/ar/docs', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const kind = c.req.query('kind') // AR|AP optional
   const status = c.req.query('status') // optional
   let sql = 'select d.*, coalesce(s.sum_settle,0) as settled_cents, st.name as site_name from ar_ap_docs d left join (select doc_id, sum(settle_amount_cents) as sum_settle from settlements group by doc_id) s on s.doc_id=d.id left join sites st on st.id=d.site_id'
@@ -679,7 +680,7 @@ importRoutes.get('/ar/docs', async (c) => {
 })
 
 importRoutes.post('/ar/docs', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const body = await c.req.json<any>()
   const id = uuid()
   const issue = body.issue_date ?? todayStr()
@@ -696,7 +697,7 @@ importRoutes.post('/ar/docs', async (c) => {
 })
 
 importRoutes.get('/ar/settlements', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const docId = c.req.query('doc_id')
   if (!docId) throw Errors.VALIDATION_ERROR('doc_id参数必填')
   const rows = await c.env.DB.prepare('select * from settlements where doc_id=? order by settle_date asc').bind(docId).all()
@@ -713,7 +714,7 @@ async function refreshDocStatus(db: D1Database, docId: string) {
 }
 
 importRoutes.post('/ar/settlements', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const body = await c.req.json<any>()
   const id = uuid()
   const amount = Number(body.settle_amount_cents)
@@ -729,7 +730,7 @@ importRoutes.post('/ar/settlements', async (c) => {
 
 // Statement
 importRoutes.get('/ar/statement', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const docId = c.req.query('doc_id')
   if (!docId) throw Errors.VALIDATION_ERROR('doc_id参数必填')
   const doc = await c.env.DB.prepare('select * from ar_ap_docs where id=?').bind(docId).first<any>()
@@ -741,7 +742,7 @@ importRoutes.get('/ar/statement', async (c) => {
 
 // 确认AR/AP文档，生成对应的收入/支出记录
 importRoutes.post('/ar/confirm', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const body = await c.req.json<any>()
   const docId = body.doc_id
   if (!docId) throw Errors.VALIDATION_ERROR('doc_id参数必填')
@@ -830,13 +831,13 @@ importRoutes.post('/ar/confirm', async (c) => {
 // ================= Reports V1 =================
 // Department cash summary
 importRoutes.get('/reports/department-cash', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const start = c.req.query('start')
   const end = c.req.query('end')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
 
-  const role = c.get('userRole') as string | undefined
-  const userId = c.get('userId') as string | undefined
+  const position = getUserPosition(c)
+  const employee = getUserEmployee(c)
   let sql = `
     select d.id as department_id, d.name as department_name,
       coalesce(sum(case when f.type='income' then f.amount_cents end),0) as income_cents,
@@ -847,14 +848,14 @@ importRoutes.get('/reports/department-cash', async (c) => {
   let binds: any[] = [start, end]
 
   // 应用数据权限过滤
-  if (role !== 'manager' && role !== 'finance' && userId) {
-    const userService = new UserService(c.env.DB)
-    const deptIds = await userService.getUserDepartmentIds(userId)
-    const deptId = deptIds[0]
-    if (deptId) {
-      sql += ' where d.id=?'
-      binds.push(deptId)
-    }
+  if (position.level === 2 && employee?.department_id) {
+    // 项目人员: 只能访问本项目数据
+    sql += ' where d.id=?'
+    binds.push(employee.department_id)
+  } else if (position.level === 3 && employee?.org_department_id) {
+    // 组人员: 只能访问本组数据
+    sql += ' where d.id in (select id from departments where org_department_id=?)'
+    binds.push(employee.org_department_id)
   }
 
   sql += ' group by d.id, d.name order by d.name'
@@ -865,7 +866,7 @@ importRoutes.get('/reports/department-cash', async (c) => {
 
 // Site cash summary + growth vs previous equal-length period
 importRoutes.get('/reports/site-growth', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const start = c.req.query('start')
   const end = c.req.query('end')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
@@ -877,8 +878,8 @@ importRoutes.get('/reports/site-growth', async (c) => {
   const prevStartStr = prevStart.toISOString().slice(0, 10)
   const prevEndStr = prevEnd.toISOString().slice(0, 10)
 
-  const role = c.get('userRole') as string | undefined
-  const userId = c.get('userId') as string | undefined
+  const position = getUserPosition(c)
+  const employee = getUserEmployee(c)
 
   let curSql = `
     select s.id as site_id, s.name as site_name,
@@ -898,16 +899,18 @@ importRoutes.get('/reports/site-growth', async (c) => {
   let prevBinds: any[] = [prevStartStr, prevEndStr]
 
   // 应用数据权限过滤
-  if (role !== 'manager' && role !== 'finance' && userId) {
-    const userService = new UserService(c.env.DB)
-    const deptIds = await userService.getUserDepartmentIds(userId)
-    const deptId = deptIds[0]
-    if (deptId) {
-      curSql += ' where s.department_id=?'
-      curBinds.push(deptId)
-      prevSql += ' where s.department_id=?'
-      prevBinds.push(deptId)
-    }
+  if (position.level === 2 && employee?.department_id) {
+    // 项目人员: 只能访问本项目数据
+    curSql += ' where s.department_id=?'
+    curBinds.push(employee.department_id)
+    prevSql += ' where s.department_id=?'
+    prevBinds.push(employee.department_id)
+  } else if (position.level === 3 && employee?.org_department_id) {
+    // 组人员: 只能访问本组数据
+    curSql += ' where s.org_department_id=?'
+    curBinds.push(employee.org_department_id)
+    prevSql += ' where s.org_department_id=?'
+    prevBinds.push(employee.org_department_id)
   }
 
   curSql += ' group by s.id, s.name'
@@ -928,7 +931,7 @@ importRoutes.get('/reports/site-growth', async (c) => {
 
 // AR/AP summary by status and totals for period
 importRoutes.get('/reports/ar-summary', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const kind = c.req.query('kind') // AR|AP
   const start = c.req.query('start')
   const end = c.req.query('end')
@@ -959,7 +962,7 @@ importRoutes.get('/reports/ar-summary', async (c) => {
 
 // AR detail - 应收账款明细
 importRoutes.get('/reports/ar-detail', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   try {
     const start = c.req.query('start')
     const end = c.req.query('end')
@@ -990,7 +993,7 @@ importRoutes.get('/reports/ar-detail', async (c) => {
 
 // AP summary - 应付账款汇总
 importRoutes.get('/reports/ap-summary', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const start = c.req.query('start')
   const end = c.req.query('end')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
@@ -1019,7 +1022,7 @@ importRoutes.get('/reports/ap-summary', async (c) => {
 
 // AP detail - 应付账款明细
 importRoutes.get('/reports/ap-detail', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   try {
     const start = c.req.query('start')
     const end = c.req.query('end')
@@ -1050,7 +1053,7 @@ importRoutes.get('/reports/ap-detail', async (c) => {
 
 // Daily expense summary by category - 日常支出汇总
 importRoutes.get('/reports/expense-summary', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const start = c.req.query('start')
   const end = c.req.query('end')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
@@ -1091,14 +1094,14 @@ importRoutes.get('/reports/expense-summary', async (c) => {
 
 // Daily expense detail by category - 日常支出明细
 importRoutes.get('/reports/expense-detail', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const start = c.req.query('start')
   const end = c.req.query('end')
   const categoryId = c.req.query('category_id')
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
 
-  const role = c.get('userRole') as string | undefined
-  const userId = c.get('userId') as string | undefined
+  const position = getUserPosition(c)
+  const employee = getUserEmployee(c)
 
   let sql = `
     select f.id, f.voucher_no, f.biz_date, f.amount_cents, f.counterparty, f.memo,
@@ -1119,14 +1122,14 @@ importRoutes.get('/reports/expense-detail', async (c) => {
   }
 
   // 应用数据权限过滤
-  if (role !== 'manager' && role !== 'finance' && userId) {
-    const userService = new UserService(c.env.DB)
-    const deptIds = await userService.getUserDepartmentIds(userId)
-    const deptId = deptIds[0]
-    if (deptId) {
-      sql += ' and (f.department_id=? or f.department_id is null)'
-      binds.push(deptId)
-    }
+  if (position.level === 2 && employee?.department_id) {
+    // 项目人员: 只能访问本项目数据
+    sql += ' and (f.department_id=? or f.department_id is null)'
+    binds.push(employee.department_id)
+  } else if (position.level === 3 && employee?.org_department_id) {
+    // 组人员: 只能访问本组数据
+    sql += ' and (f.org_department_id=? or f.org_department_id is null)'
+    binds.push(employee.org_department_id)
   }
 
   sql += ' order by f.biz_date desc, f.created_at desc'
@@ -1137,7 +1140,7 @@ importRoutes.get('/reports/expense-detail', async (c) => {
 // Site revenue - 站点收费（站点的收入统计）
 // Account balance summary - 账号余额汇总
 importRoutes.get('/reports/account-balance', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const asOf = c.req.query('as_of') // YYYY-MM-DD，查询截至日期的余额
   if (!asOf) throw Errors.VALIDATION_ERROR('as_of参数必填（格式：YYYY-MM-DD）')
 
@@ -1186,7 +1189,7 @@ importRoutes.get('/reports/account-balance', async (c) => {
 // 借款报表 - 按个人汇总
 // 员工薪资表 - 按月份统计每个员工的薪资
 importRoutes.get('/reports/employee-salary', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const year = c.req.query('year') || new Date().getFullYear().toString()
   const month = c.req.query('month') // 可选，如果提供则只显示该月
 
@@ -1424,7 +1427,7 @@ importRoutes.get('/reports/employee-salary', async (c) => {
 })
 
 importRoutes.get('/reports/borrowing-summary', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
 
   // 查询每个人的借款汇总（按币种分组）
   const sql = `
@@ -1464,7 +1467,7 @@ importRoutes.get('/reports/borrowing-summary', async (c) => {
 
 // 借款报表 - 个人明细（借款和还款记录）
 importRoutes.get('/reports/borrowing-detail/:borrower_id', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const borrowerId = c.req.param('borrower_id')
 
   // 验证借款人存在
@@ -1510,14 +1513,14 @@ importRoutes.get('/reports/borrowing-detail/:borrower_id', async (c) => {
 })
 
 importRoutes.get('/reports/new-site-revenue', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const start = c.req.query('start')
   const end = c.req.query('end')
   const days = Number(c.req.query('days')) || 30 // 站点的定义：创建后N天内
   if (!start || !end) throw Errors.VALIDATION_ERROR('start和end参数必填')
 
-  const role = c.get('userRole') as string | undefined
-  const userId = c.get('userId') as string | undefined
+  const position = getUserPosition(c)
+  const employee = getUserEmployee(c)
 
   let sql = `
     select s.id as site_id, s.name as site_name, s.created_at as site_created_at,
@@ -1532,14 +1535,14 @@ importRoutes.get('/reports/new-site-revenue', async (c) => {
   let binds: any[] = [start, end, end, days]
 
   // 应用数据权限过滤
-  if (role !== 'manager' && role !== 'finance' && userId) {
-    const userService = new UserService(c.env.DB)
-    const deptIds = await userService.getUserDepartmentIds(userId)
-    const deptId = deptIds[0]
-    if (deptId) {
-      sql += ' and s.department_id=?'
-      binds.push(deptId)
-    }
+  if (position.level === 2 && employee?.department_id) {
+    // 项目人员: 只能访问本项目数据
+    sql += ' and s.department_id=?'
+    binds.push(employee.department_id)
+  } else if (position.level === 3 && employee?.org_department_id) {
+    // 组人员: 只能访问本组数据
+    sql += ' and s.org_department_id=?'
+    binds.push(employee.org_department_id)
   }
 
   sql += ' group by s.id, s.name, s.created_at order by s.created_at desc'
@@ -1556,7 +1559,7 @@ importRoutes.get('/reports/new-site-revenue', async (c) => {
 
 
 importRoutes.post('/import', validateQuery(csvImportQuerySchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!isHQFinance(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof csvImportQuerySchema>>(c)
   const kind = query.kind
   const csv = await c.req.text()

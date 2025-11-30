@@ -1,41 +1,26 @@
 import { Card, Typography, Space, Descriptions, Tag } from 'antd'
 import { UserOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons'
+import { usePermissions } from '../utils/permissions'
 
 const { Title } = Typography
 
-interface UserInfo {
-  name?: string
-  email?: string
-  role?: string
-  position?: {
-    id: string
-    code: string
-    name: string
-    level: string
-    scope: string
-    canViewReports?: boolean
-  }
+const levelLabels: Record<number, string> = {
+  1: '总部',
+  2: '项目',
+  3: '组',
 }
 
-const levelLabels: Record<string, string> = {
-  hq: '总部',
-  project: '项目',
-  department: '部门',
-  group: '组',
-  employee: '员工',
+const functionRoleLabels: Record<string, string> = {
+  director: '负责人',
+  hr: '人力',
+  finance: '财务',
+  admin: '行政',
+  developer: '开发',
 }
 
-const scopeLabels: Record<string, string> = {
-  all: '全部',
-  hq_all: '总部+所有项目',
-  project_all: '项目全部',
-  project_dept: '项目部门',
-  dept: '部门',
-  group: '组',
-  self: '自己',
-}
+export function Dashboard() {
+  const { user } = usePermissions()
 
-export function Dashboard({ userRole, userInfo }: { userRole?: string; userInfo?: UserInfo | null }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
       <Card style={{ maxWidth: 600, width: '100%' }}>
@@ -52,7 +37,7 @@ export function Dashboard({ userRole, userInfo }: { userRole?: string; userInfo?
                   </Space>
                 }
               >
-                {userInfo?.name || '-'}
+                {user?.name || '-'}
               </Descriptions.Item>
               <Descriptions.Item 
                 label={
@@ -62,9 +47,9 @@ export function Dashboard({ userRole, userInfo }: { userRole?: string; userInfo?
                   </Space>
                 }
               >
-                {userInfo?.email || '-'}
+                {user?.email || '-'}
               </Descriptions.Item>
-              {userInfo?.position && (
+              {user?.position && (
                 <Descriptions.Item 
                   label={
                     <Space>
@@ -75,16 +60,21 @@ export function Dashboard({ userRole, userInfo }: { userRole?: string; userInfo?
                 >
                   <div>
                     <div style={{ marginBottom: 8 }}>
-                      <Tag color="green">{userInfo.position.name}</Tag>
+                      <Tag color="green">{user.position.name}</Tag>
                     </div>
-                    {userInfo.position.level && (
+                    {user.position.level && (
                       <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
-                        层级: {levelLabels[userInfo.position.level] || userInfo.position.level}
+                        层级: {levelLabels[user.position.level] || `Level ${user.position.level}`}
                       </div>
                     )}
-                    {userInfo.position.scope && (
+                    {user.position.function_role && (
+                      <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                        职能: {functionRoleLabels[user.position.function_role] || user.position.function_role}
+                      </div>
+                    )}
+                    {user.position.can_manage_subordinates === 1 && (
                       <div style={{ fontSize: 12, color: '#666' }}>
-                        权限范围: {scopeLabels[userInfo.position.scope] || userInfo.position.scope}
+                        <Tag color="blue" style={{ marginTop: 4 }}>可管理下属</Tag>
                       </div>
                     )}
                   </div>

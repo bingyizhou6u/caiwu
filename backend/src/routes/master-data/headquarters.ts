@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { requireRole, canRead } from '../../utils/permissions.js'
+import { isHQDirector, isHQFinance } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 
@@ -12,7 +12,7 @@ export const headquartersRoutes = new Hono<{ Bindings: Env, Variables: AppVariab
 
 // 获取总部列表
 headquartersRoutes.get('/', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看
   const rows = await c.env.DB.prepare('select * from headquarters').all()
   return c.json(rows.results ?? [])
 })
@@ -24,7 +24,7 @@ headquartersRoutes.post('/', async (c) => {
 
 // 更新总部
 headquartersRoutes.put('/:id', async (c) => {
-  if (!(await requireRole(c, ['finance', 'auditor']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   const body = await c.req.json<{ name?: string; active?: number }>()
@@ -48,7 +48,7 @@ headquartersRoutes.put('/:id', async (c) => {
 
 // 删除总部（软删除）
 headquartersRoutes.delete('/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   const hq = await c.env.DB.prepare('select name from headquarters where id=?').bind(id).first<{ name: string }>()

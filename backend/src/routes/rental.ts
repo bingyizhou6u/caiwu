@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, requirePermission, canRead, canWrite } from '../utils/permissions.js'
+import { isHQDirector, isHQFinance, isHQHR, isProjectDirector, isProjectFinance, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
@@ -15,7 +15,7 @@ export const rentalRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>
 
 // 获取租赁房屋列表
 rentalRoutes.get('/rental-properties', validateQuery(rentalPropertyQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof rentalPropertyQuerySchema>>(c)
   const propertyType = query.property_type
   const status = query.status
@@ -61,7 +61,7 @@ rentalRoutes.get('/rental-properties', validateQuery(rentalPropertyQuerySchema),
 
 // 获取员工宿舍分配记录列表（必须在 /rental-properties/:id 之前定义，避免路由冲突）
 rentalRoutes.get('/rental-properties/allocations', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const propertyId = c.req.query('property_id')
   const employeeId = c.req.query('employee_id')
   const returned = c.req.query('returned') // 'true' | 'false' | undefined
@@ -124,7 +124,6 @@ rentalRoutes.get('/rental-properties/allocations', async (c) => {
       originalSql: sql,
       originalBinds: binds,
       userId: c.get('userId'),
-      userRole: c.get('userRole'),
       userPosition: c.get('userPosition'),
       userEmployee: c.get('userEmployee')
     })
@@ -141,7 +140,7 @@ rentalRoutes.get('/rental-properties/allocations', async (c) => {
 
 // 获取单个租赁房屋详情
 rentalRoutes.get('/rental-properties/:id', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const property = await c.env.DB.prepare(`
     select 
@@ -197,7 +196,8 @@ rentalRoutes.get('/rental-properties/:id', async (c) => {
 
 // 创建租赁房屋
 rentalRoutes.post('/rental-properties', validateJson(createRentalPropertySchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canCreate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canCreate) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createRentalPropertySchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -259,7 +259,8 @@ rentalRoutes.post('/rental-properties', validateJson(createRentalPropertySchema)
 
 // 更新租赁房屋
 rentalRoutes.put('/rental-properties/:id', async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<any>()
   const userId = c.get('userId') as string | undefined
@@ -341,7 +342,7 @@ rentalRoutes.put('/rental-properties/:id', async (c) => {
 
 // 删除租赁房屋
 rentalRoutes.delete('/rental-properties/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const property = await c.env.DB.prepare('select property_code, name from rental_properties where id = ?').bind(id).first<{ property_code: string, name: string }>()
   if (!property) throw Errors.NOT_FOUND()
@@ -364,7 +365,8 @@ rentalRoutes.delete('/rental-properties/:id', async (c) => {
 
 // 创建租赁付款记录
 rentalRoutes.post('/rental-payments', validateJson(createRentalPaymentSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createRentalPaymentSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -487,7 +489,7 @@ rentalRoutes.post('/rental-payments', validateJson(createRentalPaymentSchema), a
 
 // 获取租赁付款记录列表
 rentalRoutes.get('/rental-payments', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const propertyId = c.req.query('property_id')
   const year = c.req.query('year')
   const month = c.req.query('month')
@@ -534,7 +536,8 @@ rentalRoutes.get('/rental-payments', async (c) => {
 
 // 更新租赁付款记录
 rentalRoutes.put('/rental-payments/:id', validateJson(updateRentalPaymentSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateRentalPaymentSchema>>(c)
   const userId = c.get('userId') as string | undefined
@@ -566,7 +569,7 @@ rentalRoutes.put('/rental-payments/:id', validateJson(updateRentalPaymentSchema)
 
 // 删除租赁付款记录
 rentalRoutes.delete('/rental-payments/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const payment = await c.env.DB.prepare('select property_id, year, month from rental_payments where id = ?').bind(id).first<{ property_id: string, year: number, month: number }>()
   if (!payment) throw Errors.NOT_FOUND()
@@ -579,7 +582,8 @@ rentalRoutes.delete('/rental-payments/:id', async (c) => {
 
 // 员工宿舍分配
 rentalRoutes.post('/rental-properties/:id/allocate-dormitory', validateJson(allocateDormitorySchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager', 'hr']))) throw Errors.FORBIDDEN()
+  const canManage = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
+  if (!canManage) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof allocateDormitorySchema>>(c)
   const userId = c.get('userId') as string | undefined
@@ -639,7 +643,8 @@ rentalRoutes.post('/rental-properties/:id/allocate-dormitory', validateJson(allo
 
 // 员工宿舍归还
 rentalRoutes.post('/rental-properties/allocations/:id/return', async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager', 'hr']))) throw Errors.FORBIDDEN()
+  const canManage = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
+  if (!canManage) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{
     return_date: string
@@ -691,7 +696,8 @@ rentalRoutes.post('/rental-properties/allocations/:id/return', async (c) => {
 
 // 生成租赁应付账单（提前15天自动生成）
 rentalRoutes.post('/rental-properties/generate-payable-bills', async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
   const today = new Date()
@@ -808,7 +814,7 @@ rentalRoutes.post('/rental-properties/generate-payable-bills', async (c) => {
 
 // 获取应付账单列表
 rentalRoutes.get('/rental-payable-bills', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const propertyId = c.req.query('property_id')
   const status = c.req.query('status')
   const startDate = c.req.query('start_date')
@@ -859,7 +865,8 @@ rentalRoutes.get('/rental-payable-bills', async (c) => {
 
 // 标记应付账单为已付
 rentalRoutes.post('/rental-payable-bills/:id/mark-paid', async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{
     paid_date: string
@@ -898,7 +905,8 @@ rentalRoutes.post('/rental-payable-bills/:id/mark-paid', async (c) => {
 
 // 文件上传：租房合同PDF
 rentalRoutes.post('/upload/contract', async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
 
   const formData = await c.req.formData()
   const file = formData.get('file') as File

@@ -10,22 +10,6 @@ export async function getUserById(db: D1Database, id: string) {
   return db.prepare('select * from users where id=?').bind(id).first<any>()
 }
 
-// 根据职位代码获取用户角色（用于向后兼容，权限由职位决定）
-export function getRoleByPositionCode(positionCode: string): string {
-  if (positionCode === 'hq_admin' || positionCode === 'project_manager') {
-    return 'manager'
-  }
-  if (positionCode.includes('finance')) {
-    return 'finance'
-  }
-  if (positionCode.includes('hr')) {
-    return 'hr'
-  }
-  if (positionCode.includes('admin_dept')) {
-    return 'admin'
-  }
-  return 'employee' // Default for tech, group leaders, and general employees
-}
 
 export async function createSession(db: D1Database, user_id: string) {
   const id = uuid()
@@ -51,7 +35,15 @@ export async function getUserEmployeeId(db: D1Database, userId: string): Promise
 }
 
 // 获取用户的职位信息（必须从员工记录获取）
-export async function getUserPosition(db: D1Database, userId: string): Promise<{ id: string, code: string, name: string, level: string, scope: string, permissions: any } | null> {
+export async function getUserPosition(db: D1Database, userId: string): Promise<{ 
+  id: string
+  code: string
+  name: string
+  level: number
+  function_role: string
+  can_manage_subordinates: number
+  permissions: any
+} | null> {
   // 使用单个JOIN查询获取用户、员工和职位信息
   const result = await db.prepare(`
     select 
@@ -59,7 +51,8 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
       p.code,
       p.name,
       p.level,
-      p.scope,
+      p.function_role,
+      p.can_manage_subordinates,
       p.permissions
     from users u
     inner join employees e on e.email = u.email and e.active = 1
@@ -69,8 +62,9 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
     id: string
     code: string
     name: string
-    level: string
-    scope: string
+    level: number
+    function_role: string
+    can_manage_subordinates: number
     permissions: string
   }>()
 
@@ -83,18 +77,30 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
     code: result.code,
     name: result.name,
     level: result.level,
-    scope: result.scope,
+    function_role: result.function_role,
+    can_manage_subordinates: result.can_manage_subordinates,
     permissions: JSON.parse(result.permissions || '{}')
   }
 }
 
-// 优化版本：一次性获取session、user、position和employee信息，并计算role
+// 优化版本：一次性获取session、user、position和employee信息
 export async function getSessionWithUserAndPosition(db: D1Database, sessionId: string): Promise<{
   session: { id: string, user_id: string, expires_at: number } | null
   user: { id: string, email: string, name: string } | null
-  position: { id: string, code: string, name: string, level: string, scope: string, permissions: any } | null
-  employee: { org_department_id: string | null, department_id: string | null } | null
-  role: string | null
+  position: { 
+    id: string
+    code: string
+    name: string
+    level: number
+    function_role: string
+    can_manage_subordinates: number
+    permissions: any
+  } | null
+  employee: { 
+    id: string
+    org_department_id: string | null
+    department_id: string | null
+  } | null
 } | null> {
   const result = await db.prepare(`
     select 
@@ -108,8 +114,10 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
       p.code as position_code,
       p.name as position_name,
       p.level as position_level,
-      p.scope as position_scope,
+      p.function_role as position_function_role,
+      p.can_manage_subordinates as position_can_manage_subordinates,
       p.permissions as position_permissions,
+      e.id as employee_id,
       e.org_department_id,
       e.department_id as employee_department_id
     from sessions s
@@ -126,9 +134,11 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
     position_id: string | null
     position_code: string | null
     position_name: string | null
-    position_level: string | null
-    position_scope: string | null
+    position_level: number | null
+    position_function_role: string | null
+    position_can_manage_subordinates: number | null
     position_permissions: string | null
+    employee_id: string | null
     org_department_id: string | null
     employee_department_id: string | null
   }>()
@@ -142,17 +152,16 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
     code: result.position_code!,
     name: result.position_name!,
     level: result.position_level!,
-    scope: result.position_scope!,
+    function_role: result.position_function_role!,
+    can_manage_subordinates: result.position_can_manage_subordinates!,
     permissions: JSON.parse(result.position_permissions || '{}')
   } : null
 
-  const employee = result.org_department_id !== null || result.employee_department_id !== null ? {
+  const employee = result.employee_id ? {
+    id: result.employee_id,
     org_department_id: result.org_department_id,
     department_id: result.employee_department_id
   } : null
-
-  // 计算role（如果position存在）
-  const role = position ? getRoleByPositionCode(position.code) : null
 
   return {
     session: {
@@ -166,8 +175,7 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
       name: result.name
     },
     position,
-    employee,
-    role
+    employee
   }
 }
 

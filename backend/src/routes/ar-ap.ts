@@ -1,11 +1,9 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, canRead } from '../utils/permissions.js'
+import { hasPositionCode, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
-import { applyDataScope } from '../utils/permissions.js'
-import type { D1Database } from '@cloudflare/workers-types'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery } from '../utils/validator.js'
 import { createArApDocSchema, createSettlementSchema, confirmArApDocSchema, idQuerySchema } from '../schemas/business.schema.js'
@@ -23,7 +21,7 @@ async function nextDocNo(db: D1Database, kind: 'AR' | 'AP', date: string) {
 }
 
 ar_apRoutes.get('/ar/docs', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const kind = c.req.query('kind') // AR|AP optional
   const status = c.req.query('status') // optional
   let sql = 'select d.*, coalesce(s.sum_settle,0) as settled_cents, st.name as site_name from ar_ap_docs d left join (select doc_id, sum(settle_amount_cents) as sum_settle from settlements group by doc_id) s on s.doc_id=d.id left join sites st on st.id=d.site_id'
@@ -35,14 +33,18 @@ ar_apRoutes.get('/ar/docs', async (c) => {
   sql += ' order by d.issue_date desc'
 
   // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const { where, binds: scopeBinds } = getDataAccessFilter(c, 'd')
+  if (where !== '1=1') {
+    sql += conds.length > 0 ? ` and ${where}` : ` where ${where}`
+    binds.push(...scopeBinds)
+  }
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
 
 
 ar_apRoutes.post('/ar/docs', validateJson(createArApDocSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createArApDocSchema>>(c)
   const id = uuid()
   const issue = body.issue_date ?? todayStr()
@@ -58,7 +60,7 @@ ar_apRoutes.post('/ar/docs', validateJson(createArApDocSchema), async (c) => {
 
 
 ar_apRoutes.get('/ar/settlements', validateQuery(docIdQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof docIdQuerySchema>>(c)
   const rows = await c.env.DB.prepare('select * from settlements where doc_id=? order by settle_date asc').bind(query.doc_id).all()
   return c.json({ results: rows.results ?? [] })
@@ -75,7 +77,7 @@ async function refreshDocStatus(db: D1Database, docId: string) {
 
 
 ar_apRoutes.post('/ar/settlements', validateJson(createSettlementSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createSettlementSchema>>(c)
   const id = uuid()
   const amount = body.settle_amount_cents
@@ -89,7 +91,7 @@ ar_apRoutes.post('/ar/settlements', validateJson(createSettlementSchema), async 
 // Statement
 
 ar_apRoutes.get('/ar/statement', validateQuery(docIdQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof docIdQuerySchema>>(c)
   const docId = query.doc_id
 
@@ -109,7 +111,7 @@ ar_apRoutes.get('/ar/statement', validateQuery(docIdQuerySchema), async (c) => {
 // 确认AR/AP文档，生成对应的收入/支出记录
 
 ar_apRoutes.post('/ar/confirm', validateJson(confirmArApDocSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof confirmArApDocSchema>>(c)
   const docId = body.doc_id
 

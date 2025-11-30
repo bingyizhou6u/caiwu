@@ -50,11 +50,10 @@ export function createAuthMiddleware() {
         .catch(() => {}) // 忽略更新失败
     )
 
-    if (!sessionData.position || !sessionData.role) {
+    if (!sessionData.position) {
       return c.json({ error: 'employee record not found, please contact administrator' }, 403)
     }
 
-    c.set('userRole', sessionData.role)
     c.set('userPosition', sessionData.position)
     if (sessionData.employee) {
       c.set('userEmployee', sessionData.employee)

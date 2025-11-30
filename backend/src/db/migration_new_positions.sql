@@ -4,14 +4,16 @@
 
 -- ==================== 第一步：清理旧数据 ====================
 
--- 删除职位权限关联（如果存在）
-DROP TABLE IF EXISTS position_permissions;
-
--- 备份旧职位数据到临时表
-CREATE TABLE positions_backup AS SELECT * FROM positions;
+-- 备份旧职位数据（如果表存在）
+DROP TABLE IF EXISTS positions_backup;
+CREATE TABLE positions_backup AS SELECT * FROM positions WHERE 1=0;
+INSERT INTO positions_backup SELECT * FROM positions;
 
 -- 删除旧职位表
-DROP TABLE positions;
+DROP TABLE IF EXISTS positions;
+DROP INDEX IF EXISTS idx_positions_code;
+DROP INDEX IF EXISTS idx_positions_level;
+DROP INDEX IF EXISTS idx_positions_active;
 
 -- ==================== 第二步：创建新的职位表 ====================
 
@@ -20,7 +22,7 @@ CREATE TABLE positions (
   code TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   level INTEGER NOT NULL,                    -- 1-总部 2-项目 3-研发组
-  data_scope TEXT NOT NULL,                  -- all/hq_all/project/group
+  data_scope TEXT NOT NULL,                  -- all/hq_all/project/group/self
   can_manage_subordinates INTEGER DEFAULT 0, -- 是否可以管理下属
   description TEXT,
   permissions TEXT NOT NULL,                 -- JSON权限配置
@@ -33,6 +35,9 @@ CREATE TABLE positions (
 CREATE INDEX idx_positions_code ON positions(code);
 CREATE INDEX idx_positions_level ON positions(level);
 CREATE INDEX idx_positions_active ON positions(active);
+
+-- 为employees表添加job_role字段（仅project_staff使用）
+ALTER TABLE employees ADD COLUMN job_role TEXT; -- finance/hr/admin
 
 -- ==================== 第三步：插入8个标准职位 ====================
 
@@ -166,12 +171,12 @@ VALUES (
   strftime('%s', 'now') * 1000
 );
 
--- 4. 总部其他部门
+-- 4. 总部行政
 INSERT INTO positions (id, code, name, level, data_scope, can_manage_subordinates, description, permissions, sort_order, created_at, updated_at)
 VALUES (
-  'pos-hq-staff',
-  'hq_staff',
-  '总部其他部门',
+  'pos-hq-admin',
+  'hq_admin',
+  '总部行政',
   1,
   'hq_all',
   0,
@@ -244,16 +249,16 @@ VALUES (
   strftime('%s', 'now') * 1000
 );
 
--- 6. 项目财务
+-- 6. 项目职能人员（通过job_role区分：finance/hr/admin）
 INSERT INTO positions (id, code, name, level, data_scope, can_manage_subordinates, description, permissions, sort_order, created_at, updated_at)
 VALUES (
-  'pos-project-finance',
-  'project_finance',
-  '项目财务',
+  'pos-project-staff',
+  'project_staff',
+  '项目职能人员',
   2,
   'project',
   0,
-  '处理本项目财务，接受总部财务管理',
+  '项目财务/人事/行政，接受总部管理',
   '{
     "finance": {
       "flow": ["view", "create", "update", "export"],
@@ -263,15 +268,21 @@ VALUES (
       "borrowing": ["view", "create"]
     },
     "hr": {
-      "reimbursement": ["view"]
+      "employee": ["view", "create", "update"],
+      "salary": ["view", "create"],
+      "leave": ["view", "approve"],
+      "reimbursement": ["view", "approve"]
     },
     "asset": {
-      "fixed": ["view"],
-      "rental": ["view"]
+      "fixed": ["view", "create", "update"],
+      "rental": ["view", "create", "update"]
     },
     "report": {
-      "view": ["cash_flow", "account", "ar_ap"],
-      "export": ["cash_flow", "account"]
+      "view": ["cash_flow", "salary", "leave", "employee", "account", "ar_ap", "asset"],
+      "export": ["cash_flow", "salary", "leave", "account"]
+    },
+    "system": {
+      "user": ["view", "create"]
     },
     "self": {
       "leave": ["view", "create"],
@@ -284,29 +295,24 @@ VALUES (
   strftime('%s', 'now') * 1000
 );
 
--- 7. 项目人事
+-- 7. 组长（适用于所有组：前端/后端/运维/测试/产品/UI）
 INSERT INTO positions (id, code, name, level, data_scope, can_manage_subordinates, description, permissions, sort_order, created_at, updated_at)
 VALUES (
-  'pos-project-hr',
-  'project_hr',
-  '项目人事',
-  2,
-  'project',
-  0,
-  '处理本项目人事，接受总部人事管理',
+  'pos-team-leader',
+  'team_leader',
+  '组长',
+  3,
+  'group',
+  1,
+  '管理本组成员，审批组员申请',
   '{
     "hr": {
-      "employee": ["view", "create", "update"],
-      "salary": ["view", "create"],
-      "leave": ["view", "approve"],
-      "reimbursement": ["view", "approve"]
+      "employee": ["view"],
+      "leave": ["view", "approve", "reject"],
+      "reimbursement": ["view", "approve", "reject"]
     },
     "report": {
-      "view": ["salary", "leave", "employee"],
-      "export": ["salary", "leave"]
-    },
-    "system": {
-      "user": ["view", "create"]
+      "view": ["leave"]
     },
     "self": {
       "leave": ["view", "create"],
@@ -319,24 +325,17 @@ VALUES (
   strftime('%s', 'now') * 1000
 );
 
--- 8. 研发组长
+-- 8. 组员（适用于所有组员）
 INSERT INTO positions (id, code, name, level, data_scope, can_manage_subordinates, description, permissions, sort_order, created_at, updated_at)
 VALUES (
-  'pos-dev-team-leader',
-  'dev_team_leader',
-  '研发组长',
+  'pos-team-member',
+  'team_member',
+  '组员',
   3,
-  'group',
-  1,
-  '管理本组成员，分配开发任务',
+  'self',
+  0,
+  '普通组员，只能查看和操作自己的数据',
   '{
-    "hr": {
-      "employee": ["view"],
-      "leave": ["view", "approve"]
-    },
-    "report": {
-      "view": ["leave"]
-    },
     "self": {
       "leave": ["view", "create"],
       "reimbursement": ["view", "create"],

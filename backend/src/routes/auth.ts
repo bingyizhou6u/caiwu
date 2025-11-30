@@ -152,7 +152,6 @@ async function buildAuthSuccessPayload(c: any, result: any) {
     sub: result.user.id,
     email: result.user.email,
     name: result.user.name,
-    role: result.user.role,
     position: result.position
   }, c.env.AUTH_JWT_SECRET, AUTH_TOKEN_TTL)
 
@@ -197,25 +196,36 @@ async function resolveUserFromToken(c: any) {
   const position = await userService.getUserPosition(user.id)
   if (!position) return null
 
-  const role = userService.getRoleByPositionCode(position.code)
-  return buildUserResponse({ id: user.id, name: user.name, email: user.email, role }, position, session.id)
+  return buildUserResponse({ id: user.id, name: user.name, email: user.email }, position, session.id)
 }
 
-function buildUserResponse(user: { id: string, name: string, email: string, role: string }, position: any, sessionId?: string) {
+function buildUserResponse(user: { id: string, name: string, email: string }, position: any, sessionId?: string) {
+  // 根据职位代码确定角色（兼容前端）
+  let role = 'employee'
+  if (position.code === 'hq_director' || position.code === 'project_director') {
+    role = 'manager'
+  } else if (position.code === 'hq_finance' || position.code.includes('finance')) {
+    role = 'finance'
+  } else if (position.code === 'hq_hr' || position.code.includes('hr')) {
+    role = 'hr'
+  } else if (position.code === 'hq_admin') {
+    role = 'admin'
+  }
+  
   return {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role,
+    role,
     sessionId,
     position: {
       id: position.id,
       code: position.code,
       name: position.name,
       level: position.level,
-      scope: position.scope,
+      scope: position.data_scope,  // 使用 data_scope
       permissions: position.permissions || {},
-      canViewReports: position.code === 'hq_admin' || position.code === 'hq_finance' || position.permissions?.reports === true
+      canViewReports: position.level <= 2 // 总部和项目级别可以查看报表
     }
   }
 }

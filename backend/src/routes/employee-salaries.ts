@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, canRead } from '../utils/permissions.js'
+import { isHQDirector, isHQHR, isHQFinance, isProjectDirector } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -12,7 +12,7 @@ export const employeeSalariesRoutes = new Hono<{ Bindings: Env, Variables: AppVa
 
 // 获取员工的多币种底薪
 employeeSalariesRoutes.get('/employee-salaries', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看（通过数据权限过滤）
   
   const employeeId = c.req.query('employee_id')
   const salaryType = c.req.query('salary_type') // probation or regular
@@ -44,7 +44,8 @@ employeeSalariesRoutes.get('/employee-salaries', async (c) => {
 
 // 创建或更新员工的多币种底薪
 employeeSalariesRoutes.post('/employee-salaries', validateJson(createEmployeeSalarySchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance', 'hr']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   
   const body = getValidatedData<z.infer<typeof createEmployeeSalarySchema>>(c)
   
@@ -124,7 +125,8 @@ employeeSalariesRoutes.post('/employee-salaries', validateJson(createEmployeeSal
 
 // 批量更新员工的多币种底薪
 employeeSalariesRoutes.put('/employee-salaries/batch', async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance', 'hr']))) throw Errors.FORBIDDEN()
+  const canUpdate = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
+  if (!canUpdate) throw Errors.FORBIDDEN()
   
   const body = await c.req.json<{
     employee_id: string
@@ -193,7 +195,8 @@ employeeSalariesRoutes.put('/employee-salaries/batch', async (c) => {
 
 // 删除员工的多币种底薪
 employeeSalariesRoutes.delete('/employee-salaries/:id', async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance', 'hr']))) throw Errors.FORBIDDEN()
+  const canDelete = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
+  if (!canDelete) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   

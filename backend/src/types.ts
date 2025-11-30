@@ -18,7 +18,6 @@ export type Env = {
 export type AppVariables = {
   userId?: string
   sessionId?: string
-  userRole?: string
   userPosition?: {
     id: string
     code: string

@@ -59,7 +59,42 @@ export const pageTitles: Record<string, string> = {
     'audit': '审计日志',
 }
 
-export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['items'] => {
+/**
+ * 检查用户是否有指定模块的权限
+ * @param userInfo 用户信息
+ * @param module 模块名
+ * @param subModule 子模块名(可选)
+ * @param action 操作(可选)
+ */
+function hasPermission(userInfo: any, module: string, subModule?: string, action?: string): boolean {
+    if (!userInfo?.position?.permissions) return false
+    
+    const modulePerms = userInfo.position.permissions[module]
+    if (!modulePerms) return false
+    
+    // 如果只检查模块权限
+    if (!subModule) return true
+    
+    const subModulePerms = modulePerms[subModule]
+    if (!subModulePerms || !Array.isArray(subModulePerms)) return false
+    
+    // 如果只检查子模块权限
+    if (!action) return subModulePerms.length > 0
+    
+    // 检查具体操作权限
+    return subModulePerms.includes(action)
+}
+
+/**
+ * 检查是否是管理者(总部/项目负责人或组长)
+ */
+function isManager(userInfo: any): boolean {
+    if (!userInfo?.position) return false
+    const code = userInfo.position.code
+    return ['hq_director', 'project_director', 'team_leader'].includes(code)
+}
+
+export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     const items: MenuProps['items'] = []
 
     // 1. 我的工作台（所有人可见）
@@ -70,25 +105,33 @@ export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['item
     myCenter.push({ key: 'my-borrowings', label: '我的借支' })
     myCenter.push({ key: 'my-assets', label: '我的资产' })
     myCenter.push({ key: 'company-policies', label: '公司制度' })
-    if (userRole && ['manager', 'finance', 'hr'].includes(userRole)) {
+    // 有管理权限的用户显示审批菜单
+    if (userInfo?.position?.can_manage_subordinates === 1) {
         myCenter.push({ key: 'my-approvals', label: '我的审批' })
     }
     items.push({ key: 'my', label: '我的工作台', children: myCenter })
 
-    // 2. 财务管理（合并：日常业务 + 借还款管理 + 往来账款）
+    // 2. 财务管理
     const finance: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
+    if (hasPermission(userInfo, 'finance', 'flow', 'view')) {
         finance.push({ key: 'flows', label: '收支记账' })
+    }
+    if (hasPermission(userInfo, 'finance', 'transfer', 'view')) {
         finance.push({ key: 'account-transfer', label: '账户转账' })
         finance.push({ key: 'account-transactions', label: '账户明细' })
     }
-    if (!userRole || ['manager', 'finance'].includes(userRole)) {
+    // 数据导入需要财务或负责人权限
+    if (hasPermission(userInfo, 'finance') && (userInfo.position?.function_role === 'finance' || userInfo.position?.function_role === 'director')) {
         finance.push({ key: 'import', label: '数据导入' })
     }
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
+    if (hasPermission(userInfo, 'finance', 'borrowing', 'view')) {
         finance.push({ key: 'borrowings', label: '借款管理' })
         finance.push({ key: 'repayments', label: '还款管理' })
+    }
+    if (hasPermission(userInfo, 'finance', 'ar', 'view')) {
         finance.push({ key: 'ar', label: '应收账款' })
+    }
+    if (hasPermission(userInfo, 'finance', 'ap', 'view')) {
         finance.push({ key: 'ap', label: '应付账款' })
     }
     if (finance.length > 0) {
@@ -97,8 +140,10 @@ export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['item
 
     // 3. 站点管理
     const sites: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
+    if (hasPermission(userInfo, 'site', 'info', 'view')) {
         sites.push({ key: 'site-management', label: '站点管理' })
+    }
+    if (hasPermission(userInfo, 'site', 'bill', 'view')) {
         sites.push({ key: 'site-bills', label: '站点账单' })
     }
     if (sites.length > 0) {
@@ -107,37 +152,45 @@ export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['item
 
     // 4. 资产管理
     const fixedAssets: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
+    if (hasPermission(userInfo, 'asset', 'fixed', 'view')) {
         fixedAssets.push({ key: 'fixed-assets', label: '资产列表' })
-        if (userRole === 'finance' || userRole === 'manager') {
+        if (hasPermission(userInfo, 'asset', 'fixed', 'create')) {
             fixedAssets.push({ key: 'fixed-asset-purchase', label: '资产买入' })
             fixedAssets.push({ key: 'fixed-asset-sale', label: '资产卖出' })
         }
-        if (userRole === 'finance' || userRole === 'manager' || userRole === 'hr') {
+        if (hasPermission(userInfo, 'asset', 'fixed', 'allocate')) {
             fixedAssets.push({ key: 'fixed-asset-allocation', label: '资产分配' })
         }
-        if (userRole === 'finance' || userRole === 'manager') {
-            fixedAssets.push({ key: 'rental-management', label: '租房管理' })
-        }
+    }
+    if (hasPermission(userInfo, 'asset', 'rental', 'view')) {
+        fixedAssets.push({ key: 'rental-management', label: '租房管理' })
     }
     if (fixedAssets.length > 0) {
         items.push({ key: 'fixed-assets-menu', label: '资产管理', children: fixedAssets })
     }
 
-    // 5. 人力资源（原人员管理）
+    // 5. 人力资源
     const employees: MenuProps['items'] = []
-    if (userRole === 'employee') {
+    // 组员只能看到自己的请假报销
+    if (userInfo?.position?.code === 'team_developer') {
         employees.push({ key: 'employee-leave', label: '我的请假' })
         employees.push({ key: 'expense-reimbursement', label: '我的报销' })
-    } else if (!userRole || ['manager', 'finance', 'hr', 'auditor', 'read'].includes(userRole)) {
-        if (userRole === 'hr' || !userRole || ['manager', 'finance', 'hr'].includes(userRole)) {
+    } else {
+        // 其他职位根据权限显示
+        if (hasPermission(userInfo, 'hr', 'employee', 'view')) {
             employees.push({ key: 'employee', label: '人员管理' })
         }
-        employees.push({ key: 'employee-salary', label: '员工薪资报表' })
-        employees.push({ key: 'salary-payments', label: '薪资发放管理' })
-        employees.push({ key: 'allowance-payments', label: '补贴发放管理' })
-        employees.push({ key: 'employee-leave', label: '请假管理' })
-        employees.push({ key: 'expense-reimbursement', label: '报销管理' })
+        if (hasPermission(userInfo, 'hr', 'salary', 'view')) {
+            employees.push({ key: 'employee-salary', label: '员工薪资报表' })
+            employees.push({ key: 'salary-payments', label: '薪资发放管理' })
+            employees.push({ key: 'allowance-payments', label: '补贴发放管理' })
+        }
+        if (hasPermission(userInfo, 'hr', 'leave', 'view')) {
+            employees.push({ key: 'employee-leave', label: '请假管理' })
+        }
+        if (hasPermission(userInfo, 'hr', 'reimbursement', 'view')) {
+            employees.push({ key: 'expense-reimbursement', label: '报销管理' })
+        }
     }
     if (employees.length > 0) {
         items.push({ key: 'employees', label: '人力资源', children: employees })
@@ -145,8 +198,8 @@ export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['item
 
     // 6. 报表中心
     const reports: MenuProps['items'] = []
-    const canViewReports = userInfo?.position?.canViewReports === true || ['manager', 'finance'].includes(userRole)
-    if (canViewReports) {
+    // 检查是否有报表查看权限
+    if (hasPermission(userInfo, 'report', 'view')) {
         reports.push({ key: 'report-dept-cash', label: '项目汇总报表' })
         reports.push({ key: 'report-site-growth', label: '站点增长报表' })
         reports.push({ key: 'report-ar-summary', label: '应收账款汇总' })
@@ -162,9 +215,10 @@ export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['item
         items.push({ key: 'reports', label: '报表中心', children: reports })
     }
 
-    // 7. 系统设置（合并：基础数据 + 系统管理）
+    // 7. 系统设置
     const system: MenuProps['items'] = []
-    if (!userRole || ['manager', 'finance'].includes(userRole)) {
+    // 基础数据管理：财务或负责人可见
+    if (hasPermission(userInfo, 'system', 'department', 'view')) {
         system.push({ key: 'department', label: '项目管理' })
         system.push({ key: 'org-department', label: '部门管理' })
         system.push({ key: 'category', label: '类别管理' })
@@ -172,7 +226,8 @@ export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['item
         system.push({ key: 'currency', label: '币种管理' })
         system.push({ key: 'vendor', label: '供应商管理' })
     }
-    if (userRole && ['manager'].includes(userRole)) {
+    // 系统管理：只有总部负责人可见
+    if (userInfo?.position?.code === 'hq_director') {
         system.push({ key: 'position-permissions', label: '权限管理' })
         system.push({ key: 'email-notification', label: '邮件提醒设置' })
         system.push({ key: 'site-config', label: '网站配置' })

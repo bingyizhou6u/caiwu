@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, canRead } from '../utils/permissions.js'
+import { hasPositionCode, getUserPosition } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
-import { applyDataScope } from '../utils/permissions.js'
+import { getDataAccessFilter } from '../utils/permissions.js'
 import { FinanceService } from '../services/FinanceService.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery } from '../utils/validator.js'
@@ -28,7 +28,7 @@ flowsRoutes.get('/flows/next-voucher', validateQuery(dateQuerySchema), async (c)
 // Simple cash flow create/list
 
 flowsRoutes.get('/flows', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   let sql = `
     select f.*, a.name as account_name, coalesce(c.name,'') as category_name
     from cash_flows f
@@ -36,9 +36,12 @@ flowsRoutes.get('/flows', async (c) => {
     left join categories c on c.id=f.category_id
   `
   let binds: any[] = []
-  const scoped = await applyDataScope(c, sql, binds)
-  sql = scoped.sql + ' order by f.biz_date desc, f.created_at desc limit 200'
-  binds = scoped.binds
+  const { where, binds: scopeBinds } = getDataAccessFilter(c, 'f')
+  if (where !== '1=1') {
+    sql += ' where ' + where
+    binds = [...scopeBinds]
+  }
+  sql += ' order by f.biz_date desc, f.created_at desc limit 200'
   const rows = await c.env.DB.prepare(sql).bind(...binds).all()
 
   // 处理voucher_url字段：如果是JSON数组，解析为数组；否则保持原样（向后兼容）
@@ -67,7 +70,7 @@ flowsRoutes.get('/flows', async (c) => {
 // 文件上传：凭证上传
 
 flowsRoutes.post('/upload/voucher', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
 
   const formData = await c.req.formData()
   const file = formData.get('file') as File
@@ -122,7 +125,7 @@ flowsRoutes.post('/upload/voucher', async (c) => {
 // 文件下载：凭证访问 - 使用通配符路由
 
 flowsRoutes.get('/vouchers/*', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
 
   // 获取完整路径（去掉 /api/vouchers/ 前缀）
   const requestPath = c.req.path
@@ -152,7 +155,7 @@ flowsRoutes.get('/vouchers/*', async (c) => {
 })
 
 flowsRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createCashFlowSchema>>(c)
   const id = uuid()
   const now = Date.now()
@@ -232,7 +235,7 @@ flowsRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
 
 // 更新记账记录的凭证
 flowsRoutes.put('/flows/:id/voucher', async (c) => {
-  if (!(await requireRole(c, ['finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ voucher_urls?: string[], voucher_url?: string }>()
 

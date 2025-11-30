@@ -27,7 +27,8 @@ export class UserService {
         p.code,
         p.name,
         p.level,
-        p.scope,
+        p.function_role,
+        p.can_manage_subordinates,
         p.permissions
       from users u
       inner join employees e on e.email = u.email and e.active = 1
@@ -37,8 +38,9 @@ export class UserService {
             id: string
             code: string
             name: string
-            level: string
-            scope: string
+            level: number
+            function_role: string
+            can_manage_subordinates: number
             permissions: string
         }>()
 
@@ -49,27 +51,12 @@ export class UserService {
             code: result.code,
             name: result.name,
             level: result.level,
-            scope: result.scope,
+            function_role: result.function_role,
+            can_manage_subordinates: result.can_manage_subordinates,
             permissions: JSON.parse(result.permissions || '{}')
         }
     }
 
-    // Helper to determine role from position code (backward compatibility)
-    getRoleByPositionCode(positionCode: string): string {
-        if (positionCode === 'hq_admin' || positionCode === 'project_manager') {
-            return 'manager'
-        }
-        if (positionCode.includes('finance')) {
-            return 'finance'
-        }
-        if (positionCode.includes('hr')) {
-            return 'hr'
-        }
-        if (positionCode.includes('admin_dept')) {
-            return 'admin'
-        }
-        return 'employee'
-    }
 
     async isHQUser(userId: string): Promise<boolean> {
         // Optimized query using EXISTS

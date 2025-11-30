@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { canRead, canViewReports, applyDataScope } from '../../utils/permissions.js'
+import { getUserPosition, isHQDirector, isHQFinance, isHQHR, isProjectDirector, applyDataScope } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { validateQuery, getValidatedQuery } from '../../utils/validator.js'
 import { dateRangeQuerySchema } from '../../schemas/common.schema.js'
@@ -15,8 +15,10 @@ export const expenseReportsRoutes = new Hono<{ Bindings: Env, Variables: AppVari
 
 // 支出汇总报表
 expenseReportsRoutes.get('/expense-summary', validateQuery(dateRangeQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
+  // 只有总部负责人、财务、HR或项目负责人可以查看
+  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
+  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
   
   const query = getValidatedQuery<z.infer<typeof dateRangeQuerySchema>>(c)
   const start = query.start
@@ -48,8 +50,10 @@ const expenseDetailQuerySchema = dateRangeQuerySchema.extend({
   category_id: uuidSchema.optional(),
 })
 expenseReportsRoutes.get('/expense-detail', validateQuery(expenseDetailQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
+  // 只有总部负责人、财务、HR或项目负责人可以查看
+  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
+  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
   
   const query = getValidatedQuery<z.infer<typeof expenseDetailQuerySchema>>(c)
   const start = query.start

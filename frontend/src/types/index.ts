@@ -2,7 +2,6 @@ export interface User {
     id: string
     email: string
     name: string
-    role: string
     sessionId?: string
     active?: number
     last_login_at?: number
@@ -12,10 +11,10 @@ export interface User {
         id: string
         code: string
         name: string
-        level: string
-        scope: string
-        permissions: Record<string, boolean>
-        canViewReports?: boolean
+        level: number // 1-总部 2-项目 3-组
+        function_role: string // director/hr/finance/admin/developer
+        can_manage_subordinates: number
+        permissions: Record<string, Record<string, string[]>> // 三级权限结构: 模块-子模块-操作
     }
 }
 

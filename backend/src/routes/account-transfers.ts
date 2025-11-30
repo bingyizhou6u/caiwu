@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole } from '../utils/permissions.js'
+import { hasPermission, isHQDirector, isHQFinance, isProjectDirector, isProjectFinance } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
@@ -14,9 +14,9 @@ export const accountTransfersRoutes = new Hono<{ Bindings: Env, Variables: AppVa
 
 // 获取账户转账列表
 accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQuerySchema), async (c) => {
-  // manager角色有完整权限，可以访问所有功能
-  // 优化：requireRole 已优化，优先使用 context 中的 userRole
-  if (!(await requireRole(c, ['manager', 'finance', 'auditor']))) throw Errors.FORBIDDEN()
+  // 检查财务查看权限
+  const canView = hasPermission(c, 'finance', 'transfer', 'view') || isHQDirector(c) || isProjectDirector(c)
+  if (!canView) throw Errors.FORBIDDEN()
 
   const query = getValidatedQuery<z.infer<typeof accountTransferQuerySchema>>(c)
   const fromAccountId = query.from_account_id
@@ -71,8 +71,9 @@ accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQu
 
 // 创建账户转账
 accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTransferSchema), async (c) => {
-  // manager角色有完整权限，可以执行所有操作
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  // 检查财务创建权限
+  const canCreate = hasPermission(c, 'finance', 'transfer', 'create') || isHQDirector(c)
+  if (!canCreate) throw Errors.FORBIDDEN()
 
   const body = getValidatedData<z.infer<typeof createAccountTransferSchema>>(c)
 
@@ -265,8 +266,9 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
 
 // 获取单笔转账详情
 accountTransfersRoutes.get('/account-transfers/:id', validateParam(idParamSchema), async (c) => {
-  // manager角色有完整权限，可以查看所有数据
-  if (!(await requireRole(c, ['manager', 'finance', 'auditor']))) throw Errors.FORBIDDEN()
+  // 检查财务查看权限
+  const canView = hasPermission(c, 'finance', 'transfer', 'view') || isHQDirector(c) || isProjectDirector(c)
+  if (!canView) throw Errors.FORBIDDEN()
 
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id

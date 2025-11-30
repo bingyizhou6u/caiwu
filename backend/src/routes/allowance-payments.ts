@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, requirePermission, canRead, canWrite, isEmployee, isHR, getCurrentUserId } from '../utils/permissions.js'
+import { hasPositionCode, getUserPosition, getUserEmployee, getUserId, isTeamDeveloper } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -12,12 +12,12 @@ export const allowancePaymentsRoutes = new Hono<{ Bindings: Env, Variables: AppV
 
 // 补贴发放管理 - 列表
 allowancePaymentsRoutes.get('/allowance-payments', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const year = c.req.query('year')
   const month = c.req.query('month')
   const employeeId = c.req.query('employee_id')
   const allowanceType = c.req.query('allowance_type')
-  const userId = getCurrentUserId(c)
+  const userId = getUserId(c)
   
   let sql = `
     select 
@@ -36,8 +36,8 @@ allowancePaymentsRoutes.get('/allowance-payments', async (c) => {
   `
   const binds: any[] = []
   
-  // employee角色只能查看自己的补贴（通过email匹配employee_id）
-  if (await isEmployee(c) && userId) {
+  // 组员只能查看自己的补贴（通过email匹配employee_id）
+  if (isTeamDeveloper(c) && userId) {
     const { getUserEmployeeId } = await import('../utils/db.js')
     const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
     if (userEmployeeId) {
@@ -73,7 +73,7 @@ allowancePaymentsRoutes.get('/allowance-payments', async (c) => {
 
 // 补贴发放管理 - 生成补贴发放记录（基于员工补贴配置）
 allowancePaymentsRoutes.post('/allowance-payments/generate', validateJson(generateAllowancePaymentsSchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof generateAllowancePaymentsSchema>>(c)
   
   const yearNum = body.year
@@ -226,7 +226,7 @@ allowancePaymentsRoutes.post('/allowance-payments/generate', validateJson(genera
 
 // 补贴发放管理 - 创建单个发放记录
 allowancePaymentsRoutes.post('/allowance-payments', validateJson(createAllowancePaymentSchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createAllowancePaymentSchema>>(c)
   
   // 验证员工是否存在
@@ -281,7 +281,7 @@ allowancePaymentsRoutes.post('/allowance-payments', validateJson(createAllowance
 
 // 补贴发放管理 - 更新
 allowancePaymentsRoutes.put('/allowance-payments/:id', validateJson(updateAllowancePaymentSchema), async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateAllowancePaymentSchema>>(c)
   
@@ -343,7 +343,7 @@ allowancePaymentsRoutes.put('/allowance-payments/:id', validateJson(updateAllowa
 
 // 补贴发放管理 - 删除
 allowancePaymentsRoutes.delete('/allowance-payments/:id', async (c) => {
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   
   const record = await c.env.DB.prepare('select * from allowance_payments where id=?').bind(id).first<any>()

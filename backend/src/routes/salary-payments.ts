@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, requirePermission, canRead, canWrite, isEmployee, isHR, getCurrentUserId } from '../utils/permissions.js'
+import { isHQDirector, isHQFinance, isHQHR, isProjectDirector, isProjectFinance, isTeamMember, getUserId } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid, getUserEmployeeId } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -13,13 +13,13 @@ export const salaryPaymentsRoutes = new Hono<{ Bindings: Env, Variables: AppVari
 
 // 薪资发放管理 - 列表
 salaryPaymentsRoutes.get('/salary-payments', validateQuery(salaryPaymentQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看（通过数据权限过滤）
   const query = getValidatedQuery<z.infer<typeof salaryPaymentQuerySchema>>(c)
   const year = query.year
   const month = query.month
   const status = query.status
   const employeeId = query.employee_id
-  const userId = getCurrentUserId(c)
+  const userId = getUserId(c)
   
   let sql = `
     select 
@@ -45,8 +45,8 @@ salaryPaymentsRoutes.get('/salary-payments', validateQuery(salaryPaymentQuerySch
   `
   const binds: any[] = []
   
-  // employee角色只能查看自己的薪资（通过email匹配employee_id）
-  if (await isEmployee(c) && userId) {
+  // 组员只能查看自己的薪资（通过email匹配employee_id）
+  if (isTeamMember(c) && userId) {
     const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
     if (userEmployeeId) {
       sql += ' and sp.employee_id = ?'
@@ -137,8 +137,9 @@ salaryPaymentsRoutes.get('/salary-payments', validateQuery(salaryPaymentQuerySch
 
 // 薪资发放管理 - 创建（基于薪资表生成）
 salaryPaymentsRoutes.post('/salary-payments/generate', validateJson(generateSalaryPaymentsSchema), async (c) => {
-  // 只有财务和管理员可以生成薪资单
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  // 只有财务和负责人可以生成薪资单
+  const canGenerate = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canGenerate) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof generateSalaryPaymentsSchema>>(c)
   
   const yearNum = body.year
@@ -403,7 +404,7 @@ salaryPaymentsRoutes.post('/salary-payments/generate', validateJson(generateSala
 salaryPaymentsRoutes.post('/salary-payments/:id/employee-confirm', async (c) => {
   // 员工可以确认自己的薪资
   const id = c.req.param('id')
-  const userId = getCurrentUserId(c)
+  const userId = getUserId(c)
   
   const record = await c.env.DB.prepare(`
     select sp.*, e.name as employee_name
@@ -414,8 +415,8 @@ salaryPaymentsRoutes.post('/salary-payments/:id/employee-confirm', async (c) => 
   
   if (!record) throw Errors.NOT_FOUND()
   
-  // employee角色只能确认自己的薪资（通过email匹配employee_id）
-  if (await isEmployee(c) && userId) {
+  // 组员只能确认自己的薪资（通过email匹配employee_id）
+  if (isTeamMember(c) && userId) {
     const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
     if (!userEmployeeId || record.employee_id !== userEmployeeId) {
       throw Errors.FORBIDDEN('员工只能确认自己的工资')
@@ -457,8 +458,9 @@ salaryPaymentsRoutes.post('/salary-payments/:id/employee-confirm', async (c) => 
 
 // 薪资发放管理 - 财务确认（需要先审批币种分配）
 salaryPaymentsRoutes.post('/salary-payments/:id/finance-approve', async (c) => {
-  // 只有财务和管理员可以确认
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  // 只有财务和负责人可以确认
+  const canApprove = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canApprove) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const userId = c.get('userId') as string | undefined
   
@@ -517,8 +519,9 @@ salaryPaymentsRoutes.post('/salary-payments/:id/finance-approve', async (c) => {
 
 // 薪资发放管理 - 出纳转账（需要选择账户）
 salaryPaymentsRoutes.post('/salary-payments/:id/payment-transfer', validateJson(salaryPaymentTransferSchema), async (c) => {
-  // 只有财务和管理员可以标记转账
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  // 只有财务和负责人可以标记转账
+  const canTransfer = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canTransfer) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof salaryPaymentTransferSchema>>(c)
   const userId = c.get('userId') as string | undefined
@@ -608,8 +611,9 @@ salaryPaymentsRoutes.post('/salary-payments/:id/payment-transfer', validateJson(
 
 // 薪资发放管理 - 出纳确认（上传凭证）
 salaryPaymentsRoutes.post('/salary-payments/:id/payment-confirm', async (c) => {
-  // 只有财务和管理员可以确认转账
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  // 只有总部财务、项目财务或负责人可以确认转账
+  const canConfirm = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canConfirm) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ payment_voucher_path: string }>()
   const userId = c.get('userId') as string | undefined
@@ -656,7 +660,7 @@ salaryPaymentsRoutes.post('/salary-payments/:id/payment-confirm', async (c) => {
 
 // 薪资发放管理 - 获取详情
 salaryPaymentsRoutes.get('/salary-payments/:id', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看（通过数据权限过滤）
   const id = c.req.param('id')
   
   const record = await c.env.DB.prepare(`
@@ -684,9 +688,9 @@ salaryPaymentsRoutes.get('/salary-payments/:id', async (c) => {
   
   if (!record) throw Errors.NOT_FOUND()
   
-  // employee角色只能查看自己的薪资
-  if (await isEmployee(c)) {
-    const userId = getCurrentUserId(c)
+  // 组员只能查看自己的薪资
+  if (isTeamMember(c)) {
+    const userId = getUserId(c)
     if (userId) {
       const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
       if (!userEmployeeId || record.employee_id !== userEmployeeId) {
@@ -715,7 +719,8 @@ salaryPaymentsRoutes.get('/salary-payments/:id', async (c) => {
 
 // 薪资发放管理 - 删除
 salaryPaymentsRoutes.delete('/salary-payments/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  const canDelete = isHQDirector(c)
+  if (!canDelete) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   
   const record = await c.env.DB.prepare('select * from salary_payments where id=?').bind(id).first<any>()
@@ -745,13 +750,13 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations', validateJson(reque
   // 员工可以申请币种分配
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof requestSalaryAllocationsSchema>>(c)
-  const userId = getCurrentUserId(c)
+  const userId = getUserId(c)
   
   const record = await c.env.DB.prepare('select * from salary_payments where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND()
   
-  // employee角色只能申请自己的薪资币种分配
-  if (await isEmployee(c) && userId) {
+  // 组员只能申请自己的薪资币种分配
+  if (isTeamMember(c) && userId) {
     const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
     if (!userEmployeeId || record.employee_id !== userEmployeeId) {
       throw Errors.FORBIDDEN('员工只能为自己的工资申请分配')
@@ -852,8 +857,9 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations', validateJson(reque
 
 // 薪资币种分配管理 - 审批分配（财务审批）
 salaryPaymentsRoutes.post('/salary-payments/:id/allocations/approve', async (c) => {
-  // 只有财务和管理员可以审批
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  // 只有总部财务、项目财务或负责人可以审批
+  const canApprove = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canApprove) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ allocation_ids?: string[], approve_all?: boolean }>()
   const userId = c.get('userId') as string | undefined
@@ -951,8 +957,9 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations/approve', async (c) 
 
 // 薪资币种分配管理 - 拒绝分配（财务拒绝）
 salaryPaymentsRoutes.post('/salary-payments/:id/allocations/reject', async (c) => {
-  // 只有财务和管理员可以拒绝
-  if (!(await requireRole(c, ['manager', 'finance']))) throw Errors.FORBIDDEN()
+  // 只有总部财务、项目财务或负责人可以拒绝
+  const canReject = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canReject) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ allocation_ids: string[] }>()
   const userId = c.get('userId') as string | undefined
@@ -1023,7 +1030,7 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations/reject', async (c) =
 
 // 薪资币种分配管理 - 获取分配列表
 salaryPaymentsRoutes.get('/salary-payments/:id/allocations', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看
   const id = c.req.param('id')
   
   const allocations = await c.env.DB.prepare(`

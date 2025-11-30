@@ -58,7 +58,6 @@ export class AuthService {
         const position = await this.userService.getUserPosition(user.id)
         if (!position) throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')
 
-        const role = this.userService.getRoleByPositionCode(position.code)
         const session = await this.createSession(user.id, deviceInfo)
 
         // Audit log
@@ -69,7 +68,7 @@ export class AuthService {
         return {
             status: 'success',
             session,
-            user: { id: user.id, name: user.name, email: user.email, role },
+            user: { id: user.id, name: user.name, email: user.email },
             position
         }
     }

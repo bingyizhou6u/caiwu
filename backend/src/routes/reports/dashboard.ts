@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { canRead } from '../../utils/permissions.js'
+import { getUserPosition, getUserEmployee } from '../../utils/permissions.js'
 import { UserService } from '../../services/UserService.js'
 import { Errors } from '../../utils/errors.js'
 
@@ -12,20 +12,25 @@ export const dashboardRoutes = new Hono<{ Bindings: Env, Variables: AppVariables
 
 // Dashboard统计数据
 dashboardRoutes.get('/stats', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  const position = getUserPosition(c)
+  if (!position) throw Errors.FORBIDDEN()
 
   const today = new Date().toISOString().slice(0, 10)
   const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
   const thisMonthEnd = today
 
-  const role = c.get('userRole') as string | undefined
+  const employee = getUserEmployee(c)
   const userId = c.get('userId') as string | undefined
 
-  // 优化：如果需要权限过滤，先获取部门ID（避免重复查询）
+  // 基于职位层级控制数据范围
   let deptId: string | null = null
-  if (role !== 'manager' && role !== 'finance' && userId) {
-    deptId = await new UserService(c.env.DB).getUserDepartmentId(userId)
+  if (position && position.level > 1) {
+    // 项目级别和组级别，根据员工的department_id过滤
+    if (employee?.department_id) {
+      deptId = employee.department_id
+    }
   }
+  // 总部级别(level=1)不需要过滤，可以查看所有数据
 
   // 今日收支统计
   let todaySql = `

@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { canRead, canViewReports, applyDataScope } from '../../utils/permissions.js'
+import { getUserPosition, getUserEmployee, getDataAccessFilter } from '../../utils/permissions.js'
 import { UserService } from '../../services/UserService.js'
 import { Errors } from '../../utils/errors.js'
 import { validateQuery, getValidatedQuery, validateParam, getValidatedParams } from '../../utils/validator.js'
@@ -15,8 +15,9 @@ export const accountReportsRoutes = new Hono<{ Bindings: Env, Variables: AppVari
 
 // 账户余额报表
 accountReportsRoutes.get('/account-balance', validateQuery(singleDateQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  const position = getUserPosition(c)
+  if (!position) throw Errors.FORBIDDEN()
+  if (position.level > 2) throw Errors.FORBIDDEN('只有总部和项目人员可以查看报表')
 
   const query = getValidatedQuery<z.infer<typeof singleDateQuerySchema>>(c)
   const asOf = query.as_of
@@ -97,8 +98,9 @@ const borrowingSummaryQuerySchema = z.object({
   end: dateSchema.optional(),
 })
 accountReportsRoutes.get('/borrowing-summary', validateQuery(borrowingSummaryQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  const position = getUserPosition(c)
+  if (!position) throw Errors.FORBIDDEN()
+  if (position.level > 2) throw Errors.FORBIDDEN('只有总部和项目人员可以查看报表')
 
   const query = getValidatedQuery<z.infer<typeof borrowingSummaryQuerySchema>>(c)
   const start = query.start
@@ -136,8 +138,12 @@ accountReportsRoutes.get('/borrowing-summary', validateQuery(borrowingSummaryQue
     `
   }
 
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
+  const { where, binds: scopeBinds } = getDataAccessFilter(c, 'u')
+  if (where !== '1=1') {
+    sql += ` and ${where}`
+    binds.push(...scopeBinds)
+  }
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
 
   const mapped = (rows.results ?? []).map((r: any) => ({
     ...r,
@@ -156,8 +162,9 @@ const optionalDateRangeSchema = z.object({
   end: dateSchema.optional(),
 })
 accountReportsRoutes.get('/borrowing-detail/:user_id', validateParam(userIdParamSchema), validateQuery(optionalDateRangeSchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  const position = getUserPosition(c)
+  if (!position) throw Errors.FORBIDDEN()
+  if (position.level > 2) throw Errors.FORBIDDEN('只有总部和项目人员可以查看报表')
 
   const params = getValidatedParams<z.infer<typeof userIdParamSchema>>(c)
   const userId = params.user_id
@@ -207,16 +214,14 @@ const newSiteRevenueQuerySchema = dateRangeQuerySchema.extend({
   days: z.number().int().positive().optional(),
 })
 accountReportsRoutes.get('/new-site-revenue', validateQuery(newSiteRevenueQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  const position = getUserPosition(c)
+  if (!position) throw Errors.FORBIDDEN()
+  if (position.level > 2) throw Errors.FORBIDDEN('只有总部和项目人员可以查看报表')
 
   const query = getValidatedQuery<z.infer<typeof newSiteRevenueQuerySchema>>(c)
   const start = query.start
   const end = query.end
   const days = query.days ?? 30
-
-  const role = c.get('userRole') as string | undefined
-  const userId = c.get('userId') as string | undefined
 
   let sql = `
     select s.id as site_id, s.name as site_name, s.created_at as site_created_at,
@@ -231,12 +236,11 @@ accountReportsRoutes.get('/new-site-revenue', validateQuery(newSiteRevenueQueryS
   let binds: any[] = [start, end, end, days]
 
   // 应用数据权限过滤
-  if (role !== 'manager' && role !== 'finance' && userId) {
-    const deptId = await new UserService(c.env.DB).getUserDepartmentId(userId)
-    if (deptId) {
-      sql += ' and s.department_id=?'
-      binds.push(deptId)
-    }
+  const employee = getUserEmployee(c)
+  if (position && position.level > 1 && employee?.department_id) {
+    // 项目级别，根据部门过滤
+    sql += ' and s.department_id=?'
+    binds.push(employee.department_id)
   }
 
   sql += ' group by s.id, s.name, s.created_at order by s.created_at desc'

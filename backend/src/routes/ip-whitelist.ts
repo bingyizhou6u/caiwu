@@ -1,10 +1,9 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, requirePermission, canRead, canWrite } from '../utils/permissions.js'
+import { isHQDirector } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { getUserByEmail } from '../utils/db.js'
 import { SystemService } from '../services/SystemService.js'
-import { applyDataScope } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData } from '../utils/validator.js'
 import { isValidIPAddress } from '../utils/validation.js'
@@ -24,7 +23,7 @@ import {
 export const ip_whitelistRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
 ip_whitelistRoutes.get('/ip-whitelist', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   // 直接从 Cloudflare 拉取 IP 列表
   const cfItems = await fetchCloudflareIPListItems(c.env)
@@ -45,7 +44,7 @@ ip_whitelistRoutes.get('/ip-whitelist', async (c) => {
 // IP 白名单管理 - 创建
 
 ip_whitelistRoutes.post('/ip-whitelist', validateJson(createIPWhitelistSchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   try {
     const body = getValidatedData<z.infer<typeof createIPWhitelistSchema>>(c)
@@ -92,7 +91,7 @@ ip_whitelistRoutes.post('/ip-whitelist', validateJson(createIPWhitelistSchema), 
 // IP 白名单管理 - 批量添加（必须在动态路由之前定义）
 
 ip_whitelistRoutes.post('/ip-whitelist/batch', validateJson(batchCreateIPWhitelistSchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   try {
     const body = getValidatedData<z.infer<typeof batchCreateIPWhitelistSchema>>(c)
@@ -154,7 +153,7 @@ ip_whitelistRoutes.post('/ip-whitelist/batch', validateJson(batchCreateIPWhiteli
 // IP 白名单管理 - 批量删除（必须在动态路由之前定义）
 
 ip_whitelistRoutes.delete('/ip-whitelist/batch', validateJson(batchDeleteIPWhitelistSchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   try {
     const body = getValidatedData<z.infer<typeof batchDeleteIPWhitelistSchema>>(c)
@@ -201,7 +200,7 @@ ip_whitelistRoutes.delete('/ip-whitelist/batch', validateJson(batchDeleteIPWhite
 // IP 白名单管理 - 从 Cloudflare 同步
 
 ip_whitelistRoutes.post('/ip-whitelist/sync', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   // 直接从 Cloudflare 拉取 IP 列表（不再同步到数据库）
   const cfItems = await fetchCloudflareIPListItems(c.env)
@@ -213,7 +212,7 @@ ip_whitelistRoutes.post('/ip-whitelist/sync', async (c) => {
 // IP 白名单管理 - 删除（动态路由，必须在批量路由之后定义）
 
 ip_whitelistRoutes.delete('/ip-whitelist/:id', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const itemId = c.req.param('id') // itemId 是 Cloudflare 的 item ID
 
   // 先获取 IP 地址用于审计日志
@@ -236,7 +235,7 @@ ip_whitelistRoutes.delete('/ip-whitelist/:id', async (c) => {
 // IP 白名单规则管理 - 获取规则状态（会自动创建）
 
 ip_whitelistRoutes.get('/ip-whitelist/rule', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const status = await getWhitelistRuleStatus(c.env)
   return c.json(status || { enabled: false })
 })
@@ -244,7 +243,7 @@ ip_whitelistRoutes.get('/ip-whitelist/rule', async (c) => {
 // IP 白名单规则管理 - 创建规则（已废弃，通过 GET /api/ip-whitelist/rule 自动创建）
 
 ip_whitelistRoutes.post('/ip-whitelist/rule/create', async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   const result = await getOrCreateWhitelistRule(c.env)
   if (!result) {
@@ -258,7 +257,7 @@ ip_whitelistRoutes.post('/ip-whitelist/rule/create', async (c) => {
 // IP 白名单规则管理 - 启用/停用规则
 
 ip_whitelistRoutes.post('/ip-whitelist/rule/toggle', validateJson(toggleIPWhitelistRuleSchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
 
   try {
     const body = getValidatedData<z.infer<typeof toggleIPWhitelistRuleSchema>>(c)

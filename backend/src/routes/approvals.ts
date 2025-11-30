@@ -7,7 +7,7 @@ import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { Errors } from '../utils/errors.js'
 import { logAuditAction } from '../utils/audit.js'
-import { requireRole } from '../utils/permissions.js'
+import { canManageSubordinates, getUserPosition, getUserEmployee, isHQDirector, isHQFinance, isProjectDirector, isProjectFinance } from '../utils/permissions.js'
 import { validateJson, getValidatedData } from '../utils/validator.js'
 import { z } from 'zod'
 
@@ -16,23 +16,34 @@ export const approvalsRoutes = new Hono<{ Bindings: Env, Variables: AppVariables
 // 获取当前用户可审批的员工ID列表（下属）
 async function getSubordinateEmployeeIds(c: any): Promise<string[]> {
   const userId = c.get('userId')
-  const userPosition = c.get('userPosition')
-  const userEmployee = c.get('userEmployee')
+  const userPosition = getUserPosition(c)
+  const userEmployee = getUserEmployee(c)
   
   if (!userId || !userPosition) return []
   
-  // 如果是 manager 或 finance，可以审批所有
-  if (['manager', 'finance', 'hr'].includes(userPosition.code)) {
+  // 如果可以管理下属，获取下属列表
+  if (!canManageSubordinates(c)) return []
+  
+  // 总部负责人和总部财务可以审批所有人
+  if (isHQDirector(c) || isHQFinance(c)) {
     const all = await c.env.DB.prepare('SELECT id FROM employees WHERE active = 1').all() as D1Result<{ id: string }>
     return (all.results || []).map((e: { id: string }) => e.id)
   }
   
-  // 如果是部门主管，可以审批本部门员工
-  if (userPosition.level === 'manager' && userEmployee?.org_department_id) {
+  // 项目负责人可以审批本项目员工
+  if (isProjectDirector(c) && userEmployee?.department_id) {
     const dept = await c.env.DB.prepare(
+      'SELECT id FROM employees WHERE department_id = ? AND active = 1'
+    ).bind(userEmployee.department_id).all() as D1Result<{ id: string }>
+    return (dept.results || []).map((e: { id: string }) => e.id)
+  }
+  
+  // 组长可以审批本组员工
+  if (userPosition.code === 'team_leader' && userEmployee?.org_department_id) {
+    const team = await c.env.DB.prepare(
       'SELECT id FROM employees WHERE org_department_id = ? AND active = 1'
     ).bind(userEmployee.org_department_id).all() as D1Result<{ id: string }>
-    return (dept.results || []).map((e: { id: string }) => e.id)
+    return (team.results || []).map((e: { id: string }) => e.id)
   }
   
   return []
@@ -237,7 +248,8 @@ approvalsRoutes.post('/approvals/reimbursement/:id/approve', validateJson(approv
   if (!userId) throw Errors.UNAUTHORIZED()
   
   // 只有财务可以审批报销
-  if (!(await requireRole(c, ['finance', 'manager']))) {
+  const canApprove = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canApprove) {
     throw Errors.FORBIDDEN('只有财务人员可以审批报销')
   }
   
@@ -267,7 +279,8 @@ approvalsRoutes.post('/approvals/reimbursement/:id/reject', validateJson(approva
   const userId = c.get('userId')
   if (!userId) throw Errors.UNAUTHORIZED()
   
-  if (!(await requireRole(c, ['finance', 'manager']))) {
+  const canApprove = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canApprove) {
     throw Errors.FORBIDDEN('只有财务人员可以审批报销')
   }
   
@@ -297,7 +310,8 @@ approvalsRoutes.post('/approvals/borrowing/:id/approve', validateJson(approvalAc
   const userId = c.get('userId')
   if (!userId) throw Errors.UNAUTHORIZED()
   
-  if (!(await requireRole(c, ['finance', 'manager']))) {
+  const canApprove = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canApprove) {
     throw Errors.FORBIDDEN('只有财务人员可以审批借支')
   }
   
@@ -327,7 +341,8 @@ approvalsRoutes.post('/approvals/borrowing/:id/reject', validateJson(approvalAct
   const userId = c.get('userId')
   if (!userId) throw Errors.UNAUTHORIZED()
   
-  if (!(await requireRole(c, ['finance', 'manager']))) {
+  const canApprove = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
+  if (!canApprove) {
     throw Errors.FORBIDDEN('只有财务人员可以审批借支')
   }
   

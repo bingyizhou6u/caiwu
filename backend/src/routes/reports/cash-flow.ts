@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { canRead, canViewReports, applyDataScope } from '../../utils/permissions.js'
+import { getUserPosition, getUserEmployee, getDataAccessFilter } from '../../utils/permissions.js'
 import { UserService } from '../../services/UserService.js'
 import { Errors } from '../../utils/errors.js'
 import { validateQuery, getValidatedQuery } from '../../utils/validator.js'
@@ -15,8 +15,9 @@ export const cashFlowReportsRoutes = new Hono<{ Bindings: Env, Variables: AppVar
 
 // 部门现金流报表
 cashFlowReportsRoutes.get('/department-cash', validateQuery(dateRangeQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  const position = getUserPosition(c)
+  if (!position) throw Errors.FORBIDDEN()
+  if (position.level > 2) throw Errors.FORBIDDEN('只有总部和项目人员可以查看报表')
 
   const query = getValidatedQuery<z.infer<typeof dateRangeQuerySchema>>(c)
   const start = query.start
@@ -36,9 +37,12 @@ cashFlowReportsRoutes.get('/department-cash', validateQuery(dateRangeQuerySchema
   `
   let binds: any[] = [start, end]
 
-  const scoped = await applyDataScope(c, sql, binds)
-  sql = scoped.sql + ' group by d.id, d.name order by d.name'
-  binds = scoped.binds
+  const { where, binds: scopeBinds } = getDataAccessFilter(c, 'd')
+  if (where !== '1=1') {
+    sql += ` and ${where}`
+    binds.push(...scopeBinds)
+  }
+  sql += ' group by d.id, d.name order by d.name'
 
   const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
 
@@ -52,8 +56,9 @@ cashFlowReportsRoutes.get('/department-cash', validateQuery(dateRangeQuerySchema
 
 // 站点增长报表
 cashFlowReportsRoutes.get('/site-growth', validateQuery(dateRangeQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  const position = getUserPosition(c)
+  if (!position) throw Errors.FORBIDDEN()
+  if (position.level > 2) throw Errors.FORBIDDEN('只有总部和项目人员可以查看报表')
 
   const query = getValidatedQuery<z.infer<typeof dateRangeQuerySchema>>(c)
   const start = query.start
@@ -66,9 +71,6 @@ cashFlowReportsRoutes.get('/site-growth', validateQuery(dateRangeQuerySchema), a
   const prevStart = new Date(prevEnd.getTime() - (days - 1) * 86400000)
   const prevStartStr = prevStart.toISOString().slice(0, 10)
   const prevEndStr = prevEnd.toISOString().slice(0, 10)
-
-  const role = c.get('userRole') as string | undefined
-  const userId = c.get('userId') as string | undefined
 
   let curSql = `
     select s.id as site_id, s.name as site_name,
@@ -88,14 +90,13 @@ cashFlowReportsRoutes.get('/site-growth', validateQuery(dateRangeQuerySchema), a
   let prevBinds: any[] = [prevStartStr, prevEndStr]
 
   // 应用数据权限过滤
-  if (role !== 'manager' && role !== 'finance' && userId) {
-    const deptId = await new UserService(c.env.DB).getUserDepartmentId(userId)
-    if (deptId) {
-      curSql += ' where s.department_id=?'
-      curBinds.push(deptId)
-      prevSql += ' where s.department_id=?'
-      prevBinds.push(deptId)
-    }
+  const employee = getUserEmployee(c)
+  if (position && position.level > 1 && employee?.department_id) {
+    // 项目级别，根据部门过滤
+    curSql += ' where s.department_id=?'
+    curBinds.push(employee.department_id)
+    prevSql += ' where s.department_id=?'
+    prevBinds.push(employee.department_id)
   }
 
   curSql += ' group by s.id, s.name'

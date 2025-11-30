@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { requireRole, canRead } from '../utils/permissions.js'
+import { hasPositionCode, getUserPosition, getDataAccessFilter, isHQDirector, isHQFinance, isHQHR, isProjectDirector, isProjectFinance } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
-import { applyDataScope } from '../utils/permissions.js'
+
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery, validateParam, getValidatedParams } from '../utils/validator.js'
 import { createFixedAssetSchema, updateFixedAssetSchema, allocateFixedAssetSchema, createDepreciationSchema, transferFixedAssetSchema, purchaseFixedAssetWithFlowSchema, sellFixedAssetSchema, returnFixedAssetSchema } from '../schemas/business.schema.js'
@@ -15,7 +15,7 @@ export const fixedAssetsRoutes = new Hono<{ Bindings: Env, Variables: AppVariabl
 
 // 获取固定资产列表
 fixedAssetsRoutes.get('/fixed-assets', validateQuery(fixedAssetQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof fixedAssetQuerySchema>>(c)
   const search = query.search
   const status = query.status
@@ -62,14 +62,19 @@ fixedAssetsRoutes.get('/fixed-assets', validateQuery(fixedAssetQuerySchema), asy
   sql += ' order by fa.created_at desc'
 
   // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const { where, binds: scopeBinds } = getDataAccessFilter(c, 'fa')
+  if (where !== '1=1') {
+    const prefix = conds.length ? ' and ' : ' where '
+    sql += prefix + where
+    binds.push(...scopeBinds)
+  }
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
 
 // 获取资产类别列表（用于筛选）- 必须在 /fixed-assets/:id 之前定义
 fixedAssetsRoutes.get('/fixed-assets/categories', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const rows = await c.env.DB.prepare(`
     select distinct category as name
     from fixed_assets
@@ -81,7 +86,7 @@ fixedAssetsRoutes.get('/fixed-assets/categories', async (c) => {
 
 // 获取资产分配记录列表 - 必须在 /fixed-assets/:id 之前定义
 fixedAssetsRoutes.get('/fixed-assets/allocations', validateQuery(fixedAssetAllocationQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const query = getValidatedQuery<z.infer<typeof fixedAssetAllocationQuerySchema>>(c)
   const assetId = query.asset_id
   const employeeId = query.employee_id
@@ -123,14 +128,19 @@ fixedAssetsRoutes.get('/fixed-assets/allocations', validateQuery(fixedAssetAlloc
   sql += ' order by a.allocation_date desc, a.created_at desc'
 
   // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const { where, binds: scopeBinds } = getDataAccessFilter(c, 'a')
+  if (where !== '1=1') {
+    const prefix = conds.length ? ' and ' : ' where '
+    sql += prefix + where
+    binds.push(...scopeBinds)
+  }
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
 
 // 获取单个固定资产详情
 fixedAssetsRoutes.get('/fixed-assets/:id', validateParam(idParamSchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const asset = await c.env.DB.prepare(`
@@ -187,7 +197,7 @@ fixedAssetsRoutes.get('/fixed-assets/:id', validateParam(idParamSchema), async (
 
 // 创建固定资产
 fixedAssetsRoutes.post('/fixed-assets', validateJson(createFixedAssetSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -243,7 +253,7 @@ fixedAssetsRoutes.post('/fixed-assets', validateJson(createFixedAssetSchema), as
 
 // 更新固定资产
 fixedAssetsRoutes.put('/fixed-assets/:id', validateParam(idParamSchema), validateJson(updateFixedAssetSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof updateFixedAssetSchema>>(c)
@@ -312,7 +322,7 @@ fixedAssetsRoutes.put('/fixed-assets/:id', validateParam(idParamSchema), validat
 
 // 删除固定资产
 fixedAssetsRoutes.delete('/fixed-assets/:id', validateParam(idParamSchema), async (c) => {
-  if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
+  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const asset = await c.env.DB.prepare('select asset_code, name from fixed_assets where id = ?').bind(id).first<{ asset_code: string, name: string }>()
@@ -335,7 +345,8 @@ fixedAssetsRoutes.delete('/fixed-assets/:id', validateParam(idParamSchema), asyn
 
 // 创建折旧记录
 fixedAssetsRoutes.post('/fixed-assets/:id/depreciations', validateParam(idParamSchema), validateJson(createDepreciationSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canCreate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canCreate) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof createDepreciationSchema>>(c)
@@ -396,7 +407,8 @@ fixedAssetsRoutes.post('/fixed-assets/:id/depreciations', validateParam(idParamS
 
 // 资产调拨
 fixedAssetsRoutes.post('/fixed-assets/:id/transfer', validateParam(idParamSchema), validateJson(transferFixedAssetSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canTransfer = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canTransfer) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof transferFixedAssetSchema>>(c)
@@ -452,7 +464,8 @@ fixedAssetsRoutes.post('/fixed-assets/:id/transfer', validateParam(idParamSchema
 
 // 资产买入（购买资产并创建资产记录+生成支出流水）
 fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAssetWithFlowSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canPurchase = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canPurchase) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof purchaseFixedAssetWithFlowSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -585,7 +598,8 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
 
 // 资产卖出
 fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), validateJson(sellFixedAssetSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager']))) throw Errors.FORBIDDEN()
+  const canSell = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
+  if (!canSell) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof sellFixedAssetSchema>>(c)
@@ -697,7 +711,8 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
 
 // 资产分配（员工入职领取设备等）
 fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema), validateJson(allocateFixedAssetSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager', 'hr']))) throw Errors.FORBIDDEN()
+  const canAllocate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
+  if (!canAllocate) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof allocateFixedAssetSchema>>(c)
@@ -792,7 +807,8 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
 
 // 资产归还
 fixedAssetsRoutes.post('/fixed-assets/allocations/:id/return', validateParam(idParamSchema), validateJson(returnFixedAssetSchema), async (c) => {
-  if (!(await requireRole(c, ['finance', 'manager', 'hr']))) throw Errors.FORBIDDEN()
+  const canReturn = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
+  if (!canReturn) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof returnFixedAssetSchema>>(c)

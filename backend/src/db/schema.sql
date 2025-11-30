@@ -11,8 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_changed INTEGER DEFAULT 0,
   totp_secret TEXT,
   last_login_at INTEGER,
-  created_at INTEGER,
-  updated_at INTEGER
+  created_at INTEGER
 );
 
 -- Employees table
@@ -23,6 +22,7 @@ CREATE TABLE IF NOT EXISTS employees (
   position_id TEXT,
   org_department_id TEXT,
   department_id TEXT,
+  job_role TEXT, -- 仅project_staff使用：finance/hr/admin
   active INTEGER DEFAULT 1,
   created_at INTEGER,
   updated_at INTEGER
@@ -33,9 +33,12 @@ CREATE TABLE IF NOT EXISTS positions (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
-  level TEXT,
-  scope TEXT,
+  level INTEGER NOT NULL, -- 1-总部 2-项目 3-组
+  data_scope TEXT NOT NULL, -- all/hq_all/project/group/self
+  can_manage_subordinates INTEGER DEFAULT 0,
+  description TEXT,
   permissions TEXT, -- JSON string
+  sort_order INTEGER DEFAULT 0,
   active INTEGER DEFAULT 1,
   created_at INTEGER,
   updated_at INTEGER

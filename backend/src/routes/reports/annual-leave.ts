@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { requireRole, canRead } from '../../utils/permissions.js'
+import { isHQDirector, isHQFinance, isHQHR, isProjectDirector } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { getAnnualLeaveStats, getAnnualLeaveConfig } from '../../services/AnnualLeaveService.js'
 
@@ -12,8 +12,9 @@ export const annualLeaveReportRoutes = new Hono<{ Bindings: Env, Variables: AppV
 
 // 获取全员年假统计
 annualLeaveReportRoutes.get('/annual-leave', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await requireRole(c, ['manager', 'finance', 'hr']))) throw Errors.FORBIDDEN('只有管理人员可以查看年假报表')
+  // 只有总部负责人、财务、HR或项目负责人可以查看
+  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
+  if (!canView) throw Errors.FORBIDDEN('只有管理人员可以查看年假报表')
 
   const departmentId = c.req.query('department_id')
   const orgDepartmentId = c.req.query('org_department_id')
@@ -105,7 +106,7 @@ annualLeaveReportRoutes.get('/annual-leave', async (c) => {
 
 // 获取单个员工的年假详情
 annualLeaveReportRoutes.get('/annual-leave/:employeeId', async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
+  // 所有人都可以查看
   
   const employeeId = c.req.param('employeeId')
   

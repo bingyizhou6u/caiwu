@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { canRead, canViewReports, applyDataScope } from '../../utils/permissions.js'
+import { getUserPosition, isHQDirector, isHQFinance, isHQHR, isProjectDirector, applyDataScope } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { validateQuery, getValidatedQuery } from '../../utils/validator.js'
 import { salaryReportQuerySchema } from '../../schemas/common.schema.js'
@@ -15,8 +15,10 @@ export const salaryReportsRoutes = new Hono<{ Bindings: Env, Variables: AppVaria
 // 员工薪资报表
 // 优化版本：批量查询请假记录，避免N+1查询问题
 salaryReportsRoutes.get('/employee-salary', validateQuery(salaryReportQuerySchema), async (c) => {
-  if (!canRead(c)) throw Errors.FORBIDDEN()
-  if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
+  // 只有总部负责人、财务、HR或项目负责人可以查看
+  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
+  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
   
   const query = getValidatedQuery<z.infer<typeof salaryReportQuerySchema>>(c)
   const year = query.year?.toString() || new Date().getFullYear().toString()
