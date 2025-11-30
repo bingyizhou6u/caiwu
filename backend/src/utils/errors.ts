@@ -60,7 +60,25 @@ export async function errorHandler(c: Context, next: Next) {
   try {
     await next()
   } catch (err) {
+    // 结构化错误日志
+    const errorLog = {
+      timestamp: new Date().toISOString(),
+      url: c.req.url,
+      method: c.req.method,
+      userId: c.get('userId') || 'anonymous',
+      userRole: c.get('userRole') || 'unknown',
+      ip: c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || 'unknown',
+      userAgent: c.req.header('user-agent') || 'unknown',
+      error: err instanceof Error ? {
+        message: err.message,
+        name: err.name,
+        stack: err.stack
+      } : String(err)
+    }
+    
     if (err instanceof AppError) {
+      // 业务错误，使用 info 级别
+      console.info('Business Error:', JSON.stringify(errorLog))
       return c.json({
         error: err.message,
         code: err.code,
@@ -68,13 +86,8 @@ export async function errorHandler(c: Context, next: Next) {
       }, err.statusCode as any)
     }
     
-    // 记录未预期的错误
-    console.error('Unexpected error:', {
-      message: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-      url: c.req.url,
-      method: c.req.method,
-    })
+    // 未预期的错误，使用 error 级别
+    console.error('Unexpected Error:', JSON.stringify(errorLog))
     
     return c.json({
       error: '服务器内部错误',

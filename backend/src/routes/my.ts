@@ -43,12 +43,13 @@ myRoutes.get('/my/dashboard', async (c) => {
   const userId = c.get('userId')
   if (!userId) throw Errors.UNAUTHORIZED()
   
+  // 优化：合并部分查询，减少数据库往返次数
   const empInfo = await getMyEmployeeInfo(c)
   if (!empInfo) throw Errors.NOT_FOUND('未找到员工记录')
   
   const employeeId = empInfo.id
   
-  // 优化：并行执行所有数据库查询，减少总响应时间
+  // 优化：并行执行所有数据库查询
   const [
     employee,
     salary,
@@ -143,36 +144,6 @@ myRoutes.get('/my/dashboard', async (c) => {
       borrowingBalanceCents: balance_cents,
     },
     recentApplications: recent.results || [],
-  })
-})
-
-// ==================== 我的薪资 ====================
-
-myRoutes.get('/my/salary', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  // 移除对 c.symbol 的引用，currencies 表没有 symbol 列
-  const salaryConfig = await c.env.DB.prepare(`
-    SELECT es.*, cur.name as currency_name
-    FROM employee_salaries es
-    LEFT JOIN currencies cur ON cur.code = es.currency_id
-    WHERE es.employee_id = ?
-  `).bind(employeeId).all() as D1Result<any>
-  
-  const allowanceConfig = await c.env.DB.prepare(`
-    SELECT ea.*, cur.name as currency_name
-    FROM employee_allowances ea
-    LEFT JOIN currencies cur ON cur.code = ea.currency_id
-    WHERE ea.employee_id = ?
-  `).bind(employeeId).all() as D1Result<any>
-  
-  return c.json({
-    salaryConfig: salaryConfig.results || [],
-    allowanceConfig: allowanceConfig.results || [],
   })
 })
 

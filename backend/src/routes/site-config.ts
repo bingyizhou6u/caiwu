@@ -87,26 +87,35 @@ siteConfigRoutes.put('/site-config', validateJson(batchUpdateSiteConfigSchema), 
     const body = getValidatedData<z.infer<typeof batchUpdateSiteConfigSchema>>(c)
     
     const now = Date.now()
-    const updates: Promise<any>[] = []
+    const keys = Object.keys(body).filter(key => typeof body[key] === 'string')
     
-    for (const [key, value] of Object.entries(body)) {
-      if (typeof value !== 'string') continue
-      
-      // 检查配置项是否存在
-      const existing = await c.env.DB.prepare('select * from site_config where config_key=?').bind(key).first()
-      if (existing) {
-        updates.push(
-          c.env.DB.prepare('update site_config set config_value=?, updated_at=? where config_key=?')
-            .bind(value, now, key).run()
-        )
-      }
+    if (keys.length === 0) {
+      return c.json({ ok: true, updated: 0 })
     }
     
-    await Promise.all(updates)
+    // 优化：批量查询现有配置
+    const placeholders = keys.map(() => '?').join(',')
+    const existing = await c.env.DB.prepare(`
+      select config_key from site_config where config_key in (${placeholders})
+    `).bind(...keys).all<{ config_key: string }>()
     
-    logAuditAction(c, 'update', 'site_config', 'batch', JSON.stringify({ keys: Object.keys(body) }))
+    const existingKeys = new Set((existing.results || []).map(r => r.config_key))
     
-    return c.json({ ok: true, updated: updates.length })
+    // 使用 batch API 批量更新
+    const statements = keys
+      .filter(key => existingKeys.has(key))
+      .map(key => 
+        c.env.DB.prepare('update site_config set config_value=?, updated_at=? where config_key=?')
+          .bind(body[key], now, key)
+      )
+    
+    if (statements.length > 0) {
+      await c.env.DB.batch(statements)
+    }
+    
+    logAuditAction(c, 'update', 'site_config', 'batch', JSON.stringify({ keys: Array.from(existingKeys) }))
+    
+    return c.json({ ok: true, updated: statements.length })
   } catch (error: any) {
     console.error('Error batch updating site config:', error)
     if (error && typeof error === 'object' && 'statusCode' in error) throw error

@@ -49,7 +49,6 @@ const ReportEmployeeSalary = lazy(() => import('../pages/reports/ReportEmployeeS
 
 // My pages - 整合个人中心
 const MyCenter = lazy(() => import('../pages/my/MyCenter').then(m => ({ default: m.MyCenter })))
-const MySalary = lazy(() => import('../pages/my/MySalary').then(m => ({ default: m.MySalary })))
 const MyLeaves = lazy(() => import('../pages/my/MyLeaves').then(m => ({ default: m.MyLeaves })))
 const MyReimbursements = lazy(() => import('../pages/my/MyReimbursements').then(m => ({ default: m.MyReimbursements })))
 const MyBorrowings = lazy(() => import('../pages/my/MyBorrowings').then(m => ({ default: m.MyBorrowings })))
@@ -65,7 +64,6 @@ export const AppRouter: React.FC<AppRouterProps> = ({ pageKey }) => {
         switch (pageKey) {
             // 个人工作台
             case 'my-center': return <MyCenter />
-            case 'my-salary': return <MySalary />
             case 'my-leaves': return <MyLeaves />
             case 'my-reimbursements': return <MyReimbursements />
             case 'my-borrowings': return <MyBorrowings />

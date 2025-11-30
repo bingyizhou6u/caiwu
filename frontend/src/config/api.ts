@@ -146,7 +146,6 @@ export const api = {
   // 个人中心
   my: {
     dashboard: `${API_BASE}/api/my/dashboard`,
-    salary: `${API_BASE}/api/my/salary`,
     leaves: `${API_BASE}/api/my/leaves`,
     reimbursements: `${API_BASE}/api/my/reimbursements`,
     borrowings: `${API_BASE}/api/my/borrowings`,

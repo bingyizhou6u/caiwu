@@ -1,5 +1,4 @@
 export { MyDashboard } from './MyDashboard'
-export { MySalary } from './MySalary'
 export { MyLeaves } from './MyLeaves'
 export { MyReimbursements } from './MyReimbursements'
 export { MyBorrowings } from './MyBorrowings'

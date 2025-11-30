@@ -53,7 +53,6 @@ const ReportEmployeeSalary = lazy(() => import('./reports/ReportEmployeeSalary')
 const SessionManagement = lazy(() => import('./SessionManagement'))
 
 const MyCenter = lazy(() => import('./my/MyCenter').then(m => ({ default: m.MyCenter })))
-const MySalary = lazy(() => import('./my/MySalary').then(m => ({ default: m.MySalary })))
 const MyLeaves = lazy(() => import('./my/MyLeaves').then(m => ({ default: m.MyLeaves })))
 const MyReimbursements = lazy(() => import('./my/MyReimbursements').then(m => ({ default: m.MyReimbursements })))
 const MyBorrowings = lazy(() => import('./my/MyBorrowings').then(m => ({ default: m.MyBorrowings })))
@@ -564,8 +563,7 @@ function AppContent() {
           </div>
         </div>
       }>
-                {selected === 'my-center' && <MyCenter />}
-        {selected === 'my-salary' && <MySalary />}
+        {selected === 'my-center' && <MyCenter />}
         {selected === 'my-leaves' && <MyLeaves />}
         {selected === 'my-reimbursements' && <MyReimbursements />}
         {selected === 'my-borrowings' && <MyBorrowings />}

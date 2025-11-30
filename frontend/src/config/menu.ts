@@ -3,7 +3,6 @@ import type { MenuProps } from 'antd'
 export const pageTitles: Record<string, string> = {
     // 我的工作台
     'my-center': '个人中心',
-    'my-salary': '我的薪资',
     'my-leaves': '我的请假',
     'my-reimbursements': '我的报销',
     'my-borrowings': '我的借支',
@@ -66,7 +65,6 @@ export const buildMenuItems = (userRole: string, userInfo: any): MenuProps['item
     // 1. 我的工作台（所有人可见）
     const myCenter: MenuProps['items'] = []
     myCenter.push({ key: 'my-center', label: '个人中心' })
-    myCenter.push({ key: 'my-salary', label: '我的薪资' })
     myCenter.push({ key: 'my-leaves', label: '我的请假' })
     myCenter.push({ key: 'my-reimbursements', label: '我的报销' })
     myCenter.push({ key: 'my-borrowings', label: '我的借支' })

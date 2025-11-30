@@ -23,41 +23,70 @@ accountReportsRoutes.get('/account-balance', validateQuery(singleDateQuerySchema
 
   const accounts = await c.env.DB.prepare('select id, name, type, currency, account_number from accounts where active=1 order by name').all<any>()
 
-  const rows = []
-  for (const acc of (accounts.results || [])) {
-    // 期初余额：opening_balances + 截至asOf之前的交易
-    const ob = await c.env.DB.prepare('select coalesce(sum(case when type="account" and ref_id=? then amount_cents else 0 end),0) as ob from opening_balances')
-      .bind(acc.id).first<{ ob: number }>()
-
-    const pre = await c.env.DB.prepare(`
-      select coalesce(sum(case when type='income' then amount_cents when type='expense' then -amount_cents else 0 end),0) as s
-      from cash_flows where account_id=? and biz_date<?
-    `).bind(acc.id, asOf).first<{ s: number }>()
-
-    const opening = (ob?.ob ?? 0) + (pre?.s ?? 0)
-
-    // 截至asOf当天的交易
-    const period = await c.env.DB.prepare(`
-      select 
-        coalesce(sum(case when type='income' then amount_cents else 0 end),0) as income_cents,
-        coalesce(sum(case when type='expense' then amount_cents else 0 end),0) as expense_cents
-      from cash_flows where account_id=? and biz_date=?
-    `).bind(acc.id, asOf).first<{ income_cents: number, expense_cents: number }>()
-
-    const closing = opening + (period?.income_cents ?? 0) - (period?.expense_cents ?? 0)
-
-    rows.push({
+  // 优化：批量查询所有账户的余额数据，避免 N+1 查询
+  const accountIds = (accounts.results || []).map((acc: any) => acc.id)
+  
+  if (accountIds.length === 0) {
+    return c.json({ rows: [], as_of: asOf })
+  }
+  
+  const placeholders = accountIds.map(() => '?').join(',')
+  
+  // 批量查询期初余额
+  const openingBalances = await c.env.DB.prepare(`
+    select ref_id as account_id, coalesce(sum(amount_cents), 0) as ob
+    from opening_balances
+    where type='account' and ref_id in (${placeholders})
+    group by ref_id
+  `).bind(...accountIds).all<{ account_id: string, ob: number }>()
+  
+  // 批量查询历史交易（asOf之前）
+  const priorFlows = await c.env.DB.prepare(`
+    select 
+      account_id,
+      coalesce(sum(case when type='income' then amount_cents when type='expense' then -amount_cents else 0 end), 0) as prior_net
+    from cash_flows
+    where account_id in (${placeholders}) and biz_date < ?
+    group by account_id
+  `).bind(...accountIds, asOf).all<{ account_id: string, prior_net: number }>()
+  
+  // 批量查询当天交易
+  const periodFlows = await c.env.DB.prepare(`
+    select 
+      account_id,
+      coalesce(sum(case when type='income' then amount_cents else 0 end), 0) as income_cents,
+      coalesce(sum(case when type='expense' then amount_cents else 0 end), 0) as expense_cents
+    from cash_flows
+    where account_id in (${placeholders}) and biz_date = ?
+    group by account_id
+  `).bind(...accountIds, asOf).all<{ account_id: string, income_cents: number, expense_cents: number }>()
+  
+  // 构建映射表便于快速查找
+  const obMap = new Map((openingBalances.results || []).map(r => [r.account_id, r.ob]))
+  const priorMap = new Map((priorFlows.results || []).map(r => [r.account_id, r.prior_net]))
+  const periodMap = new Map((periodFlows.results || []).map(r => [r.account_id, { income_cents: r.income_cents, expense_cents: r.expense_cents }]))
+  
+  // 组装结果
+  const rows = (accounts.results || []).map((acc: any) => {
+    const ob = obMap.get(acc.id) || 0
+    const prior = priorMap.get(acc.id) || 0
+    const period = periodMap.get(acc.id) || { income_cents: 0, expense_cents: 0 }
+    
+    const opening = ob + prior
+    const closing = opening + period.income_cents - period.expense_cents
+    
+    return {
       account_id: acc.id,
       account_name: acc.name,
       account_type: acc.type,
       currency: acc.currency,
       account_number: acc.account_number,
       opening_cents: opening,
-      income_cents: period?.income_cents ?? 0,
-      expense_cents: period?.expense_cents ?? 0,
+      income_cents: period.income_cents,
+      expense_cents: period.expense_cents,
       closing_cents: closing
-    })
-  }
+    }
+  })
 
   return c.json({ rows, as_of: asOf })
 })
@@ -75,6 +104,7 @@ accountReportsRoutes.get('/borrowing-summary', validateQuery(borrowingSummaryQue
   const start = query.start
   const end = query.end
 
+  // 优化：使用 LEFT JOIN 替代子查询，减少查询复杂度
   let sql: string
   let binds: any[] = []
   
@@ -83,15 +113,12 @@ accountReportsRoutes.get('/borrowing-summary', validateQuery(borrowingSummaryQue
       select 
         b.user_id,
         u.name as user_name,
-        coalesce(sum(b.amount_cents),0) as borrowed_cents,
-        coalesce((
-          select sum(r.amount_cents)
-          from repayments r
-          where r.borrowing_id=b.id
-        ),0) as repaid_cents
+        coalesce(sum(b.amount_cents), 0) as borrowed_cents,
+        coalesce(sum(r.amount_cents), 0) as repaid_cents
       from borrowings b
-      left join users u on u.id=b.user_id
-      where b.created_at>=? and b.created_at<=?
+      left join users u on u.id = b.user_id
+      left join repayments r on r.borrowing_id = b.id
+      where b.created_at >= ? and b.created_at <= ?
       group by b.user_id, u.name
     `
     binds = [start, end]
@@ -100,14 +127,11 @@ accountReportsRoutes.get('/borrowing-summary', validateQuery(borrowingSummaryQue
       select 
         b.user_id,
         u.name as user_name,
-        coalesce(sum(b.amount_cents),0) as borrowed_cents,
-        coalesce((
-          select sum(r.amount_cents)
-          from repayments r
-          where r.borrowing_id=b.id
-        ),0) as repaid_cents
+        coalesce(sum(b.amount_cents), 0) as borrowed_cents,
+        coalesce(sum(r.amount_cents), 0) as repaid_cents
       from borrowings b
-      left join users u on u.id=b.user_id
+      left join users u on u.id = b.user_id
+      left join repayments r on r.borrowing_id = b.id
       group by b.user_id, u.name
     `
   }
