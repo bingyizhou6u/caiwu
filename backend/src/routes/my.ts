@@ -48,60 +48,73 @@ myRoutes.get('/my/dashboard', async (c) => {
   
   const employeeId = empInfo.id
   
-  // 获取员工基本信息
-  const employee = await c.env.DB.prepare(`
-    SELECT e.*, u.name, u.email, p.name as position_name, 
-           d.name as department_name, od.name as org_department_name
-    FROM employees e
-    LEFT JOIN users u ON u.email = e.email
-    LEFT JOIN positions p ON p.id = e.position_id
-    LEFT JOIN departments d ON d.id = e.department_id
-    LEFT JOIN org_departments od ON od.id = e.org_department_id
-    WHERE e.id = ?
-  `).bind(employeeId).first() as any
-  
-  // 获取本月薪资
-  const salary = await c.env.DB.prepare(`
-    SELECT SUM(amount_cents) as total_cents, currency_id
-    FROM employee_salaries WHERE employee_id = ?
-    GROUP BY currency_id
-  `).bind(employeeId).all() as D1Result<{ total_cents: number, currency_id: string }>
-  
-  // 年假统计
-  let annualLeaveStats = null
-  if (empInfo.join_date) {
-    try {
-      annualLeaveStats = await getAnnualLeaveStats(c.env.DB, employeeId, empInfo.join_date)
-    } catch (e) {
-      console.error('Failed to get annual leave stats:', e)
-    }
-  }
-  
-  // 待报销金额
-  const pending = await c.env.DB.prepare(`
-    SELECT COALESCE(SUM(amount_cents), 0) as pending_cents
-    FROM expense_reimbursements
-    WHERE employee_id = ? AND status IN ('pending', 'approved')
-  `).bind(employeeId).first() as { pending_cents: number } | null
-  
-  // 借支余额
-  const borrowing = await c.env.DB.prepare(`
-    SELECT 
-      COALESCE(SUM(b.amount_cents), 0) as borrowed_cents,
-      COALESCE((SELECT SUM(r.amount_cents) FROM repayments r WHERE r.borrowing_id IN (SELECT id FROM borrowings WHERE user_id = ?)), 0) as repaid_cents
-    FROM borrowings b WHERE b.user_id = ?
-  `).bind(userId, userId).first() as { borrowed_cents: number, repaid_cents: number } | null
-  
-  // 最近申请
-  const recent = await c.env.DB.prepare(`
-    SELECT * FROM (
-      SELECT id, 'leave' as type, leave_type as sub_type, status, days || '天' as amount, created_at
-      FROM employee_leaves WHERE employee_id = ?
-      UNION ALL
-      SELECT id, 'reimbursement' as type, expense_type as sub_type, status, amount_cents as amount, created_at
-      FROM expense_reimbursements WHERE employee_id = ?
-    ) ORDER BY created_at DESC LIMIT 5
-  `).bind(employeeId, employeeId).all() as D1Result<any>
+  // 优化：并行执行所有数据库查询，减少总响应时间
+  const [
+    employee,
+    salary,
+    pending,
+    borrowing,
+    recent,
+    annualLeaveStats
+  ] = await Promise.all([
+    // 获取员工基本信息
+    c.env.DB.prepare(`
+      SELECT e.*, u.name, u.email, p.name as position_name, 
+             d.name as department_name, od.name as org_department_name
+      FROM employees e
+      LEFT JOIN users u ON u.email = e.email
+      LEFT JOIN positions p ON p.id = e.position_id
+      LEFT JOIN departments d ON d.id = e.department_id
+      LEFT JOIN org_departments od ON od.id = e.org_department_id
+      WHERE e.id = ?
+    `).bind(employeeId).first() as Promise<any>,
+    
+    // 获取本月薪资
+    c.env.DB.prepare(`
+      SELECT SUM(amount_cents) as total_cents, currency_id
+      FROM employee_salaries WHERE employee_id = ?
+      GROUP BY currency_id
+    `).bind(employeeId).all() as Promise<D1Result<{ total_cents: number, currency_id: string }>>,
+    
+    // 待报销金额
+    c.env.DB.prepare(`
+      SELECT COALESCE(SUM(amount_cents), 0) as pending_cents
+      FROM expense_reimbursements
+      WHERE employee_id = ? AND status IN ('pending', 'approved')
+    `).bind(employeeId).first() as Promise<{ pending_cents: number } | null>,
+    
+    // 借支余额（优化子查询为JOIN）
+    c.env.DB.prepare(`
+      SELECT 
+        COALESCE(SUM(b.amount_cents), 0) as borrowed_cents,
+        COALESCE(SUM(r.amount_cents), 0) as repaid_cents
+      FROM borrowings b
+      LEFT JOIN repayments r ON r.borrowing_id = b.id
+      WHERE b.user_id = ?
+    `).bind(userId).first() as Promise<{ borrowed_cents: number, repaid_cents: number } | null>,
+    
+    // 最近申请
+    c.env.DB.prepare(`
+      SELECT * FROM (
+        SELECT id, 'leave' as type, leave_type as sub_type, status, days || '天' as amount, created_at
+        FROM employee_leaves WHERE employee_id = ?
+        UNION ALL
+        SELECT id, 'reimbursement' as type, expense_type as sub_type, status, amount_cents as amount, created_at
+        FROM expense_reimbursements WHERE employee_id = ?
+      ) ORDER BY created_at DESC LIMIT 5
+    `).bind(employeeId, employeeId).all() as Promise<D1Result<any>>,
+    
+    // 年假统计（捕获错误以避免阻塞）
+    (async () => {
+      if (!empInfo.join_date) return null
+      try {
+        return await getAnnualLeaveStats(c.env.DB, employeeId, empInfo.join_date)
+      } catch (e) {
+        console.error('Failed to get annual leave stats:', e)
+        return null
+      }
+    })()
+  ])
   
   const balance_cents = (borrowing?.borrowed_cents || 0) - (borrowing?.repaid_cents || 0)
   
