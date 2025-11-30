@@ -214,8 +214,8 @@ export async function canApproveApplication(
   // 必须有管理下属权限
   if (position.can_manage_subordinates !== 1) return false
 
-  // 总部负责人/总部主管可以审批所有人
-  if (position.code === 'hq_director' || position.code === 'hq_manager') {
+  // 总部主管可以审批所有人
+  if (position.code === 'hq_manager') {
     return true
   }
 

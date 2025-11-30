@@ -171,7 +171,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     // 5. 人力资源
     const employees: MenuProps['items'] = []
     // 组员只能看到自己的请假报销
-    if (userInfo?.position?.code === 'team_developer') {
+    if (userInfo?.position?.code === 'team_engineer') {
         employees.push({ key: 'employee-leave', label: '我的请假' })
         employees.push({ key: 'expense-reimbursement', label: '我的报销' })
     } else {
