@@ -11,7 +11,7 @@ const levelLabels: Record<number, string> = {
 }
 
 const functionRoleLabels: Record<string, string> = {
-  director: '负责人',
+  director: '主管',
   hr: '人力',
   finance: '财务',
   admin: '行政',

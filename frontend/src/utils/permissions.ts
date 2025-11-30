@@ -63,16 +63,16 @@ export function usePermissions() {
     return user.position.can_manage_subordinates === 1
   }
 
-  // 检查是否是财务人员（基于 function_role 或总部负责人）
+  // 检查是否是财务人员（基于 function_role 或总部主管）
   const isFinance = () => {
     if (!user?.position) return false
-    return user.position.function_role === 'finance' || user.position.code === 'hq_director'
+    return user.position.function_role === 'finance' || user.position.code === 'hq_manager'
   }
 
-  // 检查是否是HR人员（基于 function_role 或总部负责人）
+  // 检查是否是HR人员（基于 function_role 或总部主管）
   const isHR = () => {
     if (!user?.position) return false
-    return user.position.function_role === 'hr' || user.position.code === 'hq_director'
+    return user.position.function_role === 'hr' || user.position.code === 'hq_manager'
   }
 
   // 检查是否是总部人员

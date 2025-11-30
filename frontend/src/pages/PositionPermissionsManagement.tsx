@@ -96,7 +96,7 @@ const LEVEL_LABELS: Record<number, string> = {
 
 // 职能角色选项
 const FUNCTION_ROLE_LABELS: Record<string, string> = {
-  director: '负责人',
+  director: '主管',
   hr: '人事',
   finance: '财务',
   admin: '行政',

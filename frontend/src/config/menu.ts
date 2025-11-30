@@ -85,12 +85,12 @@ function hasPermission(userInfo: any, module: string, subModule?: string, action
 }
 
 /**
- * 检查是否是管理者(总部/项目负责人或组长)
+ * 检查是否是管理者(总部/项目主管或组长)
  */
 function isManager(userInfo: any): boolean {
     if (!userInfo?.position) return false
     const code = userInfo.position.code
-    return ['hq_director', 'project_director', 'team_leader'].includes(code)
+    return ['hq_manager', 'project_manager', 'team_leader'].includes(code)
 }
 
 export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
@@ -224,8 +224,8 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         system.push({ key: 'currency', label: '币种管理' })
         system.push({ key: 'vendor', label: '供应商管理' })
     }
-    // 系统管理：只有总部负责人可见
-    if (userInfo?.position?.code === 'hq_director') {
+    // 系统管理：只有总部主管可见
+    if (userInfo?.position?.code === 'hq_manager') {
         system.push({ key: 'position-permissions', label: '权限管理' })
         system.push({ key: 'email-notification', label: '邮件提醒设置' })
         system.push({ key: 'site-config', label: '网站配置' })

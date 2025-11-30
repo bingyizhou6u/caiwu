@@ -878,7 +878,7 @@ export function EmployeeManagement() {
           3: '组',
         }
         const functionRoleLabels: Record<string, string> = {
-          director: '负责人',
+          director: '主管',
           hr: '人事',
           finance: '财务',
           admin: '行政',
@@ -1094,7 +1094,7 @@ export function EmployeeManagement() {
                                   record.position_level || '-'}
                           </Descriptions.Item>
                           <Descriptions.Item label="职能角色">
-                            {record.position_function_role === 'director' ? '负责人' :
+                            {record.position_function_role === 'director' ? '主管' :
                               record.position_function_role === 'hr' ? '人事' :
                                 record.position_function_role === 'finance' ? '财务' :
                                   record.position_function_role === 'admin' ? '行政' :
@@ -1259,7 +1259,7 @@ export function EmployeeManagement() {
                         {groupPositions.map((pos) => (
                           <Option key={pos.id} value={pos.id} label={pos.name}>
                             {pos.name}
-                            {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                            {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '主管' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
                           </Option>
                         ))}
                       </OptGroup>
@@ -1269,7 +1269,7 @@ export function EmployeeManagement() {
                     positions.map((pos) => (
                       <Option key={pos.id} value={pos.id} label={pos.name}>
                         {pos.name}
-                        {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                        {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '主管' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
                       </Option>
                     ))
                   )}
@@ -1840,7 +1840,7 @@ export function EmployeeManagement() {
                         {groupPositions.map((pos) => (
                           <Option key={pos.id} value={pos.id} label={pos.name}>
                             {pos.name}
-                            {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                            {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '主管' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
                           </Option>
                         ))}
                       </OptGroup>
@@ -1850,7 +1850,7 @@ export function EmployeeManagement() {
                     positions.map((pos) => (
                       <Option key={pos.id} value={pos.id} label={pos.name}>
                         {pos.name}
-                        {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                        {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '主管' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
                       </Option>
                     ))
                   )}
