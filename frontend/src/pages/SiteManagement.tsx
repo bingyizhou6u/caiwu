@@ -3,8 +3,9 @@ import { Card, Table, Button, Modal, Form, Input, Space, message, Select, Popcon
 import { api } from '../config/api'
 import { apiGet, apiPost, apiPut, apiDelete, handleConflictError } from '../utils/api'
 import { loadDepartments } from '../utils/loaders'
+import { usePermissions } from '../utils/permissions'
 
-export function SiteManagement({ userRole }: { userRole?: string }) {
+export function SiteManagement() {
   const [siteData, setSiteData] = useState<any[]>([])
   const [deptData, setDeptData] = useState<any[]>([])
   const [siteOpen, setSiteOpen] = useState(false)
@@ -12,7 +13,10 @@ export function SiteManagement({ userRole }: { userRole?: string }) {
   const [editingSite, setEditingSite] = useState<any>(null)
   const [siteForm] = Form.useForm()
   const [siteEditForm] = Form.useForm()
-  const isManager = userRole === 'manager'
+  
+  const { hasPermission, isManager: _isManager } = usePermissions()
+  const isManager = _isManager()
+  const canManageSites = hasPermission('site', 'site', 'create')
 
   const loadSite = async () => {
     const data = await apiGet(api.sites)
@@ -71,7 +75,7 @@ export function SiteManagement({ userRole }: { userRole?: string }) {
   return (
     <Card title="站点管理">
       <Space style={{ marginBottom: 12 }}>
-        {(isManager || userRole === 'finance') && (
+        {canManageSites && (
           <Button type="primary" onClick={() => setSiteOpen(true)}>新建站点</Button>
         )}
         <Button onClick={loadSite}>刷新</Button>
@@ -93,7 +97,7 @@ export function SiteManagement({ userRole }: { userRole?: string }) {
         { title: '状态', dataIndex: 'active', width: 80, render: (v: number) => v ? '启用' : '禁用' },
         { title: '操作', width: 150, render: (_:any, r:any)=> (
           <Space>
-            {(isManager || userRole === 'finance') && (
+            {canManageSites && (
               <>
                 <Button size="small" onClick={() => {
                   setEditingSite(r)

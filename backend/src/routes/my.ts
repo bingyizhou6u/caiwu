@@ -58,12 +58,11 @@ myRoutes.get('/my/dashboard', async (c) => {
     recent,
     annualLeaveStats
   ] = await Promise.all([
-    // 获取员工基本信息
+    // 获取员工基本信息 (name 已在 employees 表中)
     c.env.DB.prepare(`
-      SELECT e.*, u.name, u.email, p.name as position_name, 
+      SELECT e.*, e.email, p.name as position_name, 
              d.name as department_name, od.name as org_department_name
       FROM employees e
-      LEFT JOIN users u ON u.email = e.email
       LEFT JOIN positions p ON p.id = e.position_id
       LEFT JOIN departments d ON d.id = e.department_id
       LEFT JOIN org_departments od ON od.id = e.org_department_id
@@ -159,7 +158,7 @@ myRoutes.get('/my/leaves', async (c) => {
   const status = c.req.query('status')
   const year = c.req.query('year') || new Date().getFullYear().toString()
   
-  let sql = `SELECT el.*, u.name as approved_by_name FROM employee_leaves el LEFT JOIN users u ON u.id = el.approved_by WHERE el.employee_id = ? AND strftime('%Y', el.start_date) = ?`
+  let sql = `SELECT el.*, ae.name as approved_by_name FROM employee_leaves el LEFT JOIN users u ON u.id = el.approved_by LEFT JOIN employees ae ON ae.email = u.email WHERE el.employee_id = ? AND strftime('%Y', el.start_date) = ?`
   const binds: any[] = [employeeId, year]
   if (status) { sql += ' AND el.status = ?'; binds.push(status) }
   sql += ' ORDER BY el.created_at DESC'
@@ -213,7 +212,7 @@ myRoutes.get('/my/reimbursements', async (c) => {
   
   const status = c.req.query('status')
   // 移除对 c.symbol 的引用
-  let sql = `SELECT er.*, u.name as approved_by_name FROM expense_reimbursements er LEFT JOIN users u ON u.id = er.approved_by WHERE er.employee_id = ?`
+  let sql = `SELECT er.*, ae.name as approved_by_name FROM expense_reimbursements er LEFT JOIN users u ON u.id = er.approved_by LEFT JOIN employees ae ON ae.email = u.email WHERE er.employee_id = ?`
   const binds: any[] = [employeeId]
   if (status) { sql += ' AND er.status = ?'; binds.push(status) }
   sql += ' ORDER BY er.created_at DESC'
@@ -381,10 +380,9 @@ myRoutes.get('/my/profile', async (c) => {
   if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
   
   const profile = await c.env.DB.prepare(`
-    SELECT e.*, u.name, u.email, p.name as position_name, p.code as position_code,
+    SELECT e.*, e.email, p.name as position_name, p.code as position_code,
            d.name as department_name, od.name as org_department_name
     FROM employees e
-    LEFT JOIN users u ON u.email = e.email
     LEFT JOIN positions p ON p.id = e.position_id
     LEFT JOIN departments d ON d.id = e.department_id
     LEFT JOIN org_departments od ON od.id = e.org_department_id

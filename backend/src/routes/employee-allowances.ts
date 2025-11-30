@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { isHQDirector, isHQHR, isHQFinance, isProjectDirector } from '../utils/permissions.js'
+import { hasPermission } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -44,9 +44,8 @@ employeeAllowancesRoutes.get('/employee-allowances', async (c) => {
 
 // 批量更新员工的补贴配置
 employeeAllowancesRoutes.put('/employee-allowances/batch', validateJson(batchUpdateEmployeeAllowancesSchema), async (c) => {
-  // 只有负责人和HR/财务可以修改
-  const canUpdate = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  // 只有有津贴创建权限的人可以修改
+  if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
   
   const body = getValidatedData<z.infer<typeof batchUpdateEmployeeAllowancesSchema>>(c)
   
@@ -107,9 +106,8 @@ employeeAllowancesRoutes.put('/employee-allowances/batch', validateJson(batchUpd
 
 // 删除员工的补贴配置
 employeeAllowancesRoutes.delete('/employee-allowances/:id', async (c) => {
-  // 只有负责人和HR/财务可以删除
-  const canDelete = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
-  if (!canDelete) throw Errors.FORBIDDEN()
+  // 只有有津贴更新权限的人可以删除
+  if (!hasPermission(c, 'finance', 'allowance', 'update')) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   

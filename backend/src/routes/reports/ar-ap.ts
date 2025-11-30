@@ -4,17 +4,16 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { getUserPosition, isHQDirector, isHQFinance, isHQHR, isProjectDirector, applyDataScope } from '../../utils/permissions.js'
+import { getUserPosition, hasPermission, getDataAccessFilter, getUserEmployee } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 
 export const arApReportsRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
 // AR汇总报表
 arApReportsRoutes.get('/ar-summary', async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!hasPermission(c, 'report', 'view', 'ar_ap') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看应收应付报表的权限')
+  }
   
   const kind = c.req.query('kind') // AR|AP
   const start = c.req.query('start')
@@ -31,8 +30,7 @@ arApReportsRoutes.get('/ar-summary', async (c) => {
   `
   let binds: any[] = [kind, start, end]
   
-  const scoped = await applyDataScope(c, sql, binds)
-  const docs = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
+  const docs = await c.env.DB.prepare(sql).bind(...binds).all<any>()
   
   const rows = docs.results ?? []
   const byStatus: Record<string, number> = {}
@@ -50,10 +48,9 @@ arApReportsRoutes.get('/ar-summary', async (c) => {
 
 // AR明细报表
 arApReportsRoutes.get('/ar-detail', async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!hasPermission(c, 'report', 'view', 'ar_ap') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看应收应付报表的权限')
+  }
   
   const kind = c.req.query('kind') // AR|AP
   const start = c.req.query('start')
@@ -71,18 +68,16 @@ arApReportsRoutes.get('/ar-detail', async (c) => {
   `
   let binds: any[] = [kind, start, end]
   
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
   
   return c.json({ rows: rows.results ?? [] })
 })
 
 // AP汇总报表
 arApReportsRoutes.get('/ap-summary', async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!hasPermission(c, 'report', 'view', 'ar_ap') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看应收应付报表的权限')
+  }
   
   const start = c.req.query('start')
   const end = c.req.query('end')
@@ -97,8 +92,7 @@ arApReportsRoutes.get('/ap-summary', async (c) => {
   `
   let binds: any[] = [start, end]
   
-  const scoped = await applyDataScope(c, sql, binds)
-  const docs = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
+  const docs = await c.env.DB.prepare(sql).bind(...binds).all<any>()
   
   const rows = docs.results ?? []
   const byStatus: Record<string, number> = {}
@@ -116,10 +110,9 @@ arApReportsRoutes.get('/ap-summary', async (c) => {
 
 // AP明细报表
 arApReportsRoutes.get('/ap-detail', async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!hasPermission(c, 'report', 'view', 'ar_ap') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看应收应付报表的权限')
+  }
   
   const start = c.req.query('start')
   const end = c.req.query('end')
@@ -135,8 +128,7 @@ arApReportsRoutes.get('/ap-detail', async (c) => {
   `
   let binds: any[] = [start, end]
   
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
   
   return c.json({ rows: rows.results ?? [] })
 })

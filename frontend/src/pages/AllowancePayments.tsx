@@ -8,6 +8,7 @@ import { formatAmount } from '../utils/formatters'
 import dayjs from 'dayjs'
 import { loadCurrencies, loadAccounts, loadEmployees } from '../utils/loaders'
 import { uploadImageAsWebP, isSupportedImageType } from '../utils/image'
+import { usePermissions } from '../utils/permissions'
 
 const { TextArea } = Input
 
@@ -46,7 +47,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   transfer: '转账',
 }
 
-export function AllowancePayments({ userRole }: { userRole?: string }) {
+export function AllowancePayments() {
+  const { hasPermission } = usePermissions()
   const [data, setData] = useState<AllowancePayment[]>([])
   const [loading, setLoading] = useState(false)
   const [year, setYear] = useState<number>(new Date().getFullYear())
@@ -72,9 +74,7 @@ export function AllowancePayments({ userRole }: { userRole?: string }) {
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
 
-  const isManager = userRole === 'manager'
-  const isFinance = userRole === 'finance' || isManager
-  const isEmployee = userRole === 'employee'
+  const canManage = hasPermission('finance', 'allowance-payment', 'create')
 
   const load = async () => {
     setLoading(true)
@@ -105,7 +105,7 @@ export function AllowancePayments({ userRole }: { userRole?: string }) {
 
   useEffect(() => {
     const loadMasterData = async () => {
-      if (isFinance) {
+      if (canManage) {
         try {
           const [currenciesData, accountsData, employeesData] = await Promise.all([
             loadCurrencies(),
@@ -125,7 +125,7 @@ export function AllowancePayments({ userRole }: { userRole?: string }) {
       }
     }
     loadMasterData()
-  }, [isFinance])
+  }, [canManage])
 
   const handleGenerate = async () => {
     if (!generateDate) {
@@ -351,7 +351,7 @@ export function AllowancePayments({ userRole }: { userRole?: string }) {
       width: 150,
       render: (_: any, record: AllowancePayment) => (
         <Space>
-          {isFinance && (
+          {canManage && (
             <>
               <Button type="link" size="small" onClick={() => handleEdit(record)}>
                 编辑
@@ -380,7 +380,7 @@ export function AllowancePayments({ userRole }: { userRole?: string }) {
     <Card
       title="补贴发放管理"
       extra={
-        isFinance && (
+        canManage && (
           <Space>
             <Button onClick={() => setGenerateOpen(true)}>
               生成补贴发放
@@ -415,7 +415,7 @@ export function AllowancePayments({ userRole }: { userRole?: string }) {
           allowClear
           options={Object.entries(ALLOWANCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
         />
-        {isFinance && (
+        {canManage && (
           <Select
             style={{ width: 150 }}
             value={employeeId}

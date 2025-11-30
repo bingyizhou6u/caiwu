@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { hasPositionCode, getUserPosition, getUserEmployee, getUserId, isTeamDeveloper } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getUserEmployee, getUserId, isTeamMember } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -26,18 +26,19 @@ allowancePaymentsRoutes.get('/allowance-payments', async (c) => {
       e.department_id,
       d.name as department_name,
       c.name as currency_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from allowance_payments ap
     left join employees e on e.id = ap.employee_id
     left join departments d on d.id = e.department_id
     left join currencies c on c.code = ap.currency_id
     left join users u on u.id = ap.created_by
+    left join employees ce on ce.email = u.email
     where 1=1
   `
   const binds: any[] = []
   
   // 组员只能查看自己的补贴（通过email匹配employee_id）
-  if (isTeamDeveloper(c) && userId) {
+  if (isTeamMember(c) && userId) {
     const { getUserEmployeeId } = await import('../utils/db.js')
     const userEmployeeId = await getUserEmployeeId(c.env.DB, userId)
     if (userEmployeeId) {
@@ -73,7 +74,7 @@ allowancePaymentsRoutes.get('/allowance-payments', async (c) => {
 
 // 补贴发放管理 - 生成补贴发放记录（基于员工补贴配置）
 allowancePaymentsRoutes.post('/allowance-payments/generate', validateJson(generateAllowancePaymentsSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof generateAllowancePaymentsSchema>>(c)
   
   const yearNum = body.year
@@ -226,7 +227,7 @@ allowancePaymentsRoutes.post('/allowance-payments/generate', validateJson(genera
 
 // 补贴发放管理 - 创建单个发放记录
 allowancePaymentsRoutes.post('/allowance-payments', validateJson(createAllowancePaymentSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createAllowancePaymentSchema>>(c)
   
   // 验证员工是否存在
@@ -267,12 +268,13 @@ allowancePaymentsRoutes.post('/allowance-payments', validateJson(createAllowance
       e.name as employee_name,
       d.name as department_name,
       c.name as currency_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from allowance_payments ap
     left join employees e on e.id = ap.employee_id
     left join departments d on d.id = e.department_id
     left join currencies c on c.code = ap.currency_id
     left join users u on u.id = ap.created_by
+    left join employees ce on ce.email = u.email
     where ap.id=?
   `).bind(id).first()
   
@@ -281,7 +283,7 @@ allowancePaymentsRoutes.post('/allowance-payments', validateJson(createAllowance
 
 // 补贴发放管理 - 更新
 allowancePaymentsRoutes.put('/allowance-payments/:id', validateJson(updateAllowancePaymentSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateAllowancePaymentSchema>>(c)
   
@@ -304,12 +306,13 @@ allowancePaymentsRoutes.put('/allowance-payments/:id', validateJson(updateAllowa
         e.name as employee_name,
         d.name as department_name,
         c.name as currency_name,
-        u.name as created_by_name
+        ce.name as created_by_name
       from allowance_payments ap
       left join employees e on e.id = ap.employee_id
       left join departments d on d.id = e.department_id
       left join currencies c on c.code = ap.currency_id
       left join users u on u.id = ap.created_by
+      left join employees ce on ce.email = u.email
       where ap.id=?
     `).bind(id).first()
     return c.json(current)
@@ -329,12 +332,13 @@ allowancePaymentsRoutes.put('/allowance-payments/:id', validateJson(updateAllowa
       e.name as employee_name,
       d.name as department_name,
       c.name as currency_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from allowance_payments ap
     left join employees e on e.id = ap.employee_id
     left join departments d on d.id = e.department_id
     left join currencies c on c.code = ap.currency_id
     left join users u on u.id = ap.created_by
+    left join employees ce on ce.email = u.email
     where ap.id=?
   `).bind(id).first()
   
@@ -343,7 +347,7 @@ allowancePaymentsRoutes.put('/allowance-payments/:id', validateJson(updateAllowa
 
 // 补贴发放管理 - 删除
 allowancePaymentsRoutes.delete('/allowance-payments/:id', async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   
   const record = await c.env.DB.prepare('select * from allowance_payments where id=?').bind(id).first<any>()

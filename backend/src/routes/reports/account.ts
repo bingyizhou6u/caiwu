@@ -114,27 +114,29 @@ accountReportsRoutes.get('/borrowing-summary', validateQuery(borrowingSummaryQue
     sql = `
       select 
         b.user_id,
-        u.name as user_name,
+        e.name as user_name,
         coalesce(sum(b.amount_cents), 0) as borrowed_cents,
         coalesce(sum(r.amount_cents), 0) as repaid_cents
       from borrowings b
       left join users u on u.id = b.user_id
+      left join employees e on e.email = u.email
       left join repayments r on r.borrowing_id = b.id
       where b.created_at >= ? and b.created_at <= ?
-      group by b.user_id, u.name
+      group by b.user_id, e.name
     `
     binds = [start, end]
   } else {
     sql = `
       select 
         b.user_id,
-        u.name as user_name,
+        e.name as user_name,
         coalesce(sum(b.amount_cents), 0) as borrowed_cents,
         coalesce(sum(r.amount_cents), 0) as repaid_cents
       from borrowings b
       left join users u on u.id = b.user_id
+      left join employees e on e.email = u.email
       left join repayments r on r.borrowing_id = b.id
-      group by b.user_id, u.name
+      group by b.user_id, e.name
     `
   }
 
@@ -173,9 +175,10 @@ accountReportsRoutes.get('/borrowing-detail/:user_id', validateParam(userIdParam
   const end = query.end
 
   let sql = `
-    select b.*, u.name as user_name
+    select b.*, e.name as user_name
     from borrowings b
     left join users u on u.id=b.user_id
+    left join employees e on e.email = u.email
     where b.user_id=?
   `
   let binds: any[] = [userId]

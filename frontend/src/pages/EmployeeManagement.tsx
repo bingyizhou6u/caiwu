@@ -7,8 +7,9 @@ import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { loadCurrencies, loadDepartments } from '../utils/loaders'
 import { apiGet, apiPost, apiPut, apiDelete, handleConflictError } from '../utils/api'
+import { usePermissions } from '../utils/permissions'
 
-const { Option } = Select
+const { Option, OptGroup } = Select
 const { TabPane } = Tabs
 const { TextArea } = Input
 
@@ -100,17 +101,18 @@ type Employee = {
   position_id?: string  // 职位ID
   position_code?: string  // 职位代码
   position_name?: string  // 职位名称
-  position_level?: string  // 职位层级
-  position_scope?: string  // 职位权限范围
+  position_level?: number  // 职位层级 (1-总部 2-项目 3-组)
+  position_function_role?: string  // 职能角色
 }
 
-export function EmployeeManagement({ userRole }: { userRole?: string }) {
+export function EmployeeManagement() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [orgDepartments, setOrgDepartments] = useState<any[]>([])
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('')
   const [currencies, setCurrencies] = useState<any[]>([])
   const [positions, setPositions] = useState<any[]>([])
+  const [groupedPositions, setGroupedPositions] = useState<Record<string, any[]>>({})
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [regularizeOpen, setRegularizeOpen] = useState(false)
@@ -139,9 +141,13 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
   const [resetUserOpen, setResetUserOpen] = useState(false)
   const [resetUserForm] = Form.useForm()
   const [resetUser, setResetUser] = useState<Employee | null>(null)
-  const isManager = userRole === 'manager'
-  const canEdit = userRole === 'manager' || userRole === 'finance' || userRole === 'hr'
-  const isHR = userRole === 'hr' || canEdit
+  
+  // 使用新的权限系统
+  const { hasPermission, isManager: _isManager } = usePermissions()
+  const isManager = _isManager()
+  const canEdit = hasPermission('hr', 'employee', 'update')
+  const canCreate = hasPermission('hr', 'employee', 'create')
+  const canDelete = hasPermission('hr', 'employee', 'delete')
 
   const loadEmployees = useCallback(async () => {
     const params = new URLSearchParams()
@@ -200,37 +206,48 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
   const loadAvailablePositions = useCallback(async (orgDepartmentId?: string) => {
     if (!orgDepartmentId) {
       setPositions([])
+      setGroupedPositions({})
       return
     }
 
     try {
-      // 调用后端接口获取该部门可用的职位
-      const results = await apiGet(`${api.positionsAvailable}?org_department_id=${orgDepartmentId}`)
+      // 调用后端接口获取该部门可用的职位（返回格式: { results, grouped, department_info }）
+      const response = await apiGet(`${api.positionsAvailable}?org_department_id=${orgDepartmentId}`)
+      
+      // 兼容处理：后端可能返回数组或对象
+      if (Array.isArray(response)) {
+        // 旧格式：直接返回数组
+        setPositions(response)
+        setGroupedPositions({})
+      } else {
+        // 新格式：{ results, grouped, department_info }
+        const positionsList = response.results || []
+        const grouped = response.grouped || {}
+        
+        setPositions(positionsList)
+        setGroupedPositions(grouped)
+      }
 
-      // 确保返回的是数组
-      const filteredPositions = Array.isArray(results)
-        ? results.filter((p: any) => p.active === 1)
-        : []
-
-      setPositions(filteredPositions)
-
-      if (filteredPositions.length === 0) {
+      const positionsList = Array.isArray(response) ? response : (response.results || [])
+      
+      if (positionsList.length === 0) {
         message.warning({
           content: (
             <div>
               <p>该部门暂无可用职位。</p>
               <p style={{ marginTop: 8 }}>
-                请前往 <strong style={{ color: '#1890ff' }}>权限管理</strong> 页面创建职位并配置权限。
+                请联系系统管理员配置该部门的可用职位。
               </p>
             </div>
           ),
-          duration: 8,
+          duration: 5,
         })
       }
     } catch (error: any) {
       console.error('Failed to load positions:', error)
       message.error(`加载职位列表失败: ${error.message || '网络错误'}`)
       setPositions([])
+      setGroupedPositions({})
     }
   }, [])
 
@@ -855,29 +872,27 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
           return <Tag color="red">账号已停用</Tag>
         }
         // 显示职位信息，与权限管理体系一致（所有员工必须有职位）
-        const levelLabels: Record<string, string> = {
-          hq: '总部',
-          project: '项目',
-          department: '部门',
-          group: '组',
-          employee: '员工',
+        const levelLabels: Record<number, string> = {
+          1: '总部',
+          2: '项目',
+          3: '组',
         }
-        const scopeLabels: Record<string, string> = {
-          all: '全部',
-          hq_all: '总部+所有项目',
-          project_all: '项目全部',
-          project_dept: '项目部门',
-          dept: '部门',
-          group: '组',
-          self: '自己',
+        const functionRoleLabels: Record<string, string> = {
+          director: '负责人',
+          hr: '人事',
+          finance: '财务',
+          admin: '行政',
+          developer: '开发',
+          support: '客服',
+          member: '组员',
         }
-        const levelLabel = record.position_level ? levelLabels[record.position_level] || record.position_level : ''
-        const scopeLabel = record.position_scope ? scopeLabels[record.position_scope] || record.position_scope : ''
+        const levelLabel = record.position_level ? levelLabels[record.position_level] || `级别${record.position_level}` : ''
+        const roleLabel = record.position_function_role ? functionRoleLabels[record.position_function_role] || record.position_function_role : ''
         return (
           <div>
             <div><Tag color="green">{record.position_name}</Tag></div>
             {levelLabel && <div style={{ fontSize: 12, color: '#666' }}>层级: {levelLabel}</div>}
-            {scopeLabel && <div style={{ fontSize: 12, color: '#666' }}>范围: {scopeLabel}</div>}
+            {roleLabel && <div style={{ fontSize: 12, color: '#666' }}>职能: {roleLabel}</div>}
           </div>
         )
       },
@@ -1073,22 +1088,20 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                             {record.position_code || '-'}
                           </Descriptions.Item>
                           <Descriptions.Item label="职位层级">
-                            {record.position_level === 'hq' ? '总部' :
-                              record.position_level === 'project' ? '项目' :
-                                record.position_level === 'department' ? '部门' :
-                                  record.position_level === 'group' ? '组' :
-                                    record.position_level === 'employee' ? '员工' :
-                                      record.position_level || '-'}
+                            {record.position_level === 1 ? '总部' :
+                              record.position_level === 2 ? '项目' :
+                                record.position_level === 3 ? '组' :
+                                  record.position_level || '-'}
                           </Descriptions.Item>
-                          <Descriptions.Item label="权限范围">
-                            {record.position_scope === 'all' ? '全部' :
-                              record.position_scope === 'hq_all' ? '总部+所有项目' :
-                                record.position_scope === 'project_all' ? '项目全部' :
-                                  record.position_scope === 'project_dept' ? '项目部门' :
-                                    record.position_scope === 'dept' ? '部门' :
-                                      record.position_scope === 'group' ? '组' :
-                                        record.position_scope === 'self' ? '自己' :
-                                          record.position_scope || '-'}
+                          <Descriptions.Item label="职能角色">
+                            {record.position_function_role === 'director' ? '负责人' :
+                              record.position_function_role === 'hr' ? '人事' :
+                                record.position_function_role === 'finance' ? '财务' :
+                                  record.position_function_role === 'admin' ? '行政' :
+                                    record.position_function_role === 'developer' ? '开发' :
+                                      record.position_function_role === 'support' ? '客服' :
+                                        record.position_function_role === 'member' ? '组员' :
+                                          record.position_function_role || '-'}
                           </Descriptions.Item>
                         </>
                       )}
@@ -1219,23 +1232,11 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 extra={
                   positions.length === 0 ? (
                     <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: 4 }}>
-                      暂无可用职位，请前往{' '}
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          // 触发页面切换事件（通过自定义事件）
-                          window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'position-permissions' } }))
-                        }}
-                        style={{ color: '#1890ff' }}
-                      >
-                        权限管理
-                      </a>
-                      {' '}页面创建职位并配置权限
+                      暂无可用职位，请联系系统管理员
                     </div>
                   ) : (
                     <div style={{ color: '#999', fontSize: '12px', marginTop: 4 }}>
-                      职位来自权限管理，已绑定权限配置
+                      职位权限由系统预设
                     </div>
                   )
                 }
@@ -1245,17 +1246,33 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                   disabled={!createForm.getFieldValue('org_department_id')}
                   showSearch
                   filterOption={(input, option) => {
-                    const children = option?.children
-                    if (Array.isArray(children)) return false
-                    const text = typeof children === 'string' ? children : String(children ?? '')
+                    const label = option?.label || option?.children
+                    if (Array.isArray(label)) return false
+                    const text = typeof label === 'string' ? label : String(label ?? '')
                     return text.toLowerCase().includes(input.toLowerCase())
                   }}
                 >
-                  {positions.map((pos) => (
-                    <Option key={pos.id} value={pos.id}>
-                      {pos.name}
-                    </Option>
-                  ))}
+                  {Object.keys(groupedPositions).length > 0 ? (
+                    // 有分组数据时，按分组显示
+                    Object.entries(groupedPositions).map(([groupName, groupPositions]) => (
+                      <OptGroup key={groupName} label={groupName}>
+                        {groupPositions.map((pos) => (
+                          <Option key={pos.id} value={pos.id} label={pos.name}>
+                            {pos.name}
+                            {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                          </Option>
+                        ))}
+                      </OptGroup>
+                    ))
+                  ) : (
+                    // 无分组数据时，直接显示列表
+                    positions.map((pos) => (
+                      <Option key={pos.id} value={pos.id} label={pos.name}>
+                        {pos.name}
+                        {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                      </Option>
+                    ))
+                  )}
                 </Select>
               </Form.Item>
               <Form.Item
@@ -1796,23 +1813,11 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 extra={
                   positions.length === 0 ? (
                     <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: 4 }}>
-                      暂无可用职位，请前往{' '}
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          // 触发页面切换事件（通过自定义事件）
-                          window.dispatchEvent(new CustomEvent('navigate', { detail: { page: 'position-permissions' } }))
-                        }}
-                        style={{ color: '#1890ff' }}
-                      >
-                        权限管理
-                      </a>
-                      {' '}页面创建职位并配置权限
+                      暂无可用职位，请联系系统管理员
                     </div>
                   ) : (
                     <div style={{ color: '#999', fontSize: '12px', marginTop: 4 }}>
-                      职位来自权限管理，已绑定权限配置
+                      职位权限由系统预设
                     </div>
                   )
                 }
@@ -1822,17 +1827,33 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                   disabled={!editForm.getFieldValue('org_department_id')}
                   showSearch
                   filterOption={(input, option) => {
-                    const children = option?.children
-                    if (Array.isArray(children)) return false
-                    const text = typeof children === 'string' ? children : String(children ?? '')
+                    const label = option?.label || option?.children
+                    if (Array.isArray(label)) return false
+                    const text = typeof label === 'string' ? label : String(label ?? '')
                     return text.toLowerCase().includes(input.toLowerCase())
                   }}
                 >
-                  {positions.map((pos) => (
-                    <Option key={pos.id} value={pos.id}>
-                      {pos.name}
-                    </Option>
-                  ))}
+                  {Object.keys(groupedPositions).length > 0 ? (
+                    // 有分组数据时，按分组显示
+                    Object.entries(groupedPositions).map(([groupName, groupPositions]) => (
+                      <OptGroup key={groupName} label={groupName}>
+                        {groupPositions.map((pos) => (
+                          <Option key={pos.id} value={pos.id} label={pos.name}>
+                            {pos.name}
+                            {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                          </Option>
+                        ))}
+                      </OptGroup>
+                    ))
+                  ) : (
+                    // 无分组数据时，直接显示列表
+                    positions.map((pos) => (
+                      <Option key={pos.id} value={pos.id} label={pos.name}>
+                        {pos.name}
+                        {pos.function_role && <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>({pos.function_role === 'director' ? '负责人' : pos.function_role === 'hr' ? '人事' : pos.function_role === 'finance' ? '财务' : pos.function_role === 'admin' ? '行政' : pos.function_role === 'developer' ? '开发' : pos.function_role === 'support' ? '客服' : pos.function_role === 'member' ? '组员' : pos.function_role})</span>}
+                      </Option>
+                    ))
+                  )}
                 </Select>
               </Form.Item>
               <Form.Item

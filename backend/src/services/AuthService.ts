@@ -16,8 +16,8 @@ export class AuthService {
         const user = await this.userService.getUserByEmail(email)
         if (!user) throw Errors.UNAUTHORIZED('用户名或密码错误')
 
-        // Check employee record
-        const employee = await this.db.prepare('select id from employees where email=? and active=1').bind(email).first<{ id: string }>()
+        // Check employee record and get name
+        const employee = await this.db.prepare('select id, name from employees where email=? and active=1').bind(email).first<{ id: string, name: string }>()
         if (!employee) {
             const inactive = await this.db.prepare('select id from employees where email=?').bind(email).first<{ id: string }>()
             if (inactive) throw Errors.FORBIDDEN('员工记录已停用，请联系管理员')
@@ -68,7 +68,7 @@ export class AuthService {
         return {
             status: 'success',
             session,
-            user: { id: user.id, name: user.name, email: user.email },
+            user: { id: user.id, name: employee.name, email: user.email }, // name 从 employees 表获取
             position
         }
     }
@@ -77,6 +77,10 @@ export class AuthService {
         const id = uuid()
         const now = Date.now()
         const expires = now + 1000 * 60 * 60 * 24 * 7 // 7 days
+        
+        // 单点登录：删除该用户的所有旧会话
+        await this.db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run()
+        
         await this.db.prepare(`
             INSERT INTO sessions(id, user_id, expires_at, ip_address, user_agent, created_at, last_active_at)
             VALUES(?, ?, ?, ?, ?, ?, ?)

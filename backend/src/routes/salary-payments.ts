@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { isHQDirector, isHQFinance, isHQHR, isProjectDirector, isProjectFinance, isTeamMember, getUserId } from '../utils/permissions.js'
+import { hasPermission, isTeamMember, getUserId } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid, getUserEmployeeId } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -29,18 +29,22 @@ salaryPaymentsRoutes.get('/salary-payments', validateQuery(salaryPaymentQuerySch
       d.name as department_name,
       a.name as account_name,
       a.currency as account_currency,
-      u1.name as employee_confirmed_by_name,
-      u2.name as finance_approved_by_name,
-      u3.name as payment_transferred_by_name,
-      u4.name as payment_confirmed_by_name
+      e1.name as employee_confirmed_by_name,
+      e2.name as finance_approved_by_name,
+      e3.name as payment_transferred_by_name,
+      e4.name as payment_confirmed_by_name
     from salary_payments sp
     left join employees e on e.id = sp.employee_id
     left join departments d on d.id = e.department_id
     left join accounts a on a.id = sp.account_id
     left join users u1 on u1.id = sp.employee_confirmed_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = sp.finance_approved_by
+    left join employees e2 on e2.email = u2.email
     left join users u3 on u3.id = sp.payment_transferred_by
+    left join employees e3 on e3.email = u3.email
     left join users u4 on u4.id = sp.payment_confirmed_by
+    left join employees e4 on e4.email = u4.email
     where 1=1
   `
   const binds: any[] = []
@@ -93,13 +97,15 @@ salaryPaymentsRoutes.get('/salary-payments', validateQuery(salaryPaymentQuerySch
       spa.salary_payment_id,
       c.name as currency_name,
       a.name as account_name,
-      u1.name as requested_by_name,
-      u2.name as approved_by_name
+      e1.name as requested_by_name,
+      e2.name as approved_by_name
     from salary_payment_allocations spa
     left join currencies c on c.code = spa.currency_id
     left join accounts a on a.id = spa.account_id
     left join users u1 on u1.id = spa.requested_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = spa.approved_by
+    left join employees e2 on e2.email = u2.email
     where spa.salary_payment_id in (${placeholders})
     order by spa.created_at
   `).bind(...paymentIds).all()
@@ -137,9 +143,8 @@ salaryPaymentsRoutes.get('/salary-payments', validateQuery(salaryPaymentQuerySch
 
 // 薪资发放管理 - 创建（基于薪资表生成）
 salaryPaymentsRoutes.post('/salary-payments/generate', validateJson(generateSalaryPaymentsSchema), async (c) => {
-  // 只有财务和负责人可以生成薪资单
-  const canGenerate = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
-  if (!canGenerate) throw Errors.FORBIDDEN()
+  // 只有有薪资创建权限的人可以生成薪资单
+  if (!hasPermission(c, 'finance', 'salary', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof generateSalaryPaymentsSchema>>(c)
   
   const yearNum = body.year
@@ -458,9 +463,8 @@ salaryPaymentsRoutes.post('/salary-payments/:id/employee-confirm', async (c) => 
 
 // 薪资发放管理 - 财务确认（需要先审批币种分配）
 salaryPaymentsRoutes.post('/salary-payments/:id/finance-approve', async (c) => {
-  // 只有财务和负责人可以确认
-  const canApprove = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
-  if (!canApprove) throw Errors.FORBIDDEN()
+  // 只有有薪资审批权限的人可以确认
+  if (!hasPermission(c, 'finance', 'salary', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const userId = c.get('userId') as string | undefined
   
@@ -519,9 +523,8 @@ salaryPaymentsRoutes.post('/salary-payments/:id/finance-approve', async (c) => {
 
 // 薪资发放管理 - 出纳转账（需要选择账户）
 salaryPaymentsRoutes.post('/salary-payments/:id/payment-transfer', validateJson(salaryPaymentTransferSchema), async (c) => {
-  // 只有财务和负责人可以标记转账
-  const canTransfer = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
-  if (!canTransfer) throw Errors.FORBIDDEN()
+  // 只有有薪资更新权限的人可以标记转账
+  if (!hasPermission(c, 'finance', 'salary', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof salaryPaymentTransferSchema>>(c)
   const userId = c.get('userId') as string | undefined
@@ -611,9 +614,8 @@ salaryPaymentsRoutes.post('/salary-payments/:id/payment-transfer', validateJson(
 
 // 薪资发放管理 - 出纳确认（上传凭证）
 salaryPaymentsRoutes.post('/salary-payments/:id/payment-confirm', async (c) => {
-  // 只有总部财务、项目财务或负责人可以确认转账
-  const canConfirm = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canConfirm) throw Errors.FORBIDDEN()
+  // 只有有薪资审批权限的人可以确认转账
+  if (!hasPermission(c, 'finance', 'salary', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ payment_voucher_path: string }>()
   const userId = c.get('userId') as string | undefined
@@ -671,18 +673,22 @@ salaryPaymentsRoutes.get('/salary-payments/:id', async (c) => {
       d.name as department_name,
       a.name as account_name,
       a.currency as account_currency,
-      u1.name as employee_confirmed_by_name,
-      u2.name as finance_approved_by_name,
-      u3.name as payment_transferred_by_name,
-      u4.name as payment_confirmed_by_name
+      e1.name as employee_confirmed_by_name,
+      e2.name as finance_approved_by_name,
+      e3.name as payment_transferred_by_name,
+      e4.name as payment_confirmed_by_name
     from salary_payments sp
     left join employees e on e.id = sp.employee_id
     left join departments d on d.id = e.department_id
     left join accounts a on a.id = sp.account_id
     left join users u1 on u1.id = sp.employee_confirmed_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = sp.finance_approved_by
+    left join employees e2 on e2.email = u2.email
     left join users u3 on u3.id = sp.payment_transferred_by
+    left join employees e3 on e3.email = u3.email
     left join users u4 on u4.id = sp.payment_confirmed_by
+    left join employees e4 on e4.email = u4.email
     where sp.id=?
   `).bind(id).first()
   
@@ -719,8 +725,7 @@ salaryPaymentsRoutes.get('/salary-payments/:id', async (c) => {
 
 // 薪资发放管理 - 删除
 salaryPaymentsRoutes.delete('/salary-payments/:id', async (c) => {
-  const canDelete = isHQDirector(c)
-  if (!canDelete) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'salary', 'delete')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   
   const record = await c.env.DB.prepare('select * from salary_payments where id=?').bind(id).first<any>()
@@ -857,9 +862,8 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations', validateJson(reque
 
 // 薪资币种分配管理 - 审批分配（财务审批）
 salaryPaymentsRoutes.post('/salary-payments/:id/allocations/approve', async (c) => {
-  // 只有总部财务、项目财务或负责人可以审批
-  const canApprove = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canApprove) throw Errors.FORBIDDEN()
+  // 只有有薪资审批权限的人可以审批
+  if (!hasPermission(c, 'finance', 'salary', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ allocation_ids?: string[], approve_all?: boolean }>()
   const userId = c.get('userId') as string | undefined
@@ -939,13 +943,15 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations/approve', async (c) 
       spa.*,
       c.name as currency_name,
       a.name as account_name,
-      u1.name as requested_by_name,
-      u2.name as approved_by_name
+      e1.name as requested_by_name,
+      e2.name as approved_by_name
     from salary_payment_allocations spa
     left join currencies c on c.code = spa.currency_id
     left join accounts a on a.id = spa.account_id
     left join users u1 on u1.id = spa.requested_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = spa.approved_by
+    left join employees e2 on e2.email = u2.email
     where spa.salary_payment_id = ?
     order by spa.created_at
   `).bind(id).all()
@@ -957,9 +963,8 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations/approve', async (c) 
 
 // 薪资币种分配管理 - 拒绝分配（财务拒绝）
 salaryPaymentsRoutes.post('/salary-payments/:id/allocations/reject', async (c) => {
-  // 只有总部财务、项目财务或负责人可以拒绝
-  const canReject = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canReject) throw Errors.FORBIDDEN()
+  // 只有有薪资审批权限的人可以拒绝
+  if (!hasPermission(c, 'finance', 'salary', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ allocation_ids: string[] }>()
   const userId = c.get('userId') as string | undefined
@@ -1012,13 +1017,15 @@ salaryPaymentsRoutes.post('/salary-payments/:id/allocations/reject', async (c) =
       spa.*,
       c.name as currency_name,
       a.name as account_name,
-      u1.name as requested_by_name,
-      u2.name as approved_by_name
+      e1.name as requested_by_name,
+      e2.name as approved_by_name
     from salary_payment_allocations spa
     left join currencies c on c.code = spa.currency_id
     left join accounts a on a.id = spa.account_id
     left join users u1 on u1.id = spa.requested_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = spa.approved_by
+    left join employees e2 on e2.email = u2.email
     where spa.salary_payment_id = ?
     order by spa.created_at
   `).bind(id).all()
@@ -1038,13 +1045,15 @@ salaryPaymentsRoutes.get('/salary-payments/:id/allocations', async (c) => {
       spa.*,
       c.name as currency_name,
       a.name as account_name,
-      u1.name as requested_by_name,
-      u2.name as approved_by_name
+      e1.name as requested_by_name,
+      e2.name as approved_by_name
     from salary_payment_allocations spa
     left join currencies c on c.code = spa.currency_id
     left join accounts a on a.id = spa.account_id
     left join users u1 on u1.id = spa.requested_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = spa.approved_by
+    left join employees e2 on e2.email = u2.email
     where spa.salary_payment_id = ?
     order by spa.created_at
   `).bind(id).all()

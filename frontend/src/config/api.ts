@@ -71,6 +71,8 @@ export const api = {
   },
   import: `${API_BASE}/api/import`,
   auditLogs: `${API_BASE}/api/audit-logs`,
+  auditLogsOptions: `${API_BASE}/api/audit-logs/options`,
+  auditLogsExport: `${API_BASE}/api/audit-logs/export`,
   init: `${API_BASE}/api/init-if-empty`,
   borrowings: `${API_BASE}/api/borrowings`,
   borrowingsBalance: `${API_BASE}/api/borrowings/balance`,

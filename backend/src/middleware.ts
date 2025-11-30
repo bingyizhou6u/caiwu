@@ -58,6 +58,8 @@ export function createAuthMiddleware() {
     if (sessionData.employee) {
       c.set('userEmployee', sessionData.employee)
     }
+    // 部门允许的功能模块
+    c.set('departmentModules', sessionData.departmentModules || ['*'])
 
     await next()
   }

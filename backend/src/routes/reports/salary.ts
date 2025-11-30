@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { getUserPosition, isHQDirector, isHQFinance, isHQHR, isProjectDirector, applyDataScope } from '../../utils/permissions.js'
+import { hasPermission, getDataAccessFilter } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { validateQuery, getValidatedQuery } from '../../utils/validator.js'
 import { salaryReportQuerySchema } from '../../schemas/common.schema.js'
@@ -15,16 +15,18 @@ export const salaryReportsRoutes = new Hono<{ Bindings: Env, Variables: AppVaria
 // 员工薪资报表
 // 优化版本：批量查询请假记录，避免N+1查询问题
 salaryReportsRoutes.get('/employee-salary', validateQuery(salaryReportQuerySchema), async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!hasPermission(c, 'report', 'view', 'salary') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看薪资报表的权限')
+  }
   
   const query = getValidatedQuery<z.infer<typeof salaryReportQuerySchema>>(c)
   const year = query.year?.toString() || new Date().getFullYear().toString()
   const month = query.month?.toString()
   
-  // 查询所有活跃员工（应用数据权限过滤）
+  // 应用数据权限过滤
+  const dataFilter = getDataAccessFilter(c, 'e')
+  
+  // 查询所有活跃员工
   let employeesSql = `
     select 
       e.id,
@@ -38,14 +40,10 @@ salaryReportsRoutes.get('/employee-salary', validateQuery(salaryReportQuerySchem
       e.regular_date
     from employees e
     left join departments d on e.department_id = d.id
-    where e.active = 1
+    where e.active = 1 and ${dataFilter.where}
+    order by d.name, e.name
   `
-  let employeesBinds: any[] = []
-  
-  // 应用数据权限过滤
-  const scoped = await applyDataScope(c, employeesSql, employeesBinds)
-  employeesSql = scoped.sql + ' order by d.name, e.name'
-  employeesBinds = scoped.binds
+  let employeesBinds: any[] = [...dataFilter.binds]
   
   const employees = await c.env.DB.prepare(employeesSql).bind(...employeesBinds).all<any>()
   

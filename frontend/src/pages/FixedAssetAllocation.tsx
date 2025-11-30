@@ -4,6 +4,7 @@ import { api } from '../config/api'
 import dayjs from 'dayjs'
 import { loadEmployees } from '../utils/loaders'
 import { apiGet } from '../utils/api'
+import { usePermissions } from '../utils/permissions'
 
 const { TextArea } = Input
 
@@ -13,7 +14,7 @@ const ALLOCATION_TYPE_OPTIONS = [
   { value: 'temporary', label: '临时借用' },
 ]
 
-export function FixedAssetAllocation({ userRole }: { userRole?: string }) {
+export function FixedAssetAllocation() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [allocateOpen, setAllocateOpen] = useState(false)
@@ -26,7 +27,9 @@ export function FixedAssetAllocation({ userRole }: { userRole?: string }) {
   const [employees, setEmployees] = useState<any[]>([])
   const [employeeFilter, setEmployeeFilter] = useState<string | undefined>()
   const [returnedFilter, setReturnedFilter] = useState<string | undefined>()
-  const isFinance = userRole === 'finance' || userRole === 'manager' || userRole === 'hr'
+  
+  const { hasPermission, isFinance: checkIsFinance, isHR } = usePermissions()
+  const canManageAssets = checkIsFinance() || isHR()
 
   const load = async () => {
     setLoading(true)
@@ -169,7 +172,7 @@ export function FixedAssetAllocation({ userRole }: { userRole?: string }) {
   return (
     <Card title="资产分配（员工入职领取设备）">
       <Space style={{ marginBottom: 16 }} wrap>
-          {isFinance && (
+          {canManageAssets && (
           <Button type="primary" onClick={() => {
             if (assets.length === 0) {
               message.warning('暂无可分配的资产')

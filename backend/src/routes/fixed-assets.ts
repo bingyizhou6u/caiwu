@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { hasPositionCode, getUserPosition, getDataAccessFilter, isHQDirector, isHQFinance, isHQHR, isProjectDirector, isProjectFinance } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
@@ -29,13 +29,14 @@ fixedAssetsRoutes.get('/fixed-assets', validateQuery(fixedAssetQuerySchema), asy
       s.name as site_name,
       v.name as vendor_name,
       cur.name as currency_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from fixed_assets fa
     left join departments d on d.id = fa.department_id
     left join sites s on s.id = fa.site_id
     left join vendors v on v.id = fa.vendor_id
     left join currencies cur on cur.code = fa.currency
     left join users u on u.id = fa.created_by
+    left join employees ce on ce.email = u.email
   `
   const conds: string[] = []
   const binds: any[] = []
@@ -100,12 +101,13 @@ fixedAssetsRoutes.get('/fixed-assets/allocations', validateQuery(fixedAssetAlloc
       e.name as employee_name,
       e.department_id as employee_department_id,
       d.name as employee_department_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from fixed_asset_allocations a
     left join fixed_assets fa on fa.id = a.asset_id
     left join employees e on e.id = a.employee_id
     left join departments d on d.id = e.department_id
     left join users u on u.id = a.created_by
+    left join employees ce on ce.email = u.email
   `
   const conds: string[] = []
   const binds: any[] = []
@@ -150,13 +152,14 @@ fixedAssetsRoutes.get('/fixed-assets/:id', validateParam(idParamSchema), async (
       s.name as site_name,
       v.name as vendor_name,
       cur.name as currency_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from fixed_assets fa
     left join departments d on d.id = fa.department_id
     left join sites s on s.id = fa.site_id
     left join vendors v on v.id = fa.vendor_id
     left join currencies cur on cur.code = fa.currency
     left join users u on u.id = fa.created_by
+    left join employees ce on ce.email = u.email
     where fa.id = ?
   `).bind(id).first()
 
@@ -176,13 +179,14 @@ fixedAssetsRoutes.get('/fixed-assets/:id', validateParam(idParamSchema), async (
         d2.name as to_dept_name,
         s1.name as from_site_name,
         s2.name as to_site_name,
-        u.name as created_by_name
+        ce.name as created_by_name
       from fixed_asset_changes fc
       left join departments d1 on d1.id = fc.from_dept_id
       left join departments d2 on d2.id = fc.to_dept_id
       left join sites s1 on s1.id = fc.from_site_id
       left join sites s2 on s2.id = fc.to_site_id
       left join users u on u.id = fc.created_by
+      left join employees ce on ce.email = u.email
       where fc.asset_id = ?
       order by fc.change_date desc, fc.created_at desc
     `).bind(id).all()
@@ -197,7 +201,7 @@ fixedAssetsRoutes.get('/fixed-assets/:id', validateParam(idParamSchema), async (
 
 // 创建固定资产
 fixedAssetsRoutes.post('/fixed-assets', validateJson(createFixedAssetSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createFixedAssetSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -253,7 +257,7 @@ fixedAssetsRoutes.post('/fixed-assets', validateJson(createFixedAssetSchema), as
 
 // 更新固定资产
 fixedAssetsRoutes.put('/fixed-assets/:id', validateParam(idParamSchema), validateJson(updateFixedAssetSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'update')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof updateFixedAssetSchema>>(c)
@@ -322,7 +326,7 @@ fixedAssetsRoutes.put('/fixed-assets/:id', validateParam(idParamSchema), validat
 
 // 删除固定资产
 fixedAssetsRoutes.delete('/fixed-assets/:id', validateParam(idParamSchema), async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'delete')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const asset = await c.env.DB.prepare('select asset_code, name from fixed_assets where id = ?').bind(id).first<{ asset_code: string, name: string }>()
@@ -345,8 +349,7 @@ fixedAssetsRoutes.delete('/fixed-assets/:id', validateParam(idParamSchema), asyn
 
 // 创建折旧记录
 fixedAssetsRoutes.post('/fixed-assets/:id/depreciations', validateParam(idParamSchema), validateJson(createDepreciationSchema), async (c) => {
-  const canCreate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canCreate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'update')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof createDepreciationSchema>>(c)
@@ -407,8 +410,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/depreciations', validateParam(idParamS
 
 // 资产调拨
 fixedAssetsRoutes.post('/fixed-assets/:id/transfer', validateParam(idParamSchema), validateJson(transferFixedAssetSchema), async (c) => {
-  const canTransfer = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canTransfer) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'update')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof transferFixedAssetSchema>>(c)
@@ -464,8 +466,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/transfer', validateParam(idParamSchema
 
 // 资产买入（购买资产并创建资产记录+生成支出流水）
 fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAssetWithFlowSchema), async (c) => {
-  const canPurchase = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canPurchase) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof purchaseFixedAssetWithFlowSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -598,8 +599,7 @@ fixedAssetsRoutes.post('/fixed-assets/purchase', validateJson(purchaseFixedAsset
 
 // 资产卖出
 fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), validateJson(sellFixedAssetSchema), async (c) => {
-  const canSell = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canSell) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'delete')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof sellFixedAssetSchema>>(c)
@@ -711,8 +711,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/sale', validateParam(idParamSchema), v
 
 // 资产分配（员工入职领取设备等）
 fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema), validateJson(allocateFixedAssetSchema), async (c) => {
-  const canAllocate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
-  if (!canAllocate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'allocate')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof allocateFixedAssetSchema>>(c)
@@ -807,8 +806,7 @@ fixedAssetsRoutes.post('/fixed-assets/:id/allocate', validateParam(idParamSchema
 
 // 资产归还
 fixedAssetsRoutes.post('/fixed-assets/allocations/:id/return', validateParam(idParamSchema), validateJson(returnFixedAssetSchema), async (c) => {
-  const canReturn = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
-  if (!canReturn) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'fixed', 'allocate')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof returnFixedAssetSchema>>(c)

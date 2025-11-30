@@ -188,7 +188,16 @@ export const accountTransferQuerySchema = z.object({
 /**
  * 审计日志查询Schema
  */
-export const auditLogQuerySchema = paginationSchema
+export const auditLogQuerySchema = z.object({
+  action: z.string().optional(),
+  entity: z.string().optional(),
+  actor_id: uuidSchema.optional(),
+  actor_keyword: z.string().optional(),
+  start_time: z.coerce.number().int().optional(),
+  end_time: z.coerce.number().int().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+})
 
 /**
  * 站点账单查询Schema

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { hasPositionCode, getUserPosition } from '../utils/permissions.js'
+import { hasPermission, getUserPosition } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { getDataAccessFilter } from '../utils/permissions.js'
@@ -70,7 +70,7 @@ flowsRoutes.get('/flows', async (c) => {
 // 文件上传：凭证上传
 
 flowsRoutes.post('/upload/voucher', async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'flow', 'create')) throw Errors.FORBIDDEN()
 
   const formData = await c.req.formData()
   const file = formData.get('file') as File
@@ -155,7 +155,7 @@ flowsRoutes.get('/vouchers/*', async (c) => {
 })
 
 flowsRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'flow', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createCashFlowSchema>>(c)
   const id = uuid()
   const now = Date.now()
@@ -235,7 +235,7 @@ flowsRoutes.post('/flows', validateJson(createCashFlowSchema), async (c) => {
 
 // 更新记账记录的凭证
 flowsRoutes.put('/flows/:id/voucher', async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'flow', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ voucher_urls?: string[], voucher_url?: string }>()
 

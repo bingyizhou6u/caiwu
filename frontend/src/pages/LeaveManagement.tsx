@@ -7,6 +7,7 @@ import dayjs from 'dayjs'
 import { apiGet, apiPost, apiPut, apiDelete, safeApiCall, handleConflictError } from '../utils/api'
 import { authedJsonFetch } from '../utils/authedFetch'
 import { loadEmployees } from '../utils/loaders'
+import { usePermissions } from '../utils/permissions'
 
 const { Option } = Select
 
@@ -50,7 +51,7 @@ type EmployeeLeave = {
   created_at: number
 }
 
-export function LeaveManagement({ userRole }: { userRole?: string }) {
+export function LeaveManagement() {
   const [data, setData] = useState<EmployeeLeave[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -62,9 +63,11 @@ export function LeaveManagement({ userRole }: { userRole?: string }) {
   const [editForm] = Form.useForm()
   const [approveForm] = Form.useForm()
   const [annualLeaveInfo, setAnnualLeaveInfo] = useState<{ remaining: number, total: number } | null>(null)
-  const canEdit = userRole === 'manager' || userRole === 'finance'
-  const canApprove = userRole === 'manager' || userRole === 'finance'
-  const isManager = userRole === 'manager'
+  
+  const { hasPermission, canManageSubordinates, isManager: _isManager } = usePermissions()
+  const canEdit = hasPermission('hr', 'leave', 'view')
+  const canApprove = hasPermission('hr', 'leave', 'approve') || canManageSubordinates
+  const isManager = _isManager()
 
   const loadLeaves = async () => {
     setLoading(true)

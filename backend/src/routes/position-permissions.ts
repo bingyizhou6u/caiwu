@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { isHQDirector } from '../utils/permissions.js'
+import { hasPermission } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
@@ -12,7 +12,7 @@ export const positionPermissionsRoutes = new Hono<{ Bindings: Env, Variables: Ap
 
 // 获取所有职位列表（包括禁用的，用于权限管理）
 positionPermissionsRoutes.get('/position-permissions', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'position', 'view')) throw Errors.FORBIDDEN()
   
   const rows = await c.env.DB.prepare('select * from positions order by sort_order, name').all()
   return c.json({ results: rows.results ?? [] })
@@ -20,7 +20,7 @@ positionPermissionsRoutes.get('/position-permissions', async (c) => {
 
 // 获取单个职位详情
 positionPermissionsRoutes.get('/position-permissions/:id', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'position', 'view')) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   const row = await c.env.DB.prepare('select * from positions where id=?').bind(id).first<any>()
@@ -34,7 +34,7 @@ positionPermissionsRoutes.get('/position-permissions/:id', async (c) => {
 
 // 创建新职位
 positionPermissionsRoutes.post('/position-permissions', validateJson(createPositionSchema), async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'position', 'create')) throw Errors.FORBIDDEN()
   
   const body = getValidatedData<z.infer<typeof createPositionSchema>>(c)
   
@@ -72,7 +72,7 @@ positionPermissionsRoutes.post('/position-permissions', validateJson(createPosit
 
 // 更新职位
 positionPermissionsRoutes.put('/position-permissions/:id', validateJson(updatePositionSchema), async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'position', 'update')) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updatePositionSchema>>(c)
@@ -143,7 +143,7 @@ positionPermissionsRoutes.put('/position-permissions/:id', validateJson(updatePo
 
 // 删除职位（软删除）
 positionPermissionsRoutes.delete('/position-permissions/:id', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'position', 'delete')) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   

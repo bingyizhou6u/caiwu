@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { hasPositionCode, getUserPosition, getDataAccessFilter, isTeamDeveloper, getUserId } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getDataAccessFilter, isTeamMember, getUserId } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid, getUserEmployeeId } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -20,18 +20,20 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
 
   let sql = `
     select b.*, 
-      u.name as borrower_name, u.email as borrower_email,
+      e.name as borrower_name, u.email as borrower_email,
       a.name as account_name, a.currency as account_currency,
-      creator.name as creator_name
+      ce.name as creator_name
     from borrowings b
     left join users u on u.id=b.user_id
+    left join employees e on e.email=u.email
     left join accounts a on a.id=b.account_id
     left join users creator on creator.id=b.created_by
+    left join employees ce on ce.email=creator.email
   `
   const binds: any[] = []
 
   // 组员只能查看自己的借款记录
-  if (isTeamDeveloper(c)) {
+  if (isTeamMember(c)) {
     const currentUserId = getUserId(c)
     if (currentUserId) {
       sql += ' where b.user_id = ?'
@@ -52,7 +54,7 @@ borrowingsRoutes.get('/borrowings', validateQuery(borrowingQuerySchema), async (
 
 // 借款管理 - 创建
 borrowingsRoutes.post('/borrowings', validateJson(createBorrowingSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'borrowing', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createBorrowingSchema>>(c)
 
   // 验证用户存在
@@ -86,13 +88,15 @@ borrowingsRoutes.post('/borrowings', validateJson(createBorrowingSchema), async 
 
   const created = await c.env.DB.prepare(`
     select b.*, 
-      u.name as borrower_name, u.email as borrower_email,
+      e.name as borrower_name, u.email as borrower_email,
       a.name as account_name, a.currency as account_currency,
-      creator.name as creator_name
+      ce.name as creator_name
     from borrowings b
     left join users u on u.id=b.user_id
+    left join employees e on e.email=u.email
     left join accounts a on a.id=b.account_id
     left join users creator on creator.id=b.created_by
+    left join employees ce on ce.email=creator.email
     where b.id=?
   `).bind(id).first()
 
@@ -106,19 +110,21 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
   const borrowingId = query.borrowing_id
 
   let sql = `
-    select r.*, b.user_id, u.name as borrower_name, u.email as borrower_email,
+    select r.*, b.user_id, e.name as borrower_name, u.email as borrower_email,
       a.name as account_name, a.currency as account_currency,
-      creator.name as creator_name
+      ce.name as creator_name
     from repayments r
     left join borrowings b on b.id=r.borrowing_id
     left join users u on u.id=b.user_id
+    left join employees e on e.email=u.email
     left join accounts a on a.id=r.account_id
     left join users creator on creator.id=r.created_by
+    left join employees ce on ce.email=creator.email
   `
   const binds: any[] = []
 
   // 组员只能查看自己的还款记录（通过borrowing关联）
-  if (isTeamDeveloper(c)) {
+  if (isTeamMember(c)) {
     const currentUserId = getUserId(c)
     if (currentUserId) {
       sql += ' where b.user_id = ?'
@@ -139,7 +145,7 @@ borrowingsRoutes.get('/repayments', validateQuery(repaymentQuerySchema), async (
 
 // 还款管理 - 创建
 borrowingsRoutes.post('/repayments', validateJson(createRepaymentSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'borrowing', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createRepaymentSchema>>(c)
 
   // 验证借款记录存在
@@ -175,14 +181,16 @@ borrowingsRoutes.post('/repayments', validateJson(createRepaymentSchema), async 
   logAuditAction(c, 'create', 'repayment', id, JSON.stringify({ borrowing_id: body.borrowing_id, account_id: body.account_id, amount_cents: amountCents }))
 
   const created = await c.env.DB.prepare(`
-    select r.*, b.user_id, u.name as borrower_name, u.email as borrower_email,
+    select r.*, b.user_id, e.name as borrower_name, u.email as borrower_email,
       a.name as account_name, a.currency as account_currency,
-      creator.name as creator_name
+      ce.name as creator_name
     from repayments r
     left join borrowings b on b.id=r.borrowing_id
     left join users u on u.id=b.user_id
+    left join employees e on e.email=u.email
     left join accounts a on a.id=r.account_id
     left join users creator on creator.id=r.created_by
+    left join employees ce on ce.email=creator.email
     where r.id=?
   `).bind(id).first()
 
@@ -197,7 +205,7 @@ borrowingsRoutes.get('/borrowings/balance', async (c) => {
   let sql = `
     select 
       u.id as user_id, 
-      u.name as borrower_name, 
+      e.name as borrower_name, 
       u.email as borrower_email,
       b.currency,
       coalesce(sum(b.amount_cents), 0) as total_borrowed_cents,
@@ -218,11 +226,12 @@ borrowingsRoutes.get('/borrowings/balance', async (c) => {
         )
       ), 0)) as balance_cents
     from users u
+    inner join employees e on e.email = u.email
     inner join borrowings b on b.user_id = u.id
     where u.active = 1
-    group by u.id, u.name, u.email, b.currency
+    group by u.id, e.name, u.email, b.currency
     having balance_cents != 0
-    order by u.name, b.currency
+    order by e.name, b.currency
   `
 
   // 应用数据权限过滤

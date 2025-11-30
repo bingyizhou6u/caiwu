@@ -3,12 +3,15 @@ import { Card, Table, Button, Form, Input, Space, message, Popconfirm, Switch } 
 import { api } from '../config/api'
 import { apiGet, apiPost, apiPut, apiDelete, handleConflictError } from '../utils/api'
 import { FormModal } from '../components/FormModal'
+import { usePermissions } from '../utils/permissions'
 
-export function DepartmentManagement({ userRole }: { userRole?: string }) {
+export function DepartmentManagement() {
   const [deptData, setDeptData] = useState<any[]>([])
   const [deptOpen, setDeptOpen] = useState(false)
   const [deptForm] = Form.useForm()
-  const isManager = userRole === 'manager'
+  
+  const { hasPermission } = usePermissions()
+  const canManageDepartments = hasPermission('system', 'department', 'create')
 
   const loadDept = useCallback(async () => {
     const data = await apiGet(api.departments)
@@ -58,7 +61,7 @@ export function DepartmentManagement({ userRole }: { userRole?: string }) {
   return (
     <Card title="项目管理">
       <Space style={{ marginBottom: 12 }}>
-        {(isManager || userRole === 'finance') && (
+        {canManageDepartments && (
           <Button type="primary" onClick={() => setDeptOpen(true)}>新建项目</Button>
         )}
         <Button onClick={loadDept}>刷新</Button>
@@ -68,14 +71,14 @@ export function DepartmentManagement({ userRole }: { userRole?: string }) {
         { title: '状态', dataIndex: 'active', render: (v: number) => v ? '启用' : '禁用' },
         { title: '操作', render: (_:any, r:any)=> (
           <Space>
-            {(isManager || userRole === 'finance') && (
+            {canManageDepartments && (
               <Switch 
                 size="small" 
                 checked={r.active === 1}
                 onChange={(checked) => handleToggleActive(r.id, checked)}
               />
             )}
-            {isManager && (
+            {canManageDepartments && (
               <Popconfirm
                 title={`确定要删除项目"${r.name}"吗？`}
                 description="删除后该项目将被永久删除。如果该项目下还有站点、员工或组织部门，将无法删除。"

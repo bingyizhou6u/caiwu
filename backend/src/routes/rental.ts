@@ -1,10 +1,9 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { isHQDirector, isHQFinance, isHQHR, isProjectDirector, isProjectFinance, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
-import { applyDataScope } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery } from '../utils/validator.js'
 import { createRentalPaymentSchema, updateRentalPaymentSchema, allocateDormitorySchema, createRentalPropertySchema } from '../schemas/business.schema.js'
@@ -27,12 +26,13 @@ rentalRoutes.get('/rental-properties', validateQuery(rentalPropertyQuerySchema),
       d.name as department_name,
       a.name as payment_account_name,
       cur.name as currency_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from rental_properties rp
     left join departments d on d.id = rp.department_id
     left join accounts a on a.id = rp.payment_account_id
     left join currencies cur on cur.code = rp.currency
     left join users u on u.id = rp.created_by
+    left join employees ce on ce.email = u.email
   `
   const conds: string[] = []
   const binds: any[] = []
@@ -53,9 +53,7 @@ rentalRoutes.get('/rental-properties', validateQuery(rentalPropertyQuerySchema),
   if (conds.length) sql += ' where ' + conds.join(' and ')
   sql += ' order by rp.created_at desc'
 
-  // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
 
@@ -74,12 +72,13 @@ rentalRoutes.get('/rental-properties/allocations', async (c) => {
       e.name as employee_name,
       e.department_id as employee_department_id,
       d.name as employee_department_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from dormitory_allocations da
     left join rental_properties rp on rp.id = da.property_id
     left join employees e on e.id = da.employee_id
     left join departments d on d.id = e.department_id
     left join users u on u.id = da.created_by
+    left join employees ce on ce.email = u.email
   `
   const conds: string[] = []
   const binds: any[] = []
@@ -102,30 +101,13 @@ rentalRoutes.get('/rental-properties/allocations', async (c) => {
   sql += ' order by da.allocation_date desc, da.created_at desc'
 
   try {
-    // 应用数据权限过滤
-    const scoped = await applyDataScope(c, sql, binds)
-    console.log('Applied data scope:', {
-      originalSql: sql,
-      scopedSql: scoped.sql,
-      originalBinds: binds,
-      scopedBinds: scoped.binds
-    })
-
-    // 执行查询
-    const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+    const rows = await c.env.DB.prepare(sql).bind(...binds).all()
     return c.json({ results: rows.results ?? [] })
   } catch (error: any) {
-    // 记录错误详情以便调试
     console.error('Error in /rental-properties/allocations:', {
       error: error.message,
-      errorStack: error.stack,
-      errorName: error.name,
-      errorStatus: error.statusCode,
-      originalSql: sql,
-      originalBinds: binds,
-      userId: c.get('userId'),
-      userPosition: c.get('userPosition'),
-      userEmployee: c.get('userEmployee')
+      sql,
+      binds
     })
 
     // 如果是AppError，直接抛出
@@ -148,12 +130,13 @@ rentalRoutes.get('/rental-properties/:id', async (c) => {
       d.name as department_name,
       a.name as payment_account_name,
       cur.name as currency_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from rental_properties rp
     left join departments d on d.id = rp.department_id
     left join accounts a on a.id = rp.payment_account_id
     left join currencies cur on cur.code = rp.currency
     left join users u on u.id = rp.created_by
+    left join employees ce on ce.email = u.email
     where rp.id = ?
   `).bind(id).first()
 
@@ -196,8 +179,7 @@ rentalRoutes.get('/rental-properties/:id', async (c) => {
 
 // 创建租赁房屋
 rentalRoutes.post('/rental-properties', validateJson(createRentalPropertySchema), async (c) => {
-  const canCreate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canCreate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createRentalPropertySchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -259,8 +241,7 @@ rentalRoutes.post('/rental-properties', validateJson(createRentalPropertySchema)
 
 // 更新租赁房屋
 rentalRoutes.put('/rental-properties/:id', async (c) => {
-  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<any>()
   const userId = c.get('userId') as string | undefined
@@ -342,7 +323,7 @@ rentalRoutes.put('/rental-properties/:id', async (c) => {
 
 // 删除租赁房屋
 rentalRoutes.delete('/rental-properties/:id', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'delete')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const property = await c.env.DB.prepare('select property_code, name from rental_properties where id = ?').bind(id).first<{ property_code: string, name: string }>()
   if (!property) throw Errors.NOT_FOUND()
@@ -365,8 +346,7 @@ rentalRoutes.delete('/rental-properties/:id', async (c) => {
 
 // 创建租赁付款记录
 rentalRoutes.post('/rental-payments', validateJson(createRentalPaymentSchema), async (c) => {
-  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createRentalPaymentSchema>>(c)
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
@@ -502,12 +482,13 @@ rentalRoutes.get('/rental-payments', async (c) => {
       rprop.property_type,
       a.name as account_name,
       c.name as category_name,
-      u.name as created_by_name
+      ce.name as created_by_name
     from rental_payments rp
     left join rental_properties rprop on rprop.id = rp.property_id
     left join accounts a on a.id = rp.account_id
     left join categories c on c.id = rp.category_id
     left join users u on u.id = rp.created_by
+    left join employees ce on ce.email = u.email
   `
   const conds: string[] = []
   const binds: any[] = []
@@ -528,16 +509,13 @@ rentalRoutes.get('/rental-payments', async (c) => {
   if (conds.length) sql += ' where ' + conds.join(' and ')
   sql += ' order by rp.year desc, rp.month desc, rp.created_at desc'
 
-  // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
 
 // 更新租赁付款记录
 rentalRoutes.put('/rental-payments/:id', validateJson(updateRentalPaymentSchema), async (c) => {
-  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateRentalPaymentSchema>>(c)
   const userId = c.get('userId') as string | undefined
@@ -569,7 +547,7 @@ rentalRoutes.put('/rental-payments/:id', validateJson(updateRentalPaymentSchema)
 
 // 删除租赁付款记录
 rentalRoutes.delete('/rental-payments/:id', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'delete')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const payment = await c.env.DB.prepare('select property_id, year, month from rental_payments where id = ?').bind(id).first<{ property_id: string, year: number, month: number }>()
   if (!payment) throw Errors.NOT_FOUND()
@@ -582,8 +560,7 @@ rentalRoutes.delete('/rental-payments/:id', async (c) => {
 
 // 员工宿舍分配
 rentalRoutes.post('/rental-properties/:id/allocate-dormitory', validateJson(allocateDormitorySchema), async (c) => {
-  const canManage = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
-  if (!canManage) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof allocateDormitorySchema>>(c)
   const userId = c.get('userId') as string | undefined
@@ -643,8 +620,7 @@ rentalRoutes.post('/rental-properties/:id/allocate-dormitory', validateJson(allo
 
 // 员工宿舍归还
 rentalRoutes.post('/rental-properties/allocations/:id/return', async (c) => {
-  const canManage = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c) || isHQHR(c)
-  if (!canManage) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{
     return_date: string
@@ -696,8 +672,7 @@ rentalRoutes.post('/rental-properties/allocations/:id/return', async (c) => {
 
 // 生成租赁应付账单（提前15天自动生成）
 rentalRoutes.post('/rental-properties/generate-payable-bills', async (c) => {
-  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'create')) throw Errors.FORBIDDEN()
   const userId = c.get('userId') as string | undefined
   const now = Date.now()
   const today = new Date()
@@ -827,12 +802,13 @@ rentalRoutes.get('/rental-payable-bills', async (c) => {
       rp.name as property_name,
       rp.property_type,
       cur.name as currency_name,
-      u.name as created_by_name,
+      ce.name as created_by_name,
       rp.payment_account_id
     from rental_payable_bills rpb
     left join rental_properties rp on rp.id = rpb.property_id
     left join currencies cur on cur.code = rpb.currency
     left join users u on u.id = rpb.created_by
+    left join employees ce on ce.email = u.email
   `
   const conds: string[] = []
   const binds: any[] = []
@@ -857,16 +833,13 @@ rentalRoutes.get('/rental-payable-bills', async (c) => {
   if (conds.length) sql += ' where ' + conds.join(' and ')
   sql += ' order by rpb.due_date asc, rpb.created_at desc'
 
-  // 应用数据权限过滤
-  const scoped = await applyDataScope(c, sql, binds)
-  const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all()
+  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
   return c.json({ results: rows.results ?? [] })
 })
 
 // 标记应付账单为已付
 rentalRoutes.post('/rental-payable-bills/:id/mark-paid', async (c) => {
-  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{
     paid_date: string
@@ -905,8 +878,7 @@ rentalRoutes.post('/rental-payable-bills/:id/mark-paid', async (c) => {
 
 // 文件上传：租房合同PDF
 rentalRoutes.post('/upload/contract', async (c) => {
-  const canUpdate = isHQFinance(c) || isProjectFinance(c) || isHQDirector(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
 
   const formData = await c.req.formData()
   const file = formData.get('file') as File

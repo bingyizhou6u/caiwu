@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { isHQDirector, isHQFinance } from '../../utils/permissions.js'
+import { hasPermission } from '../../utils/permissions.js'
 import { logAudit, logAuditAction } from '../../utils/audit.js'
 import { uuid } from '../../utils/db.js'
 import { SystemService } from '../../services/SystemService.js'
@@ -27,7 +27,7 @@ departmentsRoutes.get('/departments', async (c) => {
 
 // 创建部门
 departmentsRoutes.post('/departments', validateJson(createDepartmentSchema), async (c) => {
-  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'department', 'create')) throw Errors.FORBIDDEN()
 
   const body = getValidatedData<z.infer<typeof createDepartmentSchema>>(c)
   const systemService = new SystemService(c.env.DB)
@@ -52,7 +52,7 @@ departmentsRoutes.post('/departments', validateJson(createDepartmentSchema), asy
 
 // 更新部门
 departmentsRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), async (c) => {
-  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'department', 'update')) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateDepartmentSchema>>(c)
@@ -95,7 +95,7 @@ departmentsRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), 
 // 删除部门
 departmentsRoutes.delete('/departments/:id', async (c) => {
   try {
-    if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+    if (!hasPermission(c, 'system', 'department', 'delete')) throw Errors.FORBIDDEN()
 
     const id = c.req.param('id')
     const dept = await c.env.DB.prepare('select name from departments where id=?').bind(id).first<{ name: string }>()
@@ -152,7 +152,7 @@ departmentsRoutes.get('/sites', async (c) => {
 
 // 创建站点
 departmentsRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
-  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'site', 'info', 'create')) throw Errors.FORBIDDEN()
 
   const body = getValidatedData<z.infer<typeof createSiteSchema>>(c)
 
@@ -171,7 +171,7 @@ departmentsRoutes.post('/sites', validateJson(createSiteSchema), async (c) => {
 
 // 更新站点
 departmentsRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) => {
-  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'site', 'info', 'update')) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateSiteSchema>>(c)
@@ -207,7 +207,7 @@ departmentsRoutes.put('/sites/:id', validateJson(updateSiteSchema), async (c) =>
 
 // 删除站点
 departmentsRoutes.delete('/sites/:id', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'site', 'info', 'delete')) throw Errors.FORBIDDEN()
 
   const id = c.req.param('id')
   const site = await c.env.DB.prepare('select name from sites where id=?').bind(id).first<{ name: string }>()

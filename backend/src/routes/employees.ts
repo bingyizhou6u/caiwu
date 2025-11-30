@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { hasPermission, getUserPosition, getUserEmployee, getUserId, isTeamDeveloper, canViewEmployee, hasPositionCode, getDataAccessFilter } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getUserEmployee, getUserId, isTeamMember, canViewEmployee, getDataAccessFilter } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { SystemService } from '../services/SystemService.js'
@@ -60,7 +60,7 @@ employeesRoutes.get('/employees', validateQuery(employeeQuerySchema), async (c) 
   }
 
   // 组员只能查看自己的信息（通过email匹配）
-  if (isTeamDeveloper(c) && userId) {
+  if (isTeamMember(c) && userId) {
     sql += ' and exists (select 1 from users u where u.id = ? and u.email = e.email)'
     binds.push(userId)
   } else {
@@ -128,8 +128,8 @@ employeesRoutes.get('/employees', validateQuery(employeeQuerySchema), async (c) 
 
 // 为现有用户创建员工记录（迁移功能）
 employeesRoutes.post('/employees/create-from-user', async (c) => {
-  // 只有管理员可以执行此操作
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'team_leader'])) throw Errors.FORBIDDEN()
+  // 只有有员工更新权限的人可以执行此操作
+  if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
 
   const body = await c.req.json<{
     user_id: string
@@ -242,8 +242,8 @@ employeesRoutes.post('/employees/create-from-user', async (c) => {
 
 // 执行迁移：为admin和magi创建员工记录
 employeesRoutes.post('/employees/migrate-admin-magi', async (c) => {
-  // 只有管理员可以执行此操作
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'team_leader'])) throw Errors.FORBIDDEN()
+  // 只有有员工更新权限的人可以执行此操作
+  if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
 
   const ADMIN_EMAIL_ADDR = 'bingyizhou6u@gmail.com'
   const MAGI_EMAIL_ADDR = 'magi20221102@gmail.com'
@@ -377,14 +377,29 @@ employeesRoutes.post('/employees/migrate-admin-magi', async (c) => {
 
 // 员工管理 - 创建
 employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c) => {
-  // hr和finance可以创建员工
-  if (!hasPositionCode(c, ['hq_hr', 'project_hr', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  // 有员工创建权限的人可以创建员工
+  if (!hasPermission(c, 'hr', 'employee', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createEmployeeSchema>>(c)
 
-  // 从部门信息中获取项目ID
-  const orgDept = await c.env.DB.prepare('select project_id from org_departments where id=?').bind(body.org_department_id).first<{ project_id: string | null }>()
+  // 从部门信息中获取项目ID和允许的职位列表
+  const orgDept = await c.env.DB.prepare('select project_id, allowed_positions from org_departments where id=?').bind(body.org_department_id).first<{ project_id: string | null, allowed_positions: string | null }>()
   if (!orgDept) {
     throw Errors.NOT_FOUND('组织部门')
+  }
+
+  // 验证职位是否在部门允许的职位列表中
+  if (body.position_id && orgDept.allowed_positions) {
+    try {
+      const allowedPositions = JSON.parse(orgDept.allowed_positions) as string[]
+      if (Array.isArray(allowedPositions) && allowedPositions.length > 0) {
+        if (!allowedPositions.includes(body.position_id)) {
+          throw Errors.BUSINESS_ERROR('所选职位不在该部门允许的职位列表中')
+        }
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('不在该部门允许')) throw e
+      // JSON解析失败，不做限制
+    }
   }
 
   // 根据部门的project_id确定department_id
@@ -465,9 +480,9 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
   const userAccountId = uuid()
 
   // 2. 创建用户账号，设置must_change_password=1要求首次登录修改密码
-  // 注意: role字段已废弃,权限完全基于职位(position)
-  statements.push(c.env.DB.prepare('insert into users(id,name,email,password_hash,department_id,position_id,active,must_change_password,password_changed,created_at) values(?,?,?,?,?,?,?,?,?,?)')
-    .bind(userAccountId, body.name, body.email, hash, actualDepartmentId, body.position_id, 1, 1, 0, now))
+  // 注意: name字段已移至employees表，不再在users表中存储
+  statements.push(c.env.DB.prepare('insert into users(id,email,password_hash,department_id,position_id,active,must_change_password,password_changed,created_at) values(?,?,?,?,?,?,?,?,?)')
+    .bind(userAccountId, body.email, hash, actualDepartmentId, body.position_id, 1, 1, 0, now))
 
   // 3. 如果项目存在，插入到user_departments表
   const udId = uuid()
@@ -563,12 +578,8 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
 
 // 员工管理 - 更新
 employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async (c) => {
-  // hr和finance可以更新员工，manager也可以
-  if (!hasPositionCode(c, [
-    'hq_director', 'project_director', 'team_leader',
-    'hq_hr', 'project_hr',
-    'hq_finance', 'project_finance'
-  ])) throw Errors.FORBIDDEN()
+  // 有员工更新权限的人可以更新员工
+  if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof updateEmployeeSchema>>(c)
 
@@ -602,7 +613,7 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
   if (body.org_department_id !== undefined) {
     const targetDeptId = body.department_id || record.department_id
     if (body.org_department_id) {
-      const orgDept = await c.env.DB.prepare('select project_id from org_departments where id=?').bind(body.org_department_id).first<{ project_id: string }>()
+      const orgDept = await c.env.DB.prepare('select project_id, allowed_positions from org_departments where id=?').bind(body.org_department_id).first<{ project_id: string, allowed_positions: string | null }>()
       if (!orgDept) {
         throw Errors.NOT_FOUND('组织部门')
       }
@@ -617,6 +628,37 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
         if (targetDept?.name !== '总部') {
           throw Errors.BUSINESS_ERROR('组织部门属于总部，但员工项目不是总部')
         }
+      }
+      // 验证职位是否在部门允许的职位列表中
+      const positionToCheck = body.position_id !== undefined ? body.position_id : record.position_id
+      if (positionToCheck && orgDept.allowed_positions) {
+        try {
+          const allowedPositions = JSON.parse(orgDept.allowed_positions) as string[]
+          if (Array.isArray(allowedPositions) && allowedPositions.length > 0) {
+            if (!allowedPositions.includes(positionToCheck)) {
+              throw Errors.BUSINESS_ERROR('所选职位不在该部门允许的职位列表中')
+            }
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message.includes('不在该部门允许')) throw e
+        }
+      }
+    }
+  }
+
+  // 如果只更新职位但不更新部门，也需要验证
+  if (body.position_id !== undefined && body.org_department_id === undefined && record.org_department_id) {
+    const orgDept = await c.env.DB.prepare('select allowed_positions from org_departments where id=?').bind(record.org_department_id).first<{ allowed_positions: string | null }>()
+    if (orgDept?.allowed_positions) {
+      try {
+        const allowedPositions = JSON.parse(orgDept.allowed_positions) as string[]
+        if (Array.isArray(allowedPositions) && allowedPositions.length > 0) {
+          if (!allowedPositions.includes(body.position_id)) {
+            throw Errors.BUSINESS_ERROR('所选职位不在该部门允许的职位列表中')
+          }
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('不在该部门允许')) throw e
       }
     }
   }
@@ -665,7 +707,7 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
         p.code as position_code,
         p.name as position_name,
         p.level as position_level,
-        p.scope as position_scope
+        p.function_role as position_function_role
       from employees e
       left join departments d on e.department_id = d.id
       left join org_departments od on e.org_department_id = od.id
@@ -745,7 +787,7 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
       p.code as position_code,
       p.name as position_name,
       p.level as position_level,
-      p.scope as position_scope
+      p.function_role as position_function_role
     from employees e
     left join departments d on e.department_id = d.id
     left join org_departments od on e.org_department_id = od.id
@@ -757,12 +799,8 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
 
 // 员工管理 - 转正
 employeesRoutes.post('/employees/:id/regularize', validateJson(regularizeEmployeeSchema), async (c) => {
-  // hr和finance可以转正员工，manager也可以
-  if (!hasPositionCode(c, [
-    'hq_director', 'project_director', 'team_leader',
-    'hq_hr', 'project_hr',
-    'hq_finance', 'project_finance'
-  ])) throw Errors.FORBIDDEN()
+  // 有员工更新权限的人可以转正员工
+  if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof regularizeEmployeeSchema>>(c)
 
@@ -793,12 +831,8 @@ employeesRoutes.post('/employees/:id/regularize', validateJson(regularizeEmploye
 
 // 员工管理 - 离职
 employeesRoutes.post('/employees/:id/leave', validateJson(leaveEmployeeSchema), async (c) => {
-  // hr和finance可以办理离职，manager也可以
-  if (!hasPositionCode(c, [
-    'hq_director', 'project_director', 'team_leader',
-    'hq_hr', 'project_hr',
-    'hq_finance', 'project_finance'
-  ])) throw Errors.FORBIDDEN()
+  // 有员工更新权限的人可以办理离职
+  if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof leaveEmployeeSchema>>(c)
 
@@ -856,12 +890,8 @@ employeesRoutes.post('/employees/:id/leave', validateJson(leaveEmployeeSchema), 
 
 // 员工管理 - 撤销离职（重新入职）
 employeesRoutes.post('/employees/:id/rejoin', async (c) => {
-  // hr和finance可以办理重新入职，manager也可以
-  if (!hasPositionCode(c, [
-    'hq_director', 'project_director', 'team_leader',
-    'hq_hr', 'project_hr',
-    'hq_finance', 'project_finance'
-  ])) throw Errors.FORBIDDEN()
+  // 有员工更新权限的人可以办理重新入职
+  if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{
     join_date?: string  // 新的入职日期，如果不提供则使用原入职日期
@@ -927,7 +957,7 @@ employeesRoutes.post('/employees/:id/rejoin', async (c) => {
 // 员工管理 - 删除
 
 employeesRoutes.delete('/employees/:id', async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'team_leader'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'hr', 'employee', 'delete')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
 
   const record = await c.env.DB.prepare('select * from employees where id=?').bind(id).first<any>()
@@ -955,20 +985,22 @@ employeesRoutes.get('/employee-leaves', validateQuery(employeeLeaveQuerySchema),
       e.name as employee_name,
       e.department_id,
       d.name as department_name,
-      u1.name as creator_name,
-      u2.name as approver_name
+      e1.name as creator_name,
+      e2.name as approver_name
     from employee_leaves l
     left join employees e on e.id = l.employee_id
     left join departments d on d.id = e.department_id
     left join users u1 on u1.id = l.created_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = l.approved_by
+    left join employees e2 on e2.email = u2.email
     where 1=1
   `
   const binds: any[] = []
 
   // 组员只能查看自己创建的请假记录（通过employee_id关联）
   // 组员只能查看自己的请假记录
-  if (isTeamDeveloper(c) && userId) {
+  if (isTeamMember(c) && userId) {
     const userService = new UserService(c.env.DB)
     const userEmployeeId = await userService.getUserEmployeeId(userId)
     if (userEmployeeId) {
@@ -1006,7 +1038,7 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
   const body = getValidatedData<z.infer<typeof createEmployeeLeaveSchema>>(c)
 
   // 组员角色只能为自己创建请假（通过email匹配验证）
-  if (isTeamDeveloper(c)) {
+  if (isTeamMember(c)) {
     const userId = getUserId(c)
     if (userId) {
       const user = await c.env.DB.prepare('select email from users where id=?').bind(userId).first<{ email: string }>()
@@ -1057,13 +1089,15 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
       e.name as employee_name,
       e.department_id,
       d.name as department_name,
-      u1.name as creator_name,
-      u2.name as approver_name
+      e1.name as creator_name,
+      e2.name as approver_name
     from employee_leaves l
     left join employees e on e.id = l.employee_id
     left join departments d on d.id = e.department_id
     left join users u1 on u1.id = l.created_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = l.approved_by
+    left join employees e2 on e2.email = u2.email
     where l.id=?
   `).bind(id).first()
 
@@ -1089,7 +1123,7 @@ employeesRoutes.put('/employee-leaves/:id', async (c) => {
 
   // 组员角色只能更新自己创建的待审批请假
   const userId = getUserId(c)
-  if (isTeamDeveloper(c) && record.created_by !== userId) {
+  if (isTeamMember(c) && record.created_by !== userId) {
     throw Errors.FORBIDDEN('员工只能更新自己创建的请假')
   }
 
@@ -1124,13 +1158,15 @@ employeesRoutes.put('/employee-leaves/:id', async (c) => {
       e.name as employee_name,
       e.department_id,
       d.name as department_name,
-      u1.name as creator_name,
-      u2.name as approver_name
+      e1.name as creator_name,
+      e2.name as approver_name
     from employee_leaves l
     left join employees e on e.id = l.employee_id
     left join departments d on d.id = e.department_id
     left join users u1 on u1.id = l.created_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = l.approved_by
+    left join employees e2 on e2.email = u2.email
     where l.id=?
   `).bind(id).first()
 
@@ -1139,12 +1175,8 @@ employeesRoutes.put('/employee-leaves/:id', async (c) => {
 
 // 员工请假管理 - 审批
 employeesRoutes.post('/employee-leaves/:id/approve', validateJson(approveEmployeeLeaveSchema), async (c) => {
-  // hr和finance可以审批请假，manager也可以
-  if (!hasPositionCode(c, [
-    'hq_director', 'project_director', 'team_leader',
-    'hq_hr', 'project_hr',
-    'hq_finance', 'project_finance'
-  ])) throw Errors.FORBIDDEN()
+  // 有请假审批权限的人可以审批请假
+  if (!hasPermission(c, 'hr', 'leave', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = getValidatedData<z.infer<typeof approveEmployeeLeaveSchema>>(c)
 
@@ -1182,13 +1214,15 @@ employeesRoutes.post('/employee-leaves/:id/approve', validateJson(approveEmploye
       e.name as employee_name,
       e.department_id,
       d.name as department_name,
-      u1.name as creator_name,
-      u2.name as approver_name
+      e1.name as creator_name,
+      e2.name as approver_name
     from employee_leaves l
     left join employees e on e.id = l.employee_id
     left join departments d on d.id = e.department_id
     left join users u1 on u1.id = l.created_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = l.approved_by
+    left join employees e2 on e2.email = u2.email
     where l.id=?
   `).bind(id).first()
 
@@ -1198,7 +1232,7 @@ employeesRoutes.post('/employee-leaves/:id/approve', validateJson(approveEmploye
 // 员工请假管理 - 删除
 
 employeesRoutes.delete('/employee-leaves/:id', async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'team_leader'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'hr', 'leave', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
 
   const record = await c.env.DB.prepare('select * from employee_leaves where id=?').bind(id).first<any>()
@@ -1236,21 +1270,23 @@ employeesRoutes.get('/expense-reimbursements', validateQuery(expenseReimbursemen
         cur.code as currency_code,
         cur.name as currency_name,
         a.name as account_name,
-        u1.name as creator_name,
-        u2.name as approver_name
+        e1.name as creator_name,
+        e2.name as approver_name
       from expense_reimbursements r
       left join employees e on e.id = r.employee_id
       left join departments d on d.id = e.department_id
       left join currencies cur on cur.code = r.currency_id
       left join accounts a on a.id = r.account_id
       left join users u1 on u1.id = r.created_by
+      left join employees e1 on e1.email = u1.email
       left join users u2 on u2.id = r.approved_by
+      left join employees e2 on e2.email = u2.email
       where 1=1
     `
     const binds: any[] = []
 
     // 组员角色只能查看自己创建的报销记录（通过employee_id关联）
-    if (isTeamDeveloper(c) && userId) {
+    if (isTeamMember(c) && userId) {
       const userService = new UserService(c.env.DB)
       const userEmployeeId = await userService.getUserEmployeeId(userId)
       if (userEmployeeId) {
@@ -1298,7 +1334,7 @@ employeesRoutes.post('/expense-reimbursements', validateJson(createExpenseSchema
     const body = getValidatedData<z.infer<typeof createExpenseSchema>>(c)
 
     // 组员角色只能为自己创建报销（通过email匹配验证）
-    if (isTeamDeveloper(c)) {
+    if (isTeamMember(c)) {
       const userId = getUserId(c)
       if (userId) {
         const user = await c.env.DB.prepare('select email from users where id=?').bind(userId).first<{ email: string }>()
@@ -1347,15 +1383,17 @@ employeesRoutes.post('/expense-reimbursements', validateJson(createExpenseSchema
         cur.code as currency_code,
         cur.name as currency_name,
         a.name as account_name,
-        u1.name as creator_name,
-        u2.name as approver_name
+        e1.name as creator_name,
+        e2.name as approver_name
       from expense_reimbursements r
       left join employees e on e.id = r.employee_id
       left join departments d on d.id = e.department_id
       left join currencies cur on cur.code = r.currency_id
       left join accounts a on a.id = r.account_id
       left join users u1 on u1.id = r.created_by
+      left join employees e1 on e1.email = u1.email
       left join users u2 on u2.id = r.approved_by
+      left join employees e2 on e2.email = u2.email
       where r.id=?
     `).bind(id).first()
 
@@ -1386,7 +1424,7 @@ employeesRoutes.put('/expense-reimbursements/:id', async (c) => {
 
   // 组员角色只能更新自己创建的待审批报销
   const userId = getUserId(c)
-  if (isTeamDeveloper(c) && record.created_by !== userId) {
+  if (isTeamMember(c) && record.created_by !== userId) {
     throw Errors.FORBIDDEN('员工只能更新自己创建的报销')
   }
 
@@ -1425,15 +1463,17 @@ employeesRoutes.put('/expense-reimbursements/:id', async (c) => {
       cur.code as currency_code,
       cur.name as currency_name,
       a.name as account_name,
-      u1.name as creator_name,
-      u2.name as approver_name
+      e1.name as creator_name,
+      e2.name as approver_name
     from expense_reimbursements r
     left join employees e on e.id = r.employee_id
     left join departments d on d.id = e.department_id
     left join currencies cur on cur.code = r.currency_id
     left join accounts a on a.id = r.account_id
     left join users u1 on u1.id = r.created_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = r.approved_by
+    left join employees e2 on e2.email = u2.email
     where r.id=?
   `).bind(id).first()
 
@@ -1442,8 +1482,8 @@ employeesRoutes.put('/expense-reimbursements/:id', async (c) => {
 
 // 员工报销管理 - 审批
 employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
-  // finance可以审批报销（财务审批），manager也可以
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  // 有报销审批权限的人可以审批报销
+  if (!hasPermission(c, 'hr', 'reimbursement', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = await c.req.json<{ status: 'approved' | 'rejected', account_id?: string, category_id?: string, memo?: string }>()
 
@@ -1567,15 +1607,17 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
       cur.code as currency_code,
       cur.name as currency_name,
       a.name as account_name,
-      u1.name as creator_name,
-      u2.name as approver_name
+      e1.name as creator_name,
+      e2.name as approver_name
     from expense_reimbursements r
     left join employees e on e.id = r.employee_id
     left join departments d on d.id = e.department_id
     left join currencies cur on cur.code = r.currency_id
     left join accounts a on a.id = r.account_id
     left join users u1 on u1.id = r.created_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = r.approved_by
+    left join employees e2 on e2.email = u2.email
     where r.id=?
   `).bind(id).first()
 
@@ -1584,8 +1626,8 @@ employeesRoutes.post('/expense-reimbursements/:id/approve', async (c) => {
 
 // 员工报销管理 - 标记已支付
 employeesRoutes.post('/expense-reimbursements/:id/pay', async (c) => {
-  // finance可以标记已支付，manager也可以
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  // 有报销审批权限的人可以标记已支付
+  if (!hasPermission(c, 'hr', 'reimbursement', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
 
   const record = await c.env.DB.prepare('select * from expense_reimbursements where id=?').bind(id).first<any>()
@@ -1616,15 +1658,17 @@ employeesRoutes.post('/expense-reimbursements/:id/pay', async (c) => {
       cur.code as currency_code,
       cur.name as currency_name,
       a.name as account_name,
-      u1.name as creator_name,
-      u2.name as approver_name
+      e1.name as creator_name,
+      e2.name as approver_name
     from expense_reimbursements r
     left join employees e on e.id = r.employee_id
     left join departments d on d.id = e.department_id
     left join currencies cur on cur.code = r.currency_id
     left join accounts a on a.id = r.account_id
     left join users u1 on u1.id = r.created_by
+    left join employees e1 on e1.email = u1.email
     left join users u2 on u2.id = r.approved_by
+    left join employees e2 on e2.email = u2.email
     where r.id=?
   `).bind(id).first()
 
@@ -1634,7 +1678,7 @@ employeesRoutes.post('/expense-reimbursements/:id/pay', async (c) => {
 // 员工报销管理 - 删除
 
 employeesRoutes.delete('/expense-reimbursements/:id', async (c) => {
-  if (!hasPositionCode(c, ['hq_director', 'project_director', 'team_leader'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'hr', 'reimbursement', 'approve')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
 
   const record = await c.env.DB.prepare('select * from expense_reimbursements where id=?').bind(id).first<any>()

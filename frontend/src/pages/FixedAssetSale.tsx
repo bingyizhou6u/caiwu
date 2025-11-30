@@ -16,7 +16,7 @@ const STATUS_OPTIONS = [
   { value: 'maintenance', label: '维修中' },
 ]
 
-export function FixedAssetSale({ userRole }: { userRole?: string }) {
+export function FixedAssetSale() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -29,7 +29,6 @@ export function FixedAssetSale({ userRole }: { userRole?: string }) {
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [search, setSearch] = useState('')
-  const isFinance = userRole === 'finance' || userRole === 'manager'
 
   const load = async () => {
     setLoading(true)

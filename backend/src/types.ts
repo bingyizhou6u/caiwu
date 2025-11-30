@@ -22,14 +22,17 @@ export type AppVariables = {
     id: string
     code: string
     name: string
-    level: string
-    scope: string
-    permissions: any
+    level: number
+    function_role: 'director' | 'hr' | 'finance' | 'admin' | 'developer' | 'support' | 'member'
+    can_manage_subordinates: number
+    permissions: Record<string, Record<string, string[]>>
   }
   userEmployee?: {
+    id: string
     org_department_id: string | null
     department_id: string | null
   }
+  departmentModules?: string[] // 部门允许的功能模块列表
 }
 
 // 已移除固定超级管理员

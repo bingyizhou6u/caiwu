@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { isHQDirector, isHQFinance } from '../../utils/permissions.js'
+import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 
@@ -24,7 +24,7 @@ headquartersRoutes.post('/', async (c) => {
 
 // 更新总部
 headquartersRoutes.put('/:id', async (c) => {
-  if (!isHQDirector(c) && !isHQFinance(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'headquarters', 'update')) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   const body = await c.req.json<{ name?: string; active?: number }>()
@@ -48,7 +48,7 @@ headquartersRoutes.put('/:id', async (c) => {
 
 // 删除总部（软删除）
 headquartersRoutes.delete('/:id', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'headquarters', 'delete')) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   const hq = await c.env.DB.prepare('select name from headquarters where id=?').bind(id).first<{ name: string }>()

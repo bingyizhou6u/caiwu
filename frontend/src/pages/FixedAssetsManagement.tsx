@@ -4,6 +4,7 @@ import { api } from '../config/api'
 import dayjs from 'dayjs'
 import { loadCurrencies, loadDepartments } from '../utils/loaders'
 import { apiGet } from '../utils/api'
+import { usePermissions } from '../utils/permissions'
 
 const STATUS_OPTIONS = [
   { value: 'in_use', label: '在用' },
@@ -25,7 +26,9 @@ const CATEGORY_OPTIONS = [
   { value: '其他', label: '其他' },
 ]
 
-export function FixedAssetsManagement({ userRole }: { userRole?: string }) {
+export function FixedAssetsManagement() {
+  const { hasPermission, isManager: _isManager } = usePermissions()
+  const isManager = _isManager()
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -48,8 +51,7 @@ export function FixedAssetsManagement({ userRole }: { userRole?: string }) {
   const [sites, setSites] = useState<{ value: string, label: string }[]>([])
   const [vendors, setVendors] = useState<{ value: string, label: string }[]>([])
   const [categories, setCategories] = useState<{ value: string, label: string }[]>([])
-  const isManager = userRole === 'manager'
-  const isFinance = userRole === 'finance' || isManager
+  const canManageAssets = hasPermission('asset', 'fixed', 'create')
 
   const load = async () => {
     setLoading(true)
@@ -120,7 +122,7 @@ export function FixedAssetsManagement({ userRole }: { userRole?: string }) {
   return (
     <Card title="资产管理">
       <Space style={{ marginBottom: 12 }} wrap>
-        {isFinance && (
+        {canManageAssets && (
           <Button type="primary" onClick={()=>{ setCreateOpen(true); cForm.resetFields() }}>新建资产</Button>
         )}
         <Button onClick={load}>刷新</Button>
@@ -213,7 +215,7 @@ export function FixedAssetsManagement({ userRole }: { userRole?: string }) {
             render: (_:any, r:any)=> (
               <Space>
                 <Button size="small" onClick={() => { setDetailRow(r); loadDetail(r.id); setDetailOpen(true) }}>详情</Button>
-                {isFinance && (
+                {canManageAssets && (
                   <>
                     <Button size="small" onClick={()=>{
                       setEditRow(r); setEditOpen(true);

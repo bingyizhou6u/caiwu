@@ -200,32 +200,19 @@ async function resolveUserFromToken(c: any) {
 }
 
 function buildUserResponse(user: { id: string, name: string, email: string }, position: any, sessionId?: string) {
-  // 根据职位代码确定角色（兼容前端）
-  let role = 'employee'
-  if (position.code === 'hq_director' || position.code === 'project_director') {
-    role = 'manager'
-  } else if (position.code === 'hq_finance' || position.code.includes('finance')) {
-    role = 'finance'
-  } else if (position.code === 'hq_hr' || position.code.includes('hr')) {
-    role = 'hr'
-  } else if (position.code === 'hq_admin') {
-    role = 'admin'
-  }
-  
   return {
     id: user.id,
     name: user.name,
     email: user.email,
-    role,
     sessionId,
     position: {
       id: position.id,
       code: position.code,
       name: position.name,
       level: position.level,
-      scope: position.data_scope,  // 使用 data_scope
-      permissions: position.permissions || {},
-      canViewReports: position.level <= 2 // 总部和项目级别可以查看报表
+      function_role: position.function_role,
+      can_manage_subordinates: position.can_manage_subordinates,
+      permissions: position.permissions || {}
     }
   }
 }

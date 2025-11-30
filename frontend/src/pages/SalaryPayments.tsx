@@ -7,6 +7,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { formatAmount } from '../utils/formatters'
 import { loadCurrencies, loadAccounts } from '../utils/loaders'
 import { uploadImageAsWebP, isSupportedImageType } from '../utils/image'
+import { usePermissions } from '../utils/permissions'
 
 const { TextArea } = Input
 
@@ -69,7 +70,8 @@ const STATUS_COLORS: Record<string, string> = {
   completed: 'green',
 }
 
-export function SalaryPayments({ userRole }: { userRole?: string }) {
+export function SalaryPayments() {
+  const { hasPermission, isFinance } = usePermissions()
   const [data, setData] = useState<SalaryPayment[]>([])
   const [loading, setLoading] = useState(false)
   const [year, setYear] = useState<number>(new Date().getFullYear())
@@ -94,9 +96,7 @@ export function SalaryPayments({ userRole }: { userRole?: string }) {
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
 
-  const isManager = userRole === 'manager'
-  const isFinance = userRole === 'finance' || isManager
-  const isEmployee = userRole === 'employee'
+  const _isFinance = isFinance()
 
   const load = async () => {
     setLoading(true)
@@ -379,12 +379,12 @@ export function SalaryPayments({ userRole }: { userRole?: string }) {
               员工确认
             </Button>
           )}
-          {record.status === 'pending_finance_approval' && isFinance && (
+          {record.status === 'pending_finance_approval' && _isFinance && (
             <Button size="small" type="primary" onClick={() => handleFinanceApprove(record.id)}>
               财务确认
             </Button>
           )}
-          {record.status === 'pending_payment' && isFinance && (
+          {record.status === 'pending_payment' && _isFinance && (
             <Button size="small" type="primary" onClick={() => handlePaymentTransfer(record.id)}>
               标记转账
             </Button>
@@ -408,7 +408,7 @@ export function SalaryPayments({ userRole }: { userRole?: string }) {
               {record.allocation_status === 'requested' ? '修改币种分配' : '申请币种分配'}
             </Button>
           )}
-          {record.status === 'pending_finance_approval' && record.allocation_status === 'requested' && isFinance && (
+          {record.status === 'pending_finance_approval' && record.allocation_status === 'requested' && _isFinance && (
             <Button size="small" type="primary" onClick={() => {
               setCurrentPayment(record)
               setAllocationApproveOpen(true)
@@ -416,7 +416,7 @@ export function SalaryPayments({ userRole }: { userRole?: string }) {
               审批币种分配
             </Button>
           )}
-          {record.status === 'pending_payment_confirmation' && isFinance && (
+          {record.status === 'pending_payment_confirmation' && _isFinance && (
             <Button size="small" type="primary" onClick={() => {
               setCurrentPayment(record)
               setPaymentConfirmOpen(true)
@@ -432,7 +432,7 @@ export function SalaryPayments({ userRole }: { userRole?: string }) {
         </Space>
       ),
     },
-  ], [isFinance])
+  ], [_isFinance])
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => ({
     value: y,
@@ -448,7 +448,7 @@ export function SalaryPayments({ userRole }: { userRole?: string }) {
     <Card
       title="薪资发放管理"
       extra={
-        isFinance && (
+        _isFinance && (
           <Button type="primary" onClick={() => setGenerateOpen(true)}>
             生成薪资单
           </Button>

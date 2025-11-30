@@ -4,14 +4,16 @@ import { api } from '../config/api'
 import { apiGet, apiPost, apiPut, apiDelete, safeApiCall, handleConflictError } from '../utils/api'
 import { FormModal } from '../components/FormModal'
 import { ActionColumn } from '../components/ActionColumn'
+import { usePermissions } from '../utils/permissions'
 
-export function VendorManagement({ userRole }: { userRole?: string }) {
+export function VendorManagement() {
   const [data, setData] = useState<any[]>([])
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<any>(null)
   const [form] = Form.useForm()
-  const isManager = userRole === 'manager'
-  const canEdit = userRole === 'manager' || userRole === 'finance'
+  
+  const { hasPermission } = usePermissions()
+  const canEdit = hasPermission('system', 'department', 'create')
 
   const load = useCallback(async () => {
     const result = await safeApiCall(() => apiGet(api.vendors), '获取供应商列表失败')

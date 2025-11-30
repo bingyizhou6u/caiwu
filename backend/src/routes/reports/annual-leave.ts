@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { isHQDirector, isHQFinance, isHQHR, isProjectDirector } from '../../utils/permissions.js'
+import { hasPermission } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { getAnnualLeaveStats, getAnnualLeaveConfig } from '../../services/AnnualLeaveService.js'
 
@@ -12,9 +12,10 @@ export const annualLeaveReportRoutes = new Hono<{ Bindings: Env, Variables: AppV
 
 // 获取全员年假统计
 annualLeaveReportRoutes.get('/annual-leave', async (c) => {
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有管理人员可以查看年假报表')
+  // 只有有请假报表查看权限的人可以查看
+  if (!hasPermission(c, 'report', 'view', 'leave') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看年假报表的权限')
+  }
 
   const departmentId = c.req.query('department_id')
   const orgDepartmentId = c.req.query('org_department_id')

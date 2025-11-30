@@ -3,6 +3,7 @@ import { Card, Table, Button, Form, Input, Space, message, Switch, Popconfirm } 
 import { api } from '../config/api'
 import { apiGet, apiPost, apiPut, apiDelete, handleConflictError } from '../utils/api'
 import { FormModal } from '../components/FormModal'
+import { usePermissions } from '../utils/permissions'
 
 type Currency = {
   code: string
@@ -10,7 +11,7 @@ type Currency = {
   active: number
 }
 
-export function CurrencyManagement({ userRole }: { userRole?: string }) {
+export function CurrencyManagement() {
   const [data, setData] = useState<Currency[]>([])
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -18,7 +19,9 @@ export function CurrencyManagement({ userRole }: { userRole?: string }) {
   const [editRow, setEditRow] = useState<Currency | null>(null)
   const [cForm] = Form.useForm()
   const [eForm] = Form.useForm()
-  const isManager = userRole === 'manager'
+  
+  const { hasPermission } = usePermissions()
+  const canManageCurrency = hasPermission('system', 'department', 'create')
 
   const sorted = useMemo(() => data.slice().sort((a,b)=> a.code.localeCompare(b.code)), [data])
 
@@ -100,14 +103,14 @@ export function CurrencyManagement({ userRole }: { userRole?: string }) {
               setEditOpen(true)
               eForm.setFieldsValue({ name: r.name, active: r.active === 1 })
             }}>编辑</Button>
-            {(isManager || userRole === 'finance') && (
+            {canManageCurrency && (
               <Switch 
                 size="small" 
                 checked={r.active === 1}
                 onChange={(checked) => handleToggleActive(r.code, checked)}
               />
             )}
-            {isManager && (
+            {canManageCurrency && (
               <Popconfirm
                 title={`确定要删除币种"${r.code}"吗？`}
                 description="删除后该币种将被永久删除，如果有账户使用此币种，将无法删除。"

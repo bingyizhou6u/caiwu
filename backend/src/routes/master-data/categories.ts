@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { isHQDirector, isHQFinance } from '../../utils/permissions.js'
+import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { uuid } from '../../utils/db.js'
 import { Errors } from '../../utils/errors.js'
@@ -20,7 +20,7 @@ categoriesRoutes.get('/', async (c) => {
 })
 
 categoriesRoutes.post('/', validateJson(createCategorySchema), async (c) => {
-    if (!isHQFinance(c)) throw Errors.FORBIDDEN()
+    if (!hasPermission(c, 'system', 'category', 'create')) throw Errors.FORBIDDEN()
     const body = getValidatedData<z.infer<typeof createCategorySchema>>(c)
 
     // 检查类别名称是否已存在
@@ -37,7 +37,7 @@ categoriesRoutes.post('/', validateJson(createCategorySchema), async (c) => {
 
 // Update category (no delete allowed). Only name/kind allowed, and kind restricted to income|expense
 categoriesRoutes.put('/:id', validateJson(updateCategorySchema), async (c) => {
-    if (!isHQFinance(c)) throw Errors.FORBIDDEN()
+    if (!hasPermission(c, 'system', 'category', 'update')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const body = getValidatedData<z.infer<typeof updateCategorySchema>>(c)
 
@@ -63,7 +63,7 @@ categoriesRoutes.put('/:id', validateJson(updateCategorySchema), async (c) => {
 })
 
 categoriesRoutes.delete('/:id', async (c) => {
-    if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+    if (!hasPermission(c, 'system', 'category', 'delete')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const category = await c.env.DB.prepare('select name from categories where id=?').bind(id).first<{ name: string }>()
     if (!category) throw Errors.NOT_FOUND('类别')

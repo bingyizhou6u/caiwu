@@ -1,10 +1,9 @@
 -- Reconstructed schema based on codebase analysis
 
--- Users table
+-- Users table (认证专用，name 已移至 employees 表)
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
-  name TEXT,
   password_hash TEXT,
   active INTEGER DEFAULT 1,
   must_change_password INTEGER DEFAULT 0,
@@ -14,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at INTEGER
 );
 
--- Employees table
+-- Employees table (业务核心，包含员工所有信息)
 CREATE TABLE IF NOT EXISTS employees (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
@@ -22,7 +21,6 @@ CREATE TABLE IF NOT EXISTS employees (
   position_id TEXT,
   org_department_id TEXT,
   department_id TEXT,
-  job_role TEXT, -- 仅project_staff使用：finance/hr/admin
   active INTEGER DEFAULT 1,
   created_at INTEGER,
   updated_at INTEGER
@@ -34,7 +32,7 @@ CREATE TABLE IF NOT EXISTS positions (
   code TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   level INTEGER NOT NULL, -- 1-总部 2-项目 3-组
-  data_scope TEXT NOT NULL, -- all/hq_all/project/group/self
+  function_role TEXT NOT NULL, -- director/hr/finance/admin/developer
   can_manage_subordinates INTEGER DEFAULT 0,
   description TEXT,
   permissions TEXT, -- JSON string
@@ -62,6 +60,9 @@ CREATE TABLE IF NOT EXISTS org_departments (
   name TEXT NOT NULL,
   code TEXT,
   description TEXT,
+  allowed_modules TEXT, -- JSON数组，配置该部门可访问的功能模块
+  allowed_positions TEXT, -- JSON数组，限制部门可用的职位ID
+  default_position_id TEXT, -- 新员工默认职位ID
   active INTEGER DEFAULT 1,
   sort_order INTEGER DEFAULT 0,
   created_at INTEGER,

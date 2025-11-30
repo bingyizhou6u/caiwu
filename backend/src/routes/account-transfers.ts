@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { hasPermission, isHQDirector, isHQFinance, isProjectDirector, isProjectFinance } from '../utils/permissions.js'
+import { hasPermission } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
@@ -15,8 +15,7 @@ export const accountTransfersRoutes = new Hono<{ Bindings: Env, Variables: AppVa
 // 获取账户转账列表
 accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQuerySchema), async (c) => {
   // 检查财务查看权限
-  const canView = hasPermission(c, 'finance', 'transfer', 'view') || isHQDirector(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'transfer', 'view')) throw Errors.FORBIDDEN()
 
   const query = getValidatedQuery<z.infer<typeof accountTransferQuerySchema>>(c)
   const fromAccountId = query.from_account_id
@@ -72,8 +71,7 @@ accountTransfersRoutes.get('/account-transfers', validateQuery(accountTransferQu
 // 创建账户转账
 accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTransferSchema), async (c) => {
   // 检查财务创建权限
-  const canCreate = hasPermission(c, 'finance', 'transfer', 'create') || isHQDirector(c)
-  if (!canCreate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'transfer', 'create')) throw Errors.FORBIDDEN()
 
   const body = getValidatedData<z.infer<typeof createAccountTransferSchema>>(c)
 
@@ -267,8 +265,7 @@ accountTransfersRoutes.post('/account-transfers', validateJson(createAccountTran
 // 获取单笔转账详情
 accountTransfersRoutes.get('/account-transfers/:id', validateParam(idParamSchema), async (c) => {
   // 检查财务查看权限
-  const canView = hasPermission(c, 'finance', 'transfer', 'view') || isHQDirector(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'transfer', 'view')) throw Errors.FORBIDDEN()
 
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id

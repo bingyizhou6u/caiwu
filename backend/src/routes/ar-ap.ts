@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { hasPositionCode, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { FinanceService } from '../services/FinanceService.js'
@@ -44,7 +44,7 @@ ar_apRoutes.get('/ar/docs', async (c) => {
 
 
 ar_apRoutes.post('/ar/docs', validateJson(createArApDocSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'ar', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createArApDocSchema>>(c)
   const id = uuid()
   const issue = body.issue_date ?? todayStr()
@@ -77,7 +77,7 @@ async function refreshDocStatus(db: D1Database, docId: string) {
 
 
 ar_apRoutes.post('/ar/settlements', validateJson(createSettlementSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'ar', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createSettlementSchema>>(c)
   const id = uuid()
   const amount = body.settle_amount_cents
@@ -111,7 +111,7 @@ ar_apRoutes.get('/ar/statement', validateQuery(docIdQuerySchema), async (c) => {
 // 确认AR/AP文档，生成对应的收入/支出记录
 
 ar_apRoutes.post('/ar/confirm', validateJson(confirmArApDocSchema), async (c) => {
-  if (!hasPositionCode(c, ['hq_finance', 'project_finance'])) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'ar', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof confirmArApDocSchema>>(c)
   const docId = body.doc_id
 

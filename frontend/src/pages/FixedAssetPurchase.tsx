@@ -8,6 +8,7 @@ import { formatAmount } from '../utils/formatters'
 import { loadCurrencies, loadDepartments, loadAccounts, loadExpenseCategories } from '../utils/loaders'
 import { apiGet } from '../utils/api'
 import { uploadImageAsWebP, isSupportedImageType } from '../utils/image'
+import { usePermissions } from '../utils/permissions'
 
 const { TextArea } = Input
 
@@ -24,7 +25,7 @@ const DEPRECIATION_METHOD_OPTIONS = [
   { value: 'accelerated', label: '加速折旧' },
 ]
 
-export function FixedAssetPurchase({ userRole }: { userRole?: string }) {
+export function FixedAssetPurchase() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -38,7 +39,9 @@ export function FixedAssetPurchase({ userRole }: { userRole?: string }) {
   const [uploading, setUploading] = useState(false)
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
-  const isFinance = userRole === 'finance' || userRole === 'manager'
+  
+  const { hasPermission, isFinance: checkIsFinance } = usePermissions()
+  const isFinance = checkIsFinance()
 
   const load = async () => {
     setLoading(true)

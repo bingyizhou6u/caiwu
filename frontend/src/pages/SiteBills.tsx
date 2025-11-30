@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { api } from '../config/api'
 import { loadCurrencies, loadAccounts, loadExpenseCategories } from '../utils/loaders'
 import { apiGet } from '../utils/api'
+import { usePermissions } from '../utils/permissions'
 
 const BILL_TYPE_LABELS: Record<string, string> = {
   income: '收入',
@@ -16,7 +17,7 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: '已取消',
 }
 
-export function SiteBills({ userRole }: { userRole?: string }) {
+export function SiteBills() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -35,7 +36,9 @@ export function SiteBills({ userRole }: { userRole?: string }) {
     bill_type: undefined as string | undefined,
     status: undefined as string | undefined,
   })
-  const canEdit = userRole === 'manager' || userRole === 'finance'
+  
+  const { hasPermission } = usePermissions()
+  const canEdit = hasPermission('site', 'bill', 'create')
 
   const load = async () => {
     setLoading(true)
@@ -278,7 +281,7 @@ export function SiteBills({ userRole }: { userRole?: string }) {
                     setEditOpen(true)
                   }}>编辑</Button>
                 )}
-                {(canEdit || userRole === 'manager') && (
+                {canEdit && (
                   <Popconfirm
                     title="确定要删除这条账单吗？"
                     onConfirm={() => handleDelete(r.id)}

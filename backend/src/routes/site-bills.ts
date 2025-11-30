@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { isHQDirector, isHQFinance, isProjectDirector, isProjectFinance, getDataAccessFilter, getUserEmployee } from '../utils/permissions.js'
+import { hasPermission, getDataAccessFilter, getUserEmployee } from '../utils/permissions.js'
 import { logAudit, logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -29,13 +29,14 @@ siteBillsRoutes.get('/site-bills', validateQuery(siteBillQuerySchema), async (c)
       a.name as account_name,
       c.name as category_name,
       cur.name as currency_name,
-      u.name as creator_name
+      ce.name as creator_name
     from site_bills sb
     left join sites s on s.id = sb.site_id
     left join accounts a on a.id = sb.account_id
     left join categories c on c.id = sb.category_id
     left join currencies cur on cur.code = sb.currency
     left join users u on u.id = sb.created_by
+    left join employees ce on ce.email = u.email
     where 1=1
   `
   const binds: any[] = []
@@ -80,8 +81,7 @@ siteBillsRoutes.get('/site-bills', validateQuery(siteBillQuerySchema), async (c)
 
 // 站点账单管理 - 创建
 siteBillsRoutes.post('/site-bills', validateJson(createSiteBillSchema), async (c) => {
-  const canCreate = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
-  if (!canCreate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'site_bill', 'create') && !hasPermission(c, 'site', 'bill', 'create')) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createSiteBillSchema>>(c)
   
   // 验证站点存在
@@ -149,13 +149,14 @@ siteBillsRoutes.post('/site-bills', validateJson(createSiteBillSchema), async (c
       a.name as account_name,
       c.name as category_name,
       cur.name as currency_name,
-      u.name as creator_name
+      ce.name as creator_name
     from site_bills sb
     left join sites s on s.id = sb.site_id
     left join accounts a on a.id = sb.account_id
     left join categories c on c.id = sb.category_id
     left join currencies cur on cur.code = sb.currency
     left join users u on u.id = sb.created_by
+    left join employees ce on ce.email = u.email
     where sb.id=?
   `).bind(id).first()
   
@@ -164,8 +165,7 @@ siteBillsRoutes.post('/site-bills', validateJson(createSiteBillSchema), async (c
 
 // 站点账单管理 - 更新
 siteBillsRoutes.put('/site-bills/:id', validateParam(idParamSchema), validateJson(updateSiteBillSchema), async (c) => {
-  const canUpdate = isHQDirector(c) || isHQFinance(c) || isProjectDirector(c) || isProjectFinance(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'site_bill', 'update') && !hasPermission(c, 'site', 'bill', 'update')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   const body = getValidatedData<z.infer<typeof updateSiteBillSchema>>(c)
@@ -224,13 +224,14 @@ siteBillsRoutes.put('/site-bills/:id', validateParam(idParamSchema), validateJso
       a.name as account_name,
       c.name as category_name,
       cur.name as currency_name,
-      u.name as creator_name
+      ce.name as creator_name
     from site_bills sb
     left join sites s on s.id = sb.site_id
     left join accounts a on a.id = sb.account_id
     left join categories c on c.id = sb.category_id
     left join currencies cur on cur.code = sb.currency
     left join users u on u.id = sb.created_by
+    left join employees ce on ce.email = u.email
     where sb.id=?
   `).bind(id).first()
   
@@ -239,8 +240,7 @@ siteBillsRoutes.put('/site-bills/:id', validateParam(idParamSchema), validateJso
 
 // 站点账单管理 - 删除
 siteBillsRoutes.delete('/site-bills/:id', validateParam(idParamSchema), async (c) => {
-  const canDelete = isHQDirector(c) || isHQFinance(c)
-  if (!canDelete) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'finance', 'site_bill', 'delete') && !hasPermission(c, 'site', 'bill', 'delete')) throw Errors.FORBIDDEN()
   const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
   const id = params.id
   
@@ -271,13 +271,14 @@ siteBillsRoutes.get('/site-bills/:id', validateParam(idParamSchema), async (c) =
       a.name as account_name,
       c.name as category_name,
       cur.name as currency_name,
-      u.name as creator_name
+      ce.name as creator_name
     from site_bills sb
     left join sites s on s.id = sb.site_id
     left join accounts a on a.id = sb.account_id
     left join categories c on c.id = sb.category_id
     left join currencies cur on cur.code = sb.currency
     left join users u on u.id = sb.created_by
+    left join employees ce on ce.email = u.email
     where sb.id=?
   `).bind(id).first()
   

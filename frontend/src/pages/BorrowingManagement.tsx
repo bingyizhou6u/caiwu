@@ -4,15 +4,18 @@ import dayjs from 'dayjs'
 import { api } from '../config/api'
 import { loadCurrencies, loadAccounts } from '../utils/loaders'
 import { apiGet } from '../utils/api'
+import { usePermissions } from '../utils/permissions'
 
-export function BorrowingManagement({ userRole }: { userRole?: string }) {
+export function BorrowingManagement() {
   const [data, setData] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [currencies, setCurrencies] = useState<any[]>([])
   const [accounts, setAccounts] = useState<any[]>([])
   const [open, setOpen] = useState(false)
   const [form] = Form.useForm()
-  const canEdit = userRole === 'manager' || userRole === 'finance'
+  
+  const { hasPermission } = usePermissions()
+  const canEdit = hasPermission('finance', 'borrowing', 'create')
 
   const load = async () => {
     const res = await fetch(api.borrowings, { credentials: 'include' })

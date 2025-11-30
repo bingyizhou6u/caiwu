@@ -44,7 +44,6 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
   can_manage_subordinates: number
   permissions: any
 } | null> {
-  // 使用单个JOIN查询获取用户、员工和职位信息
   const result = await db.prepare(`
     select 
       p.id,
@@ -68,9 +67,7 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
     permissions: string
   }>()
 
-  if (!result) {
-    return null
-  }
+  if (!result) return null
 
   return {
     id: result.id,
@@ -83,7 +80,7 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
   }
 }
 
-// 优化版本：一次性获取session、user、position和employee信息
+// 优化版本：一次性获取session、user、position、employee和部门模块信息
 export async function getSessionWithUserAndPosition(db: D1Database, sessionId: string): Promise<{
   session: { id: string, user_id: string, expires_at: number } | null
   user: { id: string, email: string, name: string } | null
@@ -101,6 +98,7 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
     org_department_id: string | null
     department_id: string | null
   } | null
+  departmentModules: string[] // 部门允许的模块列表
 } | null> {
   const result = await db.prepare(`
     select 
@@ -109,7 +107,7 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
       s.expires_at,
       u.id as user_id,
       u.email,
-      u.name,
+      e.name,
       p.id as position_id,
       p.code as position_code,
       p.name as position_name,
@@ -119,18 +117,20 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
       p.permissions as position_permissions,
       e.id as employee_id,
       e.org_department_id,
-      e.department_id as employee_department_id
+      e.department_id as employee_department_id,
+      od.allowed_modules as department_allowed_modules
     from sessions s
     inner join users u on u.id = s.user_id
     left join employees e on e.email = u.email and e.active = 1
     left join positions p on p.id = e.position_id and p.active = 1
+    left join org_departments od on od.id = e.org_department_id and od.active = 1
     where s.id = ? and s.expires_at > ?
   `).bind(sessionId, Date.now()).first<{
     session_id: string
     user_id: string
     expires_at: number
     email: string
-    name: string
+    name: string | null
     position_id: string | null
     position_code: string | null
     position_name: string | null
@@ -141,11 +141,10 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
     employee_id: string | null
     org_department_id: string | null
     employee_department_id: string | null
+    department_allowed_modules: string | null
   }>()
 
-  if (!result) {
-    return null
-  }
+  if (!result) return null
 
   const position = result.position_id ? {
     id: result.position_id,
@@ -163,6 +162,16 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
     department_id: result.employee_department_id
   } : null
 
+  // 解析部门允许的模块
+  let departmentModules: string[] = ['*'] // 默认允许所有模块
+  if (result.department_allowed_modules) {
+    try {
+      departmentModules = JSON.parse(result.department_allowed_modules)
+    } catch {
+      departmentModules = ['*']
+    }
+  }
+
   return {
     session: {
       id: result.session_id,
@@ -172,10 +181,11 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
     user: {
       id: result.user_id,
       email: result.email,
-      name: result.name
+      name: result.name || result.email.split('@')[0]
     },
     position,
-    employee
+    employee,
+    departmentModules
   }
 }
 

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { isHQDirector, isHQHR, isHQFinance, isProjectDirector } from '../utils/permissions.js'
+import { hasPermission } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -44,8 +44,7 @@ employeeSalariesRoutes.get('/employee-salaries', async (c) => {
 
 // 创建或更新员工的多币种底薪
 employeeSalariesRoutes.post('/employee-salaries', validateJson(createEmployeeSalarySchema), async (c) => {
-  const canUpdate = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'hr', 'salary', 'create')) throw Errors.FORBIDDEN()
   
   const body = getValidatedData<z.infer<typeof createEmployeeSalarySchema>>(c)
   
@@ -125,8 +124,7 @@ employeeSalariesRoutes.post('/employee-salaries', validateJson(createEmployeeSal
 
 // 批量更新员工的多币种底薪
 employeeSalariesRoutes.put('/employee-salaries/batch', async (c) => {
-  const canUpdate = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
-  if (!canUpdate) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'hr', 'salary', 'update')) throw Errors.FORBIDDEN()
   
   const body = await c.req.json<{
     employee_id: string
@@ -195,8 +193,7 @@ employeeSalariesRoutes.put('/employee-salaries/batch', async (c) => {
 
 // 删除员工的多币种底薪
 employeeSalariesRoutes.delete('/employee-salaries/:id', async (c) => {
-  const canDelete = isHQDirector(c) || isHQHR(c) || isHQFinance(c) || isProjectDirector(c)
-  if (!canDelete) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'hr', 'salary', 'update')) throw Errors.FORBIDDEN()
   
   const id = c.req.param('id')
   

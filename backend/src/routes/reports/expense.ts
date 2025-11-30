@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { getUserPosition, isHQDirector, isHQFinance, isHQHR, isProjectDirector, applyDataScope } from '../../utils/permissions.js'
+import { hasPermission } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { validateQuery, getValidatedQuery } from '../../utils/validator.js'
 import { dateRangeQuerySchema } from '../../schemas/common.schema.js'
@@ -15,10 +15,9 @@ export const expenseReportsRoutes = new Hono<{ Bindings: Env, Variables: AppVari
 
 // 支出汇总报表
 expenseReportsRoutes.get('/expense-summary', validateQuery(dateRangeQuerySchema), async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!hasPermission(c, 'report', 'view', 'cash_flow') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看支出报表的权限')
+  }
   
   const query = getValidatedQuery<z.infer<typeof dateRangeQuerySchema>>(c)
   const start = query.start
@@ -34,12 +33,9 @@ expenseReportsRoutes.get('/expense-summary', validateQuery(dateRangeQuerySchema)
     from categories c
     left join cash_flows f on f.category_id=c.id and f.type='expense' and f.biz_date>=? and f.biz_date<=?
     where c.kind='expense'
+    group by c.id, c.name, c.kind order by total_cents desc
   `
   let binds: any[] = [start, end]
-  
-  const scoped = await applyDataScope(c, sql, binds)
-  sql = scoped.sql + ' group by c.id, c.name, c.kind order by total_cents desc'
-  binds = scoped.binds
   
   const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
   return c.json({ rows: rows.results ?? [] })
@@ -50,10 +46,9 @@ const expenseDetailQuerySchema = dateRangeQuerySchema.extend({
   category_id: uuidSchema.optional(),
 })
 expenseReportsRoutes.get('/expense-detail', validateQuery(expenseDetailQuerySchema), async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  // 只有总部负责人、财务、HR或项目负责人可以查看
-  const canView = isHQDirector(c) || isHQFinance(c) || isHQHR(c) || isProjectDirector(c)
-  if (!canView) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
+  if (!hasPermission(c, 'report', 'view', 'cash_flow') && !hasPermission(c, 'report', 'view', 'all')) {
+    throw Errors.FORBIDDEN('没有查看支出报表的权限')
+  }
   
   const query = getValidatedQuery<z.infer<typeof expenseDetailQuerySchema>>(c)
   const start = query.start
@@ -82,9 +77,7 @@ expenseReportsRoutes.get('/expense-detail', validateQuery(expenseDetailQuerySche
     binds.push(categoryId)
   }
   
-  const scoped = await applyDataScope(c, sql, binds)
-  sql = scoped.sql + ' order by f.biz_date desc, f.created_at desc'
-  binds = scoped.binds
+  sql += ' order by f.biz_date desc, f.created_at desc'
   
   const rows = await c.env.DB.prepare(sql).bind(...binds).all<any>()
   return c.json({ rows: rows.results ?? [] })

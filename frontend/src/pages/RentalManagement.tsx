@@ -9,6 +9,7 @@ import { loadCurrencies, loadDepartments, loadAccounts, loadExpenseCategories, l
 import { apiGet } from '../utils/api'
 import type { RentalProperty, RentalPayableBill, DormitoryAllocation, SelectOption } from '../types/rental'
 import { uploadImageAsWebP, isSupportedImageType } from '../utils/image'
+import { usePermissions } from '../utils/permissions'
 
 const { TextArea } = Input
 
@@ -42,7 +43,8 @@ const STATUS_OPTIONS = [
   { value: 'terminated', label: '已终止' },
 ]
 
-export function RentalManagement({ userRole }: { userRole?: string }) {
+export function RentalManagement() {
+  const { hasPermission } = usePermissions()
   const [data, setData] = useState<RentalProperty[]>([])
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -68,8 +70,8 @@ export function RentalManagement({ userRole }: { userRole?: string }) {
   const [contractFileList, setContractFileList] = useState<UploadFile[]>([])
   const [contractUploading, setContractUploading] = useState(false)
   const [payableBills, setPayableBills] = useState<RentalPayableBill[]>([])
-  const isFinance = userRole === 'finance' || userRole === 'manager'
-  const isHR = userRole === 'hr' || isFinance
+  const canManageRental = hasPermission('asset', 'rental', 'create')
+  const canAllocate = hasPermission('asset', 'rental', 'allocate') || canManageRental
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -374,7 +376,7 @@ export function RentalManagement({ userRole }: { userRole?: string }) {
   return (
     <Card title="租房管理">
       <Space style={{ marginBottom: 16 }} wrap>
-        {isFinance && (
+        {canManageRental && (
           <Button type="primary" onClick={() => { setCreateOpen(true); createForm.resetFields() }}>
             新建租赁
           </Button>
@@ -472,7 +474,7 @@ export function RentalManagement({ userRole }: { userRole?: string }) {
             render: (_: any, r: any) => (
               <Space>
                 <Button size="small" onClick={() => loadDetail(r.id)}>详情</Button>
-                {isFinance && (
+                {canManageRental && (
                   <>
                     <Button size="small" onClick={() => {
                       setCurrentProperty(r)
@@ -525,7 +527,7 @@ export function RentalManagement({ userRole }: { userRole?: string }) {
                       setFileList([])
                       setPaymentOpen(true)
                     }}>记录付款</Button>
-                    {r.property_type === 'dormitory' && isHR && (
+                    {r.property_type === 'dormitory' && canAllocate && (
                       <Button size="small" onClick={() => {
                         setCurrentProperty(r)
                         allocateForm.resetFields()

@@ -3,7 +3,7 @@ import type { Env, AppVariables } from '../types.js'
 
 /**
  * 职位权限系统工具函数
- * 基于"职能角色 + 组织层级"交叉组合的10职位模型
+ * 基于新的6职位模型（总部主管、总部专员、项目主管、项目专员、组长、工程师）
  */
 
 // 职位信息接口
@@ -12,7 +12,7 @@ export interface Position {
   code: string
   name: string
   level: number // 1-总部 2-项目 3-组
-  function_role: 'director' | 'hr' | 'finance' | 'admin' | 'developer'
+  function_role: 'director' | 'hr' | 'finance' | 'admin' | 'developer' | 'support' | 'member'
   can_manage_subordinates: number
   permissions: any // JSON权限配置
 }
@@ -42,8 +42,45 @@ export function getUserId(c: Context<{ Bindings: Env, Variables: AppVariables }>
   return c.get('userId') as string | undefined
 }
 
+// 从Context获取部门允许的模块列表
+export function getDepartmentModules(c: Context<{ Bindings: Env, Variables: AppVariables }>): string[] {
+  return (c.get('departmentModules') as string[] | undefined) || ['*']
+}
+
+/**
+ * 检查部门是否允许访问指定模块
+ * @param c Hono Context
+ * @param module 模块名（如 hr、finance、asset）
+ * @returns 是否有访问权限
+ */
+export function hasDepartmentModuleAccess(c: Context<{ Bindings: Env, Variables: AppVariables }>, module: string): boolean {
+  const position = getUserPosition(c)
+  
+  // 总部人员（level=1）不受部门模块限制
+  if (position && position.level === 1) {
+    return true
+  }
+  
+  const deptModules = getDepartmentModules(c)
+  
+  // 如果包含 '*'，表示允许所有模块
+  if (deptModules.includes('*')) {
+    return true
+  }
+  
+  // 检查模块是否匹配（支持通配符，如 hr.* 匹配 hr.employee、hr.leave 等）
+  return deptModules.some(m => {
+    if (m.endsWith('.*')) {
+      const prefix = m.slice(0, -2)
+      return module === prefix || module.startsWith(prefix + '.')
+    }
+    return m === module || module.startsWith(m + '.')
+  })
+}
+
 /**
  * 检查是否有指定模块的权限
+ * 权限计算：部门允许的模块 ∩ 职位定义的操作权限
  * @param c Hono Context
  * @param module 模块名：finance/hr/asset/report/system/self
  * @param subModule 子模块名：如finance.flow, hr.leave
@@ -58,6 +95,12 @@ export function hasPermission(
   const position = getUserPosition(c)
   if (!position || !position.permissions) return false
 
+  // 1. 先检查部门是否允许访问该模块（总部人员跳过此检查）
+  if (!hasDepartmentModuleAccess(c, module)) {
+    return false
+  }
+
+  // 2. 再检查职位是否有该操作权限
   const modulePerms = position.permissions[module]
   if (!modulePerms) return false
 
@@ -112,84 +155,6 @@ export function hasPositionCode(c: Context<{ Bindings: Env, Variables: AppVariab
 }
 
 /**
- * 检查是否是总部负责人
- */
-export function isHQDirector(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['hq_director'])
-}
-
-/**
- * 检查是否是总部财务
- */
-export function isHQFinance(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['hq_finance'])
-}
-
-/**
- * 检查是否是总部人事
- */
-export function isHQHR(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['hq_hr'])
-}
-
-/**
- * 检查是否是总部行政
- */
-export function isHQAdmin(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['hq_admin'])
-}
-
-/**
- * 检查是否是项目负责人
- */
-export function isProjectDirector(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['project_director'])
-}
-
-/**
- * 检查是否是项目人事
- */
-export function isProjectHR(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['project_hr'])
-}
-
-/**
- * 检查是否是项目财务
- */
-export function isProjectFinance(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['project_finance'])
-}
-
-/**
- * 检查是否是项目行政
- */
-export function isProjectAdmin(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['project_admin'])
-}
-
-/**
- * 检查是否是组长
- */
-export function isTeamLeader(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['team_leader'])
-}
-
-/**
- * 检查是否是组员（开发）
- */
-export function isTeamDeveloper(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  return hasPositionCode(c, ['team_developer'])
-}
-
-/**
- * 检查是否具有指定职能角色
- */
-export function hasFunctionRole(c: Context<{ Bindings: Env, Variables: AppVariables }>, role: string): boolean {
-  const position = getUserPosition(c)
-  return position ? position.function_role === role : false
-}
-
-/**
  * 检查是否可以查看指定员工的数据
  * @param c Context
  * @param targetEmployeeId 目标员工ID
@@ -225,8 +190,8 @@ export async function canViewEmployee(
     return target ? target.org_department_id === employee.org_department_id : false
   }
 
-  // 组员只能查看自己
-  if (position.code === 'team_developer') {
+  // 工程师只能查看自己
+  if (position.code === 'team_engineer') {
     return targetEmployeeId === employee.id
   }
 
@@ -249,13 +214,13 @@ export async function canApproveApplication(
   // 必须有管理下属权限
   if (position.can_manage_subordinates !== 1) return false
 
-  // 总部负责人、总部人事、总部财务可以审批所有人
-  if (['hq_director', 'hq_hr', 'hq_finance'].includes(position.code)) {
+  // 总部负责人/总部主管可以审批所有人
+  if (position.code === 'hq_director' || position.code === 'hq_manager') {
     return true
   }
 
-  // 项目负责人、项目人事可以审批本项目所有人
-  if (['project_director', 'project_hr'].includes(position.code)) {
+  // 项目主管可以审批本项目所有人
+  if (position.code === 'project_manager') {
     const applicant = await c.env.DB.prepare(
       'SELECT department_id FROM employees WHERE id = ?'
     ).bind(applicantEmployeeId).first()
@@ -263,7 +228,7 @@ export async function canApproveApplication(
     return applicant ? applicant.department_id === employee.department_id : false
   }
 
-  // 组长只能审批本组开发人员（team_developer）
+  // 组长只能审批本组工程师
   if (position.code === 'team_leader') {
     const applicant = await c.env.DB.prepare(
       'SELECT org_department_id, position_id FROM employees WHERE id = ?'
@@ -274,12 +239,12 @@ export async function canApproveApplication(
     // 必须是同一个组
     if (applicant.org_department_id !== employee.org_department_id) return false
     
-    // 必须是组员（team_developer）
+    // 必须是工程师
     const applicantPosition = await c.env.DB.prepare(
       'SELECT code FROM positions WHERE id = ?'
     ).bind(applicant.position_id).first()
     
-    return applicantPosition ? applicantPosition.code === 'team_developer' : false
+    return applicantPosition ? applicantPosition.code === 'team_engineer' : false
   }
 
   return false
@@ -346,8 +311,8 @@ export function getDataAccessFilter(
     }
   }
 
-  // 组员（team_developer）：只能访问自己的数据
-  if (position.code === 'team_developer') {
+  // 工程师（team_engineer）：只能访问自己的数据
+  if (position.code === 'team_engineer') {
     return {
       where: `${alias}id = ?`,
       binds: [employee.id]
@@ -362,140 +327,4 @@ export function getDataAccessFilter(
  */
 export function getCurrentUserId(c: Context<{ Bindings: Env, Variables: AppVariables }>): string | undefined {
   return getUserId(c)
-}
-
-// ============================================
-// 临时兼容函数 - 用于支持旧代码逐步迁移
-// 这些函数将在所有路由重构完成后删除
-// ============================================
-
-/**
- * @deprecated 临时兼容函数,使用hasPermission替代
- */
-export async function requireRole(c: Context<{ Bindings: Env, Variables: AppVariables }>, roles: string[]): Promise<boolean> {
-  const position = getUserPosition(c)
-  if (!position) return false
-  
-  // 映射旧角色到新职位
-  if (roles.includes('manager')) {
-    if (['hq_director', 'project_director', 'team_leader'].includes(position.code)) return true
-  }
-  if (roles.includes('finance')) {
-    if (['hq_finance', 'project_finance'].includes(position.code)) return true
-  }
-  if (roles.includes('hr')) {
-    if (['hq_hr', 'project_hr'].includes(position.code)) return true
-  }
-  if (roles.includes('admin')) {
-    if (['hq_admin', 'project_admin'].includes(position.code)) return true
-  }
-  if (roles.includes('auditor')) {
-    // 总部负责人具有审计权限
-    if (position.code === 'hq_director') return true
-  }
-  return false
-}
-
-/**
- * @deprecated 临时兼容函数
- */
-export function requirePermission(c: Context<{ Bindings: Env, Variables: AppVariables }>, permission: string): boolean {
-  return true // 临时允许所有操作
-}
-
-/**
- * @deprecated 临时兼容函数
- */
-export function canRead(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  const position = getUserPosition(c)
-  return position !== undefined
-}
-
-/**
- * @deprecated 临时兼容函数
- */
-export async function canReadAsync(c: Context<{ Bindings: Env, Variables: AppVariables }>): Promise<boolean> {
-  return canRead(c)
-}
-
-/**
- * @deprecated 临时兼容函数
- */
-export function canWrite(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
-  const position = getUserPosition(c)
-  return position ? position.level <= 2 : false
-}
-
-/**
- * @deprecated 临时兼容函数,使用isTeamDeveloper替代
- */
-export async function isEmployee(c: Context<{ Bindings: Env, Variables: AppVariables }>): Promise<boolean> {
-  return isTeamDeveloper(c)
-}
-
-/**
- * @deprecated 临时兼容函数,使用hasPositionCode替代
- */
-export async function isHR(c: Context<{ Bindings: Env, Variables: AppVariables }>): Promise<boolean> {
-  return hasPositionCode(c, ['hq_hr', 'project_hr'])
-}
-
-/**
- * @deprecated 临时兼容函数,使用hasPositionCode替代
- */
-export async function isFinance(c: Context<{ Bindings: Env, Variables: AppVariables }>): Promise<boolean> {
-  return hasPositionCode(c, ['hq_finance', 'project_finance'])
-}
-
-/**
- * @deprecated 临时兼容函数
- */
-export async function canViewReports(c: Context<{ Bindings: Env, Variables: AppVariables }>): Promise<boolean> {
-  const position = getUserPosition(c)
-  return position ? position.level <= 2 : false
-}
-
-/**
- * @deprecated 临时兼容函数,使用getDataAccessFilter替代
- */
-export async function applyDataScope(
-  c: Context<{ Bindings: Env, Variables: AppVariables }>,
-  sql: string,
-  binds: any[]
-): Promise<{ sql: string, binds: any[] }> {
-  const position = getUserPosition(c)
-  const employee = getUserEmployee(c)
-  
-  if (!position || !employee) {
-    return { sql: `${sql} WHERE 1=0`, binds }
-  }
-
-  // 总部人员(level=1):可以访问所有数据
-  if (position.level === 1) {
-    return { sql, binds }
-  }
-
-  // 项目人员(level=2):只能访问本项目数据
-  if (position.level === 2) {
-    if (!employee.department_id) {
-      return { sql: `${sql} WHERE 1=0`, binds }
-    }
-    const sqlLower = sql.toLowerCase()
-    const hasWhere = sqlLower.includes('where')
-    const connector = hasWhere ? ' AND' : ' WHERE'
-    if (sqlLower.includes('department_id')) {
-      return { sql: `${sql}${connector} department_id = ?`, binds: [...binds, employee.department_id] }
-    }
-    return { sql, binds }
-  }
-
-  // 组员(team_developer):只能访问自己的数据
-  if (position.code === 'team_developer') {
-    const sqlLower = sql.toLowerCase()
-    const hasWhere = sqlLower.includes('where')
-    const connector = hasWhere ? ' AND' : ' WHERE'
-    return { sql: `${sql}${connector} employee_id = ?`, binds: [...binds, employee.id] }
-  }
-
-  return { sql, binds }
 }

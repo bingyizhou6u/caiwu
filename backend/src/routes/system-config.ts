@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { isHQDirector } from '../utils/permissions.js'
+import { hasPermission } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
@@ -26,7 +26,7 @@ systemConfigRoutes.get('/system-config/email-notification/enabled', async (c) =>
 
 // 获取系统配置
 systemConfigRoutes.get('/system-config', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
   
   try {
     const rows = await c.env.DB.prepare('select * from system_config').all()
@@ -50,7 +50,7 @@ systemConfigRoutes.get('/system-config', async (c) => {
 
 // 更新系统配置
 systemConfigRoutes.put('/system-config/:key', validateJson(updateSystemConfigSchema), async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
   
   try {
     const key = c.req.param('key')
@@ -91,7 +91,7 @@ systemConfigRoutes.put('/system-config/:key', validateJson(updateSystemConfigSch
 
 // 获取单个配置项
 systemConfigRoutes.get('/system-config/:key', async (c) => {
-  if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+  if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
   
   try {
     const key = c.req.param('key')

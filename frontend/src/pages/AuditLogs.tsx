@@ -1,7 +1,9 @@
-import { Table, Space, Button, message, Tag, Select, Input, DatePicker, Card } from 'antd'
-import { useEffect, useState } from 'react'
+import { Table, Space, Button, message, Tag, Select, Input, DatePicker, Card, Tooltip } from 'antd'
+import { DownloadOutlined, ReloadOutlined, FilterOutlined, ClearOutlined } from '@ant-design/icons'
+import { useEffect, useState, useCallback } from 'react'
 import { api } from '../config/api'
 import { apiRequest } from '../utils/api'
+import { authedFetch } from '../utils/authedFetch'
 import dayjs, { Dayjs } from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
 
@@ -27,8 +29,10 @@ const ACTION_LABELS: Record<string, string> = {
   logout: '退出登录',
   change_password_first: '首次修改密码',
   bind_totp_first: '首次绑定TOTP',
+  bind_totp: '绑定TOTP',
   enable_totp: '启用TOTP',
   disable_totp: '停用TOTP',
+  export: '导出',
 }
 
 // 实体类型中文映射
@@ -54,6 +58,11 @@ const ENTITY_LABELS: Record<string, string> = {
   system_config: '系统配置',
   headquarters: '总部',
   fixed_asset: '固定资产',
+  audit_log: '审计日志',
+  employee_leave: '员工请假',
+  my_profile: '个人资料',
+  attendance_clock_in: '上班打卡',
+  attendance_clock_out: '下班打卡',
 }
 
 // 字段名中文映射
@@ -89,6 +98,9 @@ const FIELD_LABELS: Record<string, string> = {
   inserted: '插入',
   key: '配置键',
   value: '配置值',
+  count: '数量',
+  date: '日期',
+  time: '时间',
 }
 
 // 状态值中文映射
@@ -193,6 +205,8 @@ function formatDetail(detail: string, entity: string, action: string): string {
       if (data.kind) parts.push(`类型: ${TYPE_LABELS[data.kind] || data.kind}`)
       if (data.rows !== undefined) parts.push(`行数: ${data.rows}`)
       if (data.inserted !== undefined) parts.push(`插入: ${data.inserted}`)
+    } else if (entity === 'audit_log') {
+      if (data.count !== undefined) parts.push(`导出数量: ${data.count}`)
     } else {
       // 通用格式化：显示所有字段，使用中文映射
       Object.entries(data).forEach(([key, value]) => {
@@ -242,86 +256,156 @@ interface AuditLog {
   ip_location?: string
 }
 
+interface AuditOptions {
+  actions: string[]
+  entities: string[]
+  actors: { id: string, name: string, email: string }[]
+}
+
 export function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [total, setTotal] = useState(0)
+  const [options, setOptions] = useState<AuditOptions>({ actions: [], entities: [], actors: [] })
+  
+  // 筛选条件
   const [filterAction, setFilterAction] = useState<string | undefined>()
   const [filterEntity, setFilterEntity] = useState<string | undefined>()
-  const [filterActor, setFilterActor] = useState<string | undefined>()
+  const [filterActorKeyword, setFilterActorKeyword] = useState<string | undefined>()
   const [filterDateRange, setFilterDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 50
 
-  const loadLogs = async () => {
+  // 加载筛选选项
+  const loadOptions = useCallback(async () => {
+    try {
+      const { results } = await apiRequest(api.auditLogsOptions)
+      setOptions(results)
+    } catch (e: any) {
+      console.error('加载筛选选项失败:', e)
+    }
+  }, [])
+
+  // 构建查询参数
+  const buildQueryParams = useCallback(() => {
+    const params = new URLSearchParams()
+    params.append('limit', String(pageSize))
+    params.append('offset', String((currentPage - 1) * pageSize))
+    
+    if (filterAction) params.append('action', filterAction)
+    if (filterEntity) params.append('entity', filterEntity)
+    if (filterActorKeyword) params.append('actor_keyword', filterActorKeyword)
+    if (filterDateRange && filterDateRange[0] && filterDateRange[1]) {
+      params.append('start_time', String(filterDateRange[0].startOf('day').valueOf()))
+      params.append('end_time', String(filterDateRange[1].endOf('day').valueOf()))
+    }
+    
+    return params
+  }, [currentPage, filterAction, filterEntity, filterActorKeyword, filterDateRange])
+
+  // 加载日志
+  const loadLogs = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      params.append('limit', String(pageSize))
-      params.append('offset', String((currentPage - 1) * pageSize))
-      
+      const params = buildQueryParams()
       const { results, data } = await apiRequest(`${api.auditLogs}?${params.toString()}`)
       setLogs(results)
       setTotal((data as any)?.total ?? 0)
     } catch (e: any) {
-      if (e.message?.includes('manager')) {
-        message.error('需要manager权限')
+      if (e.message?.includes('权限')) {
+        message.error('没有查看审计日志的权限')
       } else {
         message.error('加载失败')
       }
     } finally {
       setLoading(false)
     }
+  }, [buildQueryParams])
+
+  // 导出日志
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const params = buildQueryParams()
+      params.delete('limit')
+      params.delete('offset')
+      
+      const response = await authedFetch(`${api.auditLogsExport}?${params.toString()}`)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || '导出失败')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `审计日志-${dayjs().format('YYYY-MM-DD')}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      message.success('导出成功')
+    } catch (e: any) {
+      if (e.message?.includes('权限')) {
+        message.error('没有导出审计日志的权限')
+      } else {
+        message.error(e.message || '导出失败')
+      }
+    } finally {
+      setExporting(false)
+    }
   }
+
+  // 清除筛选条件
+  const clearFilters = () => {
+    setFilterAction(undefined)
+    setFilterEntity(undefined)
+    setFilterActorKeyword(undefined)
+    setFilterDateRange(null)
+    setCurrentPage(1)
+  }
+
+  // 是否有筛选条件
+  const hasFilters = filterAction || filterEntity || filterActorKeyword || (filterDateRange && filterDateRange[0] && filterDateRange[1])
+
+  useEffect(() => {
+    loadOptions()
+  }, [loadOptions])
 
   useEffect(() => {
     loadLogs()
-  }, [currentPage])
+  }, [loadLogs])
 
-  // 筛选日志
-  const filteredLogs = logs.filter(log => {
-    if (filterAction && log.action !== filterAction) return false
-    if (filterEntity && log.entity !== filterEntity) return false
-    if (filterActor) {
-      const actor = (log.actor_name || log.actor_email || '').toLowerCase()
-      if (!actor.includes(filterActor.toLowerCase())) return false
-    }
-    if (filterDateRange && filterDateRange[0] && filterDateRange[1]) {
-      const logTime = dayjs(log.at)
-      if (logTime.isBefore(filterDateRange[0].startOf('day')) || logTime.isAfter(filterDateRange[1].endOf('day'))) return false
-    }
-    return true
-  })
-
-  // 获取所有唯一的操作类型和实体类型
-  const allActions = Array.from(new Set(logs.map(l => l.action))).sort()
-  const allEntities = Array.from(new Set(logs.map(l => l.entity))).sort()
-  const allActors = Array.from(new Set(logs.map(l => l.actor_name || l.actor_email).filter(Boolean))).sort()
+  // 筛选条件变化时重置页码
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterAction, filterEntity, filterActorKeyword, filterDateRange])
 
   const columns: ColumnsType<AuditLog> = [
     { 
       title: '时间', 
       dataIndex: 'at', 
-      width: 180,
+      width: 170,
       render: (v: number) => dayjs(v).format('YYYY-MM-DD HH:mm:ss'),
-      sorter: (a, b) => a.at - b.at,
-      defaultSortOrder: 'descend',
     },
     { 
       title: '操作人', 
       dataIndex: 'actor_name', 
-      width: 150,
-      render: (v: string, r: AuditLog) => v || r.actor_email || '-',
-      filteredValue: filterActor ? [filterActor] : null,
-      onFilter: (value, record) => {
-        const actor = (record.actor_name || record.actor_email || '').toLowerCase()
-        return actor.includes(String(value).toLowerCase())
-      },
+      width: 120,
+      render: (v: string, r: AuditLog) => (
+        <Tooltip title={r.actor_email}>
+          {v || r.actor_email || '-'}
+        </Tooltip>
+      ),
     },
     { 
       title: '操作', 
       dataIndex: 'action', 
-      width: 120,
+      width: 110,
       render: (v: string) => {
         const colors: Record<string, string> = {
           create: 'green',
@@ -338,33 +422,30 @@ export function AuditLogs() {
           approve: 'green',
           reject: 'red',
           transfer: 'blue',
+          login: 'cyan',
+          logout: 'default',
+          export: 'geekblue',
         }
         const label = ACTION_LABELS[v] || v
         return <Tag color={colors[v] || 'default'}>{label}</Tag>
       },
-      filters: allActions.map(a => ({ text: ACTION_LABELS[a] || a, value: a })),
-      filteredValue: filterAction ? [filterAction] : null,
-      onFilter: (value, record) => record.action === value,
     },
     { 
       title: '实体类型', 
       dataIndex: 'entity',
-      width: 140,
+      width: 120,
       render: (v: string) => ENTITY_LABELS[v] || v,
-      filters: allEntities.map(e => ({ text: ENTITY_LABELS[e] || e, value: e })),
-      filteredValue: filterEntity ? [filterEntity] : null,
-      onFilter: (value, record) => record.entity === value,
     },
     { 
       title: 'IP地址', 
       dataIndex: 'ip',
-      width: 150,
+      width: 130,
       render: (v: string) => v || '-',
     },
     { 
       title: 'IP归属地', 
       dataIndex: 'ip_location',
-      width: 180,
+      width: 150,
       render: (v: string) => v || '-',
     },
     { 
@@ -384,75 +465,89 @@ export function AuditLogs() {
   return (
     <div>
       <Card style={{ marginBottom: 16 }}>
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Space wrap>
-            <span>操作类型：</span>
+            <span><FilterOutlined /> 筛选：</span>
             <Select
-              placeholder="全部"
+              placeholder="操作类型"
               allowClear
-              style={{ width: 150 }}
+              style={{ width: 140 }}
               value={filterAction}
               onChange={setFilterAction}
-            >
-              {allActions.map(a => (
-                <Select.Option key={a} value={a}>{ACTION_LABELS[a] || a}</Select.Option>
-              ))}
-            </Select>
+              options={options.actions.map(a => ({ label: ACTION_LABELS[a] || a, value: a }))}
+            />
             
-            <span>实体类型：</span>
             <Select
-              placeholder="全部"
+              placeholder="实体类型"
               allowClear
-              style={{ width: 150 }}
+              style={{ width: 140 }}
               value={filterEntity}
               onChange={setFilterEntity}
-            >
-              {allEntities.map(e => (
-                <Select.Option key={e} value={e}>{ENTITY_LABELS[e] || e}</Select.Option>
-              ))}
-            </Select>
+              options={options.entities.map(e => ({ label: ENTITY_LABELS[e] || e, value: e }))}
+            />
             
-            <span>操作人：</span>
             <Input
               placeholder="搜索操作人"
               style={{ width: 150 }}
-              value={filterActor}
-              onChange={(e) => setFilterActor(e.target.value)}
+              value={filterActorKeyword}
+              onChange={(e) => setFilterActorKeyword(e.target.value || undefined)}
               allowClear
             />
             
-            <span>时间范围：</span>
             <RangePicker
               id="audit-logs-date-range"
               value={filterDateRange}
               onChange={(dates) => setFilterDateRange(dates as [Dayjs | null, Dayjs | null] | null)}
               format="YYYY-MM-DD"
               allowClear
+              placeholder={['开始日期', '结束日期']}
             />
             
-            <Button onClick={loadLogs} loading={loading}>刷新</Button>
+            {hasFilters && (
+              <Button icon={<ClearOutlined />} onClick={clearFilters}>
+                清除筛选
+              </Button>
+            )}
           </Space>
-          <div>
-            <span>共 {filteredLogs.length} 条记录（总计 {total} 条）</span>
-          </div>
+          
+          <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+            <span>共 {total} 条记录</span>
+            <Space>
+              <Button 
+                icon={<DownloadOutlined />} 
+                onClick={handleExport}
+                loading={exporting}
+              >
+                导出CSV
+              </Button>
+              <Button 
+                icon={<ReloadOutlined />} 
+                onClick={loadLogs} 
+                loading={loading}
+              >
+                刷新
+              </Button>
+            </Space>
+          </Space>
         </Space>
       </Card>
       
       <Table
         rowKey="id"
-        dataSource={filteredLogs}
+        dataSource={logs}
         loading={loading}
         columns={columns}
         pagination={{
           current: currentPage,
           pageSize: pageSize,
           total: total,
-          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条（筛选后 ${filteredLogs.length} 条）`,
+          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
           onChange: (page) => setCurrentPage(page),
+          showSizeChanger: false,
         }}
         scroll={{ x: 1200 }}
+        size="small"
       />
     </div>
   )
 }
-

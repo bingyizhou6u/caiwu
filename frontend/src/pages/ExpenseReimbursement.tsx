@@ -9,6 +9,7 @@ import { apiGet, apiPost, apiPut, apiDelete, safeApiCall, handleConflictError } 
 import { formatAmount } from '../utils/formatters'
 import { loadCurrencies, loadAccounts, loadExpenseCategories, loadEmployees } from '../utils/loaders'
 import { convertToWebP, uploadImageAsWebP } from '../utils/image'
+import { usePermissions } from '../utils/permissions'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -62,7 +63,7 @@ type ExpenseReimbursement = {
   created_at: number
 }
 
-export function ExpenseReimbursement({ userRole }: { userRole?: string }) {
+export function ExpenseReimbursement() {
   const [data, setData] = useState<ExpenseReimbursement[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [currencies, setCurrencies] = useState<any[]>([])
@@ -80,9 +81,11 @@ export function ExpenseReimbursement({ userRole }: { userRole?: string }) {
   const [approveForm] = Form.useForm()
   const [createVoucherFile, setCreateVoucherFile] = useState<File | null>(null)
   const [editVoucherFile, setEditVoucherFile] = useState<File | null>(null)
-  const canEdit = userRole === 'manager' || userRole === 'finance'
-  const canApprove = userRole === 'manager' || userRole === 'finance'
-  const isManager = userRole === 'manager'
+  
+  const { hasPermission, canManageSubordinates, isManager: _isManager } = usePermissions()
+  const canEdit = hasPermission('hr', 'reimbursement', 'view')
+  const canApprove = hasPermission('hr', 'reimbursement', 'approve') || canManageSubordinates
+  const isManager = _isManager()
 
   const loadReimbursements = async () => {
     setLoading(true)

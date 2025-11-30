@@ -4,6 +4,7 @@ import { api } from '../config/api'
 import { loadCurrencies } from '../utils/loaders'
 import { apiGet, apiPost, apiPut, apiDelete, handleConflictError } from '../utils/api'
 import { FormModal } from '../components/FormModal'
+import { usePermissions } from '../utils/permissions'
 
 const TYPE_OPTIONS = [
   { value: 'cash', label: '现金' },
@@ -11,7 +12,7 @@ const TYPE_OPTIONS = [
   { value: 'other', label: '其他' },
 ]
 
-export function AccountManagement({ userRole }: { userRole?: string }) {
+export function AccountManagement() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -20,7 +21,9 @@ export function AccountManagement({ userRole }: { userRole?: string }) {
   const [cForm] = Form.useForm()
   const [eForm] = Form.useForm()
   const [currencies, setCurrencies] = useState<{ value: string, label: string }[]>([])
-  const isManager = userRole === 'manager'
+  
+  const { hasPermission } = usePermissions()
+  const canManageAccounts = hasPermission('finance', 'account', 'create')
 
   const sorted = useMemo(() => data.slice().sort((a,b)=>a.name.localeCompare(b.name)), [data])
 
@@ -118,14 +121,14 @@ export function AccountManagement({ userRole }: { userRole?: string }) {
         { title: '操作', render: (_:any, r:any)=> (
           <Space>
             <Button size="small" onClick={() => handleEditClick(r)}>编辑</Button>
-            {(isManager || userRole === 'finance') && (
+            {canManageAccounts && (
               <Switch 
                 size="small" 
                 checked={r.active === 1}
                 onChange={(checked) => handleToggleActive(r.id, checked)}
               />
             )}
-            {isManager && (
+            {canManageAccounts && (
               <Popconfirm
                 title={`确定要删除账户"${r.name}"吗？`}
                 description="删除后该账户将被永久删除，如果有流水使用此账户，将无法删除。"

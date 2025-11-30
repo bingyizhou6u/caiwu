@@ -20,7 +20,6 @@ export class UserService {
     }
 
     async getUserPosition(userId: string) {
-        // Optimized single query with JOIN
         const result = await this.db.prepare(`
       select 
         p.id,

@@ -1,7 +1,7 @@
 import { Layout, Menu, Button, Form, Input, Card, Space, message, Tabs, Spin, Dropdown, Avatar } from 'antd'
 import type { MenuProps } from 'antd'
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { CloseOutlined, UserOutlined, LogoutOutlined, DownOutlined, LaptopOutlined, KeyOutlined } from '@ant-design/icons'
+import { CloseOutlined, UserOutlined, LogoutOutlined, DownOutlined, KeyOutlined } from '@ant-design/icons'
 import { api } from '../config/api'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import { buildMenuItems, pageTitles } from '../config/menu'
@@ -14,7 +14,6 @@ const AccountTransfer = lazy(() => import('./AccountTransfer').then(m => ({ defa
 const AR = lazy(() => import('./AR').then(m => ({ default: m.AR })))
 const AP = lazy(() => import('./AP').then(m => ({ default: m.AP })))
 const ImportCenter = lazy(() => import('./ImportCenter').then(m => ({ default: m.ImportCenter })))
-const OrgDepartmentManagement = lazy(() => import('./OrgDepartmentManagement').then(m => ({ default: m.OrgDepartmentManagement })))
 const DepartmentManagement = lazy(() => import('./DepartmentManagement').then(m => ({ default: m.DepartmentManagement })))
 const SiteManagement = lazy(() => import('./SiteManagement').then(m => ({ default: m.SiteManagement })))
 const SiteBills = lazy(() => import('./SiteBills').then(m => ({ default: m.SiteBills })))
@@ -50,7 +49,6 @@ const ReportExpenseDetail = lazy(() => import('./reports/ReportExpenseDetail').t
 const ReportAccountBalance = lazy(() => import('./reports/ReportAccountBalance').then(m => ({ default: m.ReportAccountBalance })))
 const ReportBorrowing = lazy(() => import('./reports/ReportBorrowing').then(m => ({ default: m.ReportBorrowing })))
 const ReportEmployeeSalary = lazy(() => import('./reports/ReportEmployeeSalary').then(m => ({ default: m.ReportEmployeeSalary })))
-const SessionManagement = lazy(() => import('./SessionManagement'))
 
 const MyCenter = lazy(() => import('./my/MyCenter').then(m => ({ default: m.MyCenter })))
 const MyLeaves = lazy(() => import('./my/MyLeaves').then(m => ({ default: m.MyLeaves })))
@@ -570,14 +568,13 @@ function AppContent() {
         {selected === 'my-assets' && <MyAssets />}
         {selected === 'company-policies' && <CompanyPolicies />}
         {selected === 'my-approvals' && <MyApprovals />}
-        {selected === 'dashboard' && <Dashboard userRole={user?.role} userInfo={user} />}
+        {selected === 'dashboard' && <Dashboard />}
         {selected === 'flows' && <Flows />}
         {selected === 'account-transactions' && <AccountTransactions />}
         {selected === 'account-transfer' && <AccountTransfer />}
         {selected === 'ar' && <AR />}
         {selected === 'ap' && <AP />}
         {selected === 'import' && <ImportCenter />}
-        {selected === 'org-department' && <OrgDepartmentManagement />}
         {selected === 'department' && <DepartmentManagement />}
         {selected === 'site-management' && <SiteManagement />}
         {selected === 'site-bills' && <SiteBills />}
@@ -586,7 +583,7 @@ function AppContent() {
         {selected === 'currency' && <CurrencyManagement />}
         {selected === 'audit' && <AuditLogs />}
         {selected === 'vendor' && <VendorManagement />}
-        {selected === 'employee' && <EmployeeManagement userRole={user?.role} />}
+        {selected === 'employee' && <EmployeeManagement />}
         {selected === 'borrowings' && <BorrowingManagement />}
         {selected === 'repayments' && <RepaymentManagement />}
         {selected === 'employee-leave' && <LeaveManagement />}
@@ -613,7 +610,6 @@ function AppContent() {
         {selected === 'report-account-balance' && <ReportAccountBalance />}
         {selected === 'report-borrowing' && <ReportBorrowing />}
         {selected === 'report-employee-salary' && <ReportEmployeeSalary />}
-        {selected === 'sessions' && <SessionManagement />}
       </Suspense>
     )
   }
@@ -625,17 +621,11 @@ function AppContent() {
         <div style={{ padding: '4px 0' }}>
           <div style={{ fontWeight: 'bold' }}>{user?.name}</div>
           <div style={{ fontSize: '12px', color: '#888' }}>{user?.email}</div>
-          <div style={{ fontSize: '12px', color: '#888' }}>{user?.role}</div>
+          <div style={{ fontSize: '12px', color: '#888' }}>{user?.position?.name}</div>
         </div>
       ),
     },
     { type: 'divider' },
-    {
-      key: 'sessions',
-      icon: <LaptopOutlined />,
-      label: '会话管理',
-      onClick: () => addOrActivateTab('sessions'),
-    },
     {
       key: 'change-password',
       icon: <KeyOutlined />,
@@ -663,10 +653,21 @@ function AppContent() {
           selectedKeys={[selected]}
           openKeys={openKeys}
           onOpenChange={(keys) => {
-            setOpenKeys(keys)
-            localStorage.setItem('openMenuKeys', JSON.stringify(keys))
+            // 手风琴模式：一次只打开一个一级菜单
+            const rootKeys = ['my', 'finance', 'sites', 'fixed-assets-menu', 'employees', 'reports', 'system']
+            const latestOpenKey = keys.find(key => !openKeys.includes(key))
+            if (latestOpenKey && rootKeys.includes(latestOpenKey)) {
+              // 打开新的一级菜单，关闭其他一级菜单
+              const newKeys = keys.filter(key => !rootKeys.includes(key) || key === latestOpenKey)
+              setOpenKeys(newKeys)
+              localStorage.setItem('openMenuKeys', JSON.stringify(newKeys))
+            } else {
+              // 关闭菜单或打开子菜单
+              setOpenKeys(keys)
+              localStorage.setItem('openMenuKeys', JSON.stringify(keys))
+            }
           }}
-          items={buildMenuItems(user?.role || '', user)}
+          items={buildMenuItems(user)}
           onClick={({ key }) => addOrActivateTab(key)}
         />
       </Sider>

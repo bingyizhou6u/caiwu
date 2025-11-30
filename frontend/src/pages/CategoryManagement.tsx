@@ -4,13 +4,14 @@ import { api } from '../config/api'
 import { apiGet, apiPost, apiPut, apiDelete, handleConflictError } from '../utils/api'
 import { FormModal } from '../components/FormModal'
 import { ActionColumn } from '../components/ActionColumn'
+import { usePermissions } from '../utils/permissions'
 
 const KIND_LABELS: Record<string, string> = {
   income: '收入',
   expense: '支出',
 }
 
-export function CategoryManagement({ userRole }: { userRole?: string }) {
+export function CategoryManagement() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -18,7 +19,9 @@ export function CategoryManagement({ userRole }: { userRole?: string }) {
   const [editRow, setEditRow] = useState<any>(null)
   const [cForm] = Form.useForm()
   const [eForm] = Form.useForm()
-  const isManager = userRole === 'manager'
+  
+  const { hasPermission } = usePermissions()
+  const canManageCategory = hasPermission('finance', 'category', 'create')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -56,8 +59,8 @@ export function CategoryManagement({ userRole }: { userRole?: string }) {
           render: (_:any, r:any)=> (
             <ActionColumn
               record={r}
-              canEdit={true}
-              canDelete={isManager}
+              canEdit={canManageCategory}
+              canDelete={canManageCategory}
               onEdit={() => { setEditRow(r); setEditOpen(true); eForm.setFieldsValue({ name: r.name, kind: r.kind }) }}
               onDelete={deleteCategory}
               deleteDescription="删除后该类别将被永久删除，如果有流水使用该类别，将无法删除。"

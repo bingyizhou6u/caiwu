@@ -2,6 +2,9 @@
 -- 创建时间: 2025-11-30
 -- 说明：采用"职能角色 + 组织层级"的交叉组合模型，定义10个标准职位
 
+-- 禁用外键约束（D1需要在同一批次中执行）
+PRAGMA foreign_keys=OFF;
+
 -- ==================== 第一步：备份现有数据 ====================
 
 -- 备份现有positions数据
@@ -473,3 +476,6 @@ SELECT
     ELSE 'YES'
   END as has_permissions
 FROM positions;
+
+-- 重新启用外键约束
+PRAGMA foreign_keys=ON;

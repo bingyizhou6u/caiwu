@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
-import { isHQDirector, isHQFinance } from '../../utils/permissions.js'
+import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { uuid } from '../../utils/db.js'
 import { Errors } from '../../utils/errors.js'
@@ -63,7 +63,7 @@ accountsRoutes.get('/:id/transactions', async (c) => {
 })
 
 accountsRoutes.post('/', async (c) => {
-    if (!isHQFinance(c)) throw Errors.FORBIDDEN()
+    if (!hasPermission(c, 'system', 'account', 'create')) throw Errors.FORBIDDEN()
     const body = await c.req.json<{ name: string, type: string, currency?: string, alias?: string, account_number?: string, opening_cents?: number, manager?: string }>()
     const id = uuid()
     const currency = (body.currency ?? 'CNY').trim().toUpperCase()
@@ -76,7 +76,7 @@ accountsRoutes.post('/', async (c) => {
 })
 
 accountsRoutes.put('/:id', async (c) => {
-    if (!isHQFinance(c)) throw Errors.FORBIDDEN()
+    if (!hasPermission(c, 'system', 'account', 'update')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const body = await c.req.json<{ name?: string, type?: string, currency?: string, alias?: string, account_number?: string, active?: number, manager?: string }>()
     const updates: string[] = []
@@ -101,7 +101,7 @@ accountsRoutes.put('/:id', async (c) => {
 })
 
 accountsRoutes.delete('/:id', async (c) => {
-    if (!isHQDirector(c)) throw Errors.FORBIDDEN()
+    if (!hasPermission(c, 'system', 'account', 'delete')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const account = await c.env.DB.prepare('select name from accounts where id=?').bind(id).first<{ name: string }>()
     if (!account) throw Errors.NOT_FOUND('账户')

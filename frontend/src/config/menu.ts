@@ -47,7 +47,6 @@ export const pageTitles: Record<string, string> = {
     'report-borrowing': '借款统计报表',
     // 系统设置
     'department': '项目管理',
-    'org-department': '部门管理',
     'category': '类别管理',
     'account': '账户管理',
     'currency': '币种管理',
@@ -217,10 +216,9 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
 
     // 7. 系统设置
     const system: MenuProps['items'] = []
-    // 基础数据管理：财务或负责人可见
+    // 基础数据管理
     if (hasPermission(userInfo, 'system', 'department', 'view')) {
         system.push({ key: 'department', label: '项目管理' })
-        system.push({ key: 'org-department', label: '部门管理' })
         system.push({ key: 'category', label: '类别管理' })
         system.push({ key: 'account', label: '账户管理' })
         system.push({ key: 'currency', label: '币种管理' })
