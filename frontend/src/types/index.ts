@@ -3,7 +3,8 @@ export interface User {
     email: string
     name: string
     role: string
-    active: number
+    sessionId?: string
+    active?: number
     last_login_at?: number
     department_id?: string | null
     org_department_id?: string | null
@@ -14,6 +15,7 @@ export interface User {
         level: string
         scope: string
         permissions: Record<string, boolean>
+        canViewReports?: boolean
     }
 }
 

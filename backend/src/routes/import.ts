@@ -94,7 +94,7 @@ importRoutes.post('/departments', validateJson(createDepartmentSchema), async (c
     // 确保userId存在后再记录审计日志
     const userId = c.get('userId') as string | undefined
     if (userId) {
-      await logAudit(c.env.DB, userId, 'create', 'department', id, JSON.stringify({ name: body.name, hq_id: hq.id }))
+      logAuditAction(c, 'create', 'department', id, JSON.stringify({ name: body.name, hq_id: hq.id }))
     }
 
     return c.json({ id, hq_id: hq.id, name: body.name })
@@ -186,7 +186,7 @@ importRoutes.put('/departments/:id', validateJson(updateDepartmentSchema), async
   // 确保userId存在后再记录审计日志
   const userId = c.get('userId') as string | undefined
   if (userId) {
-    await logAudit(c.env.DB, userId, 'update', 'department', id, JSON.stringify(body))
+    logAuditAction(c, 'update', 'department', id, JSON.stringify(body))
   }
 
   return c.json({ ok: true })
@@ -210,7 +210,7 @@ importRoutes.delete('/departments/:id', async (c) => {
   // 确保userId存在后再记录审计日志
   const userId = c.get('userId') as string | undefined
   if (userId) {
-    await logAudit(c.env.DB, userId, 'delete', 'department', id, JSON.stringify({ name: dept.name }))
+    logAuditAction(c, 'delete', 'department', id, JSON.stringify({ name: dept.name }))
   }
 
   return c.json({ ok: true })

@@ -15,11 +15,6 @@ bucket_name = "caiwu-vouchers"
 [[send_email]]
 name = "EMAIL"
 
-[vars]
-CF_ACCOUNT_ID = "611d1a2e53f6c6d0922ff231e6a63211"
-CF_ZONE_ID = "18ecc2631881b0e9e03b3ab259d69249"
-CF_IP_LIST_ID = "d506362da37b45a2a510eb348d8f1ed2"
-
 [observability]
 enabled = false
 head_sampling_rate = 1
@@ -28,3 +23,13 @@ head_sampling_rate = 1
 enabled = true
 head_sampling_rate = 1
 invocation_logs = true
+
+[vars]
+CF_ACCOUNT_ID = "611d1a2e53f6c6d0922ff231e6a63211"
+CF_ZONE_ID = "18ecc2631881b0e9e03b3ab259d69249"
+CF_IP_LIST_ID = "d506362da37b45a2a510eb348d8f1ed2"
+
+# 注意：生产环境应使用 Cloudflare Secret 存储此值
+# 运行: wrangler secret put AUTH_JWT_SECRET
+# 当前为开发/测试配置，请在正式部署前更换为强密钥
+AUTH_JWT_SECRET = "caiwu-secure-jwt-secret-production-2025"

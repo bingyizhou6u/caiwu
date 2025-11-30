@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, DatePicker, InputNumber } from 'antd'
+import { Card, Table, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, DatePicker, InputNumber, Alert, Typography } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../config/api'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { apiGet, apiPost, apiPut, apiDelete, safeApiCall, handleConflictError } from '../utils/api'
+import { authedJsonFetch } from '../utils/authedFetch'
 import { loadEmployees } from '../utils/loaders'
 
 const { Option } = Select
@@ -60,6 +61,7 @@ export function LeaveManagement({ userRole }: { userRole?: string }) {
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
   const [approveForm] = Form.useForm()
+  const [annualLeaveInfo, setAnnualLeaveInfo] = useState<{ remaining: number, total: number } | null>(null)
   const canEdit = userRole === 'manager' || userRole === 'finance'
   const canApprove = userRole === 'manager' || userRole === 'finance'
   const isManager = userRole === 'manager'
@@ -493,6 +495,7 @@ export function LeaveManagement({ userRole }: { userRole?: string }) {
         onCancel={() => {
           setApproveOpen(false)
           setCurrentLeave(null)
+          setAnnualLeaveInfo(null)
           approveForm.resetFields()
         }}
         okText="确认"

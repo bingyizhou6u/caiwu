@@ -32,7 +32,7 @@ export function AccountTransfer() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [form] = Form.useForm()
-  const [accounts, setAccounts] = useState<{value:string,label:string,currency:string}[]>([])
+  const [accounts, setAccounts] = useState<{value:string,label:string,currency?:string}[]>([])
   const [uploading, setUploading] = useState(false)
   const [voucherUrls, setVoucherUrls] = useState<string[]>([])
   const [fromAccount, setFromAccount] = useState<string>()

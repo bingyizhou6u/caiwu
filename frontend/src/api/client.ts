@@ -1,41 +1,44 @@
-import { message } from 'antd'
-import { APIResponse } from '../types'
+import { getAuthToken, clearAuthToken } from '../utils/authToken'
 
-// Base API URL
 export const BASE_URL = '/api'
 
-// Generic request handler
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-    const defaultHeaders = {
+    const token = getAuthToken()
+    const customHeaders = (options.headers || {}) as Record<string, string>
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        ...customHeaders
+    }
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+        headers['X-Caiwu-Token'] = token
     }
 
     const config: RequestInit = {
         ...options,
-        headers: {
-            ...defaultHeaders,
-            ...options.headers,
-        },
-        credentials: 'include', // Always include cookies
+        headers,
+        credentials: 'include'
     }
 
-    try {
-        const response = await fetch(`${BASE_URL}${url}`, config)
-        const data = await response.json()
-
-        if (!response.ok) {
-            throw new Error(data.error || `Request failed with status ${response.status}`)
-        }
-
-        return data as T
-    } catch (error: any) {
-        console.error('API Request Error:', error)
-        // Optional: Global error handling (e.g., redirect to login on 401)
-        if (error.message === 'Unauthorized' || error.status === 401) {
-            // Handle unauthorized access if needed
-        }
-        throw error
+    const response = await fetch(`${BASE_URL}${url}`, config)
+    let data: any = null
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+        data = await response.json()
+    } else {
+        data = await response.text()
     }
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            clearAuthToken()
+        }
+        const message = typeof data === 'string' ? data : data?.error
+        throw new Error(message || `Request failed with status ${response.status}`)
+    }
+
+    return data as T
 }
 
 export const client = {

@@ -34,6 +34,7 @@ const RentalManagement = lazy(() => import('../pages/RentalManagement').then(m =
 const PositionPermissionsManagement = lazy(() => import('../pages/PositionPermissionsManagement').then(m => ({ default: m.PositionPermissionsManagement })))
 const EmailNotificationSettings = lazy(() => import('../pages/EmailNotificationSettings').then(m => ({ default: m.EmailNotificationSettings })))
 const SiteConfigManagement = lazy(() => import('../pages/SiteConfigManagement'))
+const CompanyPolicies = lazy(() => import('../pages/CompanyPolicies'))
 const ReportDepartmentCash = lazy(() => import('../pages/reports/ReportDepartmentCash').then(m => ({ default: m.ReportDepartmentCash })))
 const ReportSiteGrowth = lazy(() => import('../pages/reports/ReportSiteGrowth').then(m => ({ default: m.ReportSiteGrowth })))
 const ReportARSummary = lazy(() => import('../pages/reports/ReportARSummary').then(m => ({ default: m.ReportARSummary })))
@@ -46,6 +47,15 @@ const ReportAccountBalance = lazy(() => import('../pages/reports/ReportAccountBa
 const ReportBorrowing = lazy(() => import('../pages/reports/ReportBorrowing').then(m => ({ default: m.ReportBorrowing })))
 const ReportEmployeeSalary = lazy(() => import('../pages/reports/ReportEmployeeSalary').then(m => ({ default: m.ReportEmployeeSalary })))
 
+// My pages - 整合个人中心
+const MyCenter = lazy(() => import('../pages/my/MyCenter').then(m => ({ default: m.MyCenter })))
+const MySalary = lazy(() => import('../pages/my/MySalary').then(m => ({ default: m.MySalary })))
+const MyLeaves = lazy(() => import('../pages/my/MyLeaves').then(m => ({ default: m.MyLeaves })))
+const MyReimbursements = lazy(() => import('../pages/my/MyReimbursements').then(m => ({ default: m.MyReimbursements })))
+const MyBorrowings = lazy(() => import('../pages/my/MyBorrowings').then(m => ({ default: m.MyBorrowings })))
+const MyAssets = lazy(() => import('../pages/my/MyAssets').then(m => ({ default: m.MyAssets })))
+const MyApprovals = lazy(() => import('../pages/my/MyApprovals').then(m => ({ default: m.MyApprovals })))
+
 interface AppRouterProps {
     pageKey: string
 }
@@ -53,6 +63,16 @@ interface AppRouterProps {
 export const AppRouter: React.FC<AppRouterProps> = ({ pageKey }) => {
     const renderContent = () => {
         switch (pageKey) {
+            // 个人工作台
+            case 'my-center': return <MyCenter />
+            case 'my-salary': return <MySalary />
+            case 'my-leaves': return <MyLeaves />
+            case 'my-reimbursements': return <MyReimbursements />
+            case 'my-borrowings': return <MyBorrowings />
+            case 'my-assets': return <MyAssets />
+            case 'my-approvals': return <MyApprovals />
+            case 'company-policies': return <CompanyPolicies />
+            // 财务管理
             case 'dashboard': return <Dashboard />
             case 'flows': return <Flows />
             case 'account-transactions': return <AccountTransactions />
@@ -60,31 +80,25 @@ export const AppRouter: React.FC<AppRouterProps> = ({ pageKey }) => {
             case 'ar': return <AR />
             case 'ap': return <AP />
             case 'import': return <ImportCenter />
-            case 'org-department': return <OrgDepartmentManagement />
-            case 'department': return <DepartmentManagement />
-            case 'site-management': return <SiteManagement />
-            case 'site-bills': return <SiteBills />
-            case 'category': return <CategoryManagement />
-            case 'account': return <AccountManagement />
-            case 'currency': return <CurrencyManagement />
-            case 'audit': return <AuditLogs />
-            case 'vendor': return <VendorManagement />
-            case 'employee': return <EmployeeManagement />
             case 'borrowings': return <BorrowingManagement />
             case 'repayments': return <RepaymentManagement />
-            case 'employee-leave': return <LeaveManagement />
-            case 'expense-reimbursement': return <ExpenseReimbursement />
-            case 'salary-payments': return <SalaryPayments />
-            case 'allowance-payments': return <AllowancePayments />
-            case 'ip-whitelist': return <IPWhitelistManagement />
+            // 站点管理
+            case 'site-management': return <SiteManagement />
+            case 'site-bills': return <SiteBills />
+            // 资产管理
             case 'fixed-assets': return <FixedAssetsManagement />
             case 'fixed-asset-purchase': return <FixedAssetPurchase />
             case 'fixed-asset-sale': return <FixedAssetSale />
             case 'fixed-asset-allocation': return <FixedAssetAllocation />
             case 'rental-management': return <RentalManagement />
-            case 'position-permissions': return <PositionPermissionsManagement />
-            case 'email-notification': return <EmailNotificationSettings />
-            case 'site-config': return <SiteConfigManagement />
+            // 人力资源
+            case 'employee': return <EmployeeManagement />
+            case 'employee-salary': return <ReportEmployeeSalary />
+            case 'salary-payments': return <SalaryPayments />
+            case 'allowance-payments': return <AllowancePayments />
+            case 'employee-leave': return <LeaveManagement />
+            case 'expense-reimbursement': return <ExpenseReimbursement />
+            // 报表中心
             case 'report-dept-cash': return <ReportDepartmentCash />
             case 'report-site-growth': return <ReportSiteGrowth />
             case 'report-ar-summary': return <ReportARSummary />
@@ -96,7 +110,19 @@ export const AppRouter: React.FC<AppRouterProps> = ({ pageKey }) => {
             case 'report-account-balance': return <ReportAccountBalance />
             case 'report-borrowing': return <ReportBorrowing />
             case 'report-employee-salary': return <ReportEmployeeSalary />
-            default: return <Dashboard />
+            // 系统设置
+            case 'org-department': return <OrgDepartmentManagement />
+            case 'department': return <DepartmentManagement />
+            case 'category': return <CategoryManagement />
+            case 'account': return <AccountManagement />
+            case 'currency': return <CurrencyManagement />
+            case 'vendor': return <VendorManagement />
+            case 'position-permissions': return <PositionPermissionsManagement />
+            case 'email-notification': return <EmailNotificationSettings />
+            case 'site-config': return <SiteConfigManagement />
+            case 'ip-whitelist': return <IPWhitelistManagement />
+            case 'audit': return <AuditLogs />
+            default: return <MyCenter />
         }
     }
 

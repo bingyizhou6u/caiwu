@@ -40,6 +40,7 @@ export interface RentalProperty {
   payment_account_name?: string
   status: RentalStatus
   memo?: string
+  contract_file_url?: string
   created_by?: string
   created_by_name?: string
   created_at: number
@@ -80,6 +81,7 @@ export interface RentalPayment {
   payment_method?: PaymentMethod
   voucher_url?: string
   memo?: string
+  contract_file_url?: string
   created_by?: string
   created_by_name?: string
   created_at: number
@@ -101,6 +103,7 @@ export interface RentalPayableBill {
   paid_date?: string
   paid_payment_id?: string
   memo?: string
+  contract_file_url?: string
   created_by?: string
   created_at: number
   updated_at: number
@@ -131,6 +134,7 @@ export interface RentalPropertyChange {
   from_status?: RentalStatus
   to_status?: RentalStatus
   memo?: string
+  contract_file_url?: string
   changed_by?: string
   changed_by_name?: string
   changed_at: number

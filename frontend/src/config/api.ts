@@ -67,6 +67,7 @@ export const api = {
     borrowingSummary: `${API_BASE}/api/reports/borrowing-summary`,
     borrowingDetail: (userId: string) => `${API_BASE}/api/reports/borrowing-detail/${userId}`,
     employeeSalary: `${API_BASE}/api/reports/employee-salary`,
+    newSiteRevenue: `${API_BASE}/api/reports/new-site-revenue`,
   },
   import: `${API_BASE}/api/import`,
   auditLogs: `${API_BASE}/api/audit-logs`,
@@ -141,5 +142,27 @@ export const api = {
   rentalPayableBillsMarkPaid: (id: string) => `${API_BASE}/api/rental-payable-bills/${id}/mark-paid`,
   dashboard: {
     stats: `${API_BASE}/api/dashboard/stats`,
+  },
+  // 个人中心
+  my: {
+    dashboard: `${API_BASE}/api/my/dashboard`,
+    salary: `${API_BASE}/api/my/salary`,
+    leaves: `${API_BASE}/api/my/leaves`,
+    reimbursements: `${API_BASE}/api/my/reimbursements`,
+    borrowings: `${API_BASE}/api/my/borrowings`,
+    allowances: `${API_BASE}/api/my/allowances`,
+    assets: `${API_BASE}/api/my/assets`,
+    profile: `${API_BASE}/api/my/profile`,
+  },
+  // 审批
+  approvals: {
+    pending: `${API_BASE}/api/approvals/pending`,
+    history: `${API_BASE}/api/approvals/history`,
+    leaveApprove: (id: string) => `${API_BASE}/api/approvals/leave/\${id}/approve`,
+    leaveReject: (id: string) => `${API_BASE}/api/approvals/leave/\${id}/reject`,
+    reimbursementApprove: (id: string) => `${API_BASE}/api/approvals/reimbursement/\${id}/approve`,
+    reimbursementReject: (id: string) => `${API_BASE}/api/approvals/reimbursement/\${id}/reject`,
+    borrowingApprove: (id: string) => `${API_BASE}/api/approvals/borrowing/\${id}/approve`,
+    borrowingReject: (id: string) => `${API_BASE}/api/approvals/borrowing/\${id}/reject`,
   },
 }

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { requireRole } from '../utils/permissions.js'
-import { logAudit } from '../utils/audit.js'
+import { logAudit, logAuditAction } from '../utils/audit.js'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData } from '../utils/validator.js'
@@ -64,7 +64,7 @@ positionPermissionsRoutes.post('/position-permissions', validateJson(createPosit
   
   const userId = c.get('userId') as string | undefined
   if (userId) {
-    await logAudit(c.env.DB, userId, 'create', 'position', id, JSON.stringify(body))
+    logAuditAction(c, 'create', 'position', id, JSON.stringify(body))
   }
   
   return c.json({ id, ...body })
@@ -135,7 +135,7 @@ positionPermissionsRoutes.put('/position-permissions/:id', validateJson(updatePo
   
   const userId = c.get('userId') as string | undefined
   if (userId) {
-    await logAudit(c.env.DB, userId, 'update', 'position', id, JSON.stringify(body))
+    logAuditAction(c, 'update', 'position', id, JSON.stringify(body))
   }
   
   return c.json({ id, ...body })
@@ -164,7 +164,7 @@ positionPermissionsRoutes.delete('/position-permissions/:id', async (c) => {
   
   const userId = c.get('userId') as string | undefined
   if (userId) {
-    await logAudit(c.env.DB, userId, 'delete', 'position', id, '')
+    logAuditAction(c, 'delete', 'position', id)
   }
   
   return c.json({ success: true })

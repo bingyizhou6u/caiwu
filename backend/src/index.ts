@@ -24,6 +24,9 @@ import { allowancePaymentsRoutes } from './routes/allowance-payments.js'
 import { rentalRoutes } from './routes/rental.js'
 import { positionPermissionsRoutes } from './routes/position-permissions.js'
 import siteConfigRoutes from './routes/site-config.js'
+import { sessionsRoutes } from './routes/sessions.js'
+import { myRoutes } from './routes/my.js'
+import { approvalsRoutes } from './routes/approvals.js'
 
 const app = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -89,5 +92,8 @@ app.route('/api', allowancePaymentsRoutes)
 app.route('/api', rentalRoutes)
 app.route('/api', positionPermissionsRoutes)
 app.route('/api', siteConfigRoutes)
+app.route('/api', sessionsRoutes)
+app.route('/api', myRoutes)
+app.route('/api', approvalsRoutes)
 
 export default app

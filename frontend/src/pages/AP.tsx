@@ -5,6 +5,7 @@ import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../config/api'
 import { loadAccounts, loadExpenseCategories } from '../utils/loaders'
+import { authedFetch, authedJsonFetch } from '../utils/authedFetch'
 import { uploadImageAsWebP, isSupportedImageType } from '../utils/image'
 
 export function AP() {
@@ -21,39 +22,33 @@ export function AP() {
   const [voucherUrl, setVoucherUrl] = useState<string | undefined>()
 
   const load = async () => {
-    const r = await fetch(`${api.ar.docs}?kind=AP`, { credentials: 'include' })
-    if (!r.ok) {
-      const err = await r.json().catch(()=>({ error: r.statusText }))
-      message.error(err.error || '加载应付失败')
-      return
+    try {
+      const data = await authedJsonFetch(`${api.ar.docs}?kind=AP`)
+      setDocs(data.results ?? data ?? [])
+    } catch (error: any) {
+      message.error(error.message || '加载应付失败')
     }
-    const j = await r.json()
-    setDocs(j.results ?? [])
   }
   useEffect(()=>{ load() },[])
   useEffect(()=>{
     // 加载账户列表
-    fetch(api.accounts, { credentials: 'include' })
-      .then(async (r) => {
-        if (r.ok) {
-          const d = await r.json()
-          const rows = d.results ?? d ?? []
-          setAccounts(rows.map((r: any)=>{
-            const aliasPart = r.alias ? ` (${r.alias})` : ''
-            const currencyPart = r.currency ? ` [${r.currency}]` : ''
-            return { value: r.id, label: `${r.name}${aliasPart}${currencyPart}` }
-          }))
-        }
+    authedJsonFetch(api.accounts)
+      .then((d: any) => {
+        const rows = d.results ?? d ?? []
+        setAccounts(rows.map((r: any) => {
+          const aliasPart = r.alias ? ` (${r.alias})` : ''
+          const currencyPart = r.currency ? ` [${r.currency}]` : ''
+          return { value: r.id, label: `${r.name}${aliasPart}${currencyPart}` }
+        }))
       })
+      .catch(() => {})
     // 加载类别列表（只加载支出类别）
-    fetch(api.categories, { credentials: 'include' })
-      .then(async (r) => {
-        if (r.ok) {
-          const d = await r.json()
-          const rows = d.results ?? d ?? []
-          setCategories(rows.filter((r: any) => r.kind === 'expense').map((r: any)=>({ value: r.id, label: r.name })))
-        }
+    authedJsonFetch(api.categories)
+      .then((d: any) => {
+        const rows = d.results ?? d ?? []
+        setCategories(rows.filter((r: any) => r.kind === 'expense').map((r: any)=>({ value: r.id, label: r.name })))
       })
+      .catch(() => {})
   },[])
 
   const createDoc = async () => {
@@ -66,9 +61,13 @@ export function AP() {
       amount_cents: Math.round(Number(v.amount)*100),
       memo: v.memo
     }
-    const res = await fetch(api.ar.docs, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' })
-    if (!res.ok) return message.error('新增失败')
-    message.success('已新增')
+    try {
+      await authedJsonFetch(api.ar.docs, { method: 'POST', body: JSON.stringify(payload) })
+      message.success('已新增')
+    } catch (error: any) {
+      message.error(error.message || '新增失败')
+      return
+    }
     setOpen(false)
     form.resetFields()
     load()
@@ -164,13 +163,13 @@ export function AP() {
               memo: v.memo,
               voucher_url: voucherUrl
             }
-            const res = await fetch(api.ar.confirm, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' })
-            if (!res.ok) {
-              const err = await res.json().catch(()=>({ error: res.statusText }))
-              message.error(err.error || '确认失败')
+            try {
+              await authedJsonFetch(api.ar.confirm, { method: 'POST', body: JSON.stringify(payload) })
+              message.success('已确认并生成支出记录')
+            } catch (error: any) {
+              message.error(error.message || '确认失败')
               return
             }
-            message.success('已确认并生成支出记录')
             setConfirmOpen(false)
             setConfirmingDoc(null)
             setFileList([])

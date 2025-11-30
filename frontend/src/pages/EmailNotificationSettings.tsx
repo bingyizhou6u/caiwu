@@ -2,9 +2,16 @@ import { useEffect, useState } from 'react'
 import { Card, Switch, Space, message, Typography, Button } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { api } from '../config/api'
-import { apiGet, apiPut } from '../utils/api'
+import { authedJsonFetch } from '../utils/authedFetch'
+import { apiPut } from '../utils/api'
 
 const { Title, Paragraph } = Typography
+
+interface ConfigResponse {
+  key: string
+  value: string | boolean
+  description?: string
+}
 
 export function EmailNotificationSettings() {
   const [enabled, setEnabled] = useState<boolean>(true)
@@ -18,10 +25,11 @@ export function EmailNotificationSettings() {
   const loadConfig = async () => {
     setLoading(true)
     try {
-      const data = await apiGet(`${api.systemConfig}/email_notification_enabled`)
-      setEnabled(data.value === 'true' || data.value === true)
-    } catch (error: any) {
-      message.error(error.message || '获取配置失败')
+      const data = await authedJsonFetch<ConfigResponse>(`${api.systemConfig}/email_notification_enabled`)
+      setEnabled(data.value === true || data.value === 'true')
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '获取配置失败'
+      message.error(msg)
     } finally {
       setLoading(false)
     }
@@ -36,8 +44,9 @@ export function EmailNotificationSettings() {
       })
       setEnabled(checked)
       message.success(checked ? '已启用邮件提醒' : '已停用邮件提醒')
-    } catch (error: any) {
-      message.error(error.message || '更新配置失败')
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '更新配置失败'
+      message.error(msg)
     } finally {
       setSaving(false)
     }
@@ -83,4 +92,3 @@ export function EmailNotificationSettings() {
     </Card>
   )
 }
-

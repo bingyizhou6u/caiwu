@@ -12,6 +12,7 @@ import { generateRandomPassword, sendNewEmployeeAccountEmail } from '../utils/em
 import { Errors } from '../utils/errors.js'
 import { validateJson, getValidatedData, validateQuery, getValidatedQuery } from '../utils/validator.js'
 import { createEmployeeSchema, updateEmployeeSchema, regularizeEmployeeSchema, leaveEmployeeSchema, createEmployeeLeaveSchema, approveEmployeeLeaveSchema, createExpenseSchema } from '../schemas/business.schema.js'
+import { validateAnnualLeaveRequest, getAnnualLeaveStats, calculateLeaveSettlement } from '../services/AnnualLeaveService.js'
 import { employeeQuerySchema, employeeLeaveQuerySchema, expenseReimbursementQuerySchema } from '../schemas/common.schema.js'
 import type { z } from 'zod'
 
@@ -405,6 +406,8 @@ employeesRoutes.post('/employees/migrate-admin-magi', async (c) => {
 
 // 员工管理 - 创建
 employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c) => {
+  // hr和finance可以创建员工
+  if (!(await requireRole(c, ['hr', 'finance']))) throw Errors.FORBIDDEN()
   const body = getValidatedData<z.infer<typeof createEmployeeSchema>>(c)
 
   // 从部门信息中获取项目ID
@@ -468,8 +471,8 @@ employeesRoutes.post('/employees', validateJson(createEmployeeSchema), async (c)
       transportation_allowance_cents, meal_allowance_cents,
       status, active, phone, email, usdt_address,
       emergency_contact, emergency_phone, address, memo,
-      birthday, created_at, updated_at
-    ) values(?,?,?,?,?,?,?,?,?,?,?,?,'probation',1,?,?,?,?,?,?,?,?,?,?,?)
+      birthday, work_schedule, annual_leave_cycle_months, annual_leave_days, created_at, updated_at
+    ) values(?,?,?,?,?,?,?,?,?,?,?,?,'probation',1,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
     id, body.name, actualDepartmentId, body.org_department_id || null, body.position_id || null, body.join_date,
     body.probation_salary_cents, body.regular_salary_cents,
@@ -681,6 +684,9 @@ employeesRoutes.put('/employees/:id', validateJson(updateEmployeeSchema), async 
   if (body.address !== undefined) { updates.push('address=?'); binds.push(body.address || null) }
   if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
   if (body.birthday !== undefined) { updates.push('birthday=?'); binds.push(body.birthday || null) }
+  if (body.work_schedule !== undefined) { updates.push('work_schedule=?'); binds.push(body.work_schedule ? JSON.stringify(body.work_schedule) : null) }
+  if (body.annual_leave_cycle_months !== undefined) { updates.push('annual_leave_cycle_months=?'); binds.push(body.annual_leave_cycle_months) }
+  if (body.annual_leave_days !== undefined) { updates.push('annual_leave_days=?'); binds.push(body.annual_leave_days) }
 
   if (updates.length === 0) {
     const current = await c.env.DB.prepare(`
@@ -1034,8 +1040,16 @@ employeesRoutes.post('/employee-leaves', validateJson(createEmployeeLeaveSchema)
   }
 
   // 验证员工是否存在
-  const emp = await c.env.DB.prepare('select id from employees where id=?').bind(body.employee_id).first<{ id: string }>()
+  const emp = await c.env.DB.prepare('select id, join_date from employees where id=?').bind(body.employee_id).first<{ id: string, join_date: string }>()
   if (!emp) throw Errors.NOT_FOUND('员工')
+
+  // 如果是年假，校验是否超额
+  if (body.leave_type === 'annual' && emp.join_date) {
+    const validation = await validateAnnualLeaveRequest(c.env.DB, body.employee_id, emp.join_date, body.days)
+    if (!validation.valid) {
+      throw Errors.BUSINESS_ERROR(validation.message || '年假校验失败')
+    }
+  }
 
   const id = uuid()
   const userId = c.get('userId') as string | undefined

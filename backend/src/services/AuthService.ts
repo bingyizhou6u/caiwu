@@ -12,7 +12,7 @@ export class AuthService {
         this.userService = new UserService(db)
     }
 
-    async login(email: string, password: string, totp?: string, context?: any) {
+    async login(email: string, password: string, totp?: string, context?: any, deviceInfo?: { ip?: string, userAgent?: string }) {
         const user = await this.userService.getUserByEmail(email)
         if (!user) throw Errors.UNAUTHORIZED('用户名或密码错误')
 
@@ -59,24 +59,37 @@ export class AuthService {
         if (!position) throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')
 
         const role = this.userService.getRoleByPositionCode(position.code)
-        const session = await this.createSession(user.id)
+        const session = await this.createSession(user.id, deviceInfo)
 
         // Audit log
         if (context) {
-            await logAudit(this.db, user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }))
+            await logAudit(this.db, user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }), deviceInfo?.ip, undefined)
         }
 
         return {
             status: 'success',
             session,
-            user: { id: user.id, name: user.name, email: user.email, role }
+            user: { id: user.id, name: user.name, email: user.email, role },
+            position
         }
     }
 
-    async createSession(userId: string) {
+    async createSession(userId: string, deviceInfo?: { ip?: string, userAgent?: string }) {
         const id = uuid()
-        const expires = Date.now() + 1000 * 60 * 60 * 24 * 7 // 7 days
-        await this.db.prepare('insert into sessions(id,user_id,expires_at) values(?,?,?)').bind(id, userId, expires).run()
+        const now = Date.now()
+        const expires = now + 1000 * 60 * 60 * 24 * 7 // 7 days
+        await this.db.prepare(`
+            INSERT INTO sessions(id, user_id, expires_at, ip_address, user_agent, created_at, last_active_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+            id, 
+            userId, 
+            expires, 
+            deviceInfo?.ip || null, 
+            deviceInfo?.userAgent || null,
+            now,
+            now
+        ).run()
         return { id, expires }
     }
 

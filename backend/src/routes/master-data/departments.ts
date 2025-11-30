@@ -41,14 +41,9 @@ departmentsRoutes.post('/departments', validateJson(createDepartmentSchema), asy
   await c.env.DB.prepare('insert into departments(id,hq_id,name,active) values(?,?,?,1)')
     .bind(id, hq.id, body.name).run()
 
-  // 确保userId存在后再记录审计日志
-  const userId = c.get('userId') as string | undefined
-  if (userId) {
-    await logAudit(c.env.DB, userId, 'create', 'department', id, JSON.stringify({ name: body.name, hq_id: hq.id }))
-  }
-
   // 为新创建的项目自动创建默认部门（人事部、财务部、行政部、开发部）
   const deptService = new DepartmentService(c.env.DB)
+  const userId = c.get('userId') as string | undefined
   await deptService.createDefaultOrgDepartments(id, userId)
 
   logAuditAction(c, 'create', 'department', id, JSON.stringify({ name: body.name, hq_id: hq.id }))

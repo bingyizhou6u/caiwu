@@ -1,7 +1,6 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { DepartmentService } from '../../src/services/DepartmentService'
-// @ts-ignore
 import schema from '../../src/db/schema.sql?raw'
 
 describe('DepartmentService', () => {

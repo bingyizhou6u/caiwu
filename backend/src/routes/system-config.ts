@@ -10,6 +10,20 @@ import type { z } from 'zod'
 
 export const systemConfigRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
+// 获取邮件提醒配置（无需认证，供登录时检查）
+// 注意：此路由必须放在 /system-config/:key 之前，否则会被参数路由匹配
+systemConfigRoutes.get('/system-config/email-notification/enabled', async (c) => {
+  try {
+    const row = await c.env.DB.prepare('select value from system_config where key=?').bind('email_notification_enabled').first<{ value: string }>()
+    const enabled = row?.value === 'true'
+    return c.json({ enabled })
+  } catch (err: any) {
+    // 如果查询失败，默认返回启用状态
+    console.error('GET /system-config/email-notification/enabled error:', err)
+    return c.json({ enabled: true })
+  }
+})
+
 // 获取系统配置
 systemConfigRoutes.get('/system-config', async (c) => {
   if (!(await requireRole(c, ['manager']))) throw Errors.FORBIDDEN()
@@ -100,19 +114,6 @@ systemConfigRoutes.get('/system-config/:key', async (c) => {
     console.error('GET /system-config/:key error:', err)
     if (err && typeof err === 'object' && 'statusCode' in err) throw err
     throw Errors.INTERNAL_ERROR(err.message || '查询失败')
-  }
-})
-
-// 获取邮件提醒配置（无需认证，供登录时检查）
-systemConfigRoutes.get('/system-config/email-notification/enabled', async (c) => {
-  try {
-    const row = await c.env.DB.prepare('select value from system_config where key=?').bind('email_notification_enabled').first<{ value: string }>()
-    const enabled = row?.value === 'true'
-    return c.json({ enabled })
-  } catch (err: any) {
-    // 如果查询失败，默认返回启用状态
-    console.error('GET /system-config/email-notification/enabled error:', err)
-    return c.json({ enabled: true })
   }
 })
 

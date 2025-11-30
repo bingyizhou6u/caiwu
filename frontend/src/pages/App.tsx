@@ -1,7 +1,7 @@
 import { Layout, Menu, Button, Form, Input, Card, Space, message, Tabs, Spin, Dropdown, Avatar } from 'antd'
 import type { MenuProps } from 'antd'
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { CloseOutlined, UserOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons'
+import { CloseOutlined, UserOutlined, LogoutOutlined, DownOutlined, LaptopOutlined, KeyOutlined } from '@ant-design/icons'
 import { api } from '../config/api'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import { buildMenuItems, pageTitles } from '../config/menu'
@@ -50,6 +50,17 @@ const ReportExpenseDetail = lazy(() => import('./reports/ReportExpenseDetail').t
 const ReportAccountBalance = lazy(() => import('./reports/ReportAccountBalance').then(m => ({ default: m.ReportAccountBalance })))
 const ReportBorrowing = lazy(() => import('./reports/ReportBorrowing').then(m => ({ default: m.ReportBorrowing })))
 const ReportEmployeeSalary = lazy(() => import('./reports/ReportEmployeeSalary').then(m => ({ default: m.ReportEmployeeSalary })))
+const SessionManagement = lazy(() => import('./SessionManagement'))
+
+const MyCenter = lazy(() => import('./my/MyCenter').then(m => ({ default: m.MyCenter })))
+const MySalary = lazy(() => import('./my/MySalary').then(m => ({ default: m.MySalary })))
+const MyLeaves = lazy(() => import('./my/MyLeaves').then(m => ({ default: m.MyLeaves })))
+const MyReimbursements = lazy(() => import('./my/MyReimbursements').then(m => ({ default: m.MyReimbursements })))
+const MyBorrowings = lazy(() => import('./my/MyBorrowings').then(m => ({ default: m.MyBorrowings })))
+const MyAssets = lazy(() => import('./my/MyAssets').then(m => ({ default: m.MyAssets })))
+const MyProfile = lazy(() => import('./my/MyProfile').then(m => ({ default: m.MyProfile })))
+const CompanyPolicies = lazy(() => import('./CompanyPolicies').then(m => ({ default: m.CompanyPolicies })))
+const MyApprovals = lazy(() => import('./my/MyApprovals').then(m => ({ default: m.MyApprovals })))
 
 const { Header, Sider, Content } = Layout
 
@@ -553,6 +564,14 @@ function AppContent() {
           </div>
         </div>
       }>
+                {selected === 'my-center' && <MyCenter />}
+        {selected === 'my-salary' && <MySalary />}
+        {selected === 'my-leaves' && <MyLeaves />}
+        {selected === 'my-reimbursements' && <MyReimbursements />}
+        {selected === 'my-borrowings' && <MyBorrowings />}
+        {selected === 'my-assets' && <MyAssets />}
+        {selected === 'company-policies' && <CompanyPolicies />}
+        {selected === 'my-approvals' && <MyApprovals />}
         {selected === 'dashboard' && <Dashboard userRole={user?.role} userInfo={user} />}
         {selected === 'flows' && <Flows />}
         {selected === 'account-transactions' && <AccountTransactions />}
@@ -569,7 +588,7 @@ function AppContent() {
         {selected === 'currency' && <CurrencyManagement />}
         {selected === 'audit' && <AuditLogs />}
         {selected === 'vendor' && <VendorManagement />}
-        {selected === 'employee' && <EmployeeManagement />}
+        {selected === 'employee' && <EmployeeManagement userRole={user?.role} />}
         {selected === 'borrowings' && <BorrowingManagement />}
         {selected === 'repayments' && <RepaymentManagement />}
         {selected === 'employee-leave' && <LeaveManagement />}
@@ -596,6 +615,7 @@ function AppContent() {
         {selected === 'report-account-balance' && <ReportAccountBalance />}
         {selected === 'report-borrowing' && <ReportBorrowing />}
         {selected === 'report-employee-salary' && <ReportEmployeeSalary />}
+        {selected === 'sessions' && <SessionManagement />}
       </Suspense>
     )
   }
@@ -610,6 +630,19 @@ function AppContent() {
           <div style={{ fontSize: '12px', color: '#888' }}>{user?.role}</div>
         </div>
       ),
+    },
+    { type: 'divider' },
+    {
+      key: 'sessions',
+      icon: <LaptopOutlined />,
+      label: '会话管理',
+      onClick: () => addOrActivateTab('sessions'),
+    },
+    {
+      key: 'change-password',
+      icon: <KeyOutlined />,
+      label: '修改密码',
+      onClick: () => addOrActivateTab('change-password'),
     },
     { type: 'divider' },
     {

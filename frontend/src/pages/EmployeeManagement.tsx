@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Card, Table, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, InputNumber, DatePicker, Switch, Tabs, Descriptions, Dropdown } from 'antd'
 import { PlusOutlined, SettingOutlined } from '@ant-design/icons'
 import { api } from '../config/api'
+import { WorkScheduleEditor } from '../components/WorkScheduleEditor'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { loadCurrencies, loadDepartments } from '../utils/loaders'
@@ -73,6 +74,13 @@ type Employee = {
   leave_type?: 'resigned' | 'terminated' | 'expired' | 'retired' | 'other'
   leave_memo?: string
   active: number
+  work_schedule?: {
+    days: number[]
+    start: string
+    end: string
+  }
+  annual_leave_cycle_months?: number
+  annual_leave_days?: number
   phone?: string
   email?: string
   usdt_address?: string
@@ -326,6 +334,8 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         org_department_id: v.org_department_id,
         position_id: v.position_id,
         join_date: v.join_date.format('YYYY-MM-DD'),
+        annual_leave_cycle_months: v.annual_leave_cycle_months || 6,
+        annual_leave_days: v.annual_leave_days ?? 15,
         probation_salary_cents: defaultProbationCents,
         regular_salary_cents: defaultRegularCents,
         probation_salaries: probationSalaries,
@@ -493,6 +503,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
       address: employee.address,
       memo: employee.memo,
       birthday: employee.birthday ? dayjs(employee.birthday) : undefined,
+      work_schedule: employee.work_schedule ? (typeof employee.work_schedule === 'string' ? JSON.parse(employee.work_schedule) : employee.work_schedule) : { days: [1,2,3,4,5,6], start: '09:00', end: '21:00' },
+      annual_leave_cycle_months: employee.annual_leave_cycle_months || 6,
+      annual_leave_days: employee.annual_leave_days ?? 15,
     })
     // 加载该项目的部门列表和职位列表（如果是总部，使用'hq'）
     loadOrgDepartments(projectId)
@@ -528,6 +541,9 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
         address: v.address,
         memo: v.memo,
         birthday: v.birthday ? v.birthday.format('YYYY-MM-DD') : undefined,
+        work_schedule: v.work_schedule,
+        annual_leave_cycle_months: v.annual_leave_cycle_months,
+        annual_leave_days: v.annual_leave_days,
       })
       message.success('更新成功')
       setEditOpen(false)
@@ -1256,6 +1272,29 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
               >
                 <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" placeholder="请选择生日" />
               </Form.Item>
+              <Form.Item
+                name="work_schedule"
+                label="上班时间"
+              >
+                <WorkScheduleEditor />
+              </Form.Item>
+              <Form.Item
+                name="annual_leave_cycle_months"
+                label="年假周期"
+                initialValue={6}
+              >
+                <Select>
+                  <Option value={6}>半年制（6个月）</Option>
+                  <Option value={12}>年制（12个月）</Option>
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="annual_leave_days"
+                label="每周期年假天数"
+                initialValue={15}
+              >
+                <InputNumber min={0} max={365} style={{ width: '100%' }} addonAfter="天" />
+              </Form.Item>
             </TabPane>
             <TabPane tab="系统账号" key="account">
               <Form.Item
@@ -1305,7 +1344,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                             style={{ marginBottom: 0, flex: 1 }}
                           >
                             <Select
-                              id={`probation_salary_currency_${name}`}
+                              id={`probation_salaries_${name}_currency_id`}
                               placeholder="选择币种"
                               style={{ width: '100%' }}
                             >
@@ -1323,7 +1362,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                             style={{ marginBottom: 0, flex: 1 }}
                           >
                             <InputNumber
-                              id={`probation_salary_amount_${name}`}
+                              id={`probation_salaries_${name}_amount_cents`}
                               placeholder="底薪金额"
                               style={{ width: '100%' }}
                               min={0}
@@ -1381,7 +1420,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                             style={{ marginBottom: 0, flex: 1 }}
                           >
                             <Select
-                              id={`regular_salary_currency_${name}`}
+                              id={`regular_salaries_${name}_currency_id`}
                               placeholder="选择币种"
                               style={{ width: '100%' }}
                             >
@@ -1399,7 +1438,7 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                             style={{ marginBottom: 0, flex: 1 }}
                           >
                             <InputNumber
-                              id={`regular_salary_amount_${name}`}
+                              id={`regular_salaries_${name}_amount_cents`}
                               placeholder="底薪金额"
                               style={{ width: '100%' }}
                               min={0}
@@ -1434,14 +1473,14 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                         {fields.map(({ key, name, ...restField }) => (
                           <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
                             <Form.Item {...restField} name={[name, 'currency_id']} rules={[{ required: true, message: '请选择币种' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <Select id={`living_allowance_currency_${name}`} placeholder="选择币种" style={{ width: '100%' }}>
+                              <Select id={`living_allowances_${name}_currency_id`} placeholder="选择币种" style={{ width: '100%' }}>
                                 {currencies.map((c) => (
                                   <Option key={c.code} value={c.code}>{c.code} - {c.name}</Option>
                                 ))}
                               </Select>
                             </Form.Item>
                             <Form.Item {...restField} name={[name, 'amount_cents']} rules={[{ required: true, message: '请输入金额' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <InputNumber id={`living_allowance_amount_${name}`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
+                              <InputNumber id={`living_allowances_${name}_amount_cents`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
                             </Form.Item>
                             <Button onClick={() => remove(name)} danger size="small">删除</Button>
                           </Space>
@@ -1461,14 +1500,14 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                         {fields.map(({ key, name, ...restField }) => (
                           <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
                             <Form.Item {...restField} name={[name, 'currency_id']} rules={[{ required: true, message: '请选择币种' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <Select id={`housing_allowance_currency_${name}`} placeholder="选择币种" style={{ width: '100%' }}>
+                              <Select id={`housing_allowances_${name}_currency_id`} placeholder="选择币种" style={{ width: '100%' }}>
                                 {currencies.map((c) => (
                                   <Option key={c.code} value={c.code}>{c.code} - {c.name}</Option>
                                 ))}
                               </Select>
                             </Form.Item>
                             <Form.Item {...restField} name={[name, 'amount_cents']} rules={[{ required: true, message: '请输入金额' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <InputNumber id={`housing_allowance_amount_${name}`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
+                              <InputNumber id={`housing_allowances_${name}_amount_cents`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
                             </Form.Item>
                             <Button onClick={() => remove(name)} danger size="small">删除</Button>
                           </Space>
@@ -1488,14 +1527,14 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                         {fields.map(({ key, name, ...restField }) => (
                           <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
                             <Form.Item {...restField} name={[name, 'currency_id']} rules={[{ required: true, message: '请选择币种' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <Select id={`transportation_allowance_currency_${name}`} placeholder="选择币种" style={{ width: '100%' }}>
+                              <Select id={`transportation_allowances_${name}_currency_id`} placeholder="选择币种" style={{ width: '100%' }}>
                                 {currencies.map((c) => (
                                   <Option key={c.code} value={c.code}>{c.code} - {c.name}</Option>
                                 ))}
                               </Select>
                             </Form.Item>
                             <Form.Item {...restField} name={[name, 'amount_cents']} rules={[{ required: true, message: '请输入金额' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <InputNumber id={`transportation_allowance_amount_${name}`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
+                              <InputNumber id={`transportation_allowances_${name}_amount_cents`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
                             </Form.Item>
                             <Button onClick={() => remove(name)} danger size="small">删除</Button>
                           </Space>
@@ -1515,14 +1554,14 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                         {fields.map(({ key, name, ...restField }) => (
                           <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
                             <Form.Item {...restField} name={[name, 'currency_id']} rules={[{ required: true, message: '请选择币种' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <Select id={`meal_allowance_currency_${name}`} placeholder="选择币种" style={{ width: '100%' }}>
+                              <Select id={`meal_allowances_${name}_currency_id`} placeholder="选择币种" style={{ width: '100%' }}>
                                 {currencies.map((c) => (
                                   <Option key={c.code} value={c.code}>{c.code} - {c.name}</Option>
                                 ))}
                               </Select>
                             </Form.Item>
                             <Form.Item {...restField} name={[name, 'amount_cents']} rules={[{ required: true, message: '请输入金额' }]} style={{ marginBottom: 0, flex: 1 }}>
-                              <InputNumber id={`meal_allowance_amount_${name}`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
+                              <InputNumber id={`meal_allowances_${name}_amount_cents`} placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
                             </Form.Item>
                             <Button onClick={() => remove(name)} danger size="small">删除</Button>
                           </Space>
@@ -1809,6 +1848,27 @@ export function EmployeeManagement({ userRole }: { userRole?: string }) {
                 rules={[{ required: true, message: '请选择生日' }]}
               >
                 <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" placeholder="请选择生日" />
+              </Form.Item>
+              <Form.Item
+                name="work_schedule"
+                label="上班时间"
+              >
+                <WorkScheduleEditor />
+              </Form.Item>
+              <Form.Item
+                name="annual_leave_cycle_months"
+                label="年假周期"
+              >
+                <Select>
+                  <Option value={6}>半年制（6个月）</Option>
+                  <Option value={12}>年制（12个月）</Option>
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="annual_leave_days"
+                label="每周期年假天数"
+              >
+                <InputNumber min={0} max={365} style={{ width: '100%' }} addonAfter="天" />
               </Form.Item>
               <Form.Item
                 name="probation_salary_cents"

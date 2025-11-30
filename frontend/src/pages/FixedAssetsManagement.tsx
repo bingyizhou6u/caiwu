@@ -408,9 +408,9 @@ export function FixedAssetsManagement({ userRole }: { userRole?: string }) {
                 dataSource={detailRow.depreciations || []}
                 columns={[
                   { title: '折旧日期', dataIndex: 'depreciation_date', width: 120 },
-                  { title: '折旧金额', render: (_, r) => `${(r.depreciation_amount_cents / 100).toFixed(2)} ${detailRow.currency}`, width: 120 },
-                  { title: '累计折旧', render: (_, r) => `${(r.accumulated_depreciation_cents / 100).toFixed(2)} ${detailRow.currency}`, width: 120 },
-                  { title: '剩余价值', render: (_, r) => `${(r.remaining_value_cents / 100).toFixed(2)} ${detailRow.currency}`, width: 120 },
+                  { title: '折旧金额', render: (_, r: any) => `${((r.depreciation_amount_cents || 0) / 100).toFixed(2)} ${detailRow.currency}`, width: 120 },
+                  { title: '累计折旧', render: (_, r: any) => `${((r.accumulated_depreciation_cents || 0) / 100).toFixed(2)} ${detailRow.currency}`, width: 120 },
+                  { title: '剩余价值', render: (_, r: any) => `${((r.remaining_value_cents || 0) / 100).toFixed(2)} ${detailRow.currency}`, width: 120 },
                   { title: '备注', dataIndex: 'memo' },
                 ]}
                 pagination={{ pageSize: 20 }}

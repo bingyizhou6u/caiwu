@@ -6,6 +6,8 @@ import { accountsRoutes } from './master-data/accounts.js'
 import { currenciesRoutes } from './master-data/currencies.js'
 import { categoriesRoutes } from './master-data/categories.js'
 import { positionsRoutes } from './master-data/positions.js'
+import { orgDepartmentsRoutes } from './master-data/org-departments.js'
+import { vendorsRoutes } from './master-data/vendors.js'
 
 export const master_dataRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -16,3 +18,5 @@ master_dataRoutes.route('/accounts', accountsRoutes)
 master_dataRoutes.route('/currencies', currenciesRoutes)
 master_dataRoutes.route('/categories', categoriesRoutes)
 master_dataRoutes.route('/positions', positionsRoutes)
+master_dataRoutes.route('/org-departments', orgDepartmentsRoutes)
+master_dataRoutes.route('/vendors', vendorsRoutes)

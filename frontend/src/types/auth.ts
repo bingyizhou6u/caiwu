@@ -1,8 +1,9 @@
 import { User } from './index'
 
 export interface LoginResponse {
-    user: User
-    token?: string // If we use token based auth later, currently cookie based
+    user?: User
+    token?: string
+    expiresIn?: number
     mustChangePassword?: boolean
     needBindTotp?: boolean
     needTotp?: boolean

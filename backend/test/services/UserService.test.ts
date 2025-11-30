@@ -2,7 +2,6 @@ import { env } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { UserService } from '../../src/services/UserService';
 import { uuid } from '../../src/utils/db';
-// @ts-ignore
 import schema from '../../src/db/schema.sql?raw';
 
 describe('UserService', () => {

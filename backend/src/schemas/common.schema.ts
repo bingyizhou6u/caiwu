@@ -30,14 +30,6 @@ export const paginationSchema = z.object({
 })
 
 /**
- * 排序参数
- */
-export const sortSchema = z.object({
-  sortBy: z.string().optional(),
-  sortOrder: z.enum(['asc', 'desc']).optional(),
-})
-
-/**
  * 日期查询参数Schema
  */
 export const dateQuerySchema = z.object({
@@ -75,13 +67,6 @@ export const dateRangeQuerySchema = z.object({
  */
 export const singleDateQuerySchema = z.object({
   as_of: dateSchema,
-})
-
-/**
- * AR/AP汇总查询Schema
- */
-export const arApSummaryQuerySchema = dateRangeQuerySchema.extend({
-  kind: z.enum(['AR', 'AP']),
 })
 
 /**
@@ -217,25 +202,9 @@ export const siteBillQuerySchema = z.object({
 })
 
 /**
- * 创建/更新通用字段
- */
-export const timestampsSchema = z.object({
-  created_at: z.number().optional(),
-  updated_at: z.number().optional(),
-})
-
-/**
  * ID路径参数Schema
  */
 export const idParamSchema = z.object({
   id: uuidSchema,
 })
-
-/**
- * 基础实体Schema
- */
-export const baseEntitySchema = z.object({
-  id: uuidSchema,
-  active: z.number().int().min(0).max(1).optional(),
-}).merge(timestampsSchema)
 

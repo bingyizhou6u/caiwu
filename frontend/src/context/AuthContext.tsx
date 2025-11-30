@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { message } from 'antd'
 import { authApi } from '../api/auth'
 import { User, LoginResponse } from '../types'
+import { getAuthToken, saveAuthToken, clearAuthToken } from '../utils/authToken'
 
 interface AuthContextType {
     user: User | null
@@ -22,6 +23,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [permissions, setPermissions] = useState<Record<string, boolean>>({})
 
     const checkAuth = async () => {
+        const token = getAuthToken()
+        if (!token) {
+            setUser(null)
+            setLoggedIn(false)
+            setPermissions({})
+            setLoading(false)
+            return
+        }
         try {
             const { user } = await authApi.me()
             if (user) {
@@ -48,6 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [])
 
     const login = async (data: LoginResponse) => {
+        if (data.token) {
+            saveAuthToken(data.token)
+        }
         if (data.user) {
             setUser(data.user)
             setLoggedIn(true)
@@ -58,12 +70,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             await authApi.logout()
-            setUser(null)
-            setLoggedIn(false)
-            setPermissions({})
             message.success('已退出登录')
         } catch (error) {
             message.error('退出失败')
+        } finally {
+            clearAuthToken()
+            setUser(null)
+            setLoggedIn(false)
+            setPermissions({})
         }
     }
 

@@ -65,6 +65,13 @@ export const createEmployeeSchema = z.object({
   emergency_phone: z.string().optional(),
   address: z.string().optional(),
   memo: z.string().optional(),
+  work_schedule: z.object({
+    days: z.array(z.number().int().min(1).max(7)),
+    start: z.string().regex(/^\d{2}:\d{2}$/),
+    end: z.string().regex(/^\d{2}:\d{2}$/),
+  }).optional(),
+  annual_leave_cycle_months: z.number().int().min(6).max(12).optional(),
+  annual_leave_days: z.number().int().min(0).max(365).optional(),
 })
 
 /**
@@ -608,6 +615,13 @@ export const updateEmployeeSchema = z.object({
     if (val === '' || val === undefined || val === null) return null
     return val
   }, z.union([dateSchema, z.null()]).optional()),
+  work_schedule: z.object({
+    days: z.array(z.number().int().min(1).max(7)),
+    start: z.string().regex(/^\d{2}:\d{2}$/),
+    end: z.string().regex(/^\d{2}:\d{2}$/),
+  }).optional().nullable(),
+  annual_leave_cycle_months: z.number().int().min(6).max(12).optional(),
+  annual_leave_days: z.number().int().min(0).max(365).optional(),
 })
 
 /**

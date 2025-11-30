@@ -8,6 +8,7 @@ import { arApReportsRoutes } from './reports/ar-ap.js'
 import { expenseReportsRoutes } from './reports/expense.js'
 import { accountReportsRoutes } from './reports/account.js'
 import { salaryReportsRoutes } from './reports/salary.js'
+import { annualLeaveReportRoutes } from './reports/annual-leave.js'
 
 export const reportsRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -18,6 +19,7 @@ reportsRoutes.route('/reports', arApReportsRoutes)
 reportsRoutes.route('/reports', expenseReportsRoutes)
 reportsRoutes.route('/reports', accountReportsRoutes)
 reportsRoutes.route('/reports', salaryReportsRoutes)
+reportsRoutes.route('/reports', annualLeaveReportRoutes)
 
 // Health check and version are handled in index.ts
 

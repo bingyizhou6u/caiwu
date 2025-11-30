@@ -8,9 +8,11 @@ import { cachedRequest, cacheKeys } from './cache'
 import { apiGet } from './api'
 
 export interface SelectOption {
-  value: string | number
+  value: string
   label: string
-  [key: string]: any
+  currency?: string
+  search?: string
+  [key: string]: string | undefined
 }
 
 /**
@@ -22,7 +24,7 @@ export async function loadCurrencies(): Promise<SelectOption[]> {
     async () => {
       const rows = await apiGet<any>(api.currencies)
       return rows.filter((r: any) => r.active === 1).map((r: any) => ({
-        value: r.code,
+        value: String(r.code),
         label: `${r.code} - ${r.name}`
       }))
     }
@@ -38,7 +40,7 @@ export async function loadDepartments(): Promise<SelectOption[]> {
     async () => {
       const rows = await apiGet<any>(api.departments)
       return rows.filter((r: any) => r.active === 1).map((r: any) => ({
-        value: r.id,
+        value: String(r.id),
         label: r.name
       }))
     }
@@ -57,7 +59,7 @@ export async function loadAccounts(): Promise<SelectOption[]> {
         const aliasPart = r.alias ? ` (${r.alias})` : ''
         const currencyPart = r.currency ? ` [${r.currency}]` : ''
         return {
-          value: r.id,
+          value: String(r.id),
           label: `${r.name}${aliasPart}${currencyPart}`,
           currency: r.currency
         }
@@ -75,7 +77,7 @@ export async function loadExpenseCategories(): Promise<SelectOption[]> {
     async () => {
       const rows = await apiGet<any>(api.categories)
       return rows.filter((c: any) => c.kind === 'expense').map((c: any) => ({
-        value: c.id,
+        value: String(c.id),
         label: c.name
       }))
     }
@@ -91,7 +93,7 @@ export async function loadEmployees(): Promise<SelectOption[]> {
     async () => {
       const rows = await apiGet<any>(`${api.employees}?active_only=true`)
       return rows.filter((e: any) => e.active === 1 && e.status !== 'resigned').map((e: any) => ({
-        value: e.id,
+        value: String(e.id),
         label: `${e.name} (${e.department_name || '-'})`
       }))
     }
@@ -107,10 +109,9 @@ export async function loadIncomeCategories(): Promise<SelectOption[]> {
     async () => {
       const rows = await apiGet<any>(api.categories)
       return rows.filter((c: any) => c.kind === 'income').map((c: any) => ({
-        value: c.id,
+        value: String(c.id),
         label: c.name
       }))
     }
   )
 }
-

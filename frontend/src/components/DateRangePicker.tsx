@@ -3,7 +3,7 @@ import dayjs, { Dayjs } from 'dayjs'
 import { useState, useEffect } from 'react'
 
 export interface DateRangePickerProps {
-  value?: [Dayjs, Dayjs]
+  value?: [Dayjs, Dayjs] | null
   onChange?: (value: [Dayjs, Dayjs] | null) => void
   allowClear?: boolean
   style?: React.CSSProperties
@@ -21,9 +21,10 @@ export function DateRangePicker({ value, onChange, allowClear = true, style, id 
     }
   }, [value])
 
-  const handleChange = (dates: [Dayjs, Dayjs] | null) => {
-    setRange(dates)
-    onChange?.(dates)
+  const handleChange = (dates: unknown) => {
+    const typedDates = dates as [Dayjs, Dayjs] | null
+    setRange(typedDates)
+    onChange?.(typedDates)
   }
 
   const quickSelect = (type: string) => {
@@ -84,8 +85,8 @@ export function DateRangePicker({ value, onChange, allowClear = true, style, id 
     <Space wrap style={style}>
       <DatePicker.RangePicker
         id={id || "date-range-picker"}
-        value={range as any}
-        onChange={handleChange as any}
+        value={range}
+        onChange={handleChange}
         allowClear={allowClear}
         format="YYYY-MM-DD"
         style={{ width: 240 }}
@@ -104,4 +105,3 @@ export function DateRangePicker({ value, onChange, allowClear = true, style, id 
     </Space>
   )
 }
-

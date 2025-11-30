@@ -340,7 +340,7 @@ export function Flows() {
               showSearch
               placeholder="选择账户"
               options={accounts}
-              filterOption={(input, option)=> (option?.search || '').includes(input.toLowerCase()) }
+              filterOption={(input, option)=> (option?.label || '').toString().toLowerCase().includes(input.toLowerCase()) }
             />
           </Form.Item>
           <Form.Item name="category_id" label="类别" rules={[{ required: true, message: '请选择类别' }]}>

@@ -62,31 +62,55 @@ accountReportsRoutes.get('/account-balance', validateQuery(singleDateQuerySchema
   return c.json({ rows, as_of: asOf })
 })
 
-// 借支汇总报表
-accountReportsRoutes.get('/borrowing-summary', validateQuery(dateRangeQuerySchema), async (c) => {
+// 借支汇总报表（日期参数可选）
+const borrowingSummaryQuerySchema = z.object({
+  start: dateSchema.optional(),
+  end: dateSchema.optional(),
+})
+accountReportsRoutes.get('/borrowing-summary', validateQuery(borrowingSummaryQuerySchema), async (c) => {
   if (!canRead(c)) throw Errors.FORBIDDEN()
   if (!(await canViewReports(c))) throw Errors.FORBIDDEN('只有总部人员可以查看报表')
 
-  const query = getValidatedQuery<z.infer<typeof dateRangeQuerySchema>>(c)
+  const query = getValidatedQuery<z.infer<typeof borrowingSummaryQuerySchema>>(c)
   const start = query.start
   const end = query.end
 
-  let sql = `
-    select 
-      b.user_id,
-      u.name as user_name,
-      coalesce(sum(b.amount_cents),0) as borrowed_cents,
-      coalesce((
-        select sum(r.amount_cents)
-        from repayments r
-        where r.borrowing_id=b.id
-      ),0) as repaid_cents
-    from borrowings b
-    left join users u on u.id=b.user_id
-    where b.created_at>=? and b.created_at<=?
-    group by b.user_id, u.name
-  `
-  let binds: any[] = [start, end]
+  let sql: string
+  let binds: any[] = []
+  
+  if (start && end) {
+    sql = `
+      select 
+        b.user_id,
+        u.name as user_name,
+        coalesce(sum(b.amount_cents),0) as borrowed_cents,
+        coalesce((
+          select sum(r.amount_cents)
+          from repayments r
+          where r.borrowing_id=b.id
+        ),0) as repaid_cents
+      from borrowings b
+      left join users u on u.id=b.user_id
+      where b.created_at>=? and b.created_at<=?
+      group by b.user_id, u.name
+    `
+    binds = [start, end]
+  } else {
+    sql = `
+      select 
+        b.user_id,
+        u.name as user_name,
+        coalesce(sum(b.amount_cents),0) as borrowed_cents,
+        coalesce((
+          select sum(r.amount_cents)
+          from repayments r
+          where r.borrowing_id=b.id
+        ),0) as repaid_cents
+      from borrowings b
+      left join users u on u.id=b.user_id
+      group by b.user_id, u.name
+    `
+  }
 
   const scoped = await applyDataScope(c, sql, binds)
   const rows = await c.env.DB.prepare(scoped.sql).bind(...scoped.binds).all<any>()

@@ -5,6 +5,7 @@ import type { MenuProps } from 'antd'
 import { useAuth } from '../context/AuthContext'
 import { buildMenuItems, pageTitles } from '../config/menu'
 import { AppRouter } from '../router/AppRouter'
+import { authedJsonFetch } from '../utils/authedFetch'
 import { api } from '../config/api'
 
 const { Header, Sider, Content } = Layout
@@ -44,7 +45,9 @@ export const MainLayout: React.FC = () => {
     })
 
     useEffect(() => {
-        fetch(api.health).then(r => r.json()).then(d => setApiOk(!!d.db)).catch(() => setApiOk(false))
+        authedJsonFetch(api.health)
+            .then((d: any) => setApiOk(!!d.db))
+            .catch(() => setApiOk(false))
     }, [])
 
     useEffect(() => {

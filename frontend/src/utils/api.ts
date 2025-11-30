@@ -4,6 +4,7 @@
  */
 
 import { message } from 'antd'
+import { getAuthToken, clearAuthToken } from './authToken'
 
 /**
  * 解析 API 响应，统一处理结果格式
@@ -25,16 +26,28 @@ export async function apiRequest<T = any>(
   url: string,
   options: RequestInit = {}
 ): Promise<{ results: T[]; data?: T }> {
+  const token = getAuthToken()
+  const customHeaders = (options.headers || {}) as Record<string, string>
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...customHeaders,
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+    headers['X-Caiwu-Token'] = token
+  }
+
   const response = await fetch(url, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   })
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthToken()
+    }
     const error = await response.json().catch(() => ({ error: response.statusText }))
     const errorObj = new Error(error.error || `请求失败: ${response.status}`) as any
     errorObj.status = response.status
