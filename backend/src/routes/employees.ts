@@ -963,42 +963,7 @@ employeesRoutes.delete('/employees/:id', async (c) => {
   const record = await c.env.DB.prepare('select * from employees where id=?').bind(id).first<any>()
   if (!record) throw Errors.NOT_FOUND('员工')
 
-  // 检查是否有关联数据
-  const relatedData = await c.env.DB.prepare(`
-    SELECT 
-      (SELECT COUNT(*) FROM employee_leaves WHERE employee_id = ?) as leaves,
-      (SELECT COUNT(*) FROM expense_reimbursements WHERE employee_id = ?) as reimbursements,
-      (SELECT COUNT(*) FROM salary_payments WHERE employee_id = ?) as salaries,
-      (SELECT COUNT(*) FROM employee_salaries WHERE employee_id = ?) as emp_salaries,
-      (SELECT COUNT(*) FROM employee_allowances WHERE employee_id = ?) as allowances,
-      (SELECT COUNT(*) FROM allowance_payments WHERE employee_id = ?) as allowance_payments,
-      (SELECT COUNT(*) FROM fixed_asset_allocations WHERE employee_id = ?) as assets,
-      (SELECT COUNT(*) FROM dormitory_allocations WHERE employee_id = ?) as dormitories,
-      (SELECT COUNT(*) FROM borrowings WHERE employee_id = ?) as borrowings
-  `).bind(id, id, id, id, id, id, id, id, id).first<any>()
-
-  const hasRelated = relatedData && (
-    relatedData.leaves > 0 || 
-    relatedData.reimbursements > 0 || 
-    relatedData.salaries > 0 || 
-    relatedData.emp_salaries > 0 || 
-    relatedData.allowances > 0 || 
-    relatedData.allowance_payments > 0 ||
-    relatedData.assets > 0 ||
-    relatedData.dormitories > 0 ||
-    relatedData.borrowings > 0
-  )
-
-  if (hasRelated) {
-    throw Errors.BAD_REQUEST('无法删除：该员工有关联的业务数据（工资、请假、报销等），请先删除相关数据或将员工设为离职状态')
-  }
-
-  try {
-    await c.env.DB.prepare('delete from employees where id=?').bind(id).run()
-  } catch (err: any) {
-    console.error('Delete employee error:', err)
-    throw Errors.BAD_REQUEST('删除失败: ' + (err.message || '数据库错误'))
-  }
+  await c.env.DB.prepare('delete from employees where id=?').bind(id).run()
 
   logAuditAction(c, 'delete', 'employee', id, JSON.stringify({ name: record.name }))
   return c.json({ ok: true })
