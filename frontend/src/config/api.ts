@@ -1,8 +1,8 @@
 // API配置
 // 开发环境：使用本地代理或直接访问本地Worker
 // 生产环境：使用相对路径，通过Cloudflare Pages内部绑定Worker
-const API_BASE = import.meta.env.DEV 
-  ? 'http://127.0.0.1:8787' 
+const API_BASE = import.meta.env.DEV
+  ? 'http://127.0.0.1:8787'
   : ''
 
 export const api = {
@@ -68,6 +68,7 @@ export const api = {
     borrowingDetail: (userId: string) => `${API_BASE}/api/reports/borrowing-detail/${userId}`,
     employeeSalary: `${API_BASE}/api/reports/employee-salary`,
     newSiteRevenue: `${API_BASE}/api/reports/new-site-revenue`,
+    annualLeave: `${API_BASE}/api/reports/annual-leave`,
   },
   import: `${API_BASE}/api/import`,
   auditLogs: `${API_BASE}/api/audit-logs`,
@@ -95,21 +96,17 @@ export const api = {
   allowancePaymentsGenerate: `${API_BASE}/api/allowance-payments/generate`,
   employeeLeaves: `${API_BASE}/api/employee-leaves`,
   employeeLeavesById: (id: string) => `${API_BASE}/api/employee-leaves/${id}`,
-  employeeLeavesApprove: (id: string) => `${API_BASE}/api/employee-leaves/${id}/approve`,
+  employeeLeavesApprove: (id: string) => `${API_BASE}/api/employee-leaves/${id}/status`,
   expenseReimbursements: `${API_BASE}/api/expense-reimbursements`,
   expenseReimbursementsById: (id: string) => `${API_BASE}/api/expense-reimbursements/${id}`,
-  expenseReimbursementsApprove: (id: string) => `${API_BASE}/api/expense-reimbursements/${id}/approve`,
+  expenseReimbursementsApprove: (id: string) => `${API_BASE}/api/expense-reimbursements/${id}/status`,
   expenseReimbursementsPay: (id: string) => `${API_BASE}/api/expense-reimbursements/${id}/pay`,
   salaryPayments: `${API_BASE}/api/salary-payments`,
   salaryPaymentsById: (id: string) => `${API_BASE}/api/salary-payments/${id}`,
   salaryPaymentsGenerate: `${API_BASE}/api/salary-payments/generate`,
-  salaryPaymentsEmployeeConfirm: (id: string) => `${API_BASE}/api/salary-payments/${id}/employee-confirm`,
-  salaryPaymentsFinanceApprove: (id: string) => `${API_BASE}/api/salary-payments/${id}/finance-approve`,
-  salaryPaymentsPaymentTransfer: (id: string) => `${API_BASE}/api/salary-payments/${id}/payment-transfer`,
-  salaryPaymentsPaymentConfirm: (id: string) => `${API_BASE}/api/salary-payments/${id}/payment-confirm`,
+  salaryPaymentsStatus: (id: string) => `${API_BASE}/api/salary-payments/${id}/status`,
   salaryPaymentsAllocations: (id: string) => `${API_BASE}/api/salary-payments/${id}/allocations`,
-  salaryPaymentsAllocationsApprove: (id: string) => `${API_BASE}/api/salary-payments/${id}/allocations/approve`,
-  salaryPaymentsAllocationsReject: (id: string) => `${API_BASE}/api/salary-payments/${id}/allocations/reject`,
+  salaryPaymentsAllocationsStatus: (id: string) => `${API_BASE}/api/salary-payments/${id}/allocations/status`,
   ipWhitelist: `${API_BASE}/api/ip-whitelist`,
   ipWhitelistById: (id: string) => `${API_BASE}/api/ip-whitelist/${id}`,
   ipWhitelistBatch: `${API_BASE}/api/ip-whitelist/batch`,
@@ -154,16 +151,21 @@ export const api = {
     allowances: `${API_BASE}/api/my/allowances`,
     assets: `${API_BASE}/api/my/assets`,
     profile: `${API_BASE}/api/my/profile`,
+    attendance: {
+      today: `${API_BASE}/api/my/attendance/today`,
+      clockIn: `${API_BASE}/api/my/attendance/clock-in`,
+      clockOut: `${API_BASE}/api/my/attendance/clock-out`,
+    },
   },
   // 审批
   approvals: {
     pending: `${API_BASE}/api/approvals/pending`,
     history: `${API_BASE}/api/approvals/history`,
-    leaveApprove: (id: string) => `${API_BASE}/api/approvals/leave/\${id}/approve`,
-    leaveReject: (id: string) => `${API_BASE}/api/approvals/leave/\${id}/reject`,
-    reimbursementApprove: (id: string) => `${API_BASE}/api/approvals/reimbursement/\${id}/approve`,
-    reimbursementReject: (id: string) => `${API_BASE}/api/approvals/reimbursement/\${id}/reject`,
-    borrowingApprove: (id: string) => `${API_BASE}/api/approvals/borrowing/\${id}/approve`,
-    borrowingReject: (id: string) => `${API_BASE}/api/approvals/borrowing/\${id}/reject`,
+    leaveApprove: (id: string) => `${API_BASE}/api/approvals/leave/${id}/approve`,
+    leaveReject: (id: string) => `${API_BASE}/api/approvals/leave/${id}/reject`,
+    reimbursementApprove: (id: string) => `${API_BASE}/api/approvals/reimbursement/${id}/approve`,
+    reimbursementReject: (id: string) => `${API_BASE}/api/approvals/reimbursement/${id}/reject`,
+    borrowingApprove: (id: string) => `${API_BASE}/api/borrowings/${id}/status`,
+    borrowingReject: (id: string) => `${API_BASE}/api/borrowings/${id}/status`,
   },
 }

@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authedJsonFetch } from './authedFetch'
+import { api as apiClient } from '../api/http'
 
 /**
  * 通用查询 Hook
@@ -15,17 +15,19 @@ export function useApiQuery<T = any>(
     enabled?: boolean
     staleTime?: number
     refetchInterval?: number
+    select?: (data: any) => any
   }
 ) {
   return useQuery({
     queryKey: Array.isArray(key) ? key : [key],
     queryFn: async () => {
-      const data = await authedJsonFetch(url)
-      return data as T
+      const data = await apiClient.get<T>(url)
+      return data
     },
     enabled: options?.enabled,
     staleTime: options?.staleTime,
     refetchInterval: options?.refetchInterval,
+    select: options?.select,
   })
 }
 
@@ -43,17 +45,21 @@ export function useApiMutation<TData = any, TVariables = any>(
       method?: 'POST' | 'PUT' | 'DELETE' | 'PATCH'
       body?: any
     }) => {
-      const init: RequestInit = {
-        method,
-        headers: { 'Content-Type': 'application/json' },
+      let data: TData
+      switch (method) {
+        case 'POST':
+          data = await apiClient.post<TData>(url, body)
+          break
+        case 'PUT':
+          data = await apiClient.put<TData>(url, body)
+          break
+        case 'DELETE':
+          data = await apiClient.delete<TData>(url)
+          break
+        default:
+          throw new Error(`Unsupported method: ${method}`)
       }
-      if (body) {
-        init.body = JSON.stringify(body)
-      }
-      const response = await fetch(url, init)
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || '请求失败')
-      return data as TData
+      return data
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries()
@@ -72,15 +78,15 @@ export function useReportQuery<T = any>(
   url: string,
   params?: Record<string, any>
 ) {
-  const queryKey = params 
+  const queryKey = params
     ? [reportName, ...Object.values(params)]
     : [reportName]
 
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const data = await authedJsonFetch(url)
-      return data as T
+      const data = await apiClient.get<T>(url)
+      return data
     },
     staleTime: 3 * 60 * 1000, // 报表缓存3分钟
   })

@@ -14,6 +14,7 @@ export function DateRangePicker({ value, onChange, allowClear = true, style, id 
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(
     value || [dayjs().startOf('month'), dayjs()]
   )
+  const [internalId] = useState(() => id || `date-range-picker-${Math.random().toString(36).substr(2, 9)}`)
 
   useEffect(() => {
     if (value) {
@@ -84,7 +85,7 @@ export function DateRangePicker({ value, onChange, allowClear = true, style, id 
   return (
     <Space wrap style={style}>
       <DatePicker.RangePicker
-        id={id || "date-range-picker"}
+        id={internalId}
         value={range}
         onChange={handleChange}
         allowClear={allowClear}

@@ -12,7 +12,16 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'antd-chunk': ['antd'],
+          'vendor': ['@tanstack/react-query', 'dayjs', 'zustand', 'qrcode.react'],
+        },
+      },
+    },
   }
 })
 

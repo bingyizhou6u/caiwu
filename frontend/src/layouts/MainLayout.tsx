@@ -1,165 +1,58 @@
-import React, { useState, useEffect } from 'react'
-import { Layout, Menu, Button, Dropdown, Avatar, Tabs, Spin } from 'antd'
-import { UserOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons'
-import type { MenuProps } from 'antd'
-import { useAuth } from '../context/AuthContext'
-import { buildMenuItems, pageTitles } from '../config/menu'
-import { AppRouter } from '../router/AppRouter'
-import { authedJsonFetch } from '../utils/authedFetch'
-import { api } from '../config/api'
+import { Layout, Menu, Dropdown, Avatar, Spin, Button, theme } from 'antd'
+import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons'
+import { useState, useEffect } from 'react'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useAppStore } from '../store/useAppStore'
+import { buildMenuItems, KEY_TO_PATH } from '../config/menu'
+import { MultiTabs } from '../components/MultiTabs'
 
 const { Header, Sider, Content } = Layout
 
-interface TabItem {
-    key: string
-    label: string
-    closable: boolean
-}
+export function MainLayout() {
+    const navigate = useNavigate()
+    const location = useLocation()
+    const {
+        userInfo,
+        collapsed,
+        toggleCollapsed,
+        logout
+    } = useAppStore()
 
-export const MainLayout: React.FC = () => {
-    const { user, logout } = useAuth()
-    const [apiOk, setApiOk] = useState(false)
+    const {
+        token: { colorBgContainer, borderRadiusLG },
+    } = theme.useToken()
 
-    // Tabs state
-    const [tabs, setTabs] = useState<TabItem[]>(() => {
-        const saved = localStorage.getItem('tabs')
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved)
-                return parsed.length > 0 ? parsed : [{ key: 'dashboard', label: '首页', closable: false }]
-            } catch {
-                return [{ key: 'dashboard', label: '首页', closable: false }]
-            }
-        }
-        return [{ key: 'dashboard', label: '首页', closable: false }]
-    })
+    const [openKeys, setOpenKeys] = useState<string[]>([])
+    const [selectedKey, setSelectedKey] = useState<string>('')
 
-    const [selected, setSelected] = useState(() => {
-        const saved = localStorage.getItem('selectedPage')
-        return saved || 'dashboard'
-    })
 
-    const [openKeys, setOpenKeys] = useState<string[]>(() => {
-        const saved = localStorage.getItem('openMenuKeys')
-        return saved ? JSON.parse(saved) : []
-    })
 
     useEffect(() => {
-        authedJsonFetch(api.health)
-            .then((d: any) => setApiOk(!!d.db))
-            .catch(() => setApiOk(false))
-    }, [])
+        const path = location.pathname.split('/').pop()
+        if (path) setSelectedKey(path)
+    }, [location])
 
-    useEffect(() => {
-        setTabs(prevTabs => {
-            const existingTab = prevTabs.find(tab => tab.key === selected)
-            if (existingTab) {
-                return prevTabs
-            }
-            const title = pageTitles[selected] || selected
-            const newTabs = [...prevTabs, { key: selected, label: title, closable: selected !== 'dashboard' }]
-            localStorage.setItem('tabs', JSON.stringify(newTabs))
-            return newTabs
-        })
-    }, [selected])
-
-    const addOrActivateTab = (key: string) => {
-        const title = pageTitles[key] || key
-        setTabs(prevTabs => {
-            const existingTab = prevTabs.find(tab => tab.key === key)
-            if (existingTab) {
-                return prevTabs
-            }
-            const newTabs = [...prevTabs, { key, label: title, closable: key !== 'dashboard' }]
-            localStorage.setItem('tabs', JSON.stringify(newTabs))
-            return newTabs
-        })
-        setSelected(key)
-        localStorage.setItem('selectedPage', key)
+    const handleLogout = () => {
+        logout()
+        navigate('/login')
     }
 
-    const removeTab = (targetKey: string, e?: React.MouseEvent) => {
-        e?.stopPropagation()
-        if (targetKey === 'dashboard') return
-
-        setTabs(prevTabs => {
-            const newTabs = prevTabs.filter(tab => tab.key !== targetKey)
-            localStorage.setItem('tabs', JSON.stringify(newTabs))
-
-            if (targetKey === selected) {
-                const currentIndex = prevTabs.findIndex(tab => tab.key === targetKey)
-                let newSelected = 'dashboard'
-                if (currentIndex > 0) {
-                    newSelected = prevTabs[currentIndex - 1].key
-                } else if (newTabs.length > 0) {
-                    newSelected = newTabs[0].key
-                }
-                setSelected(newSelected)
-                localStorage.setItem('selectedPage', newSelected)
-            }
-            return newTabs
-        })
-    }
-
-    const closeOtherTabs = (targetKey: string) => {
-        if (targetKey === 'dashboard') {
-            setTabs([{ key: 'dashboard', label: '首页', closable: false }])
-            localStorage.setItem('tabs', JSON.stringify([{ key: 'dashboard', label: '首页', closable: false }]))
-            setSelected('dashboard')
-            localStorage.setItem('selectedPage', 'dashboard')
-        } else {
-            const newTabs = tabs.filter(tab => tab.key === targetKey || tab.key === 'dashboard')
-            setTabs(newTabs)
-            localStorage.setItem('tabs', JSON.stringify(newTabs))
-            setSelected(targetKey)
-            localStorage.setItem('selectedPage', targetKey)
-        }
-    }
-
-    const closeLeftTabs = (targetKey: string) => {
-        const currentIndex = tabs.findIndex(tab => tab.key === targetKey)
-        if (currentIndex <= 0) return
-        const newTabs = tabs.filter((tab, index) => index >= currentIndex || tab.key === 'dashboard')
-        setTabs(newTabs)
-        localStorage.setItem('tabs', JSON.stringify(newTabs))
-        setSelected(targetKey)
-        localStorage.setItem('selectedPage', targetKey)
-    }
-
-    const closeRightTabs = (targetKey: string) => {
-        const currentIndex = tabs.findIndex(tab => tab.key === targetKey)
-        if (currentIndex < 0 || currentIndex >= tabs.length - 1) return
-        const newTabs = tabs.filter((tab, index) => index <= currentIndex)
-        setTabs(newTabs)
-        localStorage.setItem('tabs', JSON.stringify(newTabs))
-        setSelected(targetKey)
-        localStorage.setItem('selectedPage', targetKey)
-    }
-
-    const closeAllTabs = () => {
-        setTabs([{ key: 'dashboard', label: '首页', closable: false }])
-        localStorage.setItem('tabs', JSON.stringify([{ key: 'dashboard', label: '首页', closable: false }]))
-        setSelected('dashboard')
-        localStorage.setItem('selectedPage', 'dashboard')
-    }
-
-    const handleLogout = async () => {
-        await logout()
-        setSelected('dashboard')
-        setOpenKeys([])
-        setTabs([{ key: 'dashboard', label: '首页', closable: false }])
-    }
-
-    const userMenu: MenuProps['items'] = [
+    const userMenu = [
         {
             key: 'profile',
             label: (
                 <div style={{ padding: '4px 0' }}>
-                    <div style={{ fontWeight: 'bold' }}>{user?.name}</div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>{user?.email}</div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>{user?.position?.name}</div>
+                    <div style={{ fontWeight: 'bold' }}>{userInfo?.name}</div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>{userInfo?.email}</div>
                 </div>
             ),
+        },
+        { type: 'divider' },
+        {
+            key: 'change-password',
+            icon: <KeyOutlined />,
+            label: '修改密码',
+            onClick: () => navigate('/change-password'),
         },
         { type: 'divider' },
         {
@@ -170,77 +63,115 @@ export const MainLayout: React.FC = () => {
         },
     ]
 
+    // Handle Menu Click
+    const onMenuClick = ({ key }: { key: string }) => {
+        const path = KEY_TO_PATH[key] || `/${key}`
+        navigate(path)
+    }
+
+    // Handle Menu Open Change (Accordion)
+    const onOpenChange = (keys: string[]) => {
+        const latestOpenKey = keys.find(key => openKeys.indexOf(key) === -1)
+        if (!latestOpenKey) {
+            setOpenKeys(keys)
+            return
+        }
+
+        // Root keys (level 1 menu items)
+        const rootKeys = ['my', 'finance', 'sites', 'fixed-assets-menu', 'employees', 'reports', 'system']
+
+        if (rootKeys.indexOf(latestOpenKey) === -1) {
+            setOpenKeys(keys)
+        } else {
+            setOpenKeys(latestOpenKey ? [latestOpenKey] : [])
+        }
+    }
+
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider width={220} theme="dark" style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0 }}>
-                <div style={{ height: 64, margin: 16, background: 'rgba(255, 255, 255, 0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 16 }}>
-                    AR公司管理系统
+            <Sider
+                trigger={null}
+                collapsible
+                collapsed={collapsed}
+                width={220}
+                theme="dark"
+                style={{
+                    overflow: 'auto',
+                    height: '100vh',
+                    position: 'fixed',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    zIndex: 1001
+                }}
+            >
+                <div style={{
+                    height: 64,
+                    margin: 16,
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: collapsed ? 12 : 16,
+                    transition: 'all 0.2s'
+                }}>
+                    {collapsed ? 'AR' : 'AR公司管理系统'}
                 </div>
                 <Menu
                     theme="dark"
                     mode="inline"
-                    selectedKeys={[selected]}
+                    selectedKeys={[selectedKey]}
                     openKeys={openKeys}
-                    onOpenChange={(keys) => {
-                        setOpenKeys(keys)
-                        localStorage.setItem('openMenuKeys', JSON.stringify(keys))
-                    }}
-                    items={buildMenuItems(user)}
-                    onClick={({ key }) => addOrActivateTab(key)}
+                    onOpenChange={onOpenChange}
+                    items={buildMenuItems(userInfo)}
+                    onClick={onMenuClick}
                 />
             </Sider>
-            <Layout style={{ marginLeft: 220 }}>
-                <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,21,41,0.08)', zIndex: 1 }}>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <Tabs
-                            hideAdd
-                            type="editable-card"
-                            activeKey={selected}
-                            items={tabs.map(tab => ({
-                                key: tab.key,
-                                label: (
-                                    <Dropdown
-                                        menu={{
-                                            items: [
-                                                { key: 'close', label: '关闭当前', disabled: tab.key === 'dashboard', onClick: (e) => removeTab(tab.key, e as any) },
-                                                { key: 'closeOther', label: '关闭其他', onClick: () => closeOtherTabs(tab.key) },
-                                                { key: 'closeLeft', label: '关闭左侧', disabled: tabs.findIndex(t => t.key === tab.key) <= 0, onClick: () => closeLeftTabs(tab.key) },
-                                                { key: 'closeRight', label: '关闭右侧', disabled: tabs.findIndex(t => t.key === tab.key) >= tabs.length - 1, onClick: () => closeRightTabs(tab.key) },
-                                                { key: 'closeAll', label: '关闭全部', onClick: closeAllTabs },
-                                            ]
-                                        }}
-                                        trigger={['contextMenu']}
-                                    >
-                                        <span>{tab.label}</span>
-                                    </Dropdown>
-                                ),
-                                closable: tab.closable,
-                            }))}
-                            onChange={(key) => {
-                                setSelected(key)
-                                localStorage.setItem('selectedPage', key)
-                            }}
-                            onEdit={(targetKey, action) => {
-                                if (action === 'remove') {
-                                    removeTab(targetKey as string)
-                                }
-                            }}
-                            tabBarStyle={{ margin: 0, border: 'none' }}
-                        />
-                    </div>
-                    <div style={{ marginLeft: 16 }}>
-                        <Dropdown menu={{ items: userMenu }} placement="bottomRight">
+            <Layout style={{ marginLeft: collapsed ? 80 : 220, transition: 'all 0.2s' }}>
+                <Header style={{
+                    padding: 0,
+                    background: colorBgContainer,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    boxShadow: '0 1px 4px rgba(0,21,41,0.08)'
+                }}>
+                    <Button
+                        type="text"
+                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                        onClick={toggleCollapsed}
+                        style={{
+                            fontSize: '16px',
+                            width: 64,
+                            height: 64,
+                        }}
+                    />
+                    <div style={{ marginRight: 24 }}>
+                        <Dropdown menu={{ items: userMenu as any }} placement="bottomRight">
                             <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                 <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff', marginRight: 8 }} />
-                                <span style={{ marginRight: 8 }}>{user?.name}</span>
+                                <span style={{ marginRight: 8 }}>{userInfo?.name}</span>
                                 <DownOutlined style={{ fontSize: 12 }} />
                             </div>
                         </Dropdown>
                     </div>
                 </Header>
                 <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
-                    <div style={{ padding: 24, background: '#fff', minHeight: 360, borderRadius: 4 }}>
-                        <AppRouter pageKey={selected} />
+                    <MultiTabs />
+                    <div style={{
+                        padding: 24,
+                        minHeight: 360,
+                        background: colorBgContainer,
+                        borderRadius: borderRadiusLG,
+                        marginTop: 16
+                    }}>
+                        <Outlet />
                     </div>
                 </Content>
             </Layout>

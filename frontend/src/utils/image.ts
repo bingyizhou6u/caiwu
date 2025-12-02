@@ -1,3 +1,5 @@
+import { api as apiClient } from '../api/http'
+
 /**
  * 图片工具函数
  */
@@ -53,14 +55,14 @@ export const convertToWebP = async (file: File, quality: number = 0.85): Promise
 export const convertToWebPWithURL = async (file: File, quality: number = 0.85): Promise<File> => {
   const img = new Image()
   const imageUrl = URL.createObjectURL(file)
-  
+
   try {
     await new Promise((resolve, reject) => {
       img.onload = resolve
       img.onerror = reject
       img.src = imageUrl
     })
-    
+
     const canvas = document.createElement('canvas')
     canvas.width = img.width
     canvas.height = img.height
@@ -69,9 +71,9 @@ export const convertToWebPWithURL = async (file: File, quality: number = 0.85): 
       URL.revokeObjectURL(imageUrl)
       throw new Error('无法创建Canvas上下文')
     }
-    
+
     ctx.drawImage(img, 0, 0)
-    
+
     const webpBlob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (blob) {
@@ -81,7 +83,7 @@ export const convertToWebPWithURL = async (file: File, quality: number = 0.85): 
         }
       }, 'image/webp', quality)
     })
-    
+
     URL.revokeObjectURL(imageUrl)
     return new File([webpBlob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
   } catch (error) {
@@ -116,28 +118,17 @@ export const uploadImageAsWebP = async (
   if (!isSupportedImageType(file)) {
     throw new Error('只允许上传图片格式（JPEG、PNG、GIF、WebP）')
   }
-  
+
   // 如果已经是WebP格式，直接上传
   let fileToUpload: File = file
   if (file.type !== 'image/webp') {
     fileToUpload = await convertToWebP(file, quality)
   }
-  
+
   const formData = new FormData()
   formData.append('file', fileToUpload)
-  
-  const res = await fetch(uploadUrl, {
-    method: 'POST',
-    body: formData,
-    credentials: 'include',
-  })
-  
-  if (!res.ok) {
-    const error = await res.json()
-    throw new Error(error.error || '上传失败')
-  }
-  
-  const result = await res.json()
+
+  const result = await apiClient.post<any>(uploadUrl, formData)
   return result.url
 }
 

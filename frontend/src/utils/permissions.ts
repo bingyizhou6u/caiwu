@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext'
+import { useAppStore } from '../store/useAppStore'
 
 /**
  * 权限辅助工具 - 基于职位权限系统
@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext'
 
 /**
  * 检查用户是否有指定权限
- * @param userInfo - 用户信息对象 (从useAuth获取)
+ * @param userInfo - 用户信息对象 (从useAppStore获取)
  * @param module - 模块名称 (如 'finance', 'hr')
  * @param subModule - 子模块名称 (如 'flow', 'employee')
  * @param action - 操作名称 (如 'view', 'create', 'update', 'delete')
@@ -49,7 +49,7 @@ export function hasPermission(
  * if (hasPermission('finance', 'flow', 'create')) { ... }
  */
 export function usePermissions() {
-  const { user } = useAuth()
+  const { userInfo: user } = useAppStore()
 
   const checkPermission = (
     module: string,

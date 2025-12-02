@@ -67,19 +67,19 @@ export const pageTitles: Record<string, string> = {
  */
 function hasPermission(userInfo: any, module: string, subModule?: string, action?: string): boolean {
     if (!userInfo?.position?.permissions) return false
-    
+
     const modulePerms = userInfo.position.permissions[module]
     if (!modulePerms) return false
-    
+
     // 如果只检查模块权限
     if (!subModule) return true
-    
+
     const subModulePerms = modulePerms[subModule]
     if (!subModulePerms || !Array.isArray(subModulePerms)) return false
-    
+
     // 如果只检查子模块权限
     if (!action) return subModulePerms.length > 0
-    
+
     // 检查具体操作权限
     return subModulePerms.includes(action)
 }
@@ -153,13 +153,14 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     const fixedAssets: MenuProps['items'] = []
     if (hasPermission(userInfo, 'asset', 'fixed', 'view')) {
         fixedAssets.push({ key: 'fixed-assets', label: '资产列表' })
-        if (hasPermission(userInfo, 'asset', 'fixed', 'create')) {
-            fixedAssets.push({ key: 'fixed-asset-purchase', label: '资产买入' })
-            fixedAssets.push({ key: 'fixed-asset-sale', label: '资产卖出' })
-        }
-        if (hasPermission(userInfo, 'asset', 'fixed', 'allocate')) {
-            fixedAssets.push({ key: 'fixed-asset-allocation', label: '资产分配' })
-        }
+        // 隐藏买入/卖出/分配菜单，统一在列表页操作
+        // if (hasPermission(userInfo, 'asset', 'fixed', 'create')) {
+        //     fixedAssets.push({ key: 'fixed-asset-purchase', label: '资产买入' })
+        //     fixedAssets.push({ key: 'fixed-asset-sale', label: '资产卖出' })
+        // }
+        // if (hasPermission(userInfo, 'asset', 'fixed', 'allocate')) {
+        //     fixedAssets.push({ key: 'fixed-asset-allocation', label: '资产分配' })
+        // }
     }
     if (hasPermission(userInfo, 'asset', 'rental', 'view')) {
         fixedAssets.push({ key: 'rental-management', label: '租房管理' })
@@ -199,16 +200,42 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     const reports: MenuProps['items'] = []
     // 检查是否有报表查看权限
     if (hasPermission(userInfo, 'report', 'view')) {
-        reports.push({ key: 'report-dept-cash', label: '项目汇总报表' })
-        reports.push({ key: 'report-site-growth', label: '站点增长报表' })
-        reports.push({ key: 'report-ar-summary', label: '应收账款汇总' })
-        reports.push({ key: 'report-ar-detail', label: '应收账款明细' })
-        reports.push({ key: 'report-ap-summary', label: '应付账款汇总' })
-        reports.push({ key: 'report-ap-detail', label: '应付账款明细' })
-        reports.push({ key: 'report-expense-summary', label: '日常支出汇总' })
-        reports.push({ key: 'report-expense-detail', label: '日常支出明细' })
-        reports.push({ key: 'report-account-balance', label: '账户余额报表' })
-        reports.push({ key: 'report-borrowing', label: '借款统计报表' })
+        // 财务报表
+        reports.push({
+            key: 'report-finance',
+            label: '财务报表',
+            type: 'group',
+            children: [
+                { key: 'report-dept-cash', label: '项目汇总报表' },
+                { key: 'report-account-balance', label: '账户余额报表' },
+                { key: 'report-expense-summary', label: '日常支出汇总' },
+                { key: 'report-expense-detail', label: '日常支出明细' },
+                { key: 'report-borrowing', label: '借款统计报表' },
+            ]
+        })
+
+        // 往来报表
+        reports.push({
+            key: 'report-arap',
+            label: '往来报表',
+            type: 'group',
+            children: [
+                { key: 'report-ar-summary', label: '应收账款汇总' },
+                { key: 'report-ar-detail', label: '应收账款明细' },
+                { key: 'report-ap-summary', label: '应付账款汇总' },
+                { key: 'report-ap-detail', label: '应付账款明细' },
+            ]
+        })
+
+        // 运营报表
+        reports.push({
+            key: 'report-operation',
+            label: '运营报表',
+            type: 'group',
+            children: [
+                { key: 'report-site-growth', label: '站点增长报表' },
+            ]
+        })
     }
     if (reports.length > 0) {
         items.push({ key: 'reports', label: '报表中心', children: reports })
@@ -237,4 +264,59 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     }
 
     return items
+}
+
+// Map menu key to path
+export const KEY_TO_PATH: Record<string, string> = {
+    'my-center': '/my/center',
+    'my-leaves': '/my/leaves',
+    'my-reimbursements': '/my/reimbursements',
+    'my-borrowings': '/my/borrowings',
+    'my-assets': '/my/assets',
+    'company-policies': '/my/policies',
+    'my-approvals': '/my/approvals',
+
+    'flows': '/finance/flows',
+    'account-transfer': '/finance/transfer',
+    'account-transactions': '/finance/transactions',
+    'import': '/finance/import',
+    'borrowings': '/finance/borrowings',
+    'repayments': '/finance/repayments',
+    'ar': '/finance/ar',
+    'ap': '/finance/ap',
+
+    'site-management': '/sites/list',
+    'site-bills': '/sites/bills',
+
+    'fixed-assets': '/assets/list',
+    'rental-management': '/assets/rental',
+
+    'employee': '/hr/employees',
+    'employee-salary': '/hr/salary-report',
+    'salary-payments': '/hr/salary-payments',
+    'allowance-payments': '/hr/allowance-payments',
+    'employee-leave': '/hr/leaves',
+    'expense-reimbursement': '/hr/reimbursements',
+
+    'report-dept-cash': '/reports/dept-cash',
+    'report-site-growth': '/reports/site-growth',
+    'report-ar-summary': '/reports/ar-summary',
+    'report-ar-detail': '/reports/ar-detail',
+    'report-ap-summary': '/reports/ap-summary',
+    'report-ap-detail': '/reports/ap-detail',
+    'report-expense-summary': '/reports/expense-summary',
+    'report-expense-detail': '/reports/expense-detail',
+    'report-account-balance': '/reports/account-balance',
+    'report-borrowing': '/reports/borrowing',
+
+    'department': '/system/departments',
+    'category': '/system/categories',
+    'account': '/system/accounts',
+    'currency': '/system/currencies',
+    'vendor': '/system/vendors',
+    'position-permissions': '/system/permissions',
+    'email-notification': '/system/email',
+    'site-config': '/system/config',
+    'ip-whitelist': '/system/ip-whitelist',
+    'audit': '/system/audit',
 }

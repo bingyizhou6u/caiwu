@@ -4,19 +4,17 @@
  */
 
 import { message } from 'antd'
-import { getAuthToken, clearAuthToken } from './authToken'
+import { api as apiClient } from '../api/http'
 
 /**
  * 解析 API 响应，统一处理结果格式
  */
-export function parseResponse<T = any>(response: Response): Promise<{ results: T[]; data?: T }> {
-  return response.json().then((data: any) => {
-    // 统一处理：可能是 { results: [] } 或直接的数组
-    if (Array.isArray(data)) {
-      return { results: data }
-    }
-    return { results: data.results ?? [], data }
-  })
+export function parseResponse<T = any>(data: any): { results: T[]; data?: T } {
+  // 统一处理：可能是 { results: [] } 或直接的数组
+  if (Array.isArray(data)) {
+    return { results: data }
+  }
+  return { results: data.results ?? [], data }
 }
 
 /**
@@ -26,42 +24,16 @@ export async function apiRequest<T = any>(
   url: string,
   options: RequestInit = {}
 ): Promise<{ results: T[]; data?: T }> {
-  const token = getAuthToken()
-  const customHeaders = (options.headers || {}) as Record<string, string>
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...customHeaders,
-  }
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-    headers['X-Caiwu-Token'] = token
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    credentials: 'include',
-    headers,
-  })
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      clearAuthToken()
-    }
-    const error = await response.json().catch(() => ({ error: response.statusText }))
-    const errorObj = new Error(error.error || `请求失败: ${response.status}`) as any
-    errorObj.status = response.status
-    throw errorObj
-  }
-
-  return parseResponse<T>(response)
+  const data = await apiClient.request<any>(url, options)
+  return parseResponse<T>(data)
 }
 
 /**
  * GET 请求
  */
 export async function apiGet<T = any>(url: string): Promise<T[]> {
-  const { results } = await apiRequest<T>(url, { method: 'GET' })
+  const data = await apiClient.get<any>(url)
+  const { results } = parseResponse<T>(data)
   return results
 }
 
@@ -69,29 +41,23 @@ export async function apiGet<T = any>(url: string): Promise<T[]> {
  * POST 请求
  */
 export async function apiPost<T = any>(url: string, body: any): Promise<T> {
-  const { data } = await apiRequest<T>(url, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  })
-  return data as T
+  const data = await apiClient.post<T>(url, body)
+  return data
 }
 
 /**
  * PUT 请求
  */
 export async function apiPut<T = any>(url: string, body: any): Promise<T> {
-  const { data } = await apiRequest<T>(url, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  })
-  return data as T
+  const data = await apiClient.put<T>(url, body)
+  return data
 }
 
 /**
  * DELETE 请求
  */
 export async function apiDelete(url: string): Promise<void> {
-  await apiRequest(url, { method: 'DELETE' })
+  await apiClient.delete(url)
 }
 
 /**
