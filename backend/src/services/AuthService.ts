@@ -4,12 +4,17 @@ import { Errors } from '../utils/errors.js'
 import { generateTotpSecret, verifyTotp } from '../utils/auth.js'
 import { logAudit } from '../utils/audit.js'
 import { UserService } from './UserService.js'
+import { getUserFullContext } from '../utils/db.js'
+import { DrizzleD1Database } from 'drizzle-orm/d1'
+import * as schema from '../db/schema.js'
+import { eq, and } from 'drizzle-orm'
+import { users, employees, sessions } from '../db/schema.js'
 
 export class AuthService {
     private userService: UserService
 
-    constructor(private db: D1Database) {
-        this.userService = new UserService(db)
+    constructor(private db: DrizzleD1Database<typeof schema>, private kv: KVNamespace) {
+        this.userService = new UserService(db.$client)
     }
 
     async login(email: string, password: string, totp?: string, context?: any, deviceInfo?: { ip?: string, userAgent?: string }) {
@@ -17,9 +22,16 @@ export class AuthService {
         if (!user) throw Errors.UNAUTHORIZED('用户名或密码错误')
 
         // Check employee record and get name
-        const employee = await this.db.prepare('select id, name from employees where email=? and active=1').bind(email).first<{ id: string, name: string }>()
+        const employee = await this.db.select({ id: employees.id, name: employees.name })
+            .from(employees)
+            .where(and(eq(employees.email, email), eq(employees.active, 1)))
+            .get()
+
         if (!employee) {
-            const inactive = await this.db.prepare('select id from employees where email=?').bind(email).first<{ id: string }>()
+            const inactive = await this.db.select({ id: employees.id })
+                .from(employees)
+                .where(eq(employees.email, email))
+                .get()
             if (inactive) throw Errors.FORBIDDEN('员工记录已停用，请联系管理员')
             throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')
         }
@@ -53,7 +65,10 @@ export class AuthService {
         }
 
         // Login success
-        await this.db.prepare('update users set last_login_at=? where id=?').bind(Date.now(), user.id).run()
+        await this.db.update(users)
+            .set({ lastLoginAt: Date.now() })
+            .where(eq(users.id, user.id))
+            .run()
 
         const position = await this.userService.getUserPosition(user.id)
         if (!position) throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')
@@ -62,7 +77,7 @@ export class AuthService {
 
         // Audit log
         if (context) {
-            await logAudit(this.db, user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }), deviceInfo?.ip, undefined)
+            await logAudit(this.db.$client, user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }), deviceInfo?.ip, undefined)
         }
 
         return {
@@ -77,39 +92,78 @@ export class AuthService {
         const id = uuid()
         const now = Date.now()
         const expires = now + 1000 * 60 * 60 * 24 * 7 // 7 days
-        
-        // 单点登录：删除该用户的所有旧会话
-        await this.db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run()
-        
-        await this.db.prepare(`
-            INSERT INTO sessions(id, user_id, expires_at, ip_address, user_agent, created_at, last_active_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-            id, 
-            userId, 
-            expires, 
-            deviceInfo?.ip || null, 
-            deviceInfo?.userAgent || null,
-            now,
-            now
-        ).run()
+
+        // 单点登录：删除该用户的所有旧会话 (KV + DB)
+        const oldSessions = await this.db.select({ id: sessions.id })
+            .from(sessions)
+            .where(eq(sessions.userId, userId))
+            .all()
+
+        if (oldSessions.length > 0) {
+            for (const s of oldSessions) {
+                await this.kv.delete(`session:${s.id}`)
+            }
+            await this.db.delete(sessions).where(eq(sessions.userId, userId)).run()
+        }
+
+        // 1. 写入 D1 (作为持久化备份和审计)
+        await this.db.insert(sessions).values({
+            id,
+            userId,
+            expiresAt: expires,
+            ipAddress: deviceInfo?.ip || null,
+            userAgent: deviceInfo?.userAgent || null,
+            createdAt: now,
+            lastActiveAt: now
+        }).run()
+
+        // 2. 写入 KV (作为高性能缓存)
+        // 获取完整的上下文信息
+        const fullContext = await getUserFullContext(this.db.$client, userId)
+        if (fullContext) {
+            const sessionData = {
+                session: { id, user_id: userId, expires_at: expires },
+                ...fullContext
+            }
+            // KV TTL 单位是秒
+            await this.kv.put(`session:${id}`, JSON.stringify(sessionData), { expiration: Math.floor(expires / 1000) })
+        }
+
         return { id, expires }
     }
 
     async getSession(sessionId: string) {
-        const s = await this.db.prepare('select * from sessions where id=?').bind(sessionId).first<any>()
+        // 优先从 KV 读取
+        const cached = await this.kv.get(`session:${sessionId}`, 'json')
+        if (cached) {
+            return (cached as any).session
+        }
+
+        // 降级到 D1
+        const s = await this.db.select()
+            .from(sessions)
+            .where(eq(sessions.id, sessionId))
+            .get()
+
         if (!s) return null
-        if (s.expires_at && s.expires_at < Date.now()) return null
-        return s
+        if (s.expiresAt && s.expiresAt < Date.now()) return null
+
+        return {
+            id: s.id,
+            user_id: s.userId,
+            expires_at: s.expiresAt
+        }
     }
 
     async logout(sessionId: string) {
         const session = await this.getSession(sessionId)
         if (session) {
-            await logAudit(this.db, session.user_id, 'logout', 'user', session.user_id)
+            await logAudit(this.db.$client, session.user_id, 'logout', 'user', session.user_id)
         }
-        await this.db.prepare('delete from sessions where id=?').bind(sessionId).run()
+        await this.kv.delete(`session:${sessionId}`)
+        await this.db.delete(sessions).where(eq(sessions.id, sessionId)).run()
     }
+
     async changePasswordFirst(email: string, oldPassword: string, newPassword: string) {
         const user = await this.userService.getUserByEmail(email)
         if (!user) throw Errors.UNAUTHORIZED('用户不存在')
@@ -117,14 +171,18 @@ export class AuthService {
         const ok = await bcrypt.compare(oldPassword, user.password_hash)
         if (!ok) throw Errors.UNAUTHORIZED('原密码错误')
 
-        // Check if it is really first login (optional, but good for security)
-        // if (user.password_changed === 1) throw Errors.FORBIDDEN('密码已修改过')
-
         const hash = await bcrypt.hash(newPassword, 10)
-        await this.db.prepare('update users set password_hash=?, must_change_password=0, password_changed=1, updated_at=? where id=?')
-            .bind(hash, Date.now(), user.id).run()
 
-        await logAudit(this.db, user.id, 'change_password_first', 'user', user.id)
+        await this.db.update(users)
+            .set({
+                passwordHash: hash,
+                mustChangePassword: 0,
+                passwordChanged: 1
+            })
+            .where(eq(users.id, user.id))
+            .run()
+
+        await logAudit(this.db.$client, user.id, 'change_password_first', 'user', user.id)
 
         return { status: 'success' }
     }
@@ -151,10 +209,14 @@ export class AuthService {
 
         if (!verifyTotp(totp, secret)) throw Errors.UNAUTHORIZED('验证码错误')
 
-        await this.db.prepare('update users set totp_secret=?, updated_at=? where id=?')
-            .bind(secret, Date.now(), user.id).run()
+        await this.db.update(users)
+            .set({
+                totpSecret: secret
+            })
+            .where(eq(users.id, user.id))
+            .run()
 
-        await logAudit(this.db, user.id, 'bind_totp', 'user', user.id)
+        await logAudit(this.db.$client, user.id, 'bind_totp', 'user', user.id)
 
         // Auto login after bind
         return this.login(email, password, totp)

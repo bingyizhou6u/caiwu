@@ -1,177 +1,69 @@
-/**
- * 个人中心路由 - 修复版本
- */
-
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
 import { Errors } from '../utils/errors.js'
 import { logAuditAction } from '../utils/audit.js'
-import { uuid } from '../utils/db.js'
-import { validateJson, getValidatedData } from '../utils/validator.js'
-import { z } from 'zod'
-import { getAnnualLeaveStats } from '../services/AnnualLeaveService.js'
 
-export const myRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const myRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-// 获取当前用户的员工ID
-async function getMyEmployeeId(c: any): Promise<string | null> {
-  const userId = c.get('userId')
-  if (!userId) return null
-  
-  const user = await c.env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as { email: string } | null
-  if (!user?.email) return null
-  
-  const emp = await c.env.DB.prepare('SELECT id FROM employees WHERE email = ? AND active = 1').bind(user.email).first() as { id: string } | null
-  return emp?.id || null
-}
-
-// 获取员工完整信息
-async function getMyEmployeeInfo(c: any): Promise<{ id: string, join_date: string } | null> {
-  const userId = c.get('userId')
-  if (!userId) return null
-  
-  const user = await c.env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first() as { email: string } | null
-  if (!user?.email) return null
-  
-  const emp = await c.env.DB.prepare('SELECT id, join_date FROM employees WHERE email = ? AND active = 1').bind(user.email).first() as { id: string, join_date: string } | null
-  return emp
-}
-
-// ==================== 个人仪表盘 ====================
-
-myRoutes.get('/my/dashboard', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  // 优化：合并部分查询，减少数据库往返次数
-  const empInfo = await getMyEmployeeInfo(c)
-  if (!empInfo) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const employeeId = empInfo.id
-  
-  // 优化：并行执行所有数据库查询
-  const [
-    employee,
-    salary,
-    pending,
-    borrowing,
-    recent,
-    annualLeaveStats
-  ] = await Promise.all([
-    // 获取员工基本信息 (name 已在 employees 表中)
-    c.env.DB.prepare(`
-      SELECT e.*, e.email, p.name as position_name, 
-             d.name as department_name, od.name as org_department_name
-      FROM employees e
-      LEFT JOIN positions p ON p.id = e.position_id
-      LEFT JOIN departments d ON d.id = e.department_id
-      LEFT JOIN org_departments od ON od.id = e.org_department_id
-      WHERE e.id = ?
-    `).bind(employeeId).first() as Promise<any>,
-    
-    // 获取本月薪资
-    c.env.DB.prepare(`
-      SELECT SUM(amount_cents) as total_cents, currency_id
-      FROM employee_salaries WHERE employee_id = ?
-      GROUP BY currency_id
-    `).bind(employeeId).all() as Promise<D1Result<{ total_cents: number, currency_id: string }>>,
-    
-    // 待报销金额
-    c.env.DB.prepare(`
-      SELECT COALESCE(SUM(amount_cents), 0) as pending_cents
-      FROM expense_reimbursements
-      WHERE employee_id = ? AND status IN ('pending', 'approved')
-    `).bind(employeeId).first() as Promise<{ pending_cents: number } | null>,
-    
-    // 借支余额（优化子查询为JOIN）
-    c.env.DB.prepare(`
-      SELECT 
-        COALESCE(SUM(b.amount_cents), 0) as borrowed_cents,
-        COALESCE(SUM(r.amount_cents), 0) as repaid_cents
-      FROM borrowings b
-      LEFT JOIN repayments r ON r.borrowing_id = b.id
-      WHERE b.user_id = ?
-    `).bind(userId).first() as Promise<{ borrowed_cents: number, repaid_cents: number } | null>,
-    
-    // 最近申请
-    c.env.DB.prepare(`
-      SELECT * FROM (
-        SELECT id, 'leave' as type, leave_type as sub_type, status, days || '天' as amount, created_at
-        FROM employee_leaves WHERE employee_id = ?
-        UNION ALL
-        SELECT id, 'reimbursement' as type, expense_type as sub_type, status, amount_cents as amount, created_at
-        FROM expense_reimbursements WHERE employee_id = ?
-      ) ORDER BY created_at DESC LIMIT 5
-    `).bind(employeeId, employeeId).all() as Promise<D1Result<any>>,
-    
-    // 年假统计（捕获错误以避免阻塞）
-    (async () => {
-      if (!empInfo.join_date) return null
-      try {
-        return await getAnnualLeaveStats(c.env.DB, employeeId, empInfo.join_date)
-      } catch (e) {
-        console.error('Failed to get annual leave stats:', e)
-        return null
-      }
-    })()
-  ])
-  
-  const balance_cents = (borrowing?.borrowed_cents || 0) - (borrowing?.repaid_cents || 0)
-  
-  return c.json({
-    employee: {
-      id: employee?.id,
-      name: employee?.name,
-      email: employee?.email,
-      position: employee?.position_name,
-      department: employee?.department_name,
-      orgDepartment: employee?.org_department_name,
-    },
-    stats: {
-      salary: salary.results || [],
-      annualLeave: annualLeaveStats ? {
-        cycleMonths: annualLeaveStats.config.cycleMonths,
-        cycleNumber: annualLeaveStats.cycle.cycleNumber,
-        cycleStart: annualLeaveStats.cycle.cycleStart,
-        cycleEnd: annualLeaveStats.cycle.cycleEnd,
-        isFirstCycle: annualLeaveStats.cycle.isFirstCycle,
-        total: annualLeaveStats.entitledDays,
-        used: annualLeaveStats.usedDays,
-        remaining: annualLeaveStats.remainingDays,
-      } : { cycleMonths: 6, cycleNumber: 1, cycleStart: null, cycleEnd: null, isFirstCycle: true, total: 0, used: 0, remaining: 0 },
-      pendingReimbursementCents: pending?.pending_cents || 0,
-      borrowingBalanceCents: balance_cents,
-    },
-    recentApplications: recent.results || [],
-  })
+// Schemas
+const dashboardSchema = z.object({
+  employee: z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    email: z.string().optional(),
+    position: z.string().nullable().optional(),
+    department: z.string().nullable().optional(),
+    orgDepartment: z.string().nullable().optional(),
+  }),
+  stats: z.object({
+    salary: z.array(z.object({
+      totalCents: z.number(),
+      currencyId: z.string(),
+    })),
+    annualLeave: z.object({
+      cycleMonths: z.number(),
+      cycleNumber: z.number(),
+      cycleStart: z.string().nullable(),
+      cycleEnd: z.string().nullable(),
+      isFirstCycle: z.boolean(),
+      total: z.number(),
+      used: z.number(),
+      remaining: z.number(),
+    }),
+    pendingReimbursementCents: z.number(),
+    borrowingBalanceCents: z.number(),
+  }),
+  recentApplications: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    subType: z.string(),
+    status: z.string().nullable(),
+    amount: z.string().nullable(),
+    createdAt: z.number().nullable(),
+  })),
 })
 
-// ==================== 我的请假 ====================
-
-myRoutes.get('/my/leaves', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const status = c.req.query('status')
-  const year = c.req.query('year') || new Date().getFullYear().toString()
-  
-  let sql = `SELECT el.*, ae.name as approved_by_name FROM employee_leaves el LEFT JOIN users u ON u.id = el.approved_by LEFT JOIN employees ae ON ae.email = u.email WHERE el.employee_id = ? AND strftime('%Y', el.start_date) = ?`
-  const binds: any[] = [employeeId, year]
-  if (status) { sql += ' AND el.status = ?'; binds.push(status) }
-  sql += ' ORDER BY el.created_at DESC'
-  
-  const leaves = await c.env.DB.prepare(sql).bind(...binds).all() as D1Result<any>
-  const leaveStats = await c.env.DB.prepare(`
-    SELECT leave_type, COALESCE(SUM(days), 0) as used_days
-    FROM employee_leaves WHERE employee_id = ? AND status = 'approved' AND strftime('%Y', start_date) = ?
-    GROUP BY leave_type
-  `).bind(employeeId, year).all() as D1Result<{ leave_type: string, used_days: number }>
-  
-  return c.json({ leaves: leaves.results || [], stats: leaveStats.results || [] })
+const leaveSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  leaveType: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  days: z.number(),
+  status: z.string().nullable(),
+  reason: z.string().nullable(),
+  memo: z.string().nullable(),
+  approvedBy: z.string().nullable(),
+  approvedAt: z.number().nullable(),
+  createdAt: z.number().nullable(),
+  updatedAt: z.number().nullable(),
+  approved_by_name: z.string().nullable().optional(),
 })
+
+const leaveStatsSchema = z.array(z.object({
+  leaveType: z.string(),
+  usedDays: z.number(),
+}))
 
 const createLeaveSchema = z.object({
   leave_type: z.enum(['annual', 'sick', 'personal', 'other']),
@@ -181,50 +73,30 @@ const createLeaveSchema = z.object({
   reason: z.string().optional(),
 })
 
-myRoutes.post('/my/leaves', validateJson(createLeaveSchema), async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const body = getValidatedData<z.infer<typeof createLeaveSchema>>(c)
-  const now = Date.now()
-  const id = uuid()
-  
-  await c.env.DB.prepare(`
-    INSERT INTO employee_leaves (id, employee_id, leave_type, start_date, end_date, days, reason, status, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
-  `).bind(id, employeeId, body.leave_type, body.start_date, body.end_date, body.days, body.reason || null, userId, now, now).run()
-  
-  logAuditAction(c, 'create', 'employee_leave', id, JSON.stringify(body))
-  return c.json({ ok: true, id })
+const reimbursementSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  expenseType: z.string(),
+  amountCents: z.number(),
+  currencyId: z.string().nullable(),
+  expenseDate: z.string(),
+  description: z.string(),
+  voucherUrl: z.string().nullable(),
+  status: z.string().nullable(),
+  approvedBy: z.string().nullable(),
+  approvedAt: z.number().nullable(),
+  memo: z.string().nullable(),
+  createdBy: z.string().nullable(),
+  createdAt: z.number().nullable(),
+  updatedAt: z.number().nullable(),
+  approved_by_name: z.string().nullable().optional(),
 })
 
-// ==================== 我的报销 ====================
-
-myRoutes.get('/my/reimbursements', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const status = c.req.query('status')
-  // 移除对 c.symbol 的引用
-  let sql = `SELECT er.*, ae.name as approved_by_name FROM expense_reimbursements er LEFT JOIN users u ON u.id = er.approved_by LEFT JOIN employees ae ON ae.email = u.email WHERE er.employee_id = ?`
-  const binds: any[] = [employeeId]
-  if (status) { sql += ' AND er.status = ?'; binds.push(status) }
-  sql += ' ORDER BY er.created_at DESC'
-  
-  const reimbursements = await c.env.DB.prepare(sql).bind(...binds).all() as D1Result<any>
-  const stats = await c.env.DB.prepare(`
-    SELECT status, COUNT(*) as count, COALESCE(SUM(amount_cents), 0) as total_cents
-    FROM expense_reimbursements WHERE employee_id = ? GROUP BY status
-  `).bind(employeeId).all() as D1Result<any>
-  
-  return c.json({ reimbursements: reimbursements.results || [], stats: stats.results || [] })
-})
+const reimbursementStatsSchema = z.array(z.object({
+  status: z.string().nullable(),
+  count: z.number(),
+  totalCents: z.number(),
+}))
 
 const createReimbursementSchema = z.object({
   expense_type: z.enum(['travel', 'office', 'meal', 'transport', 'other']),
@@ -235,57 +107,28 @@ const createReimbursementSchema = z.object({
   voucher_url: z.string().optional(),
 })
 
-myRoutes.post('/my/reimbursements', validateJson(createReimbursementSchema), async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const body = getValidatedData<z.infer<typeof createReimbursementSchema>>(c)
-  const now = Date.now()
-  const id = uuid()
-  
-  await c.env.DB.prepare(`
-    INSERT INTO expense_reimbursements (id, employee_id, expense_type, amount_cents, currency_id, expense_date, description, voucher_url, status, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
-  `).bind(id, employeeId, body.expense_type, body.amount_cents, body.currency_id, body.expense_date, body.description, body.voucher_url || null, userId, now, now).run()
-  
-  logAuditAction(c, 'create', 'expense_reimbursement', id, JSON.stringify(body))
-  return c.json({ ok: true, id })
+const borrowingSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  borrowerId: z.string().nullable(),
+  accountId: z.string(),
+  amountCents: z.number(),
+  currency: z.string(),
+  borrowDate: z.string(),
+  memo: z.string().nullable(),
+  status: z.string().nullable(),
+  approvedBy: z.string().nullable(),
+  approvedAt: z.number().nullable(),
+  createdAt: z.number().nullable(),
+  updatedAt: z.number().nullable(),
+  account_name: z.string().nullable().optional(),
+  repaid_cents: z.number().optional(),
 })
 
-// ==================== 我的借支 ====================
-
-myRoutes.get('/my/borrowings', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  // 移除对 c.symbol 的引用
-  const borrowings = await c.env.DB.prepare(`
-    SELECT b.*, a.name as account_name,
-           (SELECT COALESCE(SUM(amount_cents), 0) FROM repayments WHERE borrowing_id = b.id) as repaid_cents
-    FROM borrowings b
-    LEFT JOIN accounts a ON a.id = b.account_id
-    WHERE b.user_id = ?
-    ORDER BY b.created_at DESC
-  `).bind(userId).all() as D1Result<any>
-  
-  const stats = await c.env.DB.prepare(`
-    SELECT 
-      COALESCE(SUM(b.amount_cents), 0) as total_borrowed_cents,
-      COALESCE((SELECT SUM(r.amount_cents) FROM repayments r WHERE r.borrowing_id IN (SELECT id FROM borrowings WHERE user_id = ?)), 0) as total_repaid_cents
-    FROM borrowings b WHERE b.user_id = ?
-  `).bind(userId, userId).first() as { total_borrowed_cents: number, total_repaid_cents: number } | null
-  
-  return c.json({
-    borrowings: borrowings.results || [],
-    stats: {
-      totalBorrowedCents: stats?.total_borrowed_cents || 0,
-      totalRepaidCents: stats?.total_repaid_cents || 0,
-      balanceCents: (stats?.total_borrowed_cents || 0) - (stats?.total_repaid_cents || 0),
-    },
-  })
+const borrowingStatsSchema = z.object({
+  totalBorrowedCents: z.number(),
+  totalRepaidCents: z.number(),
+  balanceCents: z.number(),
 })
 
 const createBorrowingSchema = z.object({
@@ -294,120 +137,73 @@ const createBorrowingSchema = z.object({
   memo: z.string().optional(),
 })
 
-myRoutes.post('/my/borrowings', validateJson(createBorrowingSchema), async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const body = getValidatedData<z.infer<typeof createBorrowingSchema>>(c)
-  const now = Date.now()
-  const id = uuid()
-  const today = new Date().toISOString().split('T')[0]
-  
-  let borrower = await c.env.DB.prepare('SELECT id FROM borrowers WHERE user_id = ?').bind(userId).first() as { id: string } | null
-  if (!borrower) {
-    const user = await c.env.DB.prepare('SELECT name FROM users WHERE id = ?').bind(userId).first() as { name: string } | null
-    const borrowerId = uuid()
-    await c.env.DB.prepare('INSERT INTO borrowers (id, name, user_id, active) VALUES (?, ?, ?, 1)').bind(borrowerId, user?.name || '未知', userId).run()
-    borrower = { id: borrowerId }
-  }
-  
-  await c.env.DB.prepare(`
-    INSERT INTO borrowings (id, borrower_id, user_id, amount_cents, currency, borrow_date, memo, status, created_by, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-  `).bind(id, borrower.id, userId, body.amount_cents, body.currency, today, body.memo || null, userId, now).run()
-  
-  logAuditAction(c, 'create', 'borrowing', id, JSON.stringify(body))
-  return c.json({ ok: true, id })
+const allowanceSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  year: z.number(),
+  month: z.number(),
+  allowanceType: z.string(),
+  currencyId: z.string(),
+  amountCents: z.number(),
+  paymentDate: z.string(),
+  paymentMethod: z.string().nullable(),
+  voucherUrl: z.string().nullable(),
+  memo: z.string().nullable(),
+  createdBy: z.string().nullable(),
+  createdAt: z.number().nullable(),
+  updatedAt: z.number().nullable(),
 })
 
-// ==================== 我的津贴 ====================
+const allowanceMonthlyStatsSchema = z.array(z.object({
+  year: z.number(),
+  month: z.number(),
+  totalCents: z.number(),
+}))
 
-myRoutes.get('/my/allowances', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const year = c.req.query('year') || new Date().getFullYear().toString()
-  
-  const allowances = await c.env.DB.prepare(`
-    SELECT ap.* FROM allowance_payments ap
-    WHERE ap.employee_id = ? AND ap.year = ?
-    ORDER BY ap.year DESC, ap.month DESC, ap.allowance_type
-  `).bind(employeeId, parseInt(year)).all() as D1Result<any>
-  
-  const monthlyStats = await c.env.DB.prepare(`
-    SELECT year, month, COALESCE(SUM(amount_cents), 0) as total_cents
-    FROM allowance_payments WHERE employee_id = ? AND year = ?
-    GROUP BY year, month ORDER BY month DESC
-  `).bind(employeeId, parseInt(year)).all() as D1Result<any>
-  
-  return c.json({ allowances: allowances.results || [], monthlyStats: monthlyStats.results || [] })
+const assetSchema = z.object({
+  id: z.string(),
+  assetId: z.string(),
+  employeeId: z.string(),
+  allocationDate: z.string(),
+  allocationType: z.string().nullable(),
+  returnDate: z.string().nullable(),
+  returnType: z.string().nullable(),
+  memo: z.string().nullable(),
+  createdBy: z.string().nullable(),
+  createdAt: z.number().nullable(),
+  updatedAt: z.number().nullable(),
+  asset_name: z.string().nullable().optional(),
+  asset_code: z.string().nullable().optional(),
+  purchase_price_cents: z.number().nullable().optional(),
 })
 
-// ==================== 我的资产 ====================
-
-myRoutes.get('/my/assets', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  // 移除对 fa.specification, fa.brand, fa.model, fa.original_value_cents 的引用
-  const assets = await c.env.DB.prepare(`
-    SELECT faa.*, fa.name as asset_name, fa.asset_code, fa.purchase_price_cents
-    FROM fixed_asset_allocations faa
-    LEFT JOIN fixed_assets fa ON fa.id = faa.asset_id
-    WHERE faa.employee_id = ?
-    ORDER BY faa.allocation_date DESC
-  `).bind(employeeId).all() as D1Result<any>
-  
-  const current = (assets.results || []).filter((a: any) => !a.return_date)
-  const returned = (assets.results || []).filter((a: any) => a.return_date)
-  
-  return c.json({ current, returned })
-})
-
-// ==================== 个人信息 ====================
-
-myRoutes.get('/my/profile', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const profile = await c.env.DB.prepare(`
-    SELECT e.*, e.email, p.name as position_name, p.code as position_code,
-           d.name as department_name, od.name as org_department_name
-    FROM employees e
-    LEFT JOIN positions p ON p.id = e.position_id
-    LEFT JOIN departments d ON d.id = e.department_id
-    LEFT JOIN org_departments od ON od.id = e.org_department_id
-    WHERE e.id = ?
-  `).bind(employeeId).first() as any | null
-  
-  let workSchedule = null
-  if (profile?.work_schedule) {
-    try { workSchedule = typeof profile.work_schedule === 'string' ? JSON.parse(profile.work_schedule) : profile.work_schedule } catch (e) {}
-  }
-
-  return c.json({
-    id: profile?.id, userId: profile?.user_id, name: profile?.name, email: profile?.email, phone: profile?.phone,
-    idCard: profile?.id_card ? '****' + profile.id_card.slice(-4) : null,
-    bankAccount: profile?.bank_account ? '****' + profile.bank_account.slice(-4) : null,
-    bankName: profile?.bank_name, position: profile?.position_name, positionCode: profile?.position_code,
-    department: profile?.department_name, orgDepartment: profile?.org_department_name,
-    entryDate: profile?.join_date, contractEndDate: profile?.contract_end_date,
-    emergencyContact: profile?.emergency_contact, emergencyPhone: profile?.emergency_phone,
-    status: profile?.status, workSchedule: workSchedule,
-    annualLeaveCycleMonths: profile?.annual_leave_cycle_months, annualLeaveDays: profile?.annual_leave_days,
-    probationSalaryCents: profile?.probation_salary_cents, regularSalaryCents: profile?.regular_salary_cents,
-    livingAllowanceCents: profile?.living_allowance_cents, housingAllowanceCents: profile?.housing_allowance_cents,
-    transportationAllowanceCents: profile?.transportation_allowance_cents, mealAllowanceCents: profile?.meal_allowance_cents,
-  })
+const profileSchema = z.object({
+  id: z.string(),
+  userId: z.string().nullable().optional(),
+  name: z.string(),
+  email: z.string(),
+  phone: z.string().nullable(),
+  idCard: z.string().nullable().optional(),
+  bankAccount: z.string().nullable().optional(),
+  bankName: z.string().nullable().optional(),
+  position: z.string().nullable().optional(),
+  positionCode: z.string().nullable().optional(),
+  department: z.string().nullable().optional(),
+  orgDepartment: z.string().nullable().optional(),
+  entryDate: z.string().nullable(),
+  contractEndDate: z.string().nullable().optional(),
+  emergencyContact: z.string().nullable(),
+  emergencyPhone: z.string().nullable(),
+  status: z.string().nullable(),
+  workSchedule: z.any().nullable().optional(),
+  annualLeaveCycleMonths: z.number().nullable().optional(),
+  annualLeaveDays: z.number().nullable().optional(),
+  probationSalaryCents: z.number().nullable(),
+  regularSalaryCents: z.number().nullable(),
+  livingAllowanceCents: z.number().nullable(),
+  housingAllowanceCents: z.number().nullable(),
+  transportationAllowanceCents: z.number().nullable(),
+  mealAllowanceCents: z.number().nullable(),
 })
 
 const updateProfileSchema = z.object({
@@ -416,221 +212,565 @@ const updateProfileSchema = z.object({
   emergency_phone: z.string().optional(),
 })
 
-myRoutes.put('/my/profile', validateJson(updateProfileSchema), async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const body = getValidatedData<z.infer<typeof updateProfileSchema>>(c)
-  const now = Date.now()
-  
-  const updates: string[] = []
-  const binds: any[] = []
-  if (body.phone !== undefined) { updates.push('phone = ?'); binds.push(body.phone) }
-  if (body.emergency_contact !== undefined) { updates.push('emergency_contact = ?'); binds.push(body.emergency_contact) }
-  if (body.emergency_phone !== undefined) { updates.push('emergency_phone = ?'); binds.push(body.emergency_phone) }
-  
-  if (updates.length === 0) return c.json({ ok: true, message: '无更新' })
-  
-  updates.push('updated_at = ?')
-  binds.push(now, employeeId)
-  
-  await c.env.DB.prepare(`UPDATE employees SET ${updates.join(', ')} WHERE id = ?`).bind(...binds).run()
-  logAuditAction(c, 'update', 'my_profile', employeeId, JSON.stringify(body))
-  return c.json({ ok: true })
+const attendanceRecordSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  clockInTime: z.number().nullable(),
+  clockOutTime: z.number().nullable(),
+  clockInLocation: z.string().nullable(),
+  clockOutLocation: z.string().nullable(),
+  status: z.string().nullable(),
+  memo: z.string().nullable(),
 })
 
-// ==================== 打卡功能 ====================
-
-// 获取今日打卡记录
-myRoutes.get('/my/attendance/today', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const today = new Date().toISOString().split('T')[0]
-  
-  const record = await c.env.DB.prepare(`
-    SELECT * FROM attendance_records WHERE employee_id = ? AND date = ?
-  `).bind(employeeId, today).first() as any | null
-  
-  // 获取员工工作时间配置
-  const employee = await c.env.DB.prepare(`
-    SELECT work_schedule FROM employees WHERE id = ?
-  `).bind(employeeId).first() as { work_schedule: string } | null
-  
-  let workSchedule = null
-  if (employee?.work_schedule) {
-    try {
-      workSchedule = typeof employee.work_schedule === 'string' 
-        ? JSON.parse(employee.work_schedule) 
-        : employee.work_schedule
-    } catch (e) {}
-  }
-  
-  return c.json({
-    today,
-    record: record ? {
-      id: record.id,
-      date: record.date,
-      clockInTime: record.clock_in_time,
-      clockOutTime: record.clock_out_time,
-      clockInLocation: record.clock_in_location,
-      clockOutLocation: record.clock_out_location,
-      status: record.status,
-      memo: record.memo,
-    } : null,
-    workSchedule,
-  })
+const attendanceTodaySchema = z.object({
+  today: z.string(),
+  record: attendanceRecordSchema.nullable(),
+  workSchedule: z.any().nullable().optional(),
 })
 
-// 获取打卡记录列表
-myRoutes.get('/my/attendance', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const year = c.req.query('year') || new Date().getFullYear().toString()
-  const month = c.req.query('month') || (new Date().getMonth() + 1).toString().padStart(2, '0')
-  
-  const startDate = `${year}-${month}-01`
-  const endDate = `${year}-${month}-31`
-  
-  const records = await c.env.DB.prepare(`
-    SELECT * FROM attendance_records 
-    WHERE employee_id = ? AND date >= ? AND date <= ?
-    ORDER BY date DESC
-  `).bind(employeeId, startDate, endDate).all() as D1Result<any>
-  
-  return c.json({
-    records: records.results || [],
-  })
-})
+// Routes
 
-// 签到
-myRoutes.post('/my/attendance/clock-in', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const today = new Date().toISOString().split('T')[0]
-  const now = Date.now()
-  
-  // 检查是否已签到
-  const existing = await c.env.DB.prepare(`
-    SELECT id, clock_in_time FROM attendance_records WHERE employee_id = ? AND date = ?
-  `).bind(employeeId, today).first() as { id: string, clock_in_time: number } | null
-  
-  if (existing?.clock_in_time) {
-    return c.json({ error: '今日已签到', clockInTime: existing.clock_in_time }, 400)
+// Dashboard
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/dashboard',
+    tags: ['My'],
+    summary: 'Get personal dashboard data',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: dashboardSchema,
+          },
+        },
+        description: 'Dashboard data',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const data = await c.get('services').my.getDashboardData(userId, c.env.DB)
+    return c.json(data)
   }
-  
-  // 获取员工工作时间配置，判断是否迟到
-  const employee = await c.env.DB.prepare(`
-    SELECT work_schedule FROM employees WHERE id = ?
-  `).bind(employeeId).first() as { work_schedule: string } | null
-  
-  let status = 'normal'
-  if (employee?.work_schedule) {
-    try {
-      const schedule = typeof employee.work_schedule === 'string' 
-        ? JSON.parse(employee.work_schedule) 
-        : employee.work_schedule
-      
-      if (schedule?.start) {
-        const [startHour, startMin] = schedule.start.split(':').map(Number)
-        const currentDate = new Date(now)
-        const currentMinutes = currentDate.getHours() * 60 + currentDate.getMinutes()
-        const startMinutes = startHour * 60 + startMin
-        
-        if (currentMinutes > startMinutes + 5) { // 允许5分钟缓冲
-          status = 'late'
-        }
-      }
-    } catch (e) {}
-  }
-  
-  if (existing) {
-    // 更新已有记录
-    await c.env.DB.prepare(`
-      UPDATE attendance_records SET clock_in_time = ?, status = ?, updated_at = ? WHERE id = ?
-    `).bind(now, status, now, existing.id).run()
-  } else {
-    // 创建新记录
-    const id = uuid()
-    await c.env.DB.prepare(`
-      INSERT INTO attendance_records (id, employee_id, date, clock_in_time, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).bind(id, employeeId, today, now, status, now, now).run()
-  }
-  
-  logAuditAction(c, 'create', 'attendance_clock_in', employeeId, JSON.stringify({ date: today, time: now }))
-  
-  return c.json({ ok: true, clockInTime: now, status })
-})
+)
 
-// 签退
-myRoutes.post('/my/attendance/clock-out', async (c) => {
-  const userId = c.get('userId')
-  if (!userId) throw Errors.UNAUTHORIZED()
-  
-  const employeeId = await getMyEmployeeId(c)
-  if (!employeeId) throw Errors.NOT_FOUND('未找到员工记录')
-  
-  const today = new Date().toISOString().split('T')[0]
-  const now = Date.now()
-  
-  // 检查是否已签到
-  const existing = await c.env.DB.prepare(`
-    SELECT id, clock_in_time, clock_out_time, status FROM attendance_records WHERE employee_id = ? AND date = ?
-  `).bind(employeeId, today).first() as { id: string, clock_in_time: number, clock_out_time: number, status: string } | null
-  
-  if (!existing?.clock_in_time) {
-    return c.json({ error: '请先签到' }, 400)
+// Leaves
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/leaves',
+    tags: ['My'],
+    summary: 'Get my leaves',
+    request: {
+      query: z.object({
+        status: z.string().optional(),
+        year: z.string().optional(),
+      }),
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              leaves: z.array(leaveSchema),
+              stats: leaveStatsSchema,
+            }),
+          },
+        },
+        description: 'Leaves list and stats',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const status = c.req.query('status')
+    const year = c.req.query('year') || new Date().getFullYear().toString()
+    const data = await c.get('services').my.getLeaves(userId, year, status)
+    return c.json(data)
   }
-  
-  if (existing.clock_out_time) {
-    return c.json({ error: '今日已签退', clockOutTime: existing.clock_out_time }, 400)
+)
+
+myRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/my/leaves',
+    tags: ['My'],
+    summary: 'Create leave request',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: createLeaveSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              ok: z.boolean(),
+              id: z.string(),
+            }),
+          },
+        },
+        description: 'Leave created',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const body = c.req.valid('json')
+    const result = await c.get('services').my.createLeave(userId, body)
+    logAuditAction(c, 'create', 'employee_leave', result.id, JSON.stringify(body))
+    return c.json(result)
   }
-  
-  // 获取员工工作时间配置，判断是否早退
-  const employee = await c.env.DB.prepare(`
-    SELECT work_schedule FROM employees WHERE id = ?
-  `).bind(employeeId).first() as { work_schedule: string } | null
-  
-  let status = existing.status
-  if (employee?.work_schedule) {
-    try {
-      const schedule = typeof employee.work_schedule === 'string' 
-        ? JSON.parse(employee.work_schedule) 
-        : employee.work_schedule
-      
-      if (schedule?.end) {
-        const [endHour, endMin] = schedule.end.split(':').map(Number)
-        const currentDate = new Date(now)
-        const currentMinutes = currentDate.getHours() * 60 + currentDate.getMinutes()
-        const endMinutes = endHour * 60 + endMin
-        
-        if (currentMinutes < endMinutes - 5) { // 允许5分钟缓冲
-          status = status === 'late' ? 'late_early' : 'early'
-        }
-      }
-    } catch (e) {}
+)
+
+// Reimbursements
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/reimbursements',
+    tags: ['My'],
+    summary: 'Get my reimbursements',
+    request: {
+      query: z.object({
+        status: z.string().optional(),
+      }),
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              reimbursements: z.array(reimbursementSchema),
+              stats: reimbursementStatsSchema,
+            }),
+          },
+        },
+        description: 'Reimbursements list and stats',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const status = c.req.query('status')
+    const data = await c.get('services').my.getReimbursements(userId, status)
+    return c.json(data)
   }
-  
-  await c.env.DB.prepare(`
-    UPDATE attendance_records SET clock_out_time = ?, status = ?, updated_at = ? WHERE id = ?
-  `).bind(now, status, now, existing.id).run()
-  
-  logAuditAction(c, 'update', 'attendance_clock_out', employeeId, JSON.stringify({ date: today, time: now }))
-  
-  return c.json({ ok: true, clockOutTime: now, status })
-})
+)
+
+myRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/my/reimbursements',
+    tags: ['My'],
+    summary: 'Create reimbursement request',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: createReimbursementSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              ok: z.boolean(),
+              id: z.string(),
+            }),
+          },
+        },
+        description: 'Reimbursement created',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const body = c.req.valid('json')
+    const result = await c.get('services').my.createReimbursement(userId, body)
+    logAuditAction(c, 'create', 'expense_reimbursement', result.id, JSON.stringify(body))
+    return c.json(result)
+  }
+)
+
+// Borrowings
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/borrowings',
+    tags: ['My'],
+    summary: 'Get my borrowings',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              borrowings: z.array(borrowingSchema),
+              stats: borrowingStatsSchema,
+            }),
+          },
+        },
+        description: 'Borrowings list and stats',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const data = await c.get('services').my.getBorrowings(userId)
+    return c.json(data)
+  }
+)
+
+myRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/my/borrowings',
+    tags: ['My'],
+    summary: 'Create borrowing request',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: createBorrowingSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              ok: z.boolean(),
+              id: z.string(),
+            }),
+          },
+        },
+        description: 'Borrowing created',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const body = c.req.valid('json')
+    const result = await c.get('services').my.createBorrowing(userId, body)
+    logAuditAction(c, 'create', 'borrowing', result.id, JSON.stringify(body))
+    return c.json(result)
+  }
+)
+
+// Allowances
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/allowances',
+    tags: ['My'],
+    summary: 'Get my allowances',
+    request: {
+      query: z.object({
+        year: z.string().optional(),
+      }),
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              allowances: z.array(allowanceSchema),
+              monthlyStats: allowanceMonthlyStatsSchema,
+            }),
+          },
+        },
+        description: 'Allowances list and stats',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const year = c.req.query('year') || new Date().getFullYear().toString()
+    const data = await c.get('services').my.getAllowances(userId, year)
+    return c.json(data)
+  }
+)
+
+// Assets
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/assets',
+    tags: ['My'],
+    summary: 'Get my assets',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              current: z.array(assetSchema),
+              returned: z.array(assetSchema),
+            }),
+          },
+        },
+        description: 'Assets list',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const data = await c.get('services').my.getAssets(userId)
+    return c.json(data)
+  }
+)
+
+// Profile
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/profile',
+    tags: ['My'],
+    summary: 'Get my profile',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: profileSchema.nullable(),
+          },
+        },
+        description: 'Profile data',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const data = await c.get('services').my.getProfile(userId)
+    return c.json(data)
+  }
+)
+
+myRoutes.openapi(
+  createRoute({
+    method: 'put',
+    path: '/my/profile',
+    tags: ['My'],
+    summary: 'Update my profile',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: updateProfileSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              ok: z.boolean(),
+              message: z.string().optional(),
+            }),
+          },
+        },
+        description: 'Profile updated',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const body = c.req.valid('json')
+    const result = await c.get('services').my.updateProfile(userId, body)
+    logAuditAction(c, 'update', 'my_profile', userId, JSON.stringify(body))
+    return c.json(result)
+  }
+)
+
+// Attendance
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/attendance/today',
+    tags: ['My'],
+    summary: 'Get today\'s attendance',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: attendanceTodaySchema,
+          },
+        },
+        description: 'Today\'s attendance',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const data = await c.get('services').my.getAttendanceToday(userId)
+    return c.json(data)
+  }
+)
+
+myRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/my/attendance',
+    tags: ['My'],
+    summary: 'Get attendance list',
+    request: {
+      query: z.object({
+        year: z.string().optional(),
+        month: z.string().optional(),
+      }),
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              records: z.array(attendanceRecordSchema),
+            }),
+          },
+        },
+        description: 'Attendance list',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const year = c.req.query('year') || new Date().getFullYear().toString()
+    const month = c.req.query('month') || (new Date().getMonth() + 1).toString().padStart(2, '0')
+    const data = await c.get('services').my.getAttendanceList(userId, year, month)
+    return c.json(data)
+  }
+)
+
+// Clock In
+myRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/my/attendance/clock-in',
+    tags: ['My'],
+    summary: 'Clock in',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              ok: z.boolean(),
+              clockInTime: z.number(),
+              status: z.string().optional(),
+            }),
+          },
+        },
+        description: 'Clock in result',
+      },
+      400: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              error: z.string(),
+              clockInTime: z.number().optional(),
+            }),
+          },
+        },
+        description: 'Clock in error',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const result = await c.get('services').my.clockIn(userId)
+
+    if (result.error) {
+      return c.json({
+        error: result.error,
+        clockInTime: result.clockInTime
+      }, 400)
+    }
+
+    logAuditAction(c, 'create', 'attendance_clock_in', userId, JSON.stringify({ time: result.clockInTime }))
+
+    return c.json({
+      ok: true,
+      clockInTime: result.clockInTime as number,
+      status: result.status
+    }, 200)
+  }
+)
+
+// Clock Out
+myRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/my/attendance/clock-out',
+    tags: ['My'],
+    summary: 'Clock out',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              ok: z.boolean(),
+              clockOutTime: z.number(),
+              status: z.string().optional(),
+            }),
+          },
+        },
+        description: 'Clock out result',
+      },
+      400: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              error: z.string(),
+              clockOutTime: z.number().optional(),
+            }),
+          },
+        },
+        description: 'Clock out error',
+      },
+    },
+  }),
+  async (c) => {
+    const userId = c.get('userId')
+    if (!userId) throw Errors.UNAUTHORIZED()
+    const result = await c.get('services').my.clockOut(userId)
+
+    if (result.error) {
+      return c.json({
+        error: result.error,
+        clockOutTime: result.clockOutTime
+      }, 400)
+    }
+
+    logAuditAction(c, 'update', 'attendance_clock_out', userId, JSON.stringify({ time: result.clockOutTime }))
+
+    return c.json({
+      ok: true,
+      clockOutTime: result.clockOutTime as number,
+      status: result.status
+    }, 200)
+  }
+)

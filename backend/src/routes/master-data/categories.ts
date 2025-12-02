@@ -1,79 +1,154 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types.js'
 import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
-import { uuid } from '../../utils/db.js'
 import { Errors } from '../../utils/errors.js'
-import { validateJson, getValidatedData } from '../../utils/validator.js'
-import { createCategorySchema, updateCategorySchema } from '../../schemas/business.schema.js'
-import { z } from 'zod'
+import { createCategorySchema, updateCategorySchema, categorySchema } from '../../schemas/master-data.schema.js'
 
-export const categoriesRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const categoriesRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-categoriesRoutes.get('/', async (c) => {
-    // 所有人都可以查看
+const listCategoriesRoute = createRoute({
+    method: 'get',
+    path: '/',
+    summary: '获取类别列表',
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        results: z.array(categorySchema)
+                    })
+                }
+            },
+            description: '类别列表'
+        }
+    }
+})
 
-    const rows = await c.env.DB.prepare('select * from categories order by kind,name').all()
-    const results = rows.results ?? []
-
+categoriesRoutes.openapi(listCategoriesRoute, async (c) => {
+    const service = c.get('services').masterData
+    const results = await service.getCategories()
     return c.json({ results })
 })
 
-categoriesRoutes.post('/', validateJson(createCategorySchema), async (c) => {
-    if (!hasPermission(c, 'system', 'category', 'create')) throw Errors.FORBIDDEN()
-    const body = getValidatedData<z.infer<typeof createCategorySchema>>(c)
-
-    // 检查类别名称是否已存在
-    const existed = await c.env.DB.prepare('select id from categories where name=?').bind(body.name).first<{ id: string }>()
-    if (existed?.id) throw Errors.DUPLICATE('类别名称')
-
-    const id = uuid()
-    await c.env.DB.prepare('insert into categories(id,name,kind,parent_id) values(?,?,?,?)')
-        .bind(id, body.name, body.kind, body.parent_id ?? null).run()
-
-    logAuditAction(c, 'create', 'category', id, JSON.stringify({ name: body.name, kind: body.kind }))
-    return c.json({ id, ...body })
+const createCategoryRoute = createRoute({
+    method: 'post',
+    path: '/',
+    summary: '创建类别',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: createCategorySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: categorySchema
+                }
+            },
+            description: '创建成功'
+        }
+    }
 })
 
-// Update category (no delete allowed). Only name/kind allowed, and kind restricted to income|expense
-categoriesRoutes.put('/:id', validateJson(updateCategorySchema), async (c) => {
+categoriesRoutes.openapi(createCategoryRoute, async (c) => {
+    if (!hasPermission(c, 'system', 'category', 'create')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
+    const service = c.get('services').masterData
+
+    const result = await service.createCategory({
+        name: body.name,
+        kind: body.kind,
+        parentId: body.parent_id || undefined
+    })
+
+    logAuditAction(c, 'create', 'category', result.id, JSON.stringify({ name: body.name, kind: body.kind }))
+
+    return c.json({
+        id: result.id,
+        name: result.name,
+        kind: result.kind as any,
+        parent_id: result.parentId,
+        active: 1
+    })
+})
+
+const updateCategoryRoute = createRoute({
+    method: 'put',
+    path: '/{id}',
+    summary: '更新类别',
+    request: {
+        params: z.object({
+            id: z.string()
+        }),
+        body: {
+            content: {
+                'application/json': {
+                    schema: updateCategorySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: z.object({ ok: z.boolean() })
+                }
+            },
+            description: '更新成功'
+        }
+    }
+})
+
+categoriesRoutes.openapi(updateCategoryRoute, async (c) => {
     if (!hasPermission(c, 'system', 'category', 'update')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
-    const body = getValidatedData<z.infer<typeof updateCategorySchema>>(c)
+    const body = c.req.valid('json')
+    const service = c.get('services').masterData
 
-    const updates: string[] = []
-    const binds: any[] = []
-    if (body.name !== undefined) {
-        // 检查名称是否与其他类别重复
-        const existed = await c.env.DB.prepare('select id from categories where name=? and id!=?').bind(body.name, id).first<{ id: string }>()
-        if (existed?.id) throw Errors.DUPLICATE('类别名称')
-        updates.push('name=?'); binds.push(body.name)
-    }
-    if (body.kind !== undefined) {
-        updates.push('kind=?'); binds.push(body.kind)
-    }
-
-    if (updates.length === 0) return c.json({ ok: true })
-
-    binds.push(id)
-    await c.env.DB.prepare(`update categories set ${updates.join(',')} where id=?`).bind(...binds).run()
+    await service.updateCategory(id, {
+        name: body.name,
+        kind: body.kind
+    })
 
     logAuditAction(c, 'update', 'category', id, JSON.stringify(body))
     return c.json({ ok: true })
 })
 
-categoriesRoutes.delete('/:id', async (c) => {
+const deleteCategoryRoute = createRoute({
+    method: 'delete',
+    path: '/{id}',
+    summary: '删除类别',
+    request: {
+        params: z.object({
+            id: z.string()
+        })
+    },
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: z.object({ ok: z.boolean() })
+                }
+            },
+            description: '删除成功'
+        }
+    }
+})
+
+categoriesRoutes.openapi(deleteCategoryRoute, async (c) => {
     if (!hasPermission(c, 'system', 'category', 'delete')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
-    const category = await c.env.DB.prepare('select name from categories where id=?').bind(id).first<{ name: string }>()
-    if (!category) throw Errors.NOT_FOUND('类别')
-    // 检查是否有流水使用此类别
-    const flows = await c.env.DB.prepare('select count(1) as cnt from cash_flows where category_id=?').bind(id).first<{ cnt: number }>()
-    if (flows && Number(flows.cnt) > 0) {
-        throw Errors.BUSINESS_ERROR('无法删除，该类别还有流水记录')
-    }
-    await c.env.DB.prepare('delete from categories where id=?').bind(id).run()
+    const service = c.get('services').masterData
 
-    logAuditAction(c, 'delete', 'category', id, JSON.stringify({ name: category.name }))
+    const result = await service.deleteCategory(id)
+
+    logAuditAction(c, 'delete', 'category', id, JSON.stringify({ name: result.name }))
     return c.json({ ok: true })
 })

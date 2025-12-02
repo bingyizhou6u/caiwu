@@ -1,135 +1,149 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
 import { hasPermission } from '../utils/permissions.js'
-import { logAudit, logAuditAction } from '../utils/audit.js'
-import { getUserByEmail } from '../utils/db.js'
-import { SystemService } from '../services/SystemService.js'
+import { logAuditAction } from '../utils/audit.js'
 import { Errors } from '../utils/errors.js'
-import { validateJson, getValidatedData } from '../utils/validator.js'
-import { isValidIPAddress } from '../utils/validation.js'
-import { createIPWhitelistSchema, batchCreateIPWhitelistSchema, batchDeleteIPWhitelistSchema, toggleIPWhitelistRuleSchema } from '../schemas/business.schema.js'
-import type { z } from 'zod'
 import {
-  addIPToCloudflareList,
-  removeIPFromCloudflareList,
-  addIPsToCloudflareList,
-  removeIPsFromCloudflareList,
-  fetchCloudflareIPListItems,
-  getWhitelistRuleStatus,
-  getOrCreateWhitelistRule,
-  toggleWhitelistRule
-} from '../utils/cloudflare.js'
+  createIPWhitelistSchema,
+  batchCreateIPWhitelistSchema,
+  batchDeleteIPWhitelistSchema,
+  toggleIPWhitelistRuleSchema
+} from '../schemas/business.schema.js'
 
-export const ip_whitelistRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const ip_whitelistRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-ip_whitelistRoutes.get('/ip-whitelist', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-
-  // 直接从 Cloudflare 拉取 IP 列表
-  const cfItems = await fetchCloudflareIPListItems(c.env)
-
-  // 转换为前端需要的格式
-  const items = cfItems.map((item, index) => ({
-    id: item.id, // 使用 Cloudflare 的 item ID
-    ip_address: item.ip,
-    description: item.comment || `IP whitelist: ${item.ip}`,
-    cloudflare_rule_id: item.id,
-    created_at: Date.now() - (cfItems.length - index) * 1000, // 模拟创建时间，按顺序递减
-    updated_at: Date.now() - (cfItems.length - index) * 1000,
-  }))
-
-  return c.json(items)
+// Schemas
+const ipWhitelistItemSchema = z.object({
+  id: z.string(),
+  ip_address: z.string(),
+  description: z.string().nullable(),
+  cloudflare_rule_id: z.string(),
+  created_at: z.number(),
+  updated_at: z.number(),
 })
 
-// IP 白名单管理 - 创建
+const ipWhitelistListSchema = z.array(ipWhitelistItemSchema)
 
-ip_whitelistRoutes.post('/ip-whitelist', validateJson(createIPWhitelistSchema), async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+const batchAddResponseSchema = z.object({
+  success: z.boolean(),
+  successCount: z.number(),
+  failedCount: z.number(),
+  errors: z.array(z.object({
+    ip: z.string(),
+    error: z.string()
+  })).optional()
+})
 
-  try {
-    const body = getValidatedData<z.infer<typeof createIPWhitelistSchema>>(c)
+const batchDeleteResponseSchema = z.object({
+  success: z.boolean(),
+  successCount: z.number(),
+  failedCount: z.number(),
+})
 
-    // 验证 IP 地址格式（支持 IPv4 和 IPv6）
-    if (!isValidIPAddress(body.ip_address)) {
-      throw Errors.VALIDATION_ERROR('无效的IP地址格式（需要IPv4或IPv6）')
-    }
+const ruleStatusSchema = z.object({
+  enabled: z.boolean(),
+  ruleId: z.string().optional(),
+  rulesetId: z.string().optional(),
+})
 
-    // 检查 Cloudflare 中是否已存在
-    const cfItems = await fetchCloudflareIPListItems(c.env)
-    const existed = cfItems.find(item => item.ip === body.ip_address)
-    if (existed) {
-      throw Errors.DUPLICATE('IP地址')
-    }
+// Routes
 
-    // 添加到 Cloudflare IP List
-    const result = await addIPToCloudflareList(c.env, body.ip_address, body.description)
-    if (!result.success) {
-      console.error('Failed to add IP to Cloudflare list:', result.error)
-      if (result && typeof result === 'object' && 'statusCode' in result) throw result
-      throw Errors.INTERNAL_ERROR(result.error || '添加IP到Cloudflare列表失败')
-    }
-
-    // 返回 Cloudflare 的实际数据
-    const now = Date.now()
-    logAuditAction(c, 'create', 'ip_whitelist', result.itemId || '', JSON.stringify({ ip_address: body.ip_address }))
-
-    return c.json({
-      id: result.itemId,
-      ip_address: body.ip_address,
-      description: body.description || null,
-      cloudflare_rule_id: result.itemId,
-      created_at: now,
-      updated_at: now,
-    })
-  } catch (error: any) {
-    console.error('Error creating IP whitelist:', error)
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(error.message || '服务器内部错误')
+// Get IP Whitelist
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/ip-whitelist',
+    tags: ['IP Whitelist'],
+    summary: 'Get IP whitelist',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ipWhitelistListSchema,
+          },
+        },
+        description: 'IP whitelist items',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const items = await c.get('services').ipWhitelist.getIPList()
+    return c.json(items)
   }
-})
+)
 
-// IP 白名单管理 - 批量添加（必须在动态路由之前定义）
+// Create IP Whitelist Item
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/ip-whitelist',
+    tags: ['IP Whitelist'],
+    summary: 'Add IP to whitelist',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: createIPWhitelistSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ipWhitelistItemSchema,
+          },
+        },
+        description: 'Created IP whitelist item',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
 
-ip_whitelistRoutes.post('/ip-whitelist/batch', validateJson(batchCreateIPWhitelistSchema), async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const result = await c.get('services').ipWhitelist.addIP(body.ip_address, body.description)
 
-  try {
-    const body = getValidatedData<z.infer<typeof batchCreateIPWhitelistSchema>>(c)
+    logAuditAction(c, 'create', 'ip_whitelist', result.id, JSON.stringify({ ip_address: body.ip_address }))
 
-    // 验证所有 IP 地址格式
-    const invalidIPs: string[] = []
-    for (const item of body.ips) {
-      if (!item.ip || !isValidIPAddress(item.ip)) {
-        invalidIPs.push(item.ip || 'empty')
-      }
-    }
+    return c.json(result)
+  }
+)
 
-    if (invalidIPs.length > 0) {
-      throw Errors.VALIDATION_ERROR(`无效的IP地址: ${invalidIPs.join(', ')}`)
-    }
+// Batch Add IPs
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/ip-whitelist/batch',
+    tags: ['IP Whitelist'],
+    summary: 'Batch add IPs to whitelist',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: batchCreateIPWhitelistSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: batchAddResponseSchema,
+          },
+        },
+        description: 'Batch add result',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
 
-    // 检查 Cloudflare 中是否已存在
-    const cfItems = await fetchCloudflareIPListItems(c.env)
-    const existingIPs = new Set(cfItems.map(item => item.ip))
-    const duplicateIPs = body.ips.filter(item => existingIPs.has(item.ip))
-
-    if (duplicateIPs.length > 0) {
-      return c.json({
-        error: `IP addresses already exist: ${duplicateIPs.map(item => item.ip).join(', ')}`
-      }, 409)
-    }
-
-    // 批量添加到 Cloudflare IP List
-    const result = await addIPsToCloudflareList(c.env, body.ips)
-
-    if (!result.success) {
-      return c.json({
-        error: 'Batch add failed',
-        successCount: result.successCount,
-        failedCount: result.failedCount,
-        errors: result.errors
-      }, 500)
-    }
+    const result = await c.get('services').ipWhitelist.batchAddIPs(body.ips)
 
     logAuditAction(c, 'batch_create', 'ip_whitelist', '', JSON.stringify({
       count: body.ips.length,
@@ -137,145 +151,178 @@ ip_whitelistRoutes.post('/ip-whitelist/batch', validateJson(batchCreateIPWhiteli
       failedCount: result.failedCount
     }))
 
-    return c.json({
-      success: true,
-      successCount: result.successCount,
-      failedCount: result.failedCount,
-      errors: result.errors,
-    })
-  } catch (error: any) {
-    console.error('Error batch adding IP whitelist:', error)
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(error.message || '服务器内部错误')
+    return c.json(result)
   }
-})
+)
 
-// IP 白名单管理 - 批量删除（必须在动态路由之前定义）
+// Batch Delete IPs
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'delete',
+    path: '/ip-whitelist/batch',
+    tags: ['IP Whitelist'],
+    summary: 'Batch delete IPs from whitelist',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: batchDeleteIPWhitelistSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: batchDeleteResponseSchema,
+          },
+        },
+        description: 'Batch delete result',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
 
-ip_whitelistRoutes.delete('/ip-whitelist/batch', validateJson(batchDeleteIPWhitelistSchema), async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-
-  try {
-    const body = getValidatedData<z.infer<typeof batchDeleteIPWhitelistSchema>>(c)
-
-    // 批量从 Cloudflare IP List 删除
-    const result = await removeIPsFromCloudflareList(c.env, body.ids)
-
-    if (!result.success) {
-      return c.json({
-        error: 'Batch delete failed',
-        successCount: result.successCount,
-        failedCount: result.failedCount
-      }, 500)
-    }
-
-    // 获取删除的 IP 地址用于审计日志
-    const cfItems = await fetchCloudflareIPListItems(c.env)
-    const deletedIPs = body.ids
-      .map(id => {
-        const item = cfItems.find(i => i.id === id)
-        return item ? item.ip : id
-      })
-      .filter(Boolean)
+    const result = await c.get('services').ipWhitelist.batchDeleteIPs(body.ids)
 
     logAuditAction(c, 'batch_delete', 'ip_whitelist', '', JSON.stringify({
       count: body.ids.length,
       successCount: result.successCount,
       failedCount: result.failedCount,
-      deletedIPs
+      deletedIds: body.ids
     }))
 
-    return c.json({
-      success: true,
-      successCount: result.successCount,
-      failedCount: result.failedCount,
-    })
-  } catch (error: any) {
-    console.error('Error batch deleting IP whitelist:', error)
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(error.message || '服务器内部错误')
+    return c.json(result)
   }
-})
+)
 
-// IP 白名单管理 - 从 Cloudflare 同步
+// Sync IPs (Just fetch and return count, as we don't store in DB anymore)
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/ip-whitelist/sync',
+    tags: ['IP Whitelist'],
+    summary: 'Sync IPs from Cloudflare',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              message: z.string(),
+              synced: z.number(),
+            }),
+          },
+        },
+        description: 'Sync result',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
 
-ip_whitelistRoutes.post('/ip-whitelist/sync', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const items = await c.get('services').ipWhitelist.getIPList()
 
-  // 直接从 Cloudflare 拉取 IP 列表（不再同步到数据库）
-  const cfItems = await fetchCloudflareIPListItems(c.env)
-
-  logAuditAction(c, 'sync', 'ip_whitelist', '', JSON.stringify({ count: cfItems.length }))
-  return c.json({ message: 'sync completed', synced: cfItems.length })
-})
-
-// IP 白名单管理 - 删除（动态路由，必须在批量路由之后定义）
-
-ip_whitelistRoutes.delete('/ip-whitelist/:id', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-  const itemId = c.req.param('id') // itemId 是 Cloudflare 的 item ID
-
-  // 先获取 IP 地址用于审计日志
-  const cfItems = await fetchCloudflareIPListItems(c.env)
-  const item = cfItems.find(i => i.id === itemId)
-  if (!item) {
-    throw Errors.NOT_FOUND()
+    logAuditAction(c, 'sync', 'ip_whitelist', '', JSON.stringify({ count: items.length }))
+    return c.json({ message: 'sync completed', synced: items.length })
   }
+)
 
-  // 从 Cloudflare IP List 删除
-  const deleted = await removeIPFromCloudflareList(c.env, itemId)
-  if (!deleted) {
-    throw Errors.INTERNAL_ERROR('从Cloudflare列表移除IP失败')
+// Delete IP
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'delete',
+    path: '/ip-whitelist/{id}',
+    tags: ['IP Whitelist'],
+    summary: 'Delete IP from whitelist',
+    request: {
+      params: z.object({
+        id: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean() }),
+          },
+        },
+        description: 'Success',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const id = c.req.param('id')
+
+    await c.get('services').ipWhitelist.deleteIP(id)
+
+    logAuditAction(c, 'delete', 'ip_whitelist', id)
+    return c.json({ ok: true })
   }
+)
 
-  logAuditAction(c, 'delete', 'ip_whitelist', itemId, JSON.stringify({ ip_address: item.ip }))
-  return c.json({ ok: true })
-})
-
-// IP 白名单规则管理 - 获取规则状态（会自动创建）
-
-ip_whitelistRoutes.get('/ip-whitelist/rule', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-  const status = await getWhitelistRuleStatus(c.env)
-  return c.json(status || { enabled: false })
-})
-
-// IP 白名单规则管理 - 创建规则（已废弃，通过 GET /api/ip-whitelist/rule 自动创建）
-
-ip_whitelistRoutes.post('/ip-whitelist/rule/create', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-
-  const result = await getOrCreateWhitelistRule(c.env)
-  if (!result) {
-    throw Errors.INTERNAL_ERROR('创建规则失败')
+// Get Rule Status
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/ip-whitelist/rule',
+    tags: ['IP Whitelist'],
+    summary: 'Get whitelist rule status',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ruleStatusSchema,
+          },
+        },
+        description: 'Rule status',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const status = await c.get('services').ipWhitelist.getRuleStatus()
+    return c.json(status)
   }
+)
 
-  logAuditAction(c, 'create', 'ip_whitelist_rule', result.ruleId, JSON.stringify({ ruleId: result.ruleId, rulesetId: result.rulesetId }))
-  return c.json({ ok: true, ruleId: result.ruleId, rulesetId: result.rulesetId })
-})
+// Toggle Rule
+ip_whitelistRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/ip-whitelist/rule/toggle',
+    tags: ['IP Whitelist'],
+    summary: 'Toggle whitelist rule',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: toggleIPWhitelistRuleSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean(), enabled: z.boolean() }),
+          },
+        },
+        description: 'Toggle result',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
 
-// IP 白名单规则管理 - 启用/停用规则
-
-ip_whitelistRoutes.post('/ip-whitelist/rule/toggle', validateJson(toggleIPWhitelistRuleSchema), async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-
-  try {
-    const body = getValidatedData<z.infer<typeof toggleIPWhitelistRuleSchema>>(c)
-
-    const success = await toggleWhitelistRule(c.env, body.enabled)
-    if (!success) {
-      console.error('toggleWhitelistRule returned false for enabled:', body.enabled)
-      throw Errors.INTERNAL_ERROR('切换规则状态失败')
-    }
+    const result = await c.get('services').ipWhitelist.toggleRule(body.enabled)
 
     logAuditAction(c, 'update', 'ip_whitelist_rule', '', JSON.stringify({ enabled: body.enabled }))
-    return c.json({ ok: true, enabled: body.enabled })
-  } catch (error: any) {
-    console.error('Error in toggle endpoint:', error)
-    console.error('Error stack:', error?.stack)
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(error?.message || '服务器内部错误')
+    return c.json(result)
   }
-})
-
-// Audit logs (manager only)
+)

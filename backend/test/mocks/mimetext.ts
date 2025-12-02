@@ -4,6 +4,6 @@ export function createMimeMessage() {
         setRecipient: () => { },
         setSubject: () => { },
         addMessage: () => { },
-        asRaw: () => '',
-    };
+        asRaw: () => 'mock-email-content'
+    }
 }

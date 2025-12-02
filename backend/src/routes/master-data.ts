@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { OpenAPIHono } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
 import { headquartersRoutes } from './master-data/headquarters.js'
 import { departmentsRoutes } from './master-data/departments.js'
@@ -9,7 +9,7 @@ import { positionsRoutes } from './master-data/positions.js'
 import { orgDepartmentsRoutes } from './master-data/org-departments.js'
 import { vendorsRoutes } from './master-data/vendors.js'
 
-export const master_dataRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const master_dataRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
 // 挂载子模块路由
 master_dataRoutes.route('/hq', headquartersRoutes)

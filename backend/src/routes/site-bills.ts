@@ -1,289 +1,350 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import { and, eq, gte, lte } from 'drizzle-orm'
+import { siteBills } from '../db/schema.js'
 import type { Env, AppVariables } from '../types.js'
-import { hasPermission, getDataAccessFilter, getUserEmployee } from '../utils/permissions.js'
-import { logAudit, logAuditAction } from '../utils/audit.js'
-import { uuid } from '../utils/db.js'
+import { hasPermission, getDataAccessFilter } from '../utils/permissions.js'
+import { logAuditAction } from '../utils/audit.js'
 import { Errors } from '../utils/errors.js'
-import { validateJson, getValidatedData, validateQuery, getValidatedQuery, validateParam, getValidatedParams } from '../utils/validator.js'
 import { createSiteBillSchema, updateSiteBillSchema } from '../schemas/business.schema.js'
 import { siteBillQuerySchema, idParamSchema } from '../schemas/common.schema.js'
-import type { z } from 'zod'
 
-export const siteBillsRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const siteBillsRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-// 站点账单管理 - 列表
-siteBillsRoutes.get('/site-bills', validateQuery(siteBillQuerySchema), async (c) => {
-  // 所有人都可以查看（通过数据权限过滤）
-  const query = getValidatedQuery<z.infer<typeof siteBillQuerySchema>>(c)
-  const siteId = query.site_id
-  const startDate = query.start_date
-  const endDate = query.end_date
-  const billType = query.bill_type
-  const status = query.status
-  
-  let sql = `
-    select 
-      sb.*,
-      s.name as site_name,
-      s.site_code,
-      a.name as account_name,
-      c.name as category_name,
-      cur.name as currency_name,
-      ce.name as creator_name
-    from site_bills sb
-    left join sites s on s.id = sb.site_id
-    left join accounts a on a.id = sb.account_id
-    left join categories c on c.id = sb.category_id
-    left join currencies cur on cur.code = sb.currency
-    left join users u on u.id = sb.created_by
-    left join employees ce on ce.email = u.email
-    where 1=1
-  `
-  const binds: any[] = []
-  
-  if (siteId) {
-    sql += ' and sb.site_id = ?'
-    binds.push(siteId)
-  }
-  
-  if (startDate) {
-    sql += ' and sb.bill_date >= ?'
-    binds.push(startDate)
-  }
-  
-  if (endDate) {
-    sql += ' and sb.bill_date <= ?'
-    binds.push(endDate)
-  }
-  
-  if (billType) {
-    sql += ' and sb.bill_type = ?'
-    binds.push(billType)
-  }
-  
-  if (status) {
-    sql += ' and sb.status = ?'
-    binds.push(status)
-  }
-  
-  sql += ' order by sb.bill_date desc, sb.created_at desc'
-  
-  // 应用数据权限过滤
-  const scopeFilter = getDataAccessFilter(c, 'sb')
-  if (scopeFilter.where !== '1=1') {
-    sql += ` AND ${scopeFilter.where}`
-    binds.push(...scopeFilter.binds)
-  }
-  
-  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-  return c.json({ results: rows.results ?? [] })
+// Schemas
+const siteBillResponseSchema = z.object({
+  id: z.string(),
+  site_id: z.string(),
+  bill_date: z.string(),
+  bill_type: z.string(),
+  amount_cents: z.number(),
+  currency: z.string(),
+  description: z.string().nullable(),
+  account_id: z.string().nullable(),
+  category_id: z.string().nullable(),
+  status: z.string(),
+  payment_date: z.string().nullable(),
+  memo: z.string().nullable(),
+  created_by: z.string().nullable(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
+  site_name: z.string().nullable(),
+  site_code: z.string().nullable(),
+  account_name: z.string().nullable(),
+  category_name: z.string().nullable(),
+  currency_name: z.string().nullable(),
+  creator_name: z.string().nullable()
 })
 
-// 站点账单管理 - 创建
-siteBillsRoutes.post('/site-bills', validateJson(createSiteBillSchema), async (c) => {
-  if (!hasPermission(c, 'finance', 'site_bill', 'create') && !hasPermission(c, 'site', 'bill', 'create')) throw Errors.FORBIDDEN()
-  const body = getValidatedData<z.infer<typeof createSiteBillSchema>>(c)
-  
-  // 验证站点存在
-  const site = await c.env.DB.prepare('select id from sites where id=?').bind(body.site_id).first<{ id: string }>()
-  if (!site) throw Errors.NOT_FOUND('站点')
-  
-  // 验证币种存在
-  const currency = await c.env.DB.prepare('select code from currencies where code=? and active=1').bind(body.currency).first<{ code: string }>()
-  if (!currency) throw Errors.NOT_FOUND('币种')
-  
-  // 验证账户（如果提供）
-  if (body.account_id) {
-    const account = await c.env.DB.prepare('select id from accounts where id=?').bind(body.account_id).first<{ id: string }>()
-    if (!account) throw Errors.NOT_FOUND('账户')
-  }
-  
-  // 验证类别（如果提供）
-  if (body.category_id) {
-    const category = await c.env.DB.prepare('select id from categories where id=?').bind(body.category_id).first<{ id: string }>()
-    if (!category) throw Errors.NOT_FOUND('类别')
-  }
-  
-  const id = uuid()
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
-  const status = body.status || 'pending'
-  
-  await c.env.DB.prepare(`
-    insert into site_bills(
-      id, site_id, bill_date, bill_type, amount_cents, currency,
-      description, account_id, category_id, status, payment_date, memo,
-      created_by, created_at, updated_at
-    ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).bind(
-    id,
-    body.site_id,
-    body.bill_date,
-    body.bill_type,
-    body.amount_cents,
-    body.currency,
-    body.description || null,
-    body.account_id || null,
-    body.category_id || null,
-    status,
-    body.payment_date || null,
-    body.memo || null,
-    userId || null,
-    now,
-    now
-  ).run()
-  
-  logAuditAction(c, 'create', 'site_bill', id, JSON.stringify({
-    site_id: body.site_id,
-    bill_date: body.bill_date,
-    bill_type: body.bill_type,
-    amount_cents: body.amount_cents,
-    currency: body.currency
-  }))
-  
-  const created = await c.env.DB.prepare(`
-    select 
-      sb.*,
-      s.name as site_name,
-      s.site_code,
-      a.name as account_name,
-      c.name as category_name,
-      cur.name as currency_name,
-      ce.name as creator_name
-    from site_bills sb
-    left join sites s on s.id = sb.site_id
-    left join accounts a on a.id = sb.account_id
-    left join categories c on c.id = sb.category_id
-    left join currencies cur on cur.code = sb.currency
-    left join users u on u.id = sb.created_by
-    left join employees ce on ce.email = u.email
-    where sb.id=?
-  `).bind(id).first()
-  
-  return c.json(created)
+const listSiteBillsResponseSchema = z.object({
+  results: z.array(siteBillResponseSchema)
 })
 
-// 站点账单管理 - 更新
-siteBillsRoutes.put('/site-bills/:id', validateParam(idParamSchema), validateJson(updateSiteBillSchema), async (c) => {
-  if (!hasPermission(c, 'finance', 'site_bill', 'update') && !hasPermission(c, 'site', 'bill', 'update')) throw Errors.FORBIDDEN()
-  const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
-  const id = params.id
-  const body = getValidatedData<z.infer<typeof updateSiteBillSchema>>(c)
-  
-  const record = await c.env.DB.prepare('select * from site_bills where id=?').bind(id).first<any>()
-  if (!record) throw Errors.NOT_FOUND()
-  
-  const updates: string[] = []
-  const binds: any[] = []
-  
-  if (body.bill_date !== undefined) { updates.push('bill_date=?'); binds.push(body.bill_date) }
-  if (body.bill_type !== undefined) {
-    updates.push('bill_type=?'); binds.push(body.bill_type)
-  }
-  if (body.amount_cents !== undefined) { updates.push('amount_cents=?'); binds.push(body.amount_cents) }
-  if (body.currency !== undefined) {
-    // 验证币种存在
-    const currency = await c.env.DB.prepare('select code from currencies where code=? and active=1').bind(body.currency).first<{ code: string }>()
-    if (!currency) throw Errors.NOT_FOUND('币种')
-    updates.push('currency=?'); binds.push(body.currency)
-  }
-  if (body.description !== undefined) { updates.push('description=?'); binds.push(body.description || null) }
-  if (body.account_id !== undefined) {
-    if (body.account_id) {
-      const account = await c.env.DB.prepare('select id from accounts where id=?').bind(body.account_id).first<{ id: string }>()
-      if (!account) throw Errors.NOT_FOUND('账户')
+// Routes
+
+// List Site Bills
+siteBillsRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/site-bills',
+    summary: 'List site bills',
+    request: {
+      query: siteBillQuerySchema
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: listSiteBillsResponseSchema
+          }
+        },
+        description: 'List of site bills'
+      }
     }
-    updates.push('account_id=?'); binds.push(body.account_id || null)
+  }),
+  async (c) => {
+    // 所有人都可以查看（通过数据权限过滤）
+    const query = c.req.valid('query')
+    const siteId = query.site_id
+    const startDate = query.start_date
+    const endDate = query.end_date
+    const billType = query.bill_type
+    const status = query.status
+
+    const conditions = []
+    if (siteId) conditions.push(eq(siteBills.siteId, siteId))
+    if (startDate) conditions.push(gte(siteBills.billDate, startDate))
+    if (endDate) conditions.push(lte(siteBills.billDate, endDate))
+    if (billType) conditions.push(eq(siteBills.billType, billType))
+    if (status) conditions.push(eq(siteBills.status, status))
+
+    const whereClause = conditions.length ? and(...conditions) : undefined
+
+    const rows = await c.var.services.finance.listSiteBills(200, whereClause)
+
+    const results = rows.map(row => {
+      const sb = row.bill
+      return {
+        id: sb.id,
+        site_id: sb.siteId,
+        bill_date: sb.billDate,
+        bill_type: sb.billType,
+        amount_cents: sb.amountCents,
+        currency: sb.currency,
+        description: sb.description,
+        account_id: sb.accountId,
+        category_id: sb.categoryId,
+        status: sb.status,
+        payment_date: sb.paymentDate,
+        memo: sb.memo,
+        created_by: sb.createdBy,
+        created_at: sb.createdAt,
+        updated_at: sb.updatedAt,
+        site_name: row.siteName,
+        site_code: row.siteCode,
+        account_name: row.accountName,
+        category_name: row.categoryName,
+        currency_name: row.currencyName,
+        creator_name: row.creatorName
+      }
+    })
+
+    return c.json({ results } as any)
   }
-  if (body.category_id !== undefined) {
-    if (body.category_id) {
-      const category = await c.env.DB.prepare('select id from categories where id=?').bind(body.category_id).first<{ id: string }>()
-      if (!category) throw Errors.NOT_FOUND('类别')
+)
+
+// Create Site Bill
+siteBillsRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/site-bills',
+    summary: 'Create site bill',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: createSiteBillSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: siteBillResponseSchema
+          }
+        },
+        description: 'Created site bill'
+      }
     }
-    updates.push('category_id=?'); binds.push(body.category_id || null)
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'finance', 'site_bill', 'create') && !hasPermission(c, 'site', 'bill', 'create')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
+
+    const result = await c.var.services.finance.createSiteBill({
+      siteId: body.site_id,
+      billDate: body.bill_date,
+      billType: body.bill_type,
+      amountCents: body.amount_cents,
+      currency: body.currency,
+      description: body.description,
+      accountId: body.account_id,
+      categoryId: body.category_id,
+      status: body.status,
+      paymentDate: body.payment_date,
+      memo: body.memo,
+      createdBy: c.get('userId')
+    })
+
+    logAuditAction(c, 'create', 'site_bill', result.id, JSON.stringify({
+      site_id: body.site_id,
+      bill_date: body.bill_date,
+      bill_type: body.bill_type,
+      amount_cents: body.amount_cents,
+      currency: body.currency
+    }))
+
+    const created = await c.env.DB.prepare(`
+      select 
+        sb.*,
+        s.name as site_name,
+        s.site_code,
+        a.name as account_name,
+        c.name as category_name,
+        cur.name as currency_name,
+        ce.name as creator_name
+      from site_bills sb
+      left join sites s on s.id = sb.site_id
+      left join accounts a on a.id = sb.account_id
+      left join categories c on c.id = sb.category_id
+      left join currencies cur on cur.code = sb.currency
+      left join users u on u.id = sb.created_by
+      left join employees ce on ce.email = u.email
+      where sb.id=?
+    `).bind(result.id).first()
+
+    return c.json(created as any)
   }
-  if (body.status !== undefined) { updates.push('status=?'); binds.push(body.status) }
-  if (body.payment_date !== undefined) { updates.push('payment_date=?'); binds.push(body.payment_date || null) }
-  if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
-  
-  if (updates.length === 0) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-  
-  updates.push('updated_at=?')
-  binds.push(Date.now())
-  binds.push(id)
-  
-  await c.env.DB.prepare(`update site_bills set ${updates.join(',')} where id=?`).bind(...binds).run()
-  
-  logAuditAction(c, 'update', 'site_bill', id, JSON.stringify(body))
-  
-  const updated = await c.env.DB.prepare(`
-    select 
-      sb.*,
-      s.name as site_name,
-      s.site_code,
-      a.name as account_name,
-      c.name as category_name,
-      cur.name as currency_name,
-      ce.name as creator_name
-    from site_bills sb
-    left join sites s on s.id = sb.site_id
-    left join accounts a on a.id = sb.account_id
-    left join categories c on c.id = sb.category_id
-    left join currencies cur on cur.code = sb.currency
-    left join users u on u.id = sb.created_by
-    left join employees ce on ce.email = u.email
-    where sb.id=?
-  `).bind(id).first()
-  
-  return c.json(updated)
-})
+)
 
-// 站点账单管理 - 删除
-siteBillsRoutes.delete('/site-bills/:id', validateParam(idParamSchema), async (c) => {
-  if (!hasPermission(c, 'finance', 'site_bill', 'delete') && !hasPermission(c, 'site', 'bill', 'delete')) throw Errors.FORBIDDEN()
-  const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
-  const id = params.id
-  
-  const record = await c.env.DB.prepare('select * from site_bills where id=?').bind(id).first<any>()
-  if (!record) throw Errors.NOT_FOUND()
-  
-  await c.env.DB.prepare('delete from site_bills where id=?').bind(id).run()
-  
-  logAuditAction(c, 'delete', 'site_bill', id, JSON.stringify({
-    site_id: record.site_id,
-    bill_date: record.bill_date
-  }))
-  
-  return c.json({ ok: true })
-})
+// Update Site Bill
+siteBillsRoutes.openapi(
+  createRoute({
+    method: 'put',
+    path: '/site-bills/{id}',
+    summary: 'Update site bill',
+    request: {
+      params: idParamSchema,
+      body: {
+        content: {
+          'application/json': {
+            schema: updateSiteBillSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: siteBillResponseSchema
+          }
+        },
+        description: 'Updated site bill'
+      }
+    }
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'finance', 'site_bill', 'update') && !hasPermission(c, 'site', 'bill', 'update')) throw Errors.FORBIDDEN()
+    const params = c.req.valid('param')
+    const id = params.id
+    const body = c.req.valid('json')
 
-// 站点账单管理 - 获取详情
-siteBillsRoutes.get('/site-bills/:id', validateParam(idParamSchema), async (c) => {
-  // 所有人都可以查看
-  const params = getValidatedParams<z.infer<typeof idParamSchema>>(c)
-  const id = params.id
-  
-  const record = await c.env.DB.prepare(`
-    select 
-      sb.*,
-      s.name as site_name,
-      s.site_code,
-      a.name as account_name,
-      c.name as category_name,
-      cur.name as currency_name,
-      ce.name as creator_name
-    from site_bills sb
-    left join sites s on s.id = sb.site_id
-    left join accounts a on a.id = sb.account_id
-    left join categories c on c.id = sb.category_id
-    left join currencies cur on cur.code = sb.currency
-    left join users u on u.id = sb.created_by
-    left join employees ce on ce.email = u.email
-    where sb.id=?
-  `).bind(id).first()
-  
-  if (!record) throw Errors.NOT_FOUND()
-  
-  return c.json(record)
-})
+    await c.var.services.finance.updateSiteBill(id, {
+      billDate: body.bill_date,
+      billType: body.bill_type,
+      amountCents: body.amount_cents,
+      currency: body.currency,
+      description: body.description,
+      accountId: body.account_id,
+      categoryId: body.category_id,
+      status: body.status,
+      paymentDate: body.payment_date,
+      memo: body.memo
+    })
 
+    logAuditAction(c, 'update', 'site_bill', id, JSON.stringify(body))
+
+    const updated = await c.env.DB.prepare(`
+      select 
+        sb.*,
+        s.name as site_name,
+        s.site_code,
+        a.name as account_name,
+        c.name as category_name,
+        cur.name as currency_name,
+        ce.name as creator_name
+      from site_bills sb
+      left join sites s on s.id = sb.site_id
+      left join accounts a on a.id = sb.account_id
+      left join categories c on c.id = sb.category_id
+      left join currencies cur on cur.code = sb.currency
+      left join users u on u.id = sb.created_by
+      left join employees ce on ce.email = u.email
+      where sb.id=?
+    `).bind(id).first()
+
+    return c.json(updated as any)
+  }
+)
+
+// Delete Site Bill
+siteBillsRoutes.openapi(
+  createRoute({
+    method: 'delete',
+    path: '/site-bills/{id}',
+    summary: 'Delete site bill',
+    request: {
+      params: idParamSchema
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean() })
+          }
+        },
+        description: 'Deleted site bill'
+      }
+    }
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'finance', 'site_bill', 'delete') && !hasPermission(c, 'site', 'bill', 'delete')) throw Errors.FORBIDDEN()
+    const params = c.req.valid('param')
+    const id = params.id
+
+    const record = await c.env.DB.prepare('select * from site_bills where id=?').bind(id).first<any>()
+    if (!record) throw Errors.NOT_FOUND()
+
+    await c.var.services.finance.deleteSiteBill(id)
+
+    logAuditAction(c, 'delete', 'site_bill', id, JSON.stringify({
+      site_id: record.site_id,
+      bill_date: record.bill_date
+    }))
+
+    return c.json({ ok: true })
+  }
+)
+
+// Get Site Bill Details
+siteBillsRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/site-bills/{id}',
+    summary: 'Get site bill details',
+    request: {
+      params: idParamSchema
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: siteBillResponseSchema
+          }
+        },
+        description: 'Site bill details'
+      }
+    }
+  }),
+  async (c) => {
+    // 所有人都可以查看
+    const params = c.req.valid('param')
+    const id = params.id
+
+    // TODO: Move to FinanceService
+    const record = await c.env.DB.prepare(`
+      select 
+        sb.*,
+        s.name as site_name,
+        s.site_code,
+        a.name as account_name,
+        c.name as category_name,
+        cur.name as currency_name,
+        ce.name as creator_name
+      from site_bills sb
+      left join sites s on s.id = sb.site_id
+      left join accounts a on a.id = sb.account_id
+      left join categories c on c.id = sb.category_id
+      left join currencies cur on cur.code = sb.currency
+      left join users u on u.id = sb.created_by
+      left join employees ce on ce.email = u.email
+      where sb.id=?
+    `).bind(id).first()
+
+    if (!record) throw Errors.NOT_FOUND()
+
+    return c.json(record as any)
+  }
+)

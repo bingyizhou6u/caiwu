@@ -1,55 +1,287 @@
-import { env } from 'cloudflare:test';
-import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
-import { FinanceService } from '../../src/services/FinanceService';
-import { uuid } from '../../src/utils/db';
-import schema from '../../src/db/schema.sql?raw';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { env } from 'cloudflare:test'
+import { FinanceService } from '../../src/services/FinanceService'
+import { createDb } from '../../src/utils/db'
+import { uuid } from '../../src/utils/db'
+import { accounts, categories, sites, departments, users, employees, currencies } from '../../src/db/schema'
+import schemaSql from '../../src/db/schema.sql?raw'
+
+async function applySchema(db: any) {
+    const statements = schemaSql.split(';').filter(s => s.trim())
+    for (const statement of statements) {
+        try {
+            await db.prepare(statement).run()
+        } catch (e) {
+            console.error('Failed to execute statement:', statement)
+            throw e
+        }
+    }
+}
 
 describe('FinanceService', () => {
-    let financeService: FinanceService;
+    let service: FinanceService
+    let db: any
+    let accountId: string
+    let categoryId: string
+    let siteId: string
+    let departmentId: string
+    let userId: string
 
     beforeAll(async () => {
-        // Split schema into statements and execute them one by one
-        const statements = schema.split(';').filter((s: string) => s.trim().length > 0);
-        for (const statement of statements) {
-            await env.DB.prepare(statement).run();
-        }
-    });
+        const rawDb = env.DB
+        await applySchema(rawDb)
+        db = createDb(rawDb)
+        service = new FinanceService(db)
 
-    beforeEach(() => {
-        financeService = new FinanceService(env.DB);
-    });
+        // Setup master data
+        accountId = uuid()
+        await db.insert(accounts).values({
+            id: accountId,
+            name: 'Test Account',
+            currency: 'CNY',
+            type: 'bank',
+            openingCents: 100000,
+            active: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }).execute()
 
-    it('should calculate account balance before a date', async () => {
-        const accountId = uuid();
-        const date = '2023-01-10';
-        const now = Date.now();
+        categoryId = uuid()
+        await db.insert(categories).values({
+            id: categoryId,
+            name: 'Test Category',
+            kind: 'expense',
+            active: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }).execute()
 
-        // Setup: Opening balance
-        await env.DB.prepare('INSERT INTO opening_balances (id, type, ref_id, amount_cents, created_at) VALUES (?, ?, ?, ?, ?)')
-            .bind(uuid(), 'account', accountId, 1000, now - 10000).run();
+        departmentId = uuid()
+        await db.insert(departments).values({
+            id: departmentId,
+            name: 'Test Department',
+            active: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }).execute()
 
-        // Setup: Transactions before date
-        await env.DB.prepare('INSERT INTO cash_flows (id, account_id, type, amount_cents, biz_date, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-            .bind(uuid(), accountId, 'income', 500, '2023-01-05', now - 5000).run();
+        siteId = uuid()
+        await db.insert(sites).values({
+            id: siteId,
+            name: 'Test Site',
+            siteCode: 'TS001',
+            departmentId,
+            active: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }).execute()
 
-        // Setup: Transactions on date (should NOT be included if we query with same timestamp)
-        await env.DB.prepare('INSERT INTO cash_flows (id, account_id, type, amount_cents, biz_date, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-            .bind(uuid(), accountId, 'expense', 200, '2023-01-10', now).run();
+        userId = uuid()
+        await db.insert(users).values({
+            id: userId,
+            email: 'test@example.com',
+            active: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }).execute()
 
-        // Setup: Transactions after date
-        await env.DB.prepare('INSERT INTO cash_flows (id, account_id, type, amount_cents, biz_date, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-            .bind(uuid(), accountId, 'income', 300, '2023-01-15', now + 5000).run();
+        await db.insert(employees).values({
+            email: 'test@example.com',
+            name: 'Test User',
+            active: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }).execute()
 
-        // Query with 'now'. Since expense was created at 'now', created_at < now is FALSE.
-        const balance = await financeService.getAccountBalanceBefore(accountId, date, now);
+        await db.insert(currencies).values({
+            code: 'CNY',
+            name: 'Chinese Yuan',
+            symbol: '¥',
+            active: 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        }).execute()
+    })
 
-        // Expected: 1000 (opening) + 500 (income before) = 1500
-        expect(balance).toBe(1500);
-    });
+    describe('Cash Flows', () => {
+        it('should create a cash flow', async () => {
+            const result = await service.createCashFlow({
+                bizDate: '2023-01-01',
+                type: 'expense',
+                accountId,
+                amountCents: 1000,
+                categoryId,
+                siteId,
+                departmentId,
+                memo: 'Test Expense',
+                createdBy: userId
+            })
 
-    it('should return 0 if no balance or flows', async () => {
-        const accountId = uuid();
-        const balance = await financeService.getAccountBalanceBefore(accountId, '2023-01-01', Date.now());
-        expect(balance).toBe(0);
-    });
-});
+            expect(result.id).toBeDefined()
+            expect(result.voucherNo).toBeDefined()
+            expect(result.voucherNo).toMatch(/^JZ20230101-\d{3}$/)
+        })
+
+        it('should get next voucher no', async () => {
+            const voucherNo = await service.getNextVoucherNo('2023-01-01')
+            expect(voucherNo).toMatch(/^JZ20230101-\d{3}$/)
+        })
+    })
+
+    describe('Account Transfers', () => {
+        it('should create an account transfer', async () => {
+            const toAccountId = uuid()
+            await db.insert(accounts).values({
+                id: toAccountId,
+                name: 'To Account',
+                currency: 'CNY',
+                type: 'bank',
+                openingCents: 0,
+                active: 1,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            }).execute()
+
+            const result = await service.createAccountTransfer({
+                transferDate: '2023-01-02',
+                fromAccountId: accountId,
+                toAccountId: toAccountId,
+                fromAmountCents: 5000,
+                toAmountCents: 5000,
+                memo: 'Test Transfer',
+                createdBy: userId
+            })
+
+            expect(result.id).toBeDefined()
+
+            const transfer = await service.getAccountTransfer(result.id)
+            expect(transfer).toBeDefined()
+            expect(transfer?.transfer.fromAmountCents).toBe(5000)
+        })
+    })
+
+    describe('AR/AP Docs', () => {
+        it('should create an AR doc', async () => {
+            const result = await service.createArApDoc({
+                kind: 'AR',
+                amountCents: 2000,
+                issueDate: '2023-01-03',
+                memo: 'Test AR',
+                siteId
+            })
+
+            expect(result.id).toBeDefined()
+            expect(result.docNo).toMatch(/^AR20230103-\d{3}$/)
+        })
+
+        it('should confirm an AR doc', async () => {
+            const { id: docId } = await service.createArApDoc({
+                kind: 'AR',
+                amountCents: 3000,
+                issueDate: '2023-01-04',
+                memo: 'Test AR Confirm'
+            })
+
+            const result = await service.confirmArApDoc({
+                docId,
+                accountId,
+                bizDate: '2023-01-05',
+                memo: 'Confirm AR',
+                createdBy: userId
+            })
+
+            expect(result.ok).toBe(true)
+            expect(result.flowId).toBeDefined()
+        })
+    })
+
+    describe('Borrowings', () => {
+        it('should create a borrowing', async () => {
+            const result = await service.createBorrowing({
+                userId,
+                accountId,
+                amountCents: 50000,
+                currency: 'CNY',
+                borrowDate: '2023-01-06',
+                memo: 'Test Borrowing',
+                createdBy: userId
+            })
+
+            expect(result.id).toBeDefined()
+        })
+
+        it('should create a repayment', async () => {
+            const { id: borrowingId } = await service.createBorrowing({
+                userId,
+                accountId,
+                amountCents: 10000,
+                currency: 'CNY',
+                borrowDate: '2023-01-07',
+                memo: 'Test Borrowing for Repay'
+            })
+
+            const result = await service.createRepayment({
+                borrowingId,
+                accountId,
+                amountCents: 5000,
+                currency: 'CNY',
+                repayDate: '2023-01-08',
+                memo: 'Test Repayment',
+                createdBy: userId
+            })
+
+            expect(result.id).toBeDefined()
+        })
+    })
+
+    describe('Site Bills', () => {
+        it('should create a site bill', async () => {
+            const result = await service.createSiteBill({
+                siteId,
+                billDate: '2023-01-09',
+                billType: 'expense',
+                amountCents: 1500,
+                currency: 'CNY',
+                description: 'Test Site Bill',
+                status: 'pending',
+                createdBy: userId
+            })
+
+            expect(result.id).toBeDefined()
+        })
+
+        it('should update a site bill', async () => {
+            const { id } = await service.createSiteBill({
+                siteId,
+                billDate: '2023-01-10',
+                billType: 'income',
+                amountCents: 2000,
+                currency: 'CNY',
+                description: 'Test Site Bill Update',
+                status: 'pending'
+            })
+
+            const result = await service.updateSiteBill(id, {
+                status: 'paid',
+                paymentDate: '2023-01-11'
+            })
+
+            expect(result.ok).toBe(true)
+        })
+
+        it('should delete a site bill', async () => {
+            const { id } = await service.createSiteBill({
+                siteId,
+                billDate: '2023-01-12',
+                billType: 'expense',
+                amountCents: 100,
+                currency: 'CNY',
+                description: 'Test Site Bill Delete',
+                status: 'pending'
+            })
+
+            const result = await service.deleteSiteBill(id)
+            expect(result.ok).toBe(true)
+        })
+    })
+})

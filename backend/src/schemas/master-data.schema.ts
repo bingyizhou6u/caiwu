@@ -2,7 +2,7 @@
  * 主数据相关Schema
  */
 
-import { z } from 'zod'
+import { z } from '@hono/zod-openapi'
 import { uuidSchema, dateSchema } from './common.schema.js'
 
 /**
@@ -96,3 +96,82 @@ export const currencySchema = z.object({
 export const createCurrencySchema = currencySchema
 export const updateCurrencySchema = currencySchema.partial().omit({ code: true })
 
+/**
+ * 供应商Schema
+ */
+export const vendorSchema = z.object({
+  id: uuidSchema,
+  name: z.string().min(1, '名称不能为空'),
+  contact: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  email: z.string().email('邮箱格式不正确').optional().nullable(),
+  address: z.string().optional().nullable(),
+  memo: z.string().optional().nullable(),
+  active: z.number().int().min(0).max(1).default(1),
+})
+
+export const createVendorSchema = vendorSchema.omit({ id: true })
+export const updateVendorSchema = createVendorSchema.partial()
+
+/**
+ * 账户交易记录Schema
+ */
+export const accountTransactionSchema = z.object({
+  id: uuidSchema,
+  transaction_date: z.string(),
+  transaction_type: z.string(),
+  amount_cents: z.number().int(),
+  balance_before_cents: z.number().int(),
+  balance_after_cents: z.number().int(),
+  created_at: z.number().int(),
+  voucher_no: z.string().optional().nullable(),
+  memo: z.string().optional().nullable(),
+  counterparty: z.string().optional().nullable(),
+  voucher_url: z.string().optional().nullable(),
+  category_name: z.string().optional().nullable(),
+})
+
+/**
+ * 职位Schema
+ */
+export const positionSchema = z.object({
+  id: uuidSchema,
+  code: z.string().min(1, '职位代码不能为空'),
+  name: z.string().min(1, '职位名称不能为空'),
+  level: z.number().int().min(1).max(3),
+  function_role: z.string().min(1, '职能角色不能为空'),
+  can_manage_subordinates: z.number().int().min(0).max(1).default(0),
+  description: z.string().optional().nullable(),
+  permissions: z.string().optional().nullable(), // JSON string
+  sort_order: z.number().int().default(0),
+  active: z.number().int().min(0).max(1).default(1),
+})
+
+/**
+ * 组织部门Schema
+ */
+export const orgDepartmentSchema = z.object({
+  id: uuidSchema,
+  project_id: uuidSchema.optional().nullable(),
+  parent_id: uuidSchema.optional().nullable(),
+  name: z.string().min(1, '部门名称不能为空'),
+  code: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  allowed_modules: z.string().optional().nullable(), // JSON string
+  allowed_positions: z.string().optional().nullable(), // JSON string
+  default_position_id: uuidSchema.optional().nullable(),
+  active: z.number().int().min(0).max(1).default(1),
+  sort_order: z.number().int().default(0),
+})
+
+export const availablePositionsResponseSchema = z.object({
+  results: z.array(positionSchema),
+  grouped: z.record(z.array(positionSchema)),
+  department_info: z.object({
+    project_id: z.string().nullable(),
+    project_name: z.string().nullable(),
+    department_id: z.string(),
+    department_name: z.string(),
+    is_hq: z.boolean()
+  })
+})

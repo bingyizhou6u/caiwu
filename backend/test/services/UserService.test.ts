@@ -22,7 +22,7 @@ describe('UserService', () => {
     it('should get user by id', async () => {
         const id = uuid();
         const email = 'test@example.com';
-        await env.DB.prepare('INSERT INTO users (id, email, name, active) VALUES (?, ?, ?, 1)').bind(id, email, 'Test User').run();
+        await env.DB.prepare('INSERT INTO users (id, email, active) VALUES (?, ?, ?)').bind(id, email, 1).run();
 
         const user = await userService.getUserById(id);
         expect(user).toBeDefined();
@@ -40,7 +40,7 @@ describe('UserService', () => {
         const email = 'dept@example.com';
 
         // Setup: Create user and employee record linked to department
-        await env.DB.prepare('INSERT INTO users (id, email, name, active) VALUES (?, ?, ?, 1)').bind(userId, email, 'Dept User').run();
+        await env.DB.prepare('INSERT INTO users (id, email, active) VALUES (?, ?, ?)').bind(userId, email, 1).run();
         await env.DB.prepare('INSERT INTO employees (id, email, department_id, name, active) VALUES (?, ?, ?, ?, 1)').bind(uuid(), email, deptId, 'Dept Employee').run();
         // Also insert into user_departments as UserService checks this
         await env.DB.prepare('INSERT INTO user_departments (user_id, department_id) VALUES (?, ?)').bind(userId, deptId).run();

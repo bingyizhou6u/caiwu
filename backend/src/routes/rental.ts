@@ -1,927 +1,676 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
-import { hasPermission, getUserPosition, getDataAccessFilter } from '../utils/permissions.js'
-import { logAudit, logAuditAction } from '../utils/audit.js'
-import { uuid } from '../utils/db.js'
-import { FinanceService } from '../services/FinanceService.js'
+import { hasPermission, getUserPosition } from '../utils/permissions.js'
+import { logAuditAction } from '../utils/audit.js'
 import { Errors } from '../utils/errors.js'
-import { validateJson, getValidatedData, validateQuery, getValidatedQuery } from '../utils/validator.js'
-import { createRentalPaymentSchema, updateRentalPaymentSchema, allocateDormitorySchema, createRentalPropertySchema } from '../schemas/business.schema.js'
-import { rentalPropertyQuerySchema } from '../schemas/common.schema.js'
-import type { z } from 'zod'
+import {
+  createRentalPropertySchema,
+  updateRentalPropertySchema,
+  createRentalPaymentSchema,
+  updateRentalPaymentSchema,
+  allocateDormitorySchema,
+  returnDormitorySchema
+} from '../schemas/business.schema.js'
+import {
+  rentalPropertyQuerySchema,
+  rentalPayableBillQuerySchema,
+  uuidSchema
+} from '../schemas/common.schema.js'
 
-export const rentalRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const rentalRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-// 获取租赁房屋列表
-rentalRoutes.get('/rental-properties', validateQuery(rentalPropertyQuerySchema), async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  const query = getValidatedQuery<z.infer<typeof rentalPropertyQuerySchema>>(c)
-  const propertyType = query.property_type
-  const status = query.status
-  const departmentId = query.department_id
+// --- Rental Properties ---
 
-  let sql = `
-    select 
-      rp.*,
-      d.name as department_name,
-      a.name as payment_account_name,
-      cur.name as currency_name,
-      ce.name as created_by_name
-    from rental_properties rp
-    left join departments d on d.id = rp.department_id
-    left join accounts a on a.id = rp.payment_account_id
-    left join currencies cur on cur.code = rp.currency
-    left join users u on u.id = rp.created_by
-    left join employees ce on ce.email = u.email
-  `
-  const conds: string[] = []
-  const binds: any[] = []
-
-  if (propertyType) {
-    conds.push('rp.property_type = ?')
-    binds.push(propertyType)
-  }
-  if (status) {
-    conds.push('rp.status = ?')
-    binds.push(status)
-  }
-  if (departmentId) {
-    conds.push('rp.department_id = ?')
-    binds.push(departmentId)
-  }
-
-  if (conds.length) sql += ' where ' + conds.join(' and ')
-  sql += ' order by rp.created_at desc'
-
-  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-  return c.json({ results: rows.results ?? [] })
-})
-
-// 获取员工宿舍分配记录列表（必须在 /rental-properties/:id 之前定义，避免路由冲突）
-rentalRoutes.get('/rental-properties/allocations', async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  const propertyId = c.req.query('property_id')
-  const employeeId = c.req.query('employee_id')
-  const returned = c.req.query('returned') // 'true' | 'false' | undefined
-
-  let sql = `
-    select 
-      da.*,
-      rp.property_code,
-      rp.name as property_name,
-      e.name as employee_name,
-      e.department_id as employee_department_id,
-      d.name as employee_department_name,
-      ce.name as created_by_name
-    from dormitory_allocations da
-    left join rental_properties rp on rp.id = da.property_id
-    left join employees e on e.id = da.employee_id
-    left join departments d on d.id = e.department_id
-    left join users u on u.id = da.created_by
-    left join employees ce on ce.email = u.email
-  `
-  const conds: string[] = []
-  const binds: any[] = []
-
-  if (propertyId) {
-    conds.push('da.property_id=?')
-    binds.push(propertyId)
-  }
-  if (employeeId) {
-    conds.push('da.employee_id=?')
-    binds.push(employeeId)
-  }
-  if (returned === 'true') {
-    conds.push('da.return_date is not null')
-  } else if (returned === 'false') {
-    conds.push('da.return_date is null')
-  }
-
-  if (conds.length) sql += ' where ' + conds.join(' and ')
-  sql += ' order by da.allocation_date desc, da.created_at desc'
-
-  try {
-    const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-    return c.json({ results: rows.results ?? [] })
-  } catch (error: any) {
-    console.error('Error in /rental-properties/allocations:', {
-      error: error.message,
-      sql,
-      binds
-    })
-
-    // 如果是AppError，直接抛出
-    if (error && typeof error === 'object' && 'statusCode' in error) {
-      throw error
+const listPropertiesRoute = createRoute({
+  method: 'get',
+  path: '/rental-properties',
+  summary: '获取租赁房屋列表',
+  request: {
+    query: rentalPropertyQuerySchema
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            results: z.array(z.object({
+              property: z.any(),
+              departmentName: z.string().nullable(),
+              paymentAccountName: z.string().nullable(),
+              currencyName: z.string().nullable(),
+              createdByName: z.string().nullable()
+            }))
+          })
+        }
+      },
+      description: '租赁房屋列表'
     }
-
-    // 其他错误包装为内部错误
-    throw Errors.INTERNAL_ERROR(`查询失败: ${error.message}`)
   }
 })
 
-// 获取单个租赁房屋详情
-rentalRoutes.get('/rental-properties/:id', async (c) => {
+rentalRoutes.openapi(listPropertiesRoute, async (c) => {
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
+  const query = c.req.valid('query')
+  const service = c.get('services').rental
+  const results = await service.listProperties(query)
+  return c.json({ results })
+})
+
+// --- Dormitory Allocations ---
+
+const listAllocationsRoute = createRoute({
+  method: 'get',
+  path: '/rental-properties/allocations',
+  summary: '获取员工宿舍分配记录列表',
+  request: {
+    query: z.object({
+      property_id: uuidSchema.optional(),
+      employee_id: uuidSchema.optional(),
+      returned: z.enum(['true', 'false']).optional()
+    })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            results: z.array(z.object({
+              allocation: z.any(),
+              propertyCode: z.string().nullable(),
+              propertyName: z.string().nullable(),
+              employeeName: z.string().nullable(),
+              employeeDepartmentId: z.string().nullable(),
+              employeeDepartmentName: z.string().nullable(),
+              createdByName: z.string().nullable()
+            }))
+          })
+        }
+      },
+      description: '分配记录列表'
+    }
+  }
+})
+
+rentalRoutes.openapi(listAllocationsRoute, async (c) => {
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
+  const query = c.req.valid('query')
+  const service = c.get('services').rental
+
+  const returned = query.returned === 'true' ? true : (query.returned === 'false' ? false : undefined)
+
+  const results = await service.listAllocations({
+    propertyId: query.property_id,
+    employeeId: query.employee_id,
+    returned
+  })
+  return c.json({ results })
+})
+
+const allocateDormitoryRoute = createRoute({
+  method: 'post',
+  path: '/rental-properties/{id}/allocate-dormitory',
+  summary: '员工宿舍分配',
+  request: {
+    params: z.object({ id: uuidSchema }),
+    body: {
+      content: {
+        'application/json': {
+          schema: allocateDormitorySchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ id: z.string() })
+        }
+      },
+      description: '分配成功'
+    }
+  }
+})
+
+rentalRoutes.openapi(allocateDormitoryRoute, async (c) => {
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
+  const id = c.req.param('id')
+  const body = c.req.valid('json')
+  const userId = c.get('userId')
+  const service = c.get('services').rental
+
+  const result = await service.allocateDormitory({
+    propertyId: id,
+    employeeId: body.employee_id,
+    roomNumber: body.room_number || undefined,
+    bedNumber: body.bed_number || undefined,
+    allocationDate: body.allocation_date,
+    monthlyRentCents: body.monthly_rent_cents || undefined,
+    memo: body.memo || undefined,
+    createdBy: userId
+  })
+
+  logAuditAction(c, 'allocate', 'dormitory', result.id, JSON.stringify({
+    property_id: id,
+    employee_id: body.employee_id
+  }))
+
+  return c.json({ id: result.id })
+})
+
+const returnDormitoryRoute = createRoute({
+  method: 'post',
+  path: '/rental-properties/allocations/{id}/return',
+  summary: '员工宿舍归还',
+  request: {
+    params: z.object({ id: uuidSchema }),
+    body: {
+      content: {
+        'application/json': {
+          schema: returnDormitorySchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ ok: z.boolean() })
+        }
+      },
+      description: '归还成功'
+    }
+  }
+})
+
+rentalRoutes.openapi(returnDormitoryRoute, async (c) => {
+  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
+  const id = c.req.param('id')
+  const body = c.req.valid('json')
+  const service = c.get('services').rental
+
+  await service.returnDormitory(id, {
+    returnDate: body.return_date,
+    memo: body.memo
+  })
+
+  logAuditAction(c, 'return', 'dormitory_allocation', id, JSON.stringify({ allocation_id: id }))
+  return c.json({ ok: true })
+})
+
+const getPropertyRoute = createRoute({
+  method: 'get',
+  path: '/rental-properties/{id}',
+  summary: '获取单个租赁房屋详情',
+  request: {
+    params: z.object({ id: uuidSchema })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.any() // TODO: Define detailed response schema
+        }
+      },
+      description: '租赁房屋详情'
+    }
+  }
+})
+
+rentalRoutes.openapi(getPropertyRoute, async (c) => {
   if (!getUserPosition(c)) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const property = await c.env.DB.prepare(`
-    select 
-      rp.*,
-      d.name as department_name,
-      a.name as payment_account_name,
-      cur.name as currency_name,
-      ce.name as created_by_name
-    from rental_properties rp
-    left join departments d on d.id = rp.department_id
-    left join accounts a on a.id = rp.payment_account_id
-    left join currencies cur on cur.code = rp.currency
-    left join users u on u.id = rp.created_by
-    left join employees ce on ce.email = u.email
-    where rp.id = ?
-  `).bind(id).first()
-
-  if (!property) throw Errors.NOT_FOUND()
-
-  // 优化：并行查询付款记录、变动记录和分配记录
-  const [payments, changes, allocationsResult] = await Promise.all([
-    c.env.DB.prepare(`
-      select * from rental_payments
-      where property_id = ?
-      order by year desc, month desc
-    `).bind(id).all(),
-    c.env.DB.prepare(`
-      select * from rental_changes
-      where property_id = ?
-      order by change_date desc
-    `).bind(id).all(),
-    property.property_type === 'dormitory'
-      ? c.env.DB.prepare(`
-          select 
-            da.*,
-            e.name as employee_name,
-            d.name as employee_department_name
-          from dormitory_allocations da
-          left join employees e on e.id = da.employee_id
-          left join departments d on d.id = e.department_id
-          where da.property_id = ?
-          order by da.allocation_date desc
-        `).bind(id).all()
-      : Promise.resolve({ results: [] })
-  ])
-
-  return c.json({
-    ...property,
-    payments: payments.results ?? [],
-    changes: changes.results ?? [],
-    allocations: allocationsResult.results ?? []
-  })
+  const service = c.get('services').rental
+  const result = await service.getProperty(id)
+  return c.json(result)
 })
 
-// 创建租赁房屋
-rentalRoutes.post('/rental-properties', validateJson(createRentalPropertySchema), async (c) => {
-  if (!hasPermission(c, 'asset', 'rental', 'create')) throw Errors.FORBIDDEN()
-  const body = getValidatedData<z.infer<typeof createRentalPropertySchema>>(c)
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
-
-  // 检查房屋编号是否已存在
-  const existed = await c.env.DB.prepare('select id from rental_properties where property_code = ?')
-    .bind(body.property_code).first<{ id: string }>()
-  if (existed?.id) {
-    throw Errors.DUPLICATE('物业代码')
+const createPropertyRoute = createRoute({
+  method: 'post',
+  path: '/rental-properties',
+  summary: '创建租赁房屋',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createRentalPropertySchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ id: z.string(), property_code: z.string() })
+        }
+      },
+      description: '创建成功'
+    }
   }
+})
 
-  const id = uuid()
-  await c.env.DB.prepare(`
-    insert into rental_properties(
-      id, property_code, name, property_type, address, area_sqm,
-      rent_type, monthly_rent_cents, yearly_rent_cents, currency,
-      payment_period_months, landlord_name, landlord_contact,
-      lease_start_date, lease_end_date, deposit_cents, payment_method,
-      payment_account_id, payment_day, department_id, status,
-      memo, contract_file_url, created_by, created_at, updated_at
-    ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).bind(
-    id,
-    body.property_code,
-    body.name,
-    body.property_type,
-    body.address || null,
-    body.area_sqm || null,
-    body.rent_type || 'monthly',
-    body.monthly_rent_cents ? Number(body.monthly_rent_cents) : null,
-    body.yearly_rent_cents ? Number(body.yearly_rent_cents) : null,
-    body.currency,
-    body.payment_period_months || 1,
-    body.landlord_name || null,
-    body.landlord_contact || null,
-    body.lease_start_date || null,
-    body.lease_end_date || null,
-    body.deposit_cents ? Number(body.deposit_cents) : null,
-    body.payment_method || null,
-    body.payment_account_id || null,
-    body.payment_day || 1,
-    body.property_type === 'office' ? (body.department_id || null) : null,
-    body.status || 'active',
-    body.memo || null,
-    body.contract_file_url || null,
-    userId || null,
-    now,
-    now
-  ).run()
+rentalRoutes.openapi(createPropertyRoute, async (c) => {
+  if (!hasPermission(c, 'asset', 'rental', 'create')) throw Errors.FORBIDDEN()
+  const body = c.req.valid('json')
+  // console.error('Create Property Body:', JSON.stringify(body, null, 2))
+  const userId = c.get('userId')
+  const service = c.get('services').rental
 
-  logAuditAction(c, 'create', 'rental_property', id, JSON.stringify({
+  const result = await service.createProperty({
+    propertyCode: body.property_code,
+    name: body.name,
+    propertyType: body.property_type,
+    address: body.address,
+    areaSqm: body.area_sqm,
+    rentType: body.rent_type,
+    monthlyRentCents: body.monthly_rent_cents,
+    yearlyRentCents: body.yearly_rent_cents,
+    currency: body.currency,
+    paymentPeriodMonths: body.payment_period_months,
+    landlordName: body.landlord_name,
+    landlordContact: body.landlord_contact,
+    leaseStartDate: body.lease_start_date,
+    leaseEndDate: body.lease_end_date,
+    depositCents: body.deposit_cents,
+    paymentMethod: body.payment_method,
+    paymentAccountId: body.payment_account_id,
+    paymentDay: body.payment_day,
+    departmentId: body.department_id,
+
+    status: body.status,
+    memo: body.memo,
+    contractFileUrl: body.contract_file_url,
+    createdBy: userId
+  })
+
+  logAuditAction(c, 'create', 'rental_property', result.id, JSON.stringify({
     property_code: body.property_code,
     name: body.name,
     property_type: body.property_type
   }))
 
-  return c.json({ id, property_code: body.property_code })
+  return c.json({ id: result.id, property_code: body.property_code })
 })
 
-// 更新租赁房屋
-rentalRoutes.put('/rental-properties/:id', async (c) => {
+const updatePropertyRoute = createRoute({
+  method: 'put',
+  path: '/rental-properties/{id}',
+  summary: '更新租赁房屋',
+  request: {
+    params: z.object({ id: uuidSchema }),
+    body: {
+      content: {
+        'application/json': {
+          schema: updateRentalPropertySchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ ok: z.boolean() })
+        }
+      },
+      description: '更新成功'
+    }
+  }
+})
+
+rentalRoutes.openapi(updatePropertyRoute, async (c) => {
   if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const body = await c.req.json<any>()
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
+  const body = c.req.valid('json')
+  const userId = c.get('userId')
+  const service = c.get('services').rental
 
-  // 检查房屋是否存在
-  const existing = await c.env.DB.prepare('select * from rental_properties where id = ?').bind(id).first()
-  if (!existing) throw Errors.NOT_FOUND()
-
-  const updates: string[] = []
-  const binds: any[] = []
-
-  if (body.name !== undefined) { updates.push('name=?'); binds.push(body.name) }
-  if (body.property_type !== undefined) { updates.push('property_type=?'); binds.push(body.property_type) }
-  if (body.address !== undefined) { updates.push('address=?'); binds.push(body.address || null) }
-  if (body.area_sqm !== undefined) { updates.push('area_sqm=?'); binds.push(body.area_sqm || null) }
-  if (body.rent_type !== undefined) { updates.push('rent_type=?'); binds.push(body.rent_type) }
-  if (body.monthly_rent_cents !== undefined) { updates.push('monthly_rent_cents=?'); binds.push(body.monthly_rent_cents ? Number(body.monthly_rent_cents) : null) }
-  if (body.yearly_rent_cents !== undefined) { updates.push('yearly_rent_cents=?'); binds.push(body.yearly_rent_cents ? Number(body.yearly_rent_cents) : null) }
-  if (body.currency !== undefined) { updates.push('currency=?'); binds.push(body.currency) }
-  if (body.payment_period_months !== undefined) { updates.push('payment_period_months=?'); binds.push(body.payment_period_months || 1) }
-  if (body.landlord_name !== undefined) { updates.push('landlord_name=?'); binds.push(body.landlord_name || null) }
-  if (body.landlord_contact !== undefined) { updates.push('landlord_contact=?'); binds.push(body.landlord_contact || null) }
-  if (body.lease_start_date !== undefined) { updates.push('lease_start_date=?'); binds.push(body.lease_start_date || null) }
-  if (body.lease_end_date !== undefined) { updates.push('lease_end_date=?'); binds.push(body.lease_end_date || null) }
-  if (body.deposit_cents !== undefined) { updates.push('deposit_cents=?'); binds.push(body.deposit_cents ? Number(body.deposit_cents) : null) }
-  if (body.payment_method !== undefined) { updates.push('payment_method=?'); binds.push(body.payment_method || null) }
-  if (body.payment_account_id !== undefined) { updates.push('payment_account_id=?'); binds.push(body.payment_account_id || null) }
-  if (body.payment_day !== undefined) { updates.push('payment_day=?'); binds.push(body.payment_day || 1) }
-  if (body.department_id !== undefined) {
-    const deptId = body.property_type === 'office' ? (body.department_id || null) : null
-    updates.push('department_id=?')
-    binds.push(deptId)
-  }
-  if (body.status !== undefined) { updates.push('status=?'); binds.push(body.status) }
-  if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
-  if (body.contract_file_url !== undefined) { updates.push('contract_file_url=?'); binds.push(body.contract_file_url || null) }
-
-  updates.push('updated_at=?')
-  binds.push(now)
-
-  if (updates.length === 1) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-
-  binds.push(id)
-  await c.env.DB.prepare(`update rental_properties set ${updates.join(',')} where id=?`).bind(...binds).run()
-
-  // 如果状态、租金、租期发生变化，记录变动
-  if (body.status !== undefined || body.monthly_rent_cents !== undefined || body.yearly_rent_cents !== undefined || body.rent_type !== undefined || body.lease_start_date !== undefined || body.lease_end_date !== undefined) {
-    const changeId = uuid()
-    await c.env.DB.prepare(`
-      insert into rental_changes(
-        id, property_id, change_type, change_date,
-        from_lease_start, to_lease_start, from_lease_end, to_lease_end,
-        from_monthly_rent_cents, to_monthly_rent_cents,
-        from_status, to_status, memo, created_by, created_at
-      ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `).bind(
-      changeId,
-      id,
-      'modify',
-      new Date().toISOString().split('T')[0],
-      existing.lease_start_date || null,
-      body.lease_start_date !== undefined ? (body.lease_start_date || null) : (existing.lease_start_date || null),
-      existing.lease_end_date || null,
-      body.lease_end_date !== undefined ? (body.lease_end_date || null) : (existing.lease_end_date || null),
-      existing.monthly_rent_cents || null,
-      body.monthly_rent_cents !== undefined ? Number(body.monthly_rent_cents) : (existing.monthly_rent_cents || null),
-      existing.status || null,
-      body.status !== undefined ? body.status : existing.status,
-      body.memo || null,
-      userId || null,
-      now
-    ).run()
-  }
+  await service.updateProperty(id, {
+    name: body.name,
+    propertyType: body.property_type,
+    address: body.address,
+    areaSqm: body.area_sqm,
+    rentType: body.rent_type,
+    monthlyRentCents: body.monthly_rent_cents,
+    yearlyRentCents: body.yearly_rent_cents,
+    currency: body.currency,
+    paymentPeriodMonths: body.payment_period_months,
+    landlordName: body.landlord_name,
+    landlordContact: body.landlord_contact,
+    leaseStartDate: body.lease_start_date,
+    leaseEndDate: body.lease_end_date,
+    depositCents: body.deposit_cents,
+    paymentMethod: body.payment_method,
+    paymentAccountId: body.payment_account_id,
+    paymentDay: body.payment_day,
+    departmentId: body.department_id,
+    status: body.status,
+    memo: body.memo,
+    contractFileUrl: body.contract_file_url,
+    createdBy: userId
+  })
 
   logAuditAction(c, 'update', 'rental_property', id, JSON.stringify(body))
   return c.json({ ok: true })
 })
 
-// 删除租赁房屋
-rentalRoutes.delete('/rental-properties/:id', async (c) => {
+const deletePropertyRoute = createRoute({
+  method: 'delete',
+  path: '/rental-properties/{id}',
+  summary: '删除租赁房屋',
+  request: {
+    params: z.object({ id: uuidSchema })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ ok: z.boolean() })
+        }
+      },
+      description: '删除成功'
+    }
+  }
+})
+
+rentalRoutes.openapi(deletePropertyRoute, async (c) => {
   if (!hasPermission(c, 'asset', 'rental', 'delete')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const property = await c.env.DB.prepare('select property_code, name from rental_properties where id = ?').bind(id).first<{ property_code: string, name: string }>()
-  if (!property) throw Errors.NOT_FOUND()
+  const service = c.get('services').rental
 
-  // 检查是否有付款记录
-  const paymentCount = await c.env.DB.prepare('select count(1) as n from rental_payments where property_id = ?').bind(id).first<{ n: number }>()
-  if (paymentCount && paymentCount.n > 0) {
-    throw Errors.BUSINESS_ERROR('无法删除，该物业还有付款记录')
-  }
+  const property = await service.deleteProperty(id)
 
-  // 删除变动记录和分配记录
-  await c.env.DB.prepare('delete from rental_changes where property_id = ?').bind(id).run()
-  await c.env.DB.prepare('delete from dormitory_allocations where property_id = ?').bind(id).run()
-  // 删除房屋
-  await c.env.DB.prepare('delete from rental_properties where id = ?').bind(id).run()
-
-  logAuditAction(c, 'delete', 'rental_property', id, JSON.stringify({ property_code: property.property_code, name: property.name }))
+  logAuditAction(c, 'delete', 'rental_property', id, JSON.stringify({ property_code: property.propertyCode, name: property.name }))
   return c.json({ ok: true })
 })
 
-// 创建租赁付款记录
-rentalRoutes.post('/rental-payments', validateJson(createRentalPaymentSchema), async (c) => {
+// --- Rental Payments ---
+
+const listPaymentsRoute = createRoute({
+  method: 'get',
+  path: '/rental-payments',
+  summary: '获取租赁付款记录列表',
+  request: {
+    query: z.object({
+      property_id: uuidSchema.optional(),
+      year: z.coerce.number().int().optional(),
+      month: z.coerce.number().int().optional()
+    })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            results: z.array(z.object({
+              payment: z.any(),
+              propertyCode: z.string().nullable(),
+              propertyName: z.string().nullable(),
+              propertyType: z.string().nullable(),
+              accountName: z.string().nullable(),
+              categoryName: z.string().nullable(),
+              createdByName: z.string().nullable()
+            }))
+          })
+        }
+      },
+      description: '付款记录列表'
+    }
+  }
+})
+
+rentalRoutes.openapi(listPaymentsRoute, async (c) => {
+  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
+  const query = c.req.valid('query')
+  const service = c.get('services').rental
+  const results = await service.listPayments({
+    propertyId: query.property_id,
+    year: query.year,
+    month: query.month
+  })
+  return c.json({ results })
+})
+
+const createPaymentRoute = createRoute({
+  method: 'post',
+  path: '/rental-payments',
+  summary: '创建租赁付款记录',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createRentalPaymentSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ id: z.string(), flow_id: z.string(), voucher_no: z.string() })
+        }
+      },
+      description: '创建成功'
+    }
+  }
+})
+
+rentalRoutes.openapi(createPaymentRoute, async (c) => {
   if (!hasPermission(c, 'asset', 'rental', 'create')) throw Errors.FORBIDDEN()
-  const body = getValidatedData<z.infer<typeof createRentalPaymentSchema>>(c)
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
+  const body = c.req.valid('json')
+  const userId = c.get('userId')
+  const service = c.get('services').rental
 
-  // 检查房屋是否存在
-  const property = await c.env.DB.prepare('select * from rental_properties where id = ?').bind(body.property_id).first<any>()
-  if (!property) throw Errors.NOT_FOUND('property')
-
-  // 检查是否已存在该月份的付款记录
-  const existing = await c.env.DB.prepare(`
-    select id from rental_payments 
-    where property_id=? and year=? and month=?
-  `).bind(body.property_id, body.year, body.month).first<{ id: string }>()
-  if (existing?.id) {
-    throw Errors.DUPLICATE('该月的付款记录')
-  }
-
-  // 验证账户存在且币种匹配
-  const account = await c.env.DB.prepare('select * from accounts where id=?').bind(body.account_id).first<any>()
-  if (!account) throw Errors.NOT_FOUND('账户')
-  if (account.active === 0) throw Errors.BUSINESS_ERROR('账户已停用')
-  if (account.currency !== body.currency) {
-    throw Errors.BUSINESS_ERROR('账户币种不匹配')
-  }
-
-  // 创建付款记录
-  const paymentId = uuid()
-  const amount = Number(body.amount_cents)
-
-  await c.env.DB.prepare(`
-    insert into rental_payments(
-      id, property_id, payment_date, year, month, amount_cents, currency,
-      account_id, category_id, payment_method, voucher_url, memo,
-      created_by, created_at, updated_at
-    ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).bind(
-    paymentId,
-    body.property_id,
-    body.payment_date,
-    body.year,
-    body.month,
-    amount,
-    body.currency,
-    body.account_id,
-    body.category_id || null,
-    body.payment_method || null,
-    body.voucher_url || null,
-    body.memo || null,
-    userId || null,
-    now,
-    now
-  ).run()
-
-  // 生成支出流水（支付租金）
-  const flowId = uuid()
-  const day = body.payment_date.replace(/-/g, '')
-  const count = await c.env.DB
-    .prepare('select count(1) as n from cash_flows where biz_date=?')
-    .bind(body.payment_date).first<{ n: number }>()
-  const seq = ((count?.n ?? 0) + 1).toString().padStart(3, '0')
-  const voucherNo = `JZ${day}-${seq}`
-
-  // 计算账变前金额
-  const balanceBefore = await new FinanceService(c.env.DB).getAccountBalanceBefore(body.account_id, body.payment_date, now)
-  const balanceAfter = balanceBefore - amount
-
-  // 插入cash_flow记录
-  await c.env.DB.prepare(`
-    insert into cash_flows(
-      id,voucher_no,biz_date,type,account_id,category_id,method,amount_cents,
-      site_id,department_id,counterparty,memo,voucher_url,created_by,created_at
-    ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).bind(
-    flowId, voucherNo, body.payment_date, 'expense', body.account_id, body.category_id || null,
-    body.payment_method || null, amount, null, property.department_id || null,
-    property.landlord_name || null,
-    `支付租金：${property.name}（${property.property_code}）` + (body.memo ? `；${body.memo}` : ''),
-    body.voucher_url || null,
-    userId || null,
-    now
-  ).run()
-
-  // 生成账变记录
-  const transactionId = uuid()
-  await c.env.DB.prepare(`
-    insert into account_transactions(
-      id, account_id, flow_id, transaction_date, transaction_type, amount_cents,
-      balance_before_cents, balance_after_cents, created_at
-    ) values(?,?,?,?,?,?,?,?,?)
-  `).bind(
-    transactionId, body.account_id, flowId, body.payment_date, 'expense', amount,
-    balanceBefore, balanceAfter, now
-  ).run()
-
-  // 如果有对应的应付账单，标记为已付
-  await c.env.DB.prepare(`
-    update rental_payable_bills
-    set status='paid', paid_date=?, paid_payment_id=?, updated_at=?
-    where property_id=? and year=? and month=? and status='unpaid'
-  `).bind(
-    body.payment_date,
-    paymentId,
-    now,
-    body.property_id,
-    body.year,
-    body.month
-  ).run()
-
-  logAuditAction(c, 'create', 'rental_payment', paymentId, JSON.stringify({
-    property_id: body.property_id,
-    property_code: property.property_code,
+  const result = await service.createPayment({
+    propertyId: body.property_id,
+    paymentDate: body.payment_date,
     year: body.year,
     month: body.month,
-    amount_cents: amount,
-    flow_id: flowId
+    amountCents: body.amount_cents,
+    currency: body.currency,
+    accountId: body.account_id,
+    categoryId: body.category_id,
+    paymentMethod: body.payment_method,
+    voucherUrl: body.voucher_url,
+    memo: body.memo,
+    createdBy: userId
+  })
+
+  logAuditAction(c, 'create', 'rental_payment', result.id, JSON.stringify({
+    property_id: body.property_id,
+    year: body.year,
+    month: body.month,
+    amount_cents: body.amount_cents,
+    flow_id: result.flowId
   }))
 
-  return c.json({ id: paymentId, flow_id: flowId, voucher_no: voucherNo })
+  return c.json({ id: result.id, flow_id: result.flowId, voucher_no: result.voucherNo })
 })
 
-// 获取租赁付款记录列表
-rentalRoutes.get('/rental-payments', async (c) => {
-  if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  const propertyId = c.req.query('property_id')
-  const year = c.req.query('year')
-  const month = c.req.query('month')
-
-  let sql = `
-    select 
-      rp.*,
-      rprop.property_code,
-      rprop.name as property_name,
-      rprop.property_type,
-      a.name as account_name,
-      c.name as category_name,
-      ce.name as created_by_name
-    from rental_payments rp
-    left join rental_properties rprop on rprop.id = rp.property_id
-    left join accounts a on a.id = rp.account_id
-    left join categories c on c.id = rp.category_id
-    left join users u on u.id = rp.created_by
-    left join employees ce on ce.email = u.email
-  `
-  const conds: string[] = []
-  const binds: any[] = []
-
-  if (propertyId) {
-    conds.push('rp.property_id=?')
-    binds.push(propertyId)
+const updatePaymentRoute = createRoute({
+  method: 'put',
+  path: '/rental-payments/{id}',
+  summary: '更新租赁付款记录',
+  request: {
+    params: z.object({ id: uuidSchema }),
+    body: {
+      content: {
+        'application/json': {
+          schema: updateRentalPaymentSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ ok: z.boolean() })
+        }
+      },
+      description: '更新成功'
+    }
   }
-  if (year) {
-    conds.push('rp.year=?')
-    binds.push(Number(year))
-  }
-  if (month) {
-    conds.push('rp.month=?')
-    binds.push(Number(month))
-  }
-
-  if (conds.length) sql += ' where ' + conds.join(' and ')
-  sql += ' order by rp.year desc, rp.month desc, rp.created_at desc'
-
-  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-  return c.json({ results: rows.results ?? [] })
 })
 
-// 更新租赁付款记录
-rentalRoutes.put('/rental-payments/:id', validateJson(updateRentalPaymentSchema), async (c) => {
+rentalRoutes.openapi(updatePaymentRoute, async (c) => {
   if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const body = getValidatedData<z.infer<typeof updateRentalPaymentSchema>>(c)
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
+  const body = c.req.valid('json')
+  const service = c.get('services').rental
 
-  // 检查付款记录是否存在
-  const existing = await c.env.DB.prepare('select * from rental_payments where id = ?').bind(id).first()
-  if (!existing) throw Errors.NOT_FOUND()
-
-  const updates: string[] = []
-  const binds: any[] = []
-
-  if (body.payment_date !== undefined) { updates.push('payment_date=?'); binds.push(body.payment_date) }
-  if (body.amount_cents !== undefined) { updates.push('amount_cents=?'); binds.push(Number(body.amount_cents)) }
-  if (body.voucher_url !== undefined) { updates.push('voucher_url=?'); binds.push(body.voucher_url || null) }
-  if (body.memo !== undefined) { updates.push('memo=?'); binds.push(body.memo || null) }
-
-  updates.push('updated_at=?')
-  binds.push(now)
-
-  if (updates.length === 1) throw Errors.VALIDATION_ERROR('没有需要更新的字段')
-
-  binds.push(id)
-  await c.env.DB.prepare(`update rental_payments set ${updates.join(',')} where id=?`).bind(...binds).run()
+  await service.updatePayment(id, {
+    paymentDate: body.payment_date,
+    amountCents: body.amount_cents,
+    voucherUrl: body.voucher_url,
+    memo: body.memo
+  })
 
   logAuditAction(c, 'update', 'rental_payment', id, JSON.stringify(body))
   return c.json({ ok: true })
 })
 
-// 删除租赁付款记录
-rentalRoutes.delete('/rental-payments/:id', async (c) => {
+const deletePaymentRoute = createRoute({
+  method: 'delete',
+  path: '/rental-payments/{id}',
+  summary: '删除租赁付款记录',
+  request: {
+    params: z.object({ id: uuidSchema })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ ok: z.boolean() })
+        }
+      },
+      description: '删除成功'
+    }
+  }
+})
+
+rentalRoutes.openapi(deletePaymentRoute, async (c) => {
   if (!hasPermission(c, 'asset', 'rental', 'delete')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const payment = await c.env.DB.prepare('select property_id, year, month from rental_payments where id = ?').bind(id).first<{ property_id: string, year: number, month: number }>()
-  if (!payment) throw Errors.NOT_FOUND()
+  const service = c.get('services').rental
 
-  await c.env.DB.prepare('delete from rental_payments where id = ?').bind(id).run()
+  const payment = await service.deletePayment(id)
 
-  logAuditAction(c, 'delete', 'rental_payment', id, JSON.stringify({ property_id: payment.property_id, year: payment.year, month: payment.month }))
+  logAuditAction(c, 'delete', 'rental_payment', id, JSON.stringify({
+    property_id: payment.propertyId,
+    year: payment.year,
+    month: payment.month
+  }))
   return c.json({ ok: true })
 })
 
-// 员工宿舍分配
-rentalRoutes.post('/rental-properties/:id/allocate-dormitory', validateJson(allocateDormitorySchema), async (c) => {
-  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
-  const id = c.req.param('id')
-  const body = getValidatedData<z.infer<typeof allocateDormitorySchema>>(c)
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
 
-  // 检查房屋是否存在且为员工宿舍
-  const property = await c.env.DB.prepare('select * from rental_properties where id = ?').bind(id).first<any>()
-  if (!property) throw Errors.NOT_FOUND('property')
-  if (property.property_type !== 'dormitory') {
-    throw Errors.BUSINESS_ERROR('该物业不是宿舍')
+
+// --- Payable Bills ---
+
+const generatePayableBillsRoute = createRoute({
+  method: 'post',
+  path: '/rental-properties/generate-payable-bills',
+  summary: '生成租赁应付账单',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            generated: z.number(),
+            bills: z.array(z.any())
+          })
+        }
+      },
+      description: '生成成功'
+    }
   }
-
-  // 检查员工是否存在
-  const employee = await c.env.DB.prepare('select * from employees where id=?').bind(body.employee_id).first<any>()
-  if (!employee) throw Errors.NOT_FOUND('员工')
-  if (employee.active === 0) throw Errors.BUSINESS_ERROR('员工已停用')
-
-  // 检查是否已有未归还的分配记录
-  const existingAllocation = await c.env.DB.prepare(`
-    select id from dormitory_allocations 
-    where property_id=? and employee_id=? and return_date is null
-  `).bind(id, body.employee_id).first<{ id: string }>()
-  if (existingAllocation?.id) {
-    throw Errors.DUPLICATE('员工已分配到该宿舍')
-  }
-
-  // 创建分配记录
-  const allocationId = uuid()
-  await c.env.DB.prepare(`
-    insert into dormitory_allocations(
-      id, property_id, employee_id, room_number, bed_number,
-      allocation_date, monthly_rent_cents, memo, created_by, created_at, updated_at
-    ) values(?,?,?,?,?,?,?,?,?,?,?)
-  `).bind(
-    allocationId,
-    id,
-    body.employee_id,
-    body.room_number || null,
-    body.bed_number || null,
-    body.allocation_date,
-    body.monthly_rent_cents ? Number(body.monthly_rent_cents) : null,
-    body.memo || null,
-    userId || null,
-    now,
-    now
-  ).run()
-
-  logAuditAction(c, 'allocate', 'dormitory', allocationId, JSON.stringify({
-    property_id: id,
-    property_code: property.property_code,
-    employee_id: body.employee_id,
-    employee_name: employee.name
-  }))
-
-  return c.json({ id: allocationId })
 })
 
-// 员工宿舍归还
-rentalRoutes.post('/rental-properties/allocations/:id/return', async (c) => {
-  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
-  const id = c.req.param('id')
-  const body = await c.req.json<{
-    return_date: string
-    memo?: string
-  }>()
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
-
-  // 验证必填字段
-  if (!body.return_date) {
-    throw Errors.VALIDATION_ERROR('return_date参数必填')
-  }
-
-  // 检查分配记录是否存在
-  const allocation = await c.env.DB.prepare(`
-    select da.*, rp.property_code, rp.name as property_name, e.name as employee_name
-    from dormitory_allocations da
-    left join rental_properties rp on rp.id = da.property_id
-    left join employees e on e.id = da.employee_id
-    where da.id = ?
-  `).bind(id).first<any>()
-  if (!allocation) throw Errors.NOT_FOUND('allocation')
-
-  // 检查是否已归还
-  if (allocation.return_date) {
-    throw Errors.BUSINESS_ERROR('已归还')
-  }
-
-  // 更新分配记录
-  await c.env.DB.prepare(`
-    update dormitory_allocations 
-    set return_date=?, memo=?, updated_at=?
-    where id=?
-  `).bind(
-    body.return_date,
-    body.memo || allocation.memo || null,
-    now,
-    id
-  ).run()
-
-  logAuditAction(c, 'return', 'dormitory_allocation', id, JSON.stringify({
-    property_id: allocation.property_id,
-    property_code: allocation.property_code,
-    employee_id: allocation.employee_id
-  }))
-
-  return c.json({ ok: true })
-})
-
-// 生成租赁应付账单（提前15天自动生成）
-rentalRoutes.post('/rental-properties/generate-payable-bills', async (c) => {
+rentalRoutes.openapi(generatePayableBillsRoute, async (c) => {
   if (!hasPermission(c, 'asset', 'rental', 'create')) throw Errors.FORBIDDEN()
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const userId = c.get('userId')
+  const service = c.get('services').rental
 
-  // 获取所有活跃的租赁房屋
-  const properties = await c.env.DB.prepare(`
-    select * from rental_properties
-    where status = 'active'
-    and lease_start_date is not null
-  `).all()
-
-  const generated: any[] = []
-
-  for (const prop of (properties.results ?? [])) {
-    if (!prop.lease_start_date || !prop.lease_end_date) continue
-
-    const leaseStart = new Date(prop.lease_start_date as string)
-    const leaseEnd = new Date(prop.lease_end_date as string)
-    const paymentPeriodMonths = (prop.payment_period_months as number) || 1
-    const paymentDay = (prop.payment_day as number) || 1
-
-    // 计算下一个付款日期
-    let nextPaymentDate = new Date(leaseStart)
-
-    // 找到下一个付款日期（基于付款周期和付款日）
-    while (nextPaymentDate <= today || nextPaymentDate.getDate() !== paymentDay) {
-      if (nextPaymentDate <= today) {
-        // 如果已过当前日期，跳到下一个付款周期
-        nextPaymentDate = new Date(nextPaymentDate)
-        nextPaymentDate.setMonth(nextPaymentDate.getMonth() + paymentPeriodMonths)
-        nextPaymentDate.setDate(paymentDay)
-      } else {
-        // 调整到正确的付款日
-        nextPaymentDate.setDate(paymentDay)
-      }
-    }
-
-    // 如果下个付款日期超过租期结束日期，跳过
-    if (nextPaymentDate > leaseEnd) continue
-
-    // 计算账单生成日期（付款日期前15天）
-    const billDate = new Date(nextPaymentDate)
-    billDate.setDate(billDate.getDate() - 15)
-    const billDateStr = billDate.toISOString().split('T')[0]
-    const dueDateStr = nextPaymentDate.toISOString().split('T')[0]
-
-    // 如果账单生成日期还未到，跳过
-    if (billDateStr > todayStr) continue
-
-    // 计算应付金额
-    let amountCents = 0
-    if (prop.rent_type === 'yearly') {
-      // 年租：根据付款周期计算
-      amountCents = Math.round(((prop.yearly_rent_cents as number) || 0) / (12 / paymentPeriodMonths))
-    } else {
-      // 月租：根据付款周期计算
-      amountCents = Math.round(((prop.monthly_rent_cents as number) || 0) * paymentPeriodMonths)
-    }
-
-    // 检查是否已存在该月份的应付账单
-    const existingBill = await c.env.DB.prepare(`
-      select id from rental_payable_bills
-      where property_id = ? and year = ? and month = ? and status = 'unpaid'
-    `).bind(
-      prop.id,
-      nextPaymentDate.getFullYear(),
-      nextPaymentDate.getMonth() + 1
-    ).first<{ id: string }>()
-
-    if (existingBill?.id) continue // 已存在，跳过
-
-    // 创建应付账单
-    const billId = uuid()
-    await c.env.DB.prepare(`
-      insert into rental_payable_bills(
-        id, property_id, bill_date, due_date, year, month,
-        amount_cents, currency, payment_period_months, status,
-        memo, created_by, created_at, updated_at
-      ) values(?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `).bind(
-      billId,
-      prop.id,
-      billDateStr,
-      dueDateStr,
-      nextPaymentDate.getFullYear(),
-      nextPaymentDate.getMonth() + 1,
-      amountCents,
-      prop.currency,
-      paymentPeriodMonths,
-      'unpaid',
-      `自动生成：${prop.name}（${prop.property_code}）`,
-      userId || null,
-      now,
-      now
-    ).run()
-
-    generated.push({
-      id: billId,
-      property_code: prop.property_code,
-      property_name: prop.name,
-      due_date: dueDateStr,
-      amount_cents: amountCents
-    })
-  }
+  const result = await service.generatePayableBills(userId)
 
   logAuditAction(c, 'generate', 'rental_payable_bills', '', JSON.stringify({
-    count: generated.length,
-    generated: generated.map(g => g.property_code)
+    count: result.generated,
+    generated: result.bills.map((g: any) => g.propertyCode)
   }))
 
-  return c.json({ generated: generated.length, bills: generated })
+  return c.json(result)
 })
 
-// 获取应付账单列表
-rentalRoutes.get('/rental-payable-bills', async (c) => {
+const listPayableBillsRoute = createRoute({
+  method: 'get',
+  path: '/rental-payable-bills',
+  summary: '获取应付账单列表',
+  request: {
+    query: rentalPayableBillQuerySchema
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            results: z.array(z.object({
+              bill: z.any(),
+              propertyCode: z.string().nullable(),
+              propertyName: z.string().nullable(),
+              propertyType: z.string().nullable(),
+              landlordName: z.string().nullable()
+            }))
+          })
+        }
+      },
+      description: '应付账单列表'
+    }
+  }
+})
+
+rentalRoutes.openapi(listPayableBillsRoute, async (c) => {
   if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-  const propertyId = c.req.query('property_id')
-  const status = c.req.query('status')
-  const startDate = c.req.query('start_date')
-  const endDate = c.req.query('end_date')
+  const query = c.req.valid('query')
+  const service = c.get('services').rental
 
-  let sql = `
-    select 
-      rpb.*,
-      rp.property_code,
-      rp.name as property_name,
-      rp.property_type,
-      cur.name as currency_name,
-      ce.name as created_by_name,
-      rp.payment_account_id
-    from rental_payable_bills rpb
-    left join rental_properties rp on rp.id = rpb.property_id
-    left join currencies cur on cur.code = rpb.currency
-    left join users u on u.id = rpb.created_by
-    left join employees ce on ce.email = u.email
-  `
-  const conds: string[] = []
-  const binds: any[] = []
+  const results = await service.listPayableBills({
+    propertyId: query.property_id,
+    status: query.status,
+    startDate: query.start_date,
+    endDate: query.end_date
+  })
 
-  if (propertyId) {
-    conds.push('rpb.property_id=?')
-    binds.push(propertyId)
-  }
-  if (status) {
-    conds.push('rpb.status=?')
-    binds.push(status)
-  }
-  if (startDate) {
-    conds.push('rpb.due_date>=?')
-    binds.push(startDate)
-  }
-  if (endDate) {
-    conds.push('rpb.due_date<=?')
-    binds.push(endDate)
-  }
-
-  if (conds.length) sql += ' where ' + conds.join(' and ')
-  sql += ' order by rpb.due_date asc, rpb.created_at desc'
-
-  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-  return c.json({ results: rows.results ?? [] })
+  return c.json({ results })
 })
 
-// 标记应付账单为已付
-rentalRoutes.post('/rental-payable-bills/:id/mark-paid', async (c) => {
+const markBillPaidRoute = createRoute({
+  method: 'post',
+  path: '/rental-payable-bills/:id/mark-paid',
+  summary: 'Mark bill as paid',
+  request: {
+    params: z.object({ id: uuidSchema })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({ ok: z.boolean() })
+        }
+      },
+      description: 'Marked as paid'
+    }
+  }
+})
+
+rentalRoutes.openapi(markBillPaidRoute, async (c) => {
   if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const body = await c.req.json<{
-    paid_date: string
-    paid_payment_id?: string
-  }>()
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
-
-  // 检查账单是否存在
-  const bill = await c.env.DB.prepare('select * from rental_payable_bills where id = ?').bind(id).first()
-  if (!bill) throw Errors.NOT_FOUND()
-
-  if (bill.status === 'paid') {
-    throw Errors.BUSINESS_ERROR('已支付')
-  }
-
-  // 更新账单状态
-  await c.env.DB.prepare(`
-    update rental_payable_bills
-    set status='paid', paid_date=?, paid_payment_id=?, updated_at=?
-    where id=?
-  `).bind(
-    body.paid_date,
-    body.paid_payment_id || null,
-    now,
-    id
-  ).run()
-
-  logAuditAction(c, 'update', 'rental_payable_bill', id, JSON.stringify({
-    status: 'paid',
-    paid_date: body.paid_date
-  }))
-
-  return c.json({ ok: true })
+  const service = c.get('services').rental
+  const result = await service.markBillPaid(id)
+  logAuditAction(c, 'update', 'rental_payable_bill', id, JSON.stringify({ status: 'paid' }))
+  return c.json(result, 200)
 })
-
-// 文件上传：租房合同PDF
-rentalRoutes.post('/upload/contract', async (c) => {
-  if (!hasPermission(c, 'asset', 'rental', 'update')) throw Errors.FORBIDDEN()
-
-  const formData = await c.req.formData()
-  const file = formData.get('file') as File
-  if (!file) throw Errors.VALIDATION_ERROR('文件必填')
-
-  // 限制文件大小（20MB）
-  const maxSize = 20 * 1024 * 1024
-  if (file.size > maxSize) throw Errors.VALIDATION_ERROR('文件过大（最大20MB）')
-
-  // 限制文件类型：只允许PDF格式
-  const allowedTypes = ['application/pdf']
-  if (!allowedTypes.includes(file.type)) {
-    throw Errors.VALIDATION_ERROR('只允许上传PDF格式文件')
-  }
-
-  try {
-    // 生成唯一文件名：时间戳-随机字符串.pdf
-    const timestamp = Date.now()
-    const random = Math.random().toString(36).substring(2, 8)
-    const fileName = `${timestamp}-${random}.pdf`
-    const key = `contracts/${fileName}`
-
-    // 上传到R2
-    const bucket = c.env.VOUCHERS as R2Bucket
-    await bucket.put(key, file, {
-      httpMetadata: {
-        contentType: 'application/pdf',
-        cacheControl: 'public, max-age=31536000',
-      },
-      customMetadata: {
-        originalName: file.name,
-        originalType: file.type,
-        uploadedAt: new Date().toISOString(),
-      },
-    })
-
-    // 返回文件URL（使用相对路径，通过Pages Functions代理）
-    const url = `/api/vouchers/${key}`
-    return c.json({ url, key })
-  } catch (error: any) {
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(`上传失败: ${error.message}`)
-  }
-})
-
-export default rentalRoutes

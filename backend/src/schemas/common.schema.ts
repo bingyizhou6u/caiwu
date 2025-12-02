@@ -2,7 +2,7 @@
  * 通用Schema定义
  */
 
-import { z } from 'zod'
+import { z } from '@hono/zod-openapi'
 
 /**
  * UUID验证
@@ -217,3 +217,13 @@ export const idParamSchema = z.object({
   id: uuidSchema,
 })
 
+
+/**
+ * 租赁应付账单查询Schema
+ */
+export const rentalPayableBillQuerySchema = z.object({
+  property_id: uuidSchema.optional(),
+  status: z.string().optional(),
+  start_date: dateSchema.optional(),
+  end_date: dateSchema.optional(),
+})

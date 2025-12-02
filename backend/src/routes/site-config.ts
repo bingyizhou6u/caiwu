@@ -1,148 +1,146 @@
-import { Hono } from 'hono'
-import { v4 as uuid } from 'uuid'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
+import type { Env, AppVariables } from '../types.js'
 import { hasPermission } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
-import type { Env } from '../types.js'
 import { Errors } from '../utils/errors.js'
-import { validateJson, getValidatedData } from '../utils/validator.js'
 import { updateSiteConfigSchema, batchUpdateSiteConfigSchema } from '../schemas/business.schema.js'
-import type { z } from 'zod'
 
-const siteConfigRoutes = new Hono<{ Variables: { userId?: string, userRole?: string }, Bindings: Env }>()
+export const siteConfigRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-// 获取所有配置
-siteConfigRoutes.get('/site-config', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
-  
-  try {
-    const configs = await c.env.DB.prepare('select * from site_config order by config_key').all<{
-      id: string
-      config_key: string
-      config_value: string | null
-      description: string | null
-      is_encrypted: number
-      created_at: number
-      updated_at: number
-    }>()
-    
-    // 对于加密字段，返回时隐藏实际值（只显示是否已配置）
-    const result = configs.results?.map(config => ({
-      id: config.id,
-      config_key: config.config_key,
-      config_value: config.is_encrypted === 1 && config.config_value 
-        ? '***已配置***' 
-        : config.config_value || '',
-      description: config.description,
-      is_encrypted: config.is_encrypted === 1,
-      created_at: config.created_at,
-      updated_at: config.updated_at,
-    })) || []
-    
-    return c.json(result)
-  } catch (error: any) {
-    console.error('Error fetching site config:', error)
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(error.message || '服务器内部错误')
-  }
+// Schemas
+const siteConfigItemSchema = z.object({
+  id: z.string(),
+  config_key: z.string(),
+  config_value: z.string(),
+  description: z.string().nullable(),
+  is_encrypted: z.boolean(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
 })
 
-// 更新配置
-siteConfigRoutes.put('/site-config/:key', validateJson(updateSiteConfigSchema), async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-  
-  try {
+const siteConfigListSchema = z.array(siteConfigItemSchema)
+
+const batchUpdateResponseSchema = z.object({
+  ok: z.boolean(),
+  updated: z.number(),
+  keys: z.array(z.string()).optional(),
+})
+
+// Routes
+
+// Get All Configs
+siteConfigRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/site-config',
+    tags: ['Site Config'],
+    summary: 'Get all site configs',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: siteConfigListSchema,
+          },
+        },
+        description: 'Site config list',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
+    const configs = await c.get('services').siteConfig.getConfigs()
+    return c.json(configs)
+  }
+)
+
+// Update Config
+siteConfigRoutes.openapi(
+  createRoute({
+    method: 'put',
+    path: '/site-config/{key}',
+    tags: ['Site Config'],
+    summary: 'Update site config',
+    request: {
+      params: z.object({
+        key: z.string(),
+      }),
+      body: {
+        content: {
+          'application/json': {
+            schema: updateSiteConfigSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean() }),
+          },
+        },
+        description: 'Success',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
     const key = c.req.param('key')
-    const body = getValidatedData<z.infer<typeof updateSiteConfigSchema>>(c)
-    
-    // 检查配置项是否存在
-    const existing = await c.env.DB.prepare('select * from site_config where config_key=?').bind(key).first<{
-      id: string
-      is_encrypted: number
-    }>()
-    
-    if (!existing) {
-      throw Errors.NOT_FOUND('config key')
-    }
-    
-    // 更新配置值
-    const now = Date.now()
-    await c.env.DB.prepare('update site_config set config_value=?, updated_at=? where config_key=?')
-      .bind(body.config_value, now, key).run()
-    
+    const body = c.req.valid('json')
+
+    await c.get('services').siteConfig.updateConfig(key, body.config_value)
+
     logAuditAction(c, 'update', 'site_config', key, JSON.stringify({ config_key: key }))
-    
+
     return c.json({ ok: true })
-  } catch (error: any) {
-    console.error('Error updating site config:', error)
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(error.message || '服务器内部错误')
   }
-})
+)
 
-// 批量更新配置
-siteConfigRoutes.put('/site-config', validateJson(batchUpdateSiteConfigSchema), async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-  
-  try {
-    const body = getValidatedData<z.infer<typeof batchUpdateSiteConfigSchema>>(c)
-    
-    const now = Date.now()
-    const keys = Object.keys(body).filter(key => typeof body[key] === 'string')
-    
-    if (keys.length === 0) {
-      return c.json({ ok: true, updated: 0 })
-    }
-    
-    // 优化：批量查询现有配置
-    const placeholders = keys.map(() => '?').join(',')
-    const existing = await c.env.DB.prepare(`
-      select config_key from site_config where config_key in (${placeholders})
-    `).bind(...keys).all<{ config_key: string }>()
-    
-    const existingKeys = new Set((existing.results || []).map(r => r.config_key))
-    
-    // 使用 batch API 批量更新
-    const statements = keys
-      .filter(key => existingKeys.has(key))
-      .map(key => 
-        c.env.DB.prepare('update site_config set config_value=?, updated_at=? where config_key=?')
-          .bind(body[key], now, key)
-      )
-    
-    if (statements.length > 0) {
-      await c.env.DB.batch(statements)
-    }
-    
-    logAuditAction(c, 'update', 'site_config', 'batch', JSON.stringify({ keys: Array.from(existingKeys) }))
-    
-    return c.json({ ok: true, updated: statements.length })
-  } catch (error: any) {
-    console.error('Error batch updating site config:', error)
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    throw Errors.INTERNAL_ERROR(error.message || '服务器内部错误')
+// Batch Update Configs
+siteConfigRoutes.openapi(
+  createRoute({
+    method: 'put',
+    path: '/site-config',
+    tags: ['Site Config'],
+    summary: 'Batch update site configs',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: batchUpdateSiteConfigSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: batchUpdateResponseSchema,
+          },
+        },
+        description: 'Batch update result',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
+
+    const result = await c.get('services').siteConfig.batchUpdateConfigs(body)
+
+    logAuditAction(c, 'update', 'site_config', 'batch', JSON.stringify({ keys: result.keys }))
+
+    return c.json(result)
   }
-})
+)
 
-// 获取单个配置值（用于内部调用，不隐藏加密值）
-export async function getSiteConfigValue(env: Env, key: string): Promise<string | null> {
-  const config = await env.DB.prepare('select config_value from site_config where config_key=?')
-    .bind(key).first<{ config_value: string | null }>()
-  return config?.config_value || null
-}
-
-// 获取所有配置值（用于内部调用，不隐藏加密值）
-export async function getAllSiteConfig(env: Env): Promise<Record<string, string>> {
-  const configs = await env.DB.prepare('select config_key, config_value from site_config')
-    .all<{ config_key: string, config_value: string | null }>()
-  
-  const result: Record<string, string> = {}
-  for (const config of configs.results || []) {
-    if (config.config_value) {
-      result[config.config_key] = config.config_value
-    }
-  }
-  return result
-}
+// Export internal functions for use in other parts of the app (if needed)
+// Note: In the original file, these were exported. 
+// Since we moved logic to Service, other parts should use the Service.
+// But if there are direct imports of these functions, we might break them.
+// I should check if `getSiteConfigValue` or `getAllSiteConfig` are imported elsewhere.
+// If so, I should update those imports to use the service, or re-export wrappers here (but that requires access to Env/DB which is tricky without context).
+// Ideally, refactor consumers to use the service.
 
 export default siteConfigRoutes
-

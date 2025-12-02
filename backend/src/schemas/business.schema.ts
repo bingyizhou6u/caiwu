@@ -2,7 +2,7 @@
  * 通用业务Schema定义
  */
 
-import { z } from 'zod'
+import { z } from '@hono/zod-openapi'
 import { uuidSchema, dateSchema, emailSchema } from './common.schema.js'
 
 /**
@@ -307,6 +307,16 @@ export const createDepreciationSchema = z.object({
 })
 
 /**
+ * 创建员工补贴Schema
+ */
+export const createEmployeeAllowanceSchema = z.object({
+  employee_id: uuidSchema,
+  allowance_type: z.enum(['living', 'housing', 'transportation', 'meal', 'birthday']),
+  currency_id: z.string().length(3, 'currency_id必须是3位币种代码'),
+  amount_cents: z.number().int().nonnegative('amount_cents必须大于等于0'),
+})
+
+/**
  * 批量更新员工补贴Schema
  */
 export const batchUpdateEmployeeAllowancesSchema = z.object({
@@ -316,6 +326,22 @@ export const batchUpdateEmployeeAllowancesSchema = z.object({
     currency_id: z.string().length(3, 'currency_id必须是3位币种代码'),
     amount_cents: z.number().int().nonnegative('amount_cents必须大于等于0'),
   })).min(0, 'allowances必须是数组'),
+})
+
+export const employeeAllowanceResponseSchema = z.object({
+  id: z.string(),
+  employee_id: z.string(),
+  allowance_type: z.string(),
+  currency_id: z.string(),
+  amount_cents: z.number(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
+  currency_name: z.string().nullable(),
+  employee_name: z.string().nullable()
+})
+
+export const listEmployeeAllowancesResponseSchema = z.object({
+  results: z.array(employeeAllowanceResponseSchema)
 })
 
 /**
@@ -386,8 +412,8 @@ export const generateAllowancePaymentsSchema = z.object({
 export const createPositionSchema = z.object({
   code: z.string().min(1, 'code参数必填'),
   name: z.string().min(1, 'name参数必填'),
-  level: z.string().min(1, 'level参数必填'),
-  scope: z.string().min(1, 'scope参数必填'),
+  level: z.number().int('level必须是整数'),
+  function_role: z.enum(['director', 'hr', 'finance', 'admin', 'developer', 'support', 'member'], { errorMap: () => ({ message: '无效的职能角色' }) }),
   permissions: z.any(), // permissions可以是任意JSON对象
   description: z.string().optional(),
   sort_order: z.number().int().optional(),
@@ -399,8 +425,8 @@ export const createPositionSchema = z.object({
 export const updatePositionSchema = z.object({
   code: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
-  level: z.string().min(1).optional(),
-  scope: z.string().min(1).optional(),
+  level: z.number().int().optional(),
+  function_role: z.enum(['director', 'hr', 'finance', 'admin', 'developer', 'support', 'member']).optional(),
   permissions: z.any().optional(),
   description: z.string().optional(),
   sort_order: z.number().int().optional(),
@@ -460,6 +486,31 @@ export const updateAllowancePaymentSchema = z.object({
   payment_method: z.enum(['cash', 'transfer']).optional(),
   voucher_url: z.string().url().optional(),
   memo: z.string().optional(),
+})
+
+export const allowancePaymentResponseSchema = z.object({
+  id: z.string(),
+  employee_id: z.string(),
+  year: z.number(),
+  month: z.number(),
+  allowance_type: z.string(),
+  currency_id: z.string(),
+  amount_cents: z.number(),
+  payment_date: z.string(),
+  payment_method: z.string().nullable(),
+  voucher_url: z.string().nullable(),
+  memo: z.string().nullable(),
+  created_by: z.string().nullable(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
+  employee_name: z.string().nullable(),
+  department_name: z.string().nullable(),
+  currency_name: z.string().nullable(),
+  created_by_name: z.string().nullable()
+})
+
+export const listAllowancePaymentsResponseSchema = z.object({
+  results: z.array(allowancePaymentResponseSchema)
 })
 
 /**
@@ -686,6 +737,7 @@ export const sellFixedAssetSchema = z.object({
  */
 export const returnFixedAssetSchema = z.object({
   return_date: dateSchema,
+  return_type: z.enum(['employee_resignation', 'transfer', 'expired', 'other']).optional(),
   memo: z.string().optional(),
 })
 
@@ -762,6 +814,63 @@ export const createEmployeeLeaveSchema = z.object({
   },
   { message: '开始日期必须早于或等于结束日期', path: ['end_date'] }
 )
+
+export const fixedAssetResponseSchema = z.object({
+  id: z.string(),
+  asset_code: z.string(),
+  name: z.string(),
+  category: z.string().nullable(),
+  purchase_date: z.string().nullable(),
+  purchase_price_cents: z.number(),
+  currency: z.string(),
+  vendor_id: z.string().nullable(),
+  department_id: z.string().nullable(),
+  site_id: z.string().nullable(),
+  custodian: z.string().nullable(),
+  status: z.string().nullable(),
+  depreciation_method: z.string().nullable(),
+  useful_life_years: z.number().nullable(),
+  current_value_cents: z.number().nullable(),
+  memo: z.string().nullable(),
+  created_by: z.string().nullable(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
+  department_name: z.string().nullable(),
+  site_name: z.string().nullable(),
+  vendor_name: z.string().nullable(),
+  currency_name: z.string().nullable(),
+  created_by_name: z.string().nullable(),
+  depreciations: z.array(z.any()).optional(),
+  changes: z.array(z.any()).optional()
+})
+
+export const listFixedAssetsResponseSchema = z.object({
+  results: z.array(fixedAssetResponseSchema)
+})
+
+export const fixedAssetAllocationResponseSchema = z.object({
+  id: z.string(),
+  asset_id: z.string(),
+  employee_id: z.string(),
+  allocation_date: z.string(),
+  allocation_type: z.string().nullable(),
+  return_date: z.string().nullable(),
+  return_type: z.string().nullable(),
+  memo: z.string().nullable(),
+  created_by: z.string().nullable(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
+  asset_code: z.string().nullable(),
+  asset_name: z.string().nullable(),
+  employee_name: z.string().nullable(),
+  employee_department_id: z.string().nullable(),
+  employee_department_name: z.string().nullable(),
+  created_by_name: z.string().nullable()
+})
+
+export const listFixedAssetAllocationsResponseSchema = z.object({
+  results: z.array(fixedAssetAllocationResponseSchema)
+})
 
 /**
  * 审批请假Schema
@@ -868,3 +977,38 @@ export const purchaseFixedAssetWithFlowSchema = z.object({
 
 
 
+
+/**
+ * 更新租赁房屋Schema
+ */
+export const updateRentalPropertySchema = z.object({
+  name: z.string().optional(),
+  property_type: z.string().optional(),
+  address: z.string().optional(),
+  area_sqm: z.number().optional(),
+  rent_type: z.string().optional(),
+  monthly_rent_cents: z.number().optional(),
+  yearly_rent_cents: z.number().optional(),
+  currency: z.string().length(3).optional(),
+  payment_period_months: z.number().int().optional(),
+  landlord_name: z.string().optional(),
+  landlord_contact: z.string().optional(),
+  lease_start_date: dateSchema.optional(),
+  lease_end_date: dateSchema.optional(),
+  deposit_cents: z.number().optional(),
+  payment_method: z.string().optional(),
+  payment_account_id: uuidSchema.optional(),
+  payment_day: z.number().int().optional(),
+  department_id: uuidSchema.optional(),
+  status: z.string().optional(),
+  memo: z.string().optional(),
+  contract_file_url: z.string().url().optional(),
+})
+
+/**
+ * 归还宿舍Schema
+ */
+export const returnDormitorySchema = z.object({
+  return_date: dateSchema,
+  memo: z.string().optional(),
+})

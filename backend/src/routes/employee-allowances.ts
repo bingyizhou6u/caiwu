@@ -1,127 +1,222 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
 import { hasPermission } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
-import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
-import { validateJson, getValidatedData } from '../utils/validator.js'
-import { batchUpdateEmployeeAllowancesSchema } from '../schemas/business.schema.js'
-import type { z } from 'zod'
+import {
+  batchUpdateEmployeeAllowancesSchema,
+  createEmployeeAllowanceSchema,
+  employeeAllowanceResponseSchema,
+  listEmployeeAllowancesResponseSchema
+} from '../schemas/business.schema.js'
 
-export const employeeAllowancesRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const employeeAllowancesRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-// 获取员工的补贴配置
-employeeAllowancesRoutes.get('/employee-allowances', async (c) => {
-  // 所有人都可以查看（通过数据权限过滤）
-  
-  const employeeId = c.req.query('employee_id')
-  const allowanceType = c.req.query('allowance_type') // living, housing, transportation, meal
-  
-  if (!employeeId) throw Errors.VALIDATION_ERROR('employee_id参数必填')
-  
-  let sql = `
-    select 
-      ea.*,
-      c.name as currency_name,
-      e.name as employee_name
-    from employee_allowances ea
-    left join currencies c on c.code = ea.currency_id
-    left join employees e on e.id = ea.employee_id
-    where ea.employee_id = ?
-  `
-  const binds: any[] = [employeeId]
-  
-  if (allowanceType) {
-    sql += ' and ea.allowance_type = ?'
-    binds.push(allowanceType)
-  }
-  
-  sql += ' order by ea.allowance_type, c.code'
-  
-  const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-  return c.json({ results: rows.results ?? [] })
-})
-
-// 批量更新员工的补贴配置
-employeeAllowancesRoutes.put('/employee-allowances/batch', validateJson(batchUpdateEmployeeAllowancesSchema), async (c) => {
-  // 只有有津贴创建权限的人可以修改
-  if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
-  
-  const body = getValidatedData<z.infer<typeof batchUpdateEmployeeAllowancesSchema>>(c)
-  
-  // 验证员工是否存在
-  const emp = await c.env.DB.prepare('select id from employees where id=?').bind(body.employee_id).first<{ id: string }>()
-  if (!emp) throw Errors.NOT_FOUND('员工')
-  
-  const userId = c.get('userId') as string | undefined
-  const now = Date.now()
-  
-  // 删除该员工该类型的所有补贴配置
-  await c.env.DB.prepare(
-    'delete from employee_allowances where employee_id=? and allowance_type=?'
-  ).bind(body.employee_id, body.allowance_type).run()
-  
-  // 插入新的补贴配置
-  const created = []
-  for (const allowance of body.allowances) {
-    if (!allowance.currency_id || allowance.amount_cents === undefined || allowance.amount_cents === null) {
-      continue
+// List Employee Allowances
+employeeAllowancesRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/employee-allowances',
+    summary: 'List employee allowances',
+    request: {
+      query: z.object({
+        employee_id: z.string(),
+        allowance_type: z.string().optional()
+      })
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: listEmployeeAllowancesResponseSchema
+          }
+        },
+        description: 'List of employee allowances'
+      }
     }
-    
-    // 验证币种是否存在
-    const currency = await c.env.DB.prepare('select code from currencies where code=?').bind(allowance.currency_id).first<{ code: string }>()
-    if (!currency) continue
-    
-    const id = uuid()
-    await c.env.DB.prepare(`
-      insert into employee_allowances(
-        id, employee_id, allowance_type, currency_id, amount_cents, created_at, updated_at
-      ) values(?,?,?,?,?,?,?)
-    `).bind(id, body.employee_id, body.allowance_type, allowance.currency_id, allowance.amount_cents, now, now).run()
-    
-    created.push(id)
-  }
-  
-  logAuditAction(c, 'update', 'employee_allowance', body.employee_id, JSON.stringify({
-    employee_id: body.employee_id,
-    allowance_type: body.allowance_type,
-    allowances: body.allowances
-  }))
-  
-  // 返回更新后的所有补贴配置
-  const updated = await c.env.DB.prepare(`
-    select 
-      ea.*,
-      c.name as currency_name,
-      e.name as employee_name
-    from employee_allowances ea
-    left join currencies c on c.code = ea.currency_id
-    left join employees e on e.id = ea.employee_id
-    where ea.employee_id=? and ea.allowance_type=?
-    order by c.code
-  `).bind(body.employee_id, body.allowance_type).all()
-  
-  return c.json({ results: updated.results ?? [] })
-})
+  }),
+  async (c) => {
+    const { employee_id, allowance_type } = c.req.valid('query')
 
-// 删除员工的补贴配置
-employeeAllowancesRoutes.delete('/employee-allowances/:id', async (c) => {
-  // 只有有津贴更新权限的人可以删除
-  if (!hasPermission(c, 'finance', 'allowance', 'update')) throw Errors.FORBIDDEN()
-  
-  const id = c.req.param('id')
-  
-  const record = await c.env.DB.prepare('select * from employee_allowances where id=?').bind(id).first<any>()
-  if (!record) throw Errors.NOT_FOUND()
-  
-  await c.env.DB.prepare('delete from employee_allowances where id=?').bind(id).run()
-  
-  logAuditAction(c, 'delete', 'employee_allowance', id, JSON.stringify({
-    employee_id: record.employee_id,
-    allowance_type: record.allowance_type,
-    currency_id: record.currency_id
-  }))
-  
-  return c.json({ ok: true })
-})
+    // 所有人都可以查看（通过数据权限过滤）
+    // 这里假设只要能访问这个接口就可以查看指定员工的补贴，或者需要添加额外的权限检查
+
+    const rows = await c.var.services.employee.listAllowances(employee_id, allowance_type)
+
+    const results = rows.map(row => ({
+      id: row.allowance.id,
+      employee_id: row.allowance.employeeId,
+      allowance_type: row.allowance.allowanceType,
+      currency_id: row.allowance.currencyId,
+      amount_cents: row.allowance.amountCents,
+      created_at: row.allowance.createdAt,
+      updated_at: row.allowance.updatedAt,
+      currency_name: row.currencyName,
+      employee_name: row.employeeName
+    }))
+
+    return c.json({ results })
+  }
+)
+
+// Create Employee Allowance
+employeeAllowancesRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/employee-allowances',
+    summary: 'Create employee allowance',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: createEmployeeAllowanceSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: employeeAllowanceResponseSchema
+          }
+        },
+        description: 'Created employee allowance'
+      }
+    }
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
+
+    const body = c.req.valid('json')
+
+    // Check if exists
+    const existing = await c.var.services.employee.listAllowances(body.employee_id, body.allowance_type)
+    const found = existing.find(s => s.allowance.currencyId === body.currency_id)
+
+    let result;
+    if (found) {
+      result = await c.var.services.employee.updateAllowance(found.allowance.id, {
+        amountCents: body.amount_cents
+      })
+      logAuditAction(c, 'update', 'employee_allowance', found.allowance.id, JSON.stringify(body))
+    } else {
+      result = await c.var.services.employee.createAllowance({
+        employeeId: body.employee_id,
+        allowanceType: body.allowance_type,
+        currencyId: body.currency_id,
+        amountCents: body.amount_cents
+      })
+      logAuditAction(c, 'create', 'employee_allowance', result!.allowance.id, JSON.stringify(body))
+    }
+
+    if (!result) throw Errors.INTERNAL_ERROR('Failed to save allowance')
+
+    return c.json({
+      id: result.allowance.id,
+      employee_id: result.allowance.employeeId,
+      allowance_type: result.allowance.allowanceType,
+      currency_id: result.allowance.currencyId,
+      amount_cents: result.allowance.amountCents,
+      created_at: result.allowance.createdAt,
+      updated_at: result.allowance.updatedAt,
+      currency_name: result.currencyName,
+      employee_name: result.employeeName
+    })
+  }
+)
+
+// Batch Update Employee Allowances
+employeeAllowancesRoutes.openapi(
+  createRoute({
+    method: 'put',
+    path: '/employee-allowances/batch',
+    summary: 'Batch update employee allowances',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: batchUpdateEmployeeAllowancesSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: listEmployeeAllowancesResponseSchema
+          }
+        },
+        description: 'Updated employee allowances'
+      }
+    }
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'finance', 'allowance', 'create')) throw Errors.FORBIDDEN()
+
+    const body = c.req.valid('json')
+
+    const rows = await c.var.services.employee.batchUpdateAllowances(
+      body.employee_id,
+      body.allowance_type,
+      body.allowances.map(s => ({
+        currencyId: s.currency_id,
+        amountCents: s.amount_cents
+      }))
+    )
+
+    logAuditAction(c, 'update', 'employee_allowance', body.employee_id, JSON.stringify(body))
+
+    const results = rows.map(row => ({
+      id: row.allowance.id,
+      employee_id: row.allowance.employeeId,
+      allowance_type: row.allowance.allowanceType,
+      currency_id: row.allowance.currencyId,
+      amount_cents: row.allowance.amountCents,
+      created_at: row.allowance.createdAt,
+      updated_at: row.allowance.updatedAt,
+      currency_name: row.currencyName,
+      employee_name: row.employeeName
+    }))
+
+    return c.json({ results })
+  }
+)
+
+// Delete Employee Allowance
+employeeAllowancesRoutes.openapi(
+  createRoute({
+    method: 'delete',
+    path: '/employee-allowances/{id}',
+    summary: 'Delete employee allowance',
+    request: {
+      params: z.object({
+        id: z.string()
+      })
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean() })
+          }
+        },
+        description: 'Deleted employee allowance'
+      }
+    }
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'finance', 'allowance', 'update')) throw Errors.FORBIDDEN()
+
+    const { id } = c.req.valid('param')
+
+    const deleted = await c.var.services.employee.deleteAllowance(id)
+    if (!deleted) throw Errors.NOT_FOUND('员工补贴记录')
+
+    logAuditAction(c, 'delete', 'employee_allowance', id, JSON.stringify(deleted))
+
+    return c.json({ ok: true })
+  }
+)
 

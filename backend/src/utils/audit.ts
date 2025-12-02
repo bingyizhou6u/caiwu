@@ -9,11 +9,11 @@ function getIPInfo(c: any): { ip: string | null, ipLocation: string | null } {
     const cfIp = c.req.header('cf-connecting-ip')
     const forwardedFor = c.req.header('x-forwarded-for')
     const ip = cfIp || (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || null
-    
+
     // 获取IP归属地信息（从Cloudflare请求头）
     const country = c.req.header('cf-ipcountry') || null
     const city = c.req.header('cf-ipcity') || null
-    
+
     let ipLocation: string | null = null
     if (country || city) {
       const parts: string[] = []
@@ -21,7 +21,7 @@ function getIPInfo(c: any): { ip: string | null, ipLocation: string | null } {
       if (country) parts.push(country)
       ipLocation = parts.join(', ')
     }
-    
+
     return { ip, ipLocation }
   } catch (err) {
     // 如果获取IP信息失败，返回null，不影响主流程
@@ -31,11 +31,11 @@ function getIPInfo(c: any): { ip: string | null, ipLocation: string | null } {
 }
 
 export async function logAudit(
-  db: D1Database, 
-  actorId: string, 
-  action: string, 
-  entity: string, 
-  entityId?: string, 
+  db: D1Database,
+  actorId: string,
+  action: string,
+  entity: string,
+  entityId?: string,
   detail?: string,
   ip?: string | null,
   ipLocation?: string | null
@@ -47,10 +47,10 @@ export async function logAudit(
 
 export function logAuditAction(c: any, action: string, entity: string, entityId?: string, detail?: string) {
   const userId = c.get('userId') as string | undefined
-  
+
   // 获取IP和IP归属地信息
   const { ip, ipLocation } = getIPInfo(c)
-  
+
   if (!userId) {
     // 如果userId不存在，尝试从session中获取
     const sid = getCookie(c, 'sid')
@@ -61,13 +61,19 @@ export function logAuditAction(c: any, action: string, entity: string, entityId?
             console.error('Audit log error:', err)
           })
         }
-      }).catch(() => {})
+      }).catch(() => { })
     }
     return
   }
   // 使用await确保日志记录完成，但使用catch避免阻塞主流程
-  logAudit(c.env.DB, userId, action, entity, entityId, detail, ip, ipLocation).catch((err) => {
+  const promise = logAudit(c.env.DB, userId, action, entity, entityId, detail, ip, ipLocation).catch((err) => {
     console.error('Audit log error:', err, { action, entity, entityId, userId })
   })
+  if (c.executionCtx && c.executionCtx.waitUntil) {
+    console.log('Calling waitUntil for audit log')
+    c.executionCtx.waitUntil(promise)
+  } else {
+    console.log('No executionCtx or waitUntil found')
+  }
 }
 

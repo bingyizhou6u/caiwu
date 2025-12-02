@@ -1,27 +1,16 @@
+import { Context } from 'hono'
 import { getCookie } from 'hono/cookie'
 import type { Env, AppVariables } from './types.js'
 import { getSessionWithUserAndPosition } from './utils/db.js'
 import { verifyAuthToken, AUTH_COOKIE_NAME, extractBearerToken, ALT_AUTH_HEADER } from './utils/jwt.js'
-
-const PUBLIC_PATHS = new Set([
-  '/api/health',
-  '/api/init-if-empty',
-  '/api/auth/login',
-  '/api/auth/login-password',
-  '/api/auth/change-password-first',
-  '/api/auth/get-totp-qr',
-  '/api/auth/bind-totp-first',
-  '/api/auth/me',
-  '/api/me',
-  '/api/system-config/email-notification/enabled'
-])
+import { isPublicPath } from './config/paths.js'
 
 // Auth middleware
 // 使用 JWT + 数据库 session 组合的方式校验用户身份
 // 通过 session 与职位信息一次性写入 context，降低后续查询开销
 export function createAuthMiddleware() {
-  return async (c: any, next: () => Promise<void>) => {
-    if (PUBLIC_PATHS.has(c.req.path)) return next()
+  return async (c: Context<{ Bindings: Env, Variables: AppVariables }>, next: () => Promise<void>) => {
+    if (isPublicPath(c.req.path)) return next()
 
     const token = getAuthToken(c)
     if (!token) return c.json({ error: 'unauthorized' }, 401)
@@ -34,7 +23,24 @@ export function createAuthMiddleware() {
       return c.json({ error: 'unauthorized' }, 401)
     }
 
-    const sessionData = await getSessionWithUserAndPosition(c.env.DB, payload.sid)
+    // 1. 尝试从 KV 获取 Session 缓存
+    let sessionData = await c.env.SESSIONS_KV.get(`session:${payload.sid}`, 'json') as any
+
+    // 2. 如果 KV 未命中，回退到数据库查询 (并写入缓存)
+    if (!sessionData) {
+      sessionData = await getSessionWithUserAndPosition(c.env.DB, payload.sid)
+
+      if (sessionData && sessionData.session) {
+        // 异步写入 KV 缓存
+        const ttl = Math.floor((sessionData.session.expires_at - Date.now()) / 1000)
+        if (ttl > 0) {
+          c.executionCtx.waitUntil(
+            c.env.SESSIONS_KV.put(`session:${payload.sid}`, JSON.stringify(sessionData), { expirationTtl: ttl })
+          )
+        }
+      }
+    }
+
     if (!sessionData || !sessionData.session) {
       return c.json({ error: 'unauthorized' }, 401)
     }
@@ -47,7 +53,7 @@ export function createAuthMiddleware() {
       c.env.DB.prepare('UPDATE sessions SET last_active_at = ? WHERE id = ?')
         .bind(Date.now(), payload.sid)
         .run()
-        .catch(() => {}) // 忽略更新失败
+        .catch(() => { }) // 忽略更新失败
     )
 
     if (!sessionData.position) {
@@ -65,7 +71,7 @@ export function createAuthMiddleware() {
   }
 }
 
-function getAuthToken(c: any) {
+function getAuthToken(c: Context<{ Bindings: Env, Variables: AppVariables }>) {
   const altHeader = c.req.header(ALT_AUTH_HEADER)
   if (altHeader) return altHeader
   const bearer = extractBearerToken(c.req.header('Authorization'))

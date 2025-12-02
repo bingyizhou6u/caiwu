@@ -12,6 +12,10 @@ database_id = "582b2cc8-fb7f-47a3-9b12-a264621c2eeb"
 binding = "VOUCHERS"
 bucket_name = "caiwu-vouchers"
 
+[[kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "35e234c4fcf04c5e84b814e0aed53788"
+
 [[send_email]]
 name = "EMAIL"
 

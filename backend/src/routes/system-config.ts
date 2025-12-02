@@ -1,119 +1,196 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
 import { hasPermission } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
-import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
-import { validateJson, getValidatedData } from '../utils/validator.js'
 import { updateSystemConfigSchema } from '../schemas/business.schema.js'
-import type { z } from 'zod'
 
-export const systemConfigRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const systemConfigRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-// 获取邮件提醒配置（无需认证，供登录时检查）
-// 注意：此路由必须放在 /system-config/:key 之前，否则会被参数路由匹配
-systemConfigRoutes.get('/system-config/email-notification/enabled', async (c) => {
-  try {
-    const row = await c.env.DB.prepare('select value from system_config where key=?').bind('email_notification_enabled').first<{ value: string }>()
-    const enabled = row?.value === 'true'
-    return c.json({ enabled })
-  } catch (err: any) {
-    // 如果查询失败，默认返回启用状态
-    console.error('GET /system-config/email-notification/enabled error:', err)
-    return c.json({ enabled: true })
-  }
+// Schema Definitions
+const SystemConfigSchema = z.object({
+  key: z.string(),
+  value: z.any(),
+  description: z.string().nullable().optional()
 })
 
-// 获取系统配置
-systemConfigRoutes.get('/system-config', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
-  
-  try {
-    const rows = await c.env.DB.prepare('select * from system_config').all()
-    const config: Record<string, any> = {}
-    for (const row of (rows.results ?? [])) {
-      const r = row as any
-      // 尝试解析JSON值，如果不是JSON则使用原始值
-      try {
-        config[r.key] = JSON.parse(r.value)
-      } catch {
-        config[r.key] = r.value
+const ConfigResponseSchema = z.object({
+  config: z.record(z.any())
+})
+
+const BooleanResponseSchema = z.object({
+  enabled: z.boolean()
+})
+
+const ErrorResponseSchema = z.object({
+  error: z.string(),
+  code: z.string(),
+  details: z.any().optional()
+})
+
+// Routes
+
+// GET /system-config/email-notification/enabled
+systemConfigRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/system-config/email-notification/enabled',
+    summary: 'Check if email notification is enabled',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: BooleanResponseSchema
+          }
+        },
+        description: 'Status of email notification'
       }
     }
-    return c.json({ config })
-  } catch (err: any) {
-    console.error('GET /system-config error:', err)
-    if (err && typeof err === 'object' && 'statusCode' in err) throw err
-    throw Errors.INTERNAL_ERROR(err.message || '查询失败')
-  }
-})
+  }),
+  async (c) => {
+    const service = c.get('services')?.systemConfig
+    if (!service) throw Errors.INTERNAL_ERROR('Service not initialized')
 
-// 更新系统配置
-systemConfigRoutes.put('/system-config/:key', validateJson(updateSystemConfigSchema), async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-  
-  try {
-    const key = c.req.param('key')
-    const body = getValidatedData<z.infer<typeof updateSystemConfigSchema>>(c)
-    
-    // 将值转换为字符串存储（如果是对象则转为JSON）
-    const valueStr = typeof body.value === 'string' ? body.value : JSON.stringify(body.value)
-    
-    const userId = c.get('userId') as string | undefined
-    const now = Date.now()
-    
-    // 检查配置是否存在
-    const existing = await c.env.DB.prepare('select key from system_config where key=?').bind(key).first<{ key: string }>()
-    
-    if (existing) {
-      // 更新现有配置
-      await c.env.DB.prepare(`
-        update system_config 
-        set value=?, description=?, updated_at=?, updated_by=?
-        where key=?
-      `).bind(valueStr, body.description ?? null, now, userId ?? 'system', key).run()
-    } else {
-      // 创建新配置
-      await c.env.DB.prepare(`
-        insert into system_config (key, value, description, updated_at, updated_by)
-        values(?,?,?,?,?)
-      `).bind(key, valueStr, body.description ?? null, now, userId ?? 'system').run()
+    const config = await service.get('email_notification_enabled')
+    const enabled = config?.value === true || config?.value === 'true'
+    return c.json({ enabled }, 200)
+  }
+)
+
+// GET /system-config
+systemConfigRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/system-config',
+    summary: 'Get all system configurations',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ConfigResponseSchema
+          }
+        },
+        description: 'All system configurations'
+      },
+      403: {
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema
+          }
+        },
+        description: 'Forbidden'
+      }
     }
-    
-    logAuditAction(c, 'update', 'system_config', key, JSON.stringify({ key, value: body.value }))
-    return c.json({ ok: true })
-  } catch (err: any) {
-    console.error('PUT /system-config/:key error:', err)
-    if (err && typeof err === 'object' && 'statusCode' in err) throw err
-    throw Errors.INTERNAL_ERROR(err.message || '更新失败')
-  }
-})
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
 
-// 获取单个配置项
-systemConfigRoutes.get('/system-config/:key', async (c) => {
-  if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
-  
-  try {
+    const service = c.get('services').systemConfig
+    const results = await service.getAll()
+
+    const config: Record<string, any> = {}
+    for (const row of results) {
+      config[row.key] = row.value
+    }
+    return c.json({ config }, 200)
+  }
+)
+
+// PUT /system-config/:key
+systemConfigRoutes.openapi(
+  createRoute({
+    method: 'put',
+    path: '/system-config/{key}',
+    summary: 'Update a system configuration',
+    request: {
+      params: z.object({
+        key: z.string()
+      }),
+      body: {
+        content: {
+          'application/json': {
+            schema: updateSystemConfigSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean() })
+          }
+        },
+        description: 'Update successful'
+      },
+      403: {
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema
+          }
+        },
+        description: 'Forbidden'
+      }
+    }
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+
     const key = c.req.param('key')
-    const row = await c.env.DB.prepare('select * from system_config where key=?').bind(key).first<any>()
-    
-    if (!row) {
+    const body = c.req.valid('json')
+
+    const userId = c.get('userId') as string | undefined
+
+    const service = c.get('services').systemConfig
+
+    await service.set(key, body.value, body.description ?? null, userId ?? 'system')
+
+    logAuditAction(c, 'update', 'system_config', key, JSON.stringify({ key, value: body.value }))
+    return c.json({ ok: true }, 200)
+  }
+)
+
+// GET /system-config/:key
+systemConfigRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/system-config/{key}',
+    summary: 'Get a specific system configuration',
+    request: {
+      params: z.object({
+        key: z.string()
+      })
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: SystemConfigSchema
+          }
+        },
+        description: 'Configuration details'
+      },
+      404: {
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema
+          }
+        },
+        description: 'Configuration not found'
+      }
+    }
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
+
+    const key = c.req.param('key')
+    const service = c.get('services').systemConfig
+    const config = await service.get(key)
+
+    if (!config) {
       throw Errors.NOT_FOUND()
     }
-    
-    // 尝试解析JSON值
-    let value: any
-    try {
-      value = JSON.parse(row.value)
-    } catch {
-      value = row.value
-    }
-    
-    return c.json({ key: row.key, value, description: row.description })
-  } catch (err: any) {
-    console.error('GET /system-config/:key error:', err)
-    if (err && typeof err === 'object' && 'statusCode' in err) throw err
-    throw Errors.INTERNAL_ERROR(err.message || '查询失败')
-  }
-})
 
+    return c.json({ key: config.key, value: config.value, description: config.description }, 200)
+  }
+)

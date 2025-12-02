@@ -1,0 +1,67 @@
+import { Context, Next } from 'hono'
+import { createDb } from '../db/index.js'
+import { SystemConfigService } from '../services/SystemConfigService.js'
+import { EmployeeService } from '../services/EmployeeService.js'
+import { UserService } from '../services/UserService.js'
+import { FinanceService } from '../services/FinanceService.js'
+import { ImportService } from '../services/ImportService.js'
+import { SalaryPaymentService } from '../services/SalaryPaymentService.js'
+import { ReportService } from '../services/ReportService.js'
+import { AuthService } from '../services/AuthService.js'
+import { MasterDataService } from '../services/MasterDataService.js'
+import { FixedAssetService } from '../services/FixedAssetService.js'
+import { RentalService } from '../services/RentalService.js'
+import { ApprovalService } from '../services/ApprovalService.js'
+import { MyService } from '../services/MyService.js'
+import { AuditService } from '../services/AuditService.js'
+import { IPWhitelistService } from '../services/IPWhitelistService.js'
+import { PositionService } from '../services/PositionService.js'
+import { SiteConfigService } from '../services/SiteConfigService.js'
+import type { Env, AppVariables } from '../types.js'
+
+export const di = async (c: Context<{ Bindings: Env, Variables: AppVariables }>, next: Next) => {
+    const db = createDb(c.env.DB)
+
+    // Initialize services
+    const systemConfigService = new SystemConfigService(db)
+    const siteConfigService = new SiteConfigService(db)
+    const userService = new UserService(c.env.DB) // UserService still uses raw D1 for now? Let's assume yes based on previous code.
+    const employeeService = new EmployeeService(db)
+    const financeService = new FinanceService(db)
+    const importService = new ImportService(db)
+    const salaryPaymentService = new SalaryPaymentService(db)
+    const reportService = new ReportService(db)
+    const authService = new AuthService(db, c.env.SESSIONS_KV) // Updated to use Drizzle db
+    const masterDataService = new MasterDataService(db) // Updated to use Drizzle db
+    const fixedAssetService = new FixedAssetService(db)
+    const rentalService = new RentalService(db)
+    const approvalService = new ApprovalService(db)
+    const myService = new MyService(db)
+    const auditService = new AuditService(db)
+    const ipWhitelistService = new IPWhitelistService(c.env)
+    const positionService = new PositionService(db)
+
+    // Inject into context
+    c.set('db', db)
+    c.set('services', {
+        systemConfig: systemConfigService,
+        siteConfig: siteConfigService,
+        finance: financeService,
+        user: userService,
+        employee: employeeService,
+        import: importService,
+        salaryPayment: salaryPaymentService,
+        report: reportService,
+        auth: authService,
+        masterData: masterDataService,
+        fixedAsset: fixedAssetService,
+        rental: rentalService,
+        approval: approvalService,
+        my: myService,
+        audit: auditService,
+        ipWhitelist: ipWhitelistService,
+        position: positionService
+    })
+
+    await next()
+}

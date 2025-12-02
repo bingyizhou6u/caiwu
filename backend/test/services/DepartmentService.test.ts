@@ -31,9 +31,9 @@ describe('DepartmentService', () => {
         const departments = await db.prepare('select * from org_departments where project_id = ?').bind(projectId).all<any>()
         const deptNames = departments.results.map((d: any) => d.name)
 
-        expect(deptNames).toContain('人事部')
-        expect(deptNames).toContain('财务部')
-        expect(deptNames).toContain('行政部')
+        expect(deptNames).toContain('项目人事')
+        expect(deptNames).toContain('项目财务')
+        expect(deptNames).toContain('项目行政')
         expect(deptNames).toContain('开发部')
 
         // Verify sub-departments for Dev

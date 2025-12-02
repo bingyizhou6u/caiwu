@@ -43,7 +43,7 @@ export const MultiTabs: React.FC = () => {
 
             setItems(prev => [...prev, { key: path, label: title, closable: true }])
         }
-    }, [location.pathname, items]) // Added 'items' to dependency array to ensure 'exists' check is always up-to-date
+    }, [location.pathname])
 
     const onChange = (key: string) => {
         navigate(key)

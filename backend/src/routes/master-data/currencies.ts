@@ -1,73 +1,157 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types.js'
 import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
-import { validateJson, getValidatedData } from '../../utils/validator.js'
-import { createCurrencySchema, updateCurrencySchema } from '../../schemas/business.schema.js'
-import { z } from 'zod'
+import { createCurrencySchema, updateCurrencySchema, currencySchema } from '../../schemas/master-data.schema.js'
 
-export const currenciesRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
+export const currenciesRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-currenciesRoutes.get('/', async (c) => {
-    // 所有人都可以查看
-    const search = c.req.query('search')
-
-    if (search) {
-        // 搜索查询不缓存（结果动态）
-        const like = `%${search.toUpperCase()}%`
-        const rows = await c.env.DB.prepare('select * from currencies where upper(code) like ? or upper(name) like ? order by code')
-            .bind(like, like).all()
-        return c.json({ results: rows.results ?? [] })
+const listCurrenciesRoute = createRoute({
+    method: 'get',
+    path: '/',
+    summary: '获取币种列表',
+    request: {
+        query: z.object({
+            search: z.string().optional()
+        })
+    },
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        results: z.array(currencySchema)
+                    })
+                }
+            },
+            description: '币种列表'
+        }
     }
+})
 
-    const rows = await c.env.DB.prepare('select * from currencies order by code').all()
-    const results = rows.results ?? []
-
+currenciesRoutes.openapi(listCurrenciesRoute, async (c) => {
+    const search = c.req.query('search')
+    const service = c.get('services').masterData
+    const results = await service.getCurrencies(search)
     return c.json({ results })
 })
 
-currenciesRoutes.post('/', validateJson(createCurrencySchema), async (c) => {
-    if (!hasPermission(c, 'system', 'currency', 'create')) throw Errors.FORBIDDEN()
-    const body = getValidatedData<z.infer<typeof createCurrencySchema>>(c)
-    const code = body.code
-
-    // 检查币种代码是否已存在
-    const existed = await c.env.DB.prepare('select code from currencies where code=?').bind(code).first<{ code: string }>()
-    if (existed?.code) throw Errors.DUPLICATE('币种代码')
-
-    await c.env.DB.prepare('insert into currencies(code,name,active) values(?,?,1)').bind(code, body.name).run()
-    logAuditAction(c, 'create', 'currency', code, JSON.stringify({ name: body.name }))
-    return c.json({ code, name: body.name })
+const createCurrencyRoute = createRoute({
+    method: 'post',
+    path: '/',
+    summary: '创建币种',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: createCurrencySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: currencySchema
+                }
+            },
+            description: '创建成功'
+        }
+    }
 })
 
-currenciesRoutes.put('/:code', validateJson(updateCurrencySchema), async (c) => {
+currenciesRoutes.openapi(createCurrencyRoute, async (c) => {
+    if (!hasPermission(c, 'system', 'currency', 'create')) throw Errors.FORBIDDEN()
+    const body = c.req.valid('json')
+    const service = c.get('services').masterData
+
+    const result = await service.createCurrency({
+        code: body.code,
+        name: body.name
+    })
+
+    logAuditAction(c, 'create', 'currency', result.code, JSON.stringify({ name: body.name }))
+
+    return c.json({
+        code: result.code,
+        name: result.name,
+        active: 1
+    })
+})
+
+const updateCurrencyRoute = createRoute({
+    method: 'put',
+    path: '/{code}',
+    summary: '更新币种',
+    request: {
+        params: z.object({
+            code: z.string()
+        }),
+        body: {
+            content: {
+                'application/json': {
+                    schema: updateCurrencySchema
+                }
+            }
+        }
+    },
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: z.object({ ok: z.boolean() })
+                }
+            },
+            description: '更新成功'
+        }
+    }
+})
+
+currenciesRoutes.openapi(updateCurrencyRoute, async (c) => {
     if (!hasPermission(c, 'system', 'currency', 'update')) throw Errors.FORBIDDEN()
-    const code = c.req.param('code').toUpperCase()
-    const body = getValidatedData<z.infer<typeof updateCurrencySchema>>(c)
+    const code = c.req.param('code')
+    const body = c.req.valid('json')
+    const service = c.get('services').masterData
 
-    const updates: string[] = []
-    const binds: any[] = []
-    if (body.name !== undefined) { updates.push('name=?'); binds.push(body.name) }
-    if (body.active !== undefined) { updates.push('active=?'); binds.push(body.active ? 1 : 0) }
+    await service.updateCurrency(code, {
+        name: body.name,
+        active: body.active
+    })
 
-    binds.push(code)
-    await c.env.DB.prepare(`update currencies set ${updates.join(',')} where code=?`).bind(...binds).run()
     logAuditAction(c, 'update', 'currency', code, JSON.stringify(body))
     return c.json({ ok: true })
 })
 
-currenciesRoutes.delete('/:code', async (c) => {
-    if (!hasPermission(c, 'system', 'currency', 'delete')) throw Errors.FORBIDDEN()
-    const code = c.req.param('code').toUpperCase()
-    const currency = await c.env.DB.prepare('select name from currencies where code=?').bind(code).first<{ name: string }>()
-    if (!currency) throw Errors.NOT_FOUND('币种')
-    // 检查是否有账户使用此币种（包括所有账户，不只是active的）
-    const accounts = await c.env.DB.prepare('select count(1) as cnt from accounts where currency=?').bind(code).first<{ cnt: number }>()
-    if (accounts && Number(accounts.cnt) > 0) {
-        throw Errors.BUSINESS_ERROR('无法删除，该币种还有账户使用')
+const deleteCurrencyRoute = createRoute({
+    method: 'delete',
+    path: '/{code}',
+    summary: '删除币种',
+    request: {
+        params: z.object({
+            code: z.string()
+        })
+    },
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: z.object({ ok: z.boolean() })
+                }
+            },
+            description: '删除成功'
+        }
     }
-    await c.env.DB.prepare('delete from currencies where code=?').bind(code).run()
-    logAuditAction(c, 'delete', 'currency', code, JSON.stringify({ name: currency.name }))
+})
+
+currenciesRoutes.openapi(deleteCurrencyRoute, async (c) => {
+    if (!hasPermission(c, 'system', 'currency', 'delete')) throw Errors.FORBIDDEN()
+    const code = c.req.param('code')
+    const service = c.get('services').masterData
+
+    const result = await service.deleteCurrency(code)
+
+    logAuditAction(c, 'delete', 'currency', code, JSON.stringify({ name: result.name }))
     return c.json({ ok: true })
 })

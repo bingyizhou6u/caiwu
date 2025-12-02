@@ -1,13 +1,22 @@
-import { Hono } from 'hono'
+import { OpenAPIHono } from '@hono/zod-openapi'
+import { swaggerUI } from '@hono/swagger-ui'
 import { cors } from 'hono/cors'
 import type { Env, AppVariables } from './types.js'
 import { createAuthMiddleware } from './middleware.js'
 import { errorHandler } from './utils/errors.js'
 import { authRoutes } from './routes/auth.js'
+// ... imports ...
+
+const app = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
+
+
+
+// 全局错误处理（必须在最前面）
+app.onError(errorHandler)
 import { master_dataRoutes } from './routes/master-data.js'
 import { flowsRoutes } from './routes/flows.js'
 import { ar_apRoutes } from './routes/ar-ap.js'
-import { reportsRoutes } from './routes/reports.js'
+import reportsRoutes from './routes/reports.js'
 import { importRoutes } from './routes/import.js'
 import { employeesRoutes } from './routes/employees.js'
 import { borrowingsRoutes } from './routes/borrowings.js'
@@ -26,11 +35,15 @@ import { positionPermissionsRoutes } from './routes/position-permissions.js'
 import siteConfigRoutes from './routes/site-config.js'
 import { myRoutes } from './routes/my.js'
 import { approvalsRoutes } from './routes/approvals.js'
+import { employeesLeavesRoutes } from './routes/employee-leaves.js'
+import { expenseReimbursementsRoutes } from './routes/expense-reimbursements.js'
+import { di } from './middleware/di.js'
+import { Errors } from './utils/errors.js'
+import { z } from 'zod'
 
-const app = new Hono<{ Bindings: Env, Variables: AppVariables }>()
 
-// 全局错误处理（必须在最前面）
-app.use('*', errorHandler)
+
+
 
 app.use('*', cors({
   origin: (origin) => {
@@ -52,11 +65,11 @@ app.get('/api/health', async (c) => {
     // 优化：使用最简单最快的查询，添加超时控制
     const r = await Promise.race([
       c.env.DB.prepare('select 1 as ok').first<{ ok: number }>(),
-      new Promise<null>((_, reject) => 
+      new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 2000)
       )
     ]).catch(() => null)
-    
+
     return c.json({ db: r ? r.ok === 1 : false })
   } catch (error: any) {
     // 如果查询失败，返回数据库不可用
@@ -66,15 +79,21 @@ app.get('/api/health', async (c) => {
 
 app.get('/api/version', (c) => c.json({ version: 'currencies-v1' }))
 
+
+// 注册中间件
 // 注册中间件
 app.use('/api/*', createAuthMiddleware())
+app.use('/api/*', di)
+
+
+
 
 // 导入并注册各个路由模块
 app.route('/api', authRoutes)
 app.route('/api', master_dataRoutes)
 app.route('/api', flowsRoutes)
 app.route('/api', ar_apRoutes)
-app.route('/api', reportsRoutes)
+app.route('/api/reports', reportsRoutes)
 app.route('/api', importRoutes)
 app.route('/api', employeesRoutes)
 app.route('/api', borrowingsRoutes)
@@ -93,5 +112,21 @@ app.route('/api', positionPermissionsRoutes)
 app.route('/api', siteConfigRoutes)
 app.route('/api', myRoutes)
 app.route('/api', approvalsRoutes)
+app.route('/api/employee-leaves', employeesLeavesRoutes)
+app.route('/api/expense-reimbursements', expenseReimbursementsRoutes)
+
+// OpenAPI 文档配置
+app.doc('/api/doc', {
+  openapi: '3.0.0',
+  info: {
+    version: '1.0.0',
+    title: 'Caiwu API',
+  },
+})
+
+// Swagger UI
+app.get('/api/ui', swaggerUI({ url: '/api/doc' }))
+
+
 
 export default app

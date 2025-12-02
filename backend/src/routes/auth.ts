@@ -1,113 +1,87 @@
-import { Hono } from 'hono'
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { deleteCookie, getCookie } from 'hono/cookie'
 import type { Env, AppVariables } from '../types.js'
-import { AuthService } from '../services/AuthService.js'
-import { UserService } from '../services/UserService.js'
-import { validateJson, getValidatedData } from '../utils/validator.js'
 import { loginSchema, changePasswordSchema, bindTotpSchema } from '../schemas/business.schema.js'
-import type { z } from 'zod'
 import { Errors } from '../utils/errors.js'
 import { AUTH_COOKIE_NAME, AUTH_TOKEN_TTL, extractBearerToken, signAuthToken, verifyAuthToken, ALT_AUTH_HEADER } from '../utils/jwt.js'
 import { sendLoginNotificationEmail } from '../utils/email.js'
+import { Context } from 'hono'
+import { employees } from '../db/schema.js'
+import { eq } from 'drizzle-orm'
 
+const authRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
-const authRoutes = new Hono<{ Bindings: Env, Variables: AppVariables }>()
-
-const PASSWORD_LOGIN_PATHS = ['/auth/login', '/auth/login-password']
-
-for (const path of PASSWORD_LOGIN_PATHS) {
-  authRoutes.post(path, validateJson(loginSchema), handlePasswordLogin)
+// Helper to clear legacy cookies
+function clearLegacyCookie(c: Context) {
+  deleteCookie(c, AUTH_COOKIE_NAME, { path: '/' })
+  deleteCookie(c, 'sid', { path: '/' })
 }
 
-authRoutes.post('/auth/change-password-first', validateJson(changePasswordSchema), async (c) => {
-  const body = getValidatedData<z.infer<typeof changePasswordSchema>>(c)
-  const authService = new AuthService(c.env.DB)
-  const result = await authService.changePasswordFirst(body.email, body.oldPassword, body.newPassword)
-  return c.json(result)
-})
+// Helper to extract token
+function extractAuthToken(c: Context) {
+  const altHeader = c.req.header(ALT_AUTH_HEADER)
+  if (altHeader) return altHeader
+  return extractBearerToken(c.req.header('Authorization')) || getCookie(c, AUTH_COOKIE_NAME)
+}
 
-authRoutes.post('/auth/get-totp-qr', validateJson(loginSchema), async (c) => {
-  const body = getValidatedData<z.infer<typeof loginSchema>>(c)
-  const authService = new AuthService(c.env.DB)
-  const result = await authService.getTotpQr(body.email, body.password)
-  return c.json(result)
-})
+// Helper to build success payload
+async function buildAuthSuccessPayload(c: Context<{ Bindings: Env, Variables: AppVariables }>, result: any) {
+  const token = await signAuthToken({
+    sid: result.session.id,
+    sub: result.user.id,
+    email: result.user.email,
+    name: result.user.name,
+    position: result.position
+  }, c.env.AUTH_JWT_SECRET, AUTH_TOKEN_TTL)
 
-authRoutes.post('/auth/bind-totp-first', validateJson(bindTotpSchema), async (c) => {
-  const body = getValidatedData<z.infer<typeof bindTotpSchema>>(c)
-  const authService = new AuthService(c.env.DB)
-  const result = await authService.bindTotpFirst(body.email, body.password, body.secret, body.totp)
-
-  if (result.status === 'success' && result.session && result.position) {
-    clearLegacyCookie(c)
-    const payload = await buildAuthSuccessPayload(c, result)
-    return c.json({ ok: true, ...payload })
-  }
-
-  return c.json(result)
-})
-
-authRoutes.post('/auth/logout', async (c) => {
-  const token = extractAuthToken(c)
-  const authService = new AuthService(c.env.DB)
-
-  if (token) {
-    try {
-      const payload = await verifyAuthToken(token, c.env.AUTH_JWT_SECRET)
-      await authService.logout(payload.sid)
-    } catch (error) {
-      console.warn('Failed to logout session:', error)
+  return {
+    token,
+    expiresIn: AUTH_TOKEN_TTL,
+    user: {
+      id: result.user.id,
+      name: result.user.name,
+      email: result.user.email,
+      sessionId: result.session.id,
+      position: {
+        id: result.position.id,
+        code: result.position.code,
+        name: result.position.name,
+        level: result.position.level,
+        function_role: result.position.function_role,
+        can_manage_subordinates: result.position.can_manage_subordinates,
+        permissions: result.position.permissions || {}
+      }
     }
   }
+}
 
-  clearLegacyCookie(c)
-  return c.json({ ok: true })
-})
-
-authRoutes.get('/auth/me', async (c) => {
-  const user = await resolveUserFromToken(c)
-  return c.json({ user })
-})
-
-authRoutes.get('/me', async (c) => {
-  const user = await resolveUserFromToken(c)
-  return c.json({ user })
-})
-
-authRoutes.get('/my-permissions', async (c) => {
-  const position = c.get('userPosition')
-  if (!position?.permissions) {
-    throw Errors.INTERNAL_ERROR('职位权限未配置，请联系管理员')
-  }
-  return c.json({ permissions: position.permissions })
-})
-
-async function handlePasswordLogin(c: any) {
+// Login Handler
+async function handleLogin(c: Context<{ Bindings: Env, Variables: AppVariables }>) {
   try {
-    const body = getValidatedData<z.infer<typeof loginSchema>>(c)
-    const authService = new AuthService(c.env.DB)
+    const body = c.req.valid('json' as any)
+    const authService = c.get('services').auth
 
-    // 获取设备信息
+    // Get device info
     const deviceInfo = {
       ip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown',
       userAgent: c.req.header('User-Agent') || undefined
     }
+
     const result = await authService.login(body.email, body.password, body.totp, c, deviceInfo)
 
     if (result.status === 'success' && result.session && result.position) {
       clearLegacyCookie(c)
       const payload = await buildAuthSuccessPayload(c, result)
-      
-      // 异步发送登录提醒邮件（不阻塞登录响应）
+
+      // Async email notification
       if (c.executionCtx?.waitUntil) {
         c.executionCtx.waitUntil(
           (async () => {
             try {
-              // 检查邮件通知是否启用
               const configRow = await c.env.DB.prepare(
                 'SELECT value FROM system_config WHERE key = ?'
               ).bind('email_notification_enabled').first() as { value: string } | null
-              
+
               if (configRow?.value === 'true') {
                 const loginTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
                 await sendLoginNotificationEmail(
@@ -124,97 +98,320 @@ async function handlePasswordLogin(c: any) {
           })()
         )
       }
-      
-      return c.json({ ok: true, ...payload })
+
+      return c.json({ ok: true, ...payload }) as any
     }
 
     return c.json({
+      ok: false,
       mustChangePassword: result.status === 'must_change_password',
       needTotp: result.status === 'need_totp',
       needBindTotp: result.status === 'need_bind_totp',
       message: result.message
-    })
+    }) as any
   } catch (error: any) {
     console.error('Login error:', error)
     const statusCode = error.statusCode || 500
-    // 生产环境不返回堆栈信息，避免信息泄露
     return c.json({
       ok: false,
       error: error.message,
       code: error.code || 'UNKNOWN_ERROR'
-    }, statusCode)
+    }, statusCode as any) as any
   }
 }
 
-async function buildAuthSuccessPayload(c: any, result: any) {
-  const token = await signAuthToken({
-    sid: result.session.id,
-    sub: result.user.id,
-    email: result.user.email,
-    name: result.user.name,
-    position: result.position
-  }, c.env.AUTH_JWT_SECRET, AUTH_TOKEN_TTL)
-
-  return {
-    token,
-    expiresIn: AUTH_TOKEN_TTL,
-    user: buildUserResponse(result.user, result.position, result.session.id)
+// Login Route
+const loginRoute = createRoute({
+  method: 'post',
+  path: '/auth/login',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: loginSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            ok: z.boolean(),
+            token: z.string().optional(),
+            expiresIn: z.number().optional(),
+            user: z.any().optional(),
+            mustChangePassword: z.boolean().optional(),
+            needTotp: z.boolean().optional(),
+            needBindTotp: z.boolean().optional(),
+            message: z.string().optional(),
+            error: z.string().optional(),
+            code: z.string().optional()
+          })
+        }
+      },
+      description: 'Login result'
+    }
   }
-}
+})
 
-function clearLegacyCookie(c: any) {
-  deleteCookie(c, AUTH_COOKIE_NAME, { path: '/' })
-  deleteCookie(c, 'sid', { path: '/' })
-}
+authRoutes.openapi(loginRoute, handleLogin)
 
-function extractAuthToken(c: any) {
-  const altHeader = c.req.header(ALT_AUTH_HEADER)
-  if (altHeader) return altHeader
-  return extractBearerToken(c.req.header('Authorization')) || getCookie(c, AUTH_COOKIE_NAME)
-}
+// Alias for login-password (using standard Hono route to share handler easily)
+// @ts-ignore
+authRoutes.post('/auth/login-password', async (c) => {
+  // Manually validate body since it's not going through openapi validator
+  const body = await c.req.json()
+  const result = loginSchema.safeParse(body)
+  if (!result.success) {
+    return c.json({ error: 'Invalid request' }, 400)
+  }
+  // Mock c.req.valid for handleLogin
+  c.req.valid = () => body
+  return handleLogin(c)
+})
 
-async function resolveUserFromToken(c: any) {
+// Change Password First
+const changePasswordFirstRoute = createRoute({
+  method: 'post',
+  path: '/auth/change-password-first',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: changePasswordSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            status: z.string()
+          })
+        }
+      },
+      description: 'Change password result'
+    }
+  }
+})
+
+authRoutes.openapi(changePasswordFirstRoute, async (c) => {
+  const body = c.req.valid('json')
+  const authService = c.get('services').auth
+  const result = await authService.changePasswordFirst(body.email, body.oldPassword, body.newPassword)
+  return c.json(result) as any
+})
+
+// Get TOTP QR
+const getTotpQrRoute = createRoute({
+  method: 'post',
+  path: '/auth/get-totp-qr',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: loginSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            secret: z.string(),
+            otpauthUrl: z.string()
+          })
+        }
+      },
+      description: 'TOTP QR result'
+    }
+  }
+})
+
+authRoutes.openapi(getTotpQrRoute, async (c) => {
+  const body = c.req.valid('json')
+  const authService = c.get('services').auth
+  const result = await authService.getTotpQr(body.email, body.password)
+  return c.json(result) as any
+})
+
+// Bind TOTP First
+const bindTotpFirstRoute = createRoute({
+  method: 'post',
+  path: '/auth/bind-totp-first',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: bindTotpSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.any()
+        }
+      },
+      description: 'Bind TOTP result'
+    }
+  }
+})
+
+authRoutes.openapi(bindTotpFirstRoute, async (c) => {
+  const body = c.req.valid('json')
+  const authService = c.get('services').auth
+  const result = await authService.bindTotpFirst(body.email, body.password, body.secret, body.totp)
+
+  if (result.status === 'success' && result.session && result.position) {
+    clearLegacyCookie(c)
+    const payload = await buildAuthSuccessPayload(c, result)
+    return c.json({ ok: true, ...payload }) as any
+  }
+
+  return c.json(result) as any
+})
+
+// Logout
+const logoutRoute = createRoute({
+  method: 'post',
+  path: '/auth/logout',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            ok: z.boolean()
+          })
+        }
+      },
+      description: 'Logout result'
+    }
+  }
+})
+
+authRoutes.openapi(logoutRoute, async (c) => {
   const token = extractAuthToken(c)
-  if (!token) return null
+  const authService = c.get('services').auth
+
+  if (token) {
+    try {
+      const payload = await verifyAuthToken(token, c.env.AUTH_JWT_SECRET)
+      await authService.logout(payload.sid)
+    } catch (error) {
+      console.warn('Failed to logout session:', error)
+    }
+  }
+
+  clearLegacyCookie(c)
+  return c.json({ ok: true }) as any
+})
+
+// Get Me (Public but verifies token manually)
+const meRoute = createRoute({
+  method: 'get',
+  path: '/auth/me',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            user: z.any().nullable()
+          })
+        }
+      },
+      description: 'User info'
+    }
+  }
+})
+
+async function handleGetMe(c: Context<{ Bindings: Env, Variables: AppVariables }>) {
+  const token = extractAuthToken(c)
+  if (!token) return c.json({ user: null }) as any
 
   let payload
   try {
     payload = await verifyAuthToken(token, c.env.AUTH_JWT_SECRET)
   } catch (error) {
     console.warn('Token decode failed:', error)
-    return null
+    return c.json({ user: null }) as any
   }
 
-  const authService = new AuthService(c.env.DB)
+  const authService = c.get('services').auth
   const session = await authService.getSession(payload.sid)
-  if (!session) return null
+  if (!session) return c.json({ user: null }) as any
 
-  const userService = new UserService(c.env.DB)
+  const userService = c.get('services').user
   const user = await userService.getUserById(payload.sub)
-  if (!user || user.active === 0) return null
+  if (!user || user.active === 0) return c.json({ user: null }) as any
 
   const position = await userService.getUserPosition(user.id)
-  if (!position) return null
+  if (!position) return c.json({ user: null }) as any
 
-  return buildUserResponse({ id: user.id, name: user.name, email: user.email }, position, session.id)
+  const db = c.get('db')
+  const employee = await db.query.employees.findFirst({
+    where: (employees, { eq }) => eq(employees.email, user.email),
+    columns: { name: true }
+  })
+
+  const name = employee?.name || user.email.split('@')[0]
+
+  return c.json({
+    user: {
+      id: user.id,
+      name: name,
+      email: user.email,
+      sessionId: session.id,
+      position: {
+        id: position.id,
+        code: position.code,
+        name: position.name,
+        level: position.level,
+        function_role: position.function_role,
+        can_manage_subordinates: position.can_manage_subordinates,
+        permissions: position.permissions || {}
+      }
+    }
+  }) as any
 }
 
-function buildUserResponse(user: { id: string, name: string, email: string }, position: any, sessionId?: string) {
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    sessionId,
-    position: {
-      id: position.id,
-      code: position.code,
-      name: position.name,
-      level: position.level,
-      function_role: position.function_role,
-      can_manage_subordinates: position.can_manage_subordinates,
-      permissions: position.permissions || {}
+authRoutes.openapi(meRoute, handleGetMe)
+
+// Alias /me
+authRoutes.get('/me', handleGetMe)
+
+// My Permissions
+const myPermissionsRoute = createRoute({
+  method: 'get',
+  path: '/my-permissions',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            permissions: z.any()
+          })
+        }
+      },
+      description: 'User permissions'
     }
   }
-}
+})
+
+authRoutes.openapi(myPermissionsRoute, async (c) => {
+  const position = c.get('userPosition')
+  if (!position?.permissions) {
+    throw Errors.INTERNAL_ERROR('职位权限未配置，请联系管理员')
+  }
+  return c.json({ permissions: position.permissions }) as any
+})
 
 export { authRoutes }

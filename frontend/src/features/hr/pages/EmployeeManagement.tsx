@@ -160,7 +160,8 @@ export function EmployeeManagement() {
     ['employees', statusFilter],
     employeesUrl,
     {
-      select: (data: any) => Array.isArray(data) ? data : data?.results || []
+      select: (data: any) => Array.isArray(data) ? data : data?.results || [],
+      staleTime: 0,
     }
   )
 
