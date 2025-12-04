@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, Table, Space, Select, message, Statistic, Row, Col } from 'antd'
 import { api } from '../../../config/api'
-import { apiRequest } from '../../../utils/api'
+import { api as apiClient } from '../../../api/http'
 import type { ColumnsType } from 'antd/es/table'
 import { formatAmount } from '../../../utils/formatters'
 
@@ -22,6 +22,8 @@ type EmployeeSalaryRow = {
   actual_salary_cents: number
 }
 
+import { PageContainer } from '../../../components/PageContainer'
+
 export function ReportEmployeeSalary() {
   const [data, setData] = useState<EmployeeSalaryRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -31,12 +33,15 @@ export function ReportEmployeeSalary() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ year: year.toString() })
-      if (month) {
-        params.append('month', month.toString())
+      const params = new URLSearchParams()
+      params.append('year', String(year))
+      if (month !== undefined) {
+        params.append('month', String(month))
       }
-      const { results } = await apiRequest(`${api.reports.employeeSalary}?${params}`)
-      setData(results)
+      const results = await apiClient.get<{ results: EmployeeSalaryRow[] }>(
+        `${api.reports.employeeSalary}?${params.toString()}`
+      )
+      setData(results.results || [])
     } catch (error: any) {
       message.error(error.message || '加载薪资表失败')
     } finally {
@@ -178,8 +183,9 @@ export function ReportEmployeeSalary() {
   }))
 
   return (
-    <Card
+    <PageContainer
       title="员工薪资表"
+      breadcrumb={[{ title: '报表中心' }, { title: '员工薪资表' }]}
       extra={
         <Space>
           <Select
@@ -199,39 +205,42 @@ export function ReportEmployeeSalary() {
         </Space>
       }
     >
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={8}>
-          <Statistic
-            title="员工总数"
-            value={summary.employeeCount}
-            suffix="人"
-          />
-        </Col>
-        <Col span={8}>
-          <Statistic
-            title="工资总额"
-            value={summary.totalSalary / 100}
-            precision={2}
-          />
-        </Col>
-        <Col span={8}>
-          <Statistic
-            title="平均工资"
-            value={summary.employeeCount > 0 ? (summary.totalSalary / summary.employeeCount) / 100 : 0}
-            precision={2}
-          />
-        </Col>
-      </Row>
+      <Card bordered={false} className="page-card">
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={8}>
+            <Statistic
+              title="员工总数"
+              value={summary.employeeCount}
+              suffix="人"
+            />
+          </Col>
+          <Col span={8}>
+            <Statistic
+              title="工资总额"
+              value={summary.totalSalary / 100}
+              precision={2}
+            />
+          </Col>
+          <Col span={8}>
+            <Statistic
+              title="平均工资"
+              value={summary.employeeCount > 0 ? (summary.totalSalary / summary.employeeCount) / 100 : 0}
+              precision={2}
+            />
+          </Col>
+        </Row>
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey={(record) => `${record.employee_id}-${record.year}-${record.month}`}
-        loading={loading}
-        pagination={{ pageSize: 20 }}
-        scroll={{ x: 1200 }}
-      />
-    </Card>
+        <Table
+          className="table-striped"
+          columns={columns}
+          dataSource={data}
+          rowKey={(record) => `${record.employee_id}-${record.year}-${record.month}`}
+          loading={loading}
+          pagination={{ pageSize: 20 }}
+          scroll={{ x: 1200 }}
+        />
+      </Card>
+    </PageContainer>
   )
 }
 

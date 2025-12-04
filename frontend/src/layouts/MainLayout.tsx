@@ -1,10 +1,12 @@
-import { Layout, Menu, Dropdown, Avatar, Spin, Button, theme } from 'antd'
-import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons'
+import { Layout, Menu, Dropdown, Avatar, Button, theme } from 'antd'
+import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH } from '../config/menu'
 import { MultiTabs } from '../components/MultiTabs'
+import { GlobalSearch } from '../components/GlobalSearch'
+import './MainLayout.css'
 
 const { Header, Sider, Content } = Layout
 
@@ -41,9 +43,9 @@ export function MainLayout() {
         {
             key: 'profile',
             label: (
-                <div style={{ padding: '4px 0' }}>
-                    <div style={{ fontWeight: 'bold' }}>{userInfo?.name}</div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>{userInfo?.email}</div>
+                <div className="user-menu-profile">
+                    <div className="user-menu-name">{userInfo?.name}</div>
+                    <div className="user-menu-email">{userInfo?.email}</div>
                 </div>
             ),
         },
@@ -88,37 +90,19 @@ export function MainLayout() {
     }
 
     return (
-        <Layout style={{ minHeight: '100vh' }}>
+        <Layout className="main-layout">
             <Sider
                 trigger={null}
                 collapsible
                 collapsed={collapsed}
-                width={220}
+                width={240}
+                collapsedWidth={80}
                 theme="dark"
-                style={{
-                    overflow: 'auto',
-                    height: '100vh',
-                    position: 'fixed',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    zIndex: 1001
-                }}
+                className="main-sider"
             >
-                <div style={{
-                    height: 64,
-                    margin: 16,
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    borderRadius: 6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    fontSize: collapsed ? 12 : 16,
-                    transition: 'all 0.2s'
-                }}>
-                    {collapsed ? 'AR' : 'AR公司管理系统'}
+                <div className={`logo-container ${collapsed ? 'collapsed' : ''}`}>
+                    <ThunderboltFilled className="logo-icon" />
+                    {!collapsed && <span className="logo-text">AR系统</span>}
                 </div>
                 <Menu
                     theme="dark"
@@ -130,47 +114,28 @@ export function MainLayout() {
                     onClick={onMenuClick}
                 />
             </Sider>
-            <Layout style={{ marginLeft: collapsed ? 80 : 220, transition: 'all 0.2s' }}>
-                <Header style={{
-                    padding: 0,
-                    background: colorBgContainer,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    boxShadow: '0 1px 4px rgba(0,21,41,0.08)'
-                }}>
-                    <Button
-                        type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            <Layout className="main-content-layout" style={{ marginLeft: collapsed ? 80 : 240 }}>
+                <Header className="main-header">
+                    <div
+                        className="trigger-btn"
                         onClick={toggleCollapsed}
-                        style={{
-                            fontSize: '16px',
-                            width: 64,
-                            height: 64,
-                        }}
-                    />
-                    <div style={{ marginRight: 24 }}>
+                    >
+                        {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                    </div>
+                    <div className="header-right">
+                        <GlobalSearch />
                         <Dropdown menu={{ items: userMenu as any }} placement="bottomRight">
-                            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff', marginRight: 8 }} />
-                                <span style={{ marginRight: 8 }}>{userInfo?.name}</span>
+                            <div className="user-dropdown">
+                                <Avatar icon={<UserOutlined />} className="user-avatar" />
+                                <span className="user-name">{userInfo?.name}</span>
                                 <DownOutlined style={{ fontSize: 12 }} />
                             </div>
                         </Dropdown>
                     </div>
                 </Header>
-                <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+                <Content className="main-content">
                     <MultiTabs />
-                    <div style={{
-                        padding: 24,
-                        minHeight: 360,
-                        background: colorBgContainer,
-                        borderRadius: borderRadiusLG,
-                        marginTop: 16
-                    }}>
+                    <div className="content-wrapper">
                         <Outlet />
                     </div>
                 </Content>

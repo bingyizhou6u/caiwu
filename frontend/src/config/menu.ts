@@ -1,4 +1,5 @@
 import type { MenuProps } from 'antd'
+import { hasPermission } from '../utils/permissions'
 
 export const pageTitles: Record<string, string> = {
     // 我的工作台
@@ -56,41 +57,7 @@ export const pageTitles: Record<string, string> = {
     'site-config': '网站配置',
     'ip-whitelist': 'IP白名单',
     'audit': '审计日志',
-}
-
-/**
- * 检查用户是否有指定模块的权限
- * @param userInfo 用户信息
- * @param module 模块名
- * @param subModule 子模块名(可选)
- * @param action 操作(可选)
- */
-function hasPermission(userInfo: any, module: string, subModule?: string, action?: string): boolean {
-    if (!userInfo?.position?.permissions) return false
-
-    const modulePerms = userInfo.position.permissions[module]
-    if (!modulePerms) return false
-
-    // 如果只检查模块权限
-    if (!subModule) return true
-
-    const subModulePerms = modulePerms[subModule]
-    if (!subModulePerms || !Array.isArray(subModulePerms)) return false
-
-    // 如果只检查子模块权限
-    if (!action) return subModulePerms.length > 0
-
-    // 检查具体操作权限
-    return subModulePerms.includes(action)
-}
-
-/**
- * 检查是否是管理者(总部/项目主管或组长)
- */
-function isManager(userInfo: any): boolean {
-    if (!userInfo?.position) return false
-    const code = userInfo.position.code
-    return ['hq_manager', 'project_manager', 'team_leader'].includes(code)
+    'system-settings': '通用设置',
 }
 
 export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
@@ -258,6 +225,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         system.push({ key: 'site-config', label: '网站配置' })
         system.push({ key: 'ip-whitelist', label: 'IP白名单' })
         system.push({ key: 'audit', label: '审计日志' })
+        system.push({ key: 'system-settings', label: '通用设置' })
     }
     if (system.length > 0) {
         items.push({ key: 'system', label: '系统设置', children: system })
@@ -319,4 +287,5 @@ export const KEY_TO_PATH: Record<string, string> = {
     'site-config': '/system/config',
     'ip-whitelist': '/system/ip-whitelist',
     'audit': '/system/audit',
+    'system-settings': '/system/settings',
 }

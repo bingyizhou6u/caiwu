@@ -47,6 +47,9 @@ export const employees = sqliteTable('employees', {
     memo: text('memo'),
     birthday: text('birthday'),
     regularDate: text('regular_date'),
+    workSchedule: text('work_schedule'),
+    annualLeaveCycleMonths: integer('annual_leave_cycle_months'),
+    annualLeaveDays: integer('annual_leave_days'),
     createdAt: integer('created_at'),
     updatedAt: integer('updated_at'),
 });

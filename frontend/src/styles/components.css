@@ -1,0 +1,57 @@
+/* Form Utilities */
+.form-full-width {
+    width: 100%;
+}
+
+.form-no-margin-bottom {
+    margin-bottom: 0;
+}
+
+.form-section-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.form-extra-error {
+    color: var(--color-error);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.form-extra-info {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Table Styles */
+.ant-table-wrapper .ant-table-thead>tr>th {
+    background-color: var(--color-bg-container-secondary);
+    font-weight: 600;
+}
+
+/* Striped Rows */
+.table-striped .ant-table-tbody>tr:nth-child(even) {
+    background-color: var(--color-bg-layout);
+}
+
+.table-hover .ant-table-tbody>tr:hover>td {
+    background-color: var(--color-primary-bg-hover) !important;
+}
+
+/* Card Styles in PageContainer */
+.page-card {
+    transition: var(--transition-base);
+}
+
+.page-card:hover {
+    box-shadow: var(--shadow-card);
+}
+
+.page-card .ant-card-body {
+    padding: 24px;
+}

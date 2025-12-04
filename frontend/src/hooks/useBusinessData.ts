@@ -1,5 +1,6 @@
 import { useApiQuery } from '../utils/useApiQuery'
 import { api } from '../config/api'
+import { CACHE_TIME } from '../config/cache'
 import { SelectOption } from '../types/business'
 
 export function useCurrencies() {
@@ -11,7 +12,7 @@ export function useCurrencies() {
                 value: String(r.code),
                 label: `${r.code} - ${r.name}`
             })),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.MASTER_DATA
         }
     )
 }
@@ -25,7 +26,7 @@ export function useDepartments() {
                 value: String(r.id),
                 label: r.name
             })),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.MASTER_DATA
         }
     )
 }
@@ -45,7 +46,7 @@ export function useAccounts() {
                     search: `${r.name}${aliasPart}${currencyPart} ${r.currency || ''}`.toLowerCase()
                 }
             }),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.BUSINESS_DATA
         }
     )
 }
@@ -60,7 +61,7 @@ export function useExpenseCategories() {
                 label: c.name,
                 kind: 'expense'
             })),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.MASTER_DATA
         }
     )
 }
@@ -75,7 +76,7 @@ export function useIncomeCategories() {
                 label: c.name,
                 kind: 'income'
             })),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.MASTER_DATA
         }
     )
 }
@@ -90,7 +91,7 @@ export function useAllCategories() {
                 label: `${c.kind === 'income' ? '收入' : '支出'} - ${c.name}`,
                 kind: c.kind
             })),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.MASTER_DATA
         }
     )
 }
@@ -105,7 +106,7 @@ export function useSites() {
                 label: r.name,
                 department_id: r.department_id
             })),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.MASTER_DATA
         }
     )
 }
@@ -124,7 +125,7 @@ export function useEmployees(activeOnly: boolean = true) {
                     user_active: e.user_active,
                     email: e.email
                 })),
-            staleTime: 5 * 60 * 1000
+            staleTime: CACHE_TIME.BUSINESS_DATA
         }
     )
 }

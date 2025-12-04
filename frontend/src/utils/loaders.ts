@@ -1,19 +1,12 @@
 /**
- * 通用数据加载工具函数
- * 减少重复的数据加载代码
+ * 数据加载工具函数
+ * 用于加载常用的系统基础数据
  */
 
 import { api } from '../config/api'
+import { api as apiClient } from '../api/http'
 import { cachedRequest, cacheKeys } from './cache'
-import { apiGet } from './api'
-
-export interface SelectOption {
-  value: string
-  label: string
-  currency?: string
-  search?: string
-  [key: string]: string | undefined
-}
+import type { SelectOption, Currency, Department, Account, Category, Employee } from '../types'
 
 /**
  * 加载币种列表（带缓存）
@@ -22,8 +15,8 @@ export async function loadCurrencies(): Promise<SelectOption[]> {
   return cachedRequest(
     cacheKeys.currencies,
     async () => {
-      const rows = await apiGet<any>(api.currencies)
-      return rows.filter((r: any) => r.active === 1).map((r: any) => ({
+      const response = await apiClient.get<{ results: Currency[] }>(api.currencies)
+      return response.results.filter((r) => r.active === 1).map((r) => ({
         value: String(r.code),
         label: `${r.code} - ${r.name}`
       }))
@@ -38,8 +31,8 @@ export async function loadDepartments(): Promise<SelectOption[]> {
   return cachedRequest(
     cacheKeys.departments,
     async () => {
-      const rows = await apiGet<any>(api.departments)
-      return rows.filter((r: any) => r.active === 1).map((r: any) => ({
+      const response = await apiClient.get<{ results: Department[] }>(api.departments)
+      return response.results.filter((r) => r.active === 1).map((r) => ({
         value: String(r.id),
         label: r.name
       }))
@@ -54,8 +47,8 @@ export async function loadAccounts(): Promise<SelectOption[]> {
   return cachedRequest(
     cacheKeys.accounts,
     async () => {
-      const rows = await apiGet<any>(api.accounts)
-      return rows.filter((r: any) => r.active === 1).map((r: any) => {
+      const response = await apiClient.get<{ results: Account[] }>(api.accounts)
+      return response.results.filter((r) => r.active === 1).map((r) => {
         const aliasPart = r.alias ? ` (${r.alias})` : ''
         const currencyPart = r.currency ? ` [${r.currency}]` : ''
         return {
@@ -75,8 +68,8 @@ export async function loadExpenseCategories(): Promise<SelectOption[]> {
   return cachedRequest(
     cacheKeys.expenseCategories,
     async () => {
-      const rows = await apiGet<any>(api.categories)
-      return rows.filter((c: any) => c.kind === 'expense').map((c: any) => ({
+      const response = await apiClient.get<{ results: Category[] }>(api.categories)
+      return response.results.filter((c) => c.kind === 'expense').map((c) => ({
         value: String(c.id),
         label: c.name
       }))
@@ -91,8 +84,8 @@ export async function loadEmployees(): Promise<SelectOption[]> {
   return cachedRequest(
     cacheKeys.employees(true),
     async () => {
-      const rows = await apiGet<any>(`${api.employees}?active_only=true`)
-      return rows.filter((e: any) => e.active === 1 && e.status !== 'resigned').map((e: any) => ({
+      const response = await apiClient.get<{ results: Employee[] }>(`${api.employees}?active_only=true`)
+      return response.results.filter((e) => e.active === 1 && e.status !== 'resigned').map((e) => ({
         value: String(e.id),
         label: `${e.name} (${e.department_name || '-'})`
       }))
@@ -107,8 +100,8 @@ export async function loadIncomeCategories(): Promise<SelectOption[]> {
   return cachedRequest(
     cacheKeys.incomeCategories,
     async () => {
-      const rows = await apiGet<any>(api.categories)
-      return rows.filter((c: any) => c.kind === 'income').map((c: any) => ({
+      const response = await apiClient.get<{ results: Category[] }>(api.categories)
+      return response.results.filter((c) => c.kind === 'income').map((c) => ({
         value: String(c.id),
         label: c.name
       }))

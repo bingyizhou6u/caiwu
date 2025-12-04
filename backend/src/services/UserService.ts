@@ -1,49 +1,73 @@
+import { DrizzleD1Database } from 'drizzle-orm/d1'
+import { eq, and, isNotNull } from 'drizzle-orm'
+import { users, employees, positions, userDepartments, departments, orgDepartments } from '../db/schema.js'
+import * as schema from '../db/schema.js'
 import { Errors } from '../utils/errors.js'
 
 export class UserService {
-    constructor(private db: D1Database) { }
+    constructor(private db: DrizzleD1Database<typeof schema>) { }
 
     async getUserById(id: string) {
-        return this.db.prepare('select * from users where id=?').bind(id).first<any>()
+        const user = await this.db.select()
+            .from(users)
+            .where(eq(users.id, id))
+            .get()
+        return user || null
     }
 
     async getUserByEmail(email: string) {
-        return this.db.prepare('select * from users where email=?').bind(email).first<any>()
+        const user = await this.db.select()
+            .from(users)
+            .where(eq(users.email, email))
+            .get()
+        return user || null
     }
 
     async getUserEmployeeId(userId: string): Promise<string | null> {
         const user = await this.getUserById(userId)
         if (!user?.email) return null
 
-        const employee = await this.db.prepare('select id from employees where email=? and active=1').bind(user.email).first<{ id: string }>()
+        const employee = await this.db.select({ id: employees.id })
+            .from(employees)
+            .where(and(
+                eq(employees.email, user.email),
+                eq(employees.active, 1)
+            ))
+            .get()
+
         return employee?.id || null
     }
 
     async getUserPosition(userId: string) {
-        const result = await this.db.prepare(`
-      select 
-        p.id,
-        p.code,
-        p.name,
-        p.level,
-        p.function_role,
-        p.can_manage_subordinates,
-        p.permissions
-      from users u
-      inner join employees e on e.email = u.email and e.active = 1
-      inner join positions p on p.id = e.position_id and p.active = 1
-      where u.id = ?
-    `).bind(userId).first<{
-            id: string
-            code: string
-            name: string
-            level: number
-            function_role: string
-            can_manage_subordinates: number
-            permissions: string
-        }>()
+        const result = await this.db.select({
+            id: positions.id,
+            code: positions.code,
+            name: positions.name,
+            level: positions.level,
+            function_role: positions.functionRole,
+            can_manage_subordinates: positions.canManageSubordinates,
+            permissions: positions.permissions
+        })
+            .from(users)
+            .innerJoin(employees, and(
+                eq(employees.email, users.email),
+                eq(employees.active, 1)
+            ))
+            .innerJoin(positions, and(
+                eq(positions.id, employees.positionId),
+                eq(positions.active, 1)
+            ))
+            .where(eq(users.id, userId))
+            .get()
 
         if (!result) return null
+
+        let permissions = {}
+        try {
+            permissions = JSON.parse(result.permissions || '{}')
+        } catch (err) {
+            console.error('Failed to parse permissions JSON:', err)
+        }
 
         return {
             id: result.id,
@@ -52,26 +76,31 @@ export class UserService {
             level: result.level,
             function_role: result.function_role,
             can_manage_subordinates: result.can_manage_subordinates,
-            permissions: JSON.parse(result.permissions || '{}')
+            permissions
         }
     }
 
-
     async isHQUser(userId: string): Promise<boolean> {
-        // Optimized query using EXISTS
-        const result = await this.db.prepare(`
-      select 1 as is_hq
-      from user_departments ud
-      join departments d on ud.department_id = d.id
-      where ud.user_id = ? and d.name = '总部'
-    `).first<{ is_hq: number }>()
+        // Check user_departments table
+        const result = await this.db.select({ isHq: departments.name })
+            .from(userDepartments)
+            .innerJoin(departments, eq(departments.id, userDepartments.departmentId))
+            .where(and(
+                eq(userDepartments.userId, userId),
+                eq(departments.name, '总部')
+            ))
+            .get()
 
-        if (result?.is_hq) return true
+        if (result) return true
 
         // Fallback for backward compatibility (department_id on user)
         const user = await this.getUserById(userId)
-        if (user?.department_id) {
-            const dept = await this.db.prepare('select name from departments where id=?').bind(user.department_id).first<{ name: string }>()
+        if (user?.departmentId) {
+            const dept = await this.db.select({ name: departments.name })
+                .from(departments)
+                .where(eq(departments.id, user.departmentId))
+                .get()
+
             return dept?.name === '总部'
         }
 
@@ -83,11 +112,25 @@ export class UserService {
         if (!user?.email) return null
 
         // 获取员工的组织部门
-        const employee = await this.db.prepare('select org_department_id from employees where email=? and active=1').bind(user.email).first<{ org_department_id: string }>()
-        if (!employee?.org_department_id) return null
+        const employee = await this.db.select({ orgDepartmentId: employees.orgDepartmentId })
+            .from(employees)
+            .where(and(
+                eq(employees.email, user.email),
+                eq(employees.active, 1)
+            ))
+            .get()
+
+        if (!employee?.orgDepartmentId) return null
 
         // 检查该部门是否是某个组的子部门（parent_id不为NULL）
-        const group = await this.db.prepare('select id from org_departments where id=? and parent_id is not null').bind(employee.org_department_id).first<{ id: string }>()
+        const group = await this.db.select({ id: orgDepartments.id })
+            .from(orgDepartments)
+            .where(and(
+                eq(orgDepartments.id, employee.orgDepartmentId),
+                isNotNull(orgDepartments.parentId)
+            ))
+            .get()
+
         return group?.id || null
     }
 
@@ -96,16 +139,27 @@ export class UserService {
         if (!user || !user.email) return null
 
         // 必须从员工记录获取org_department_id（员工记录是唯一权威来源）
-        const employee = await this.db.prepare('select org_department_id from employees where email=? and active=1').bind(user.email).first<{ org_department_id: string }>()
-        return employee?.org_department_id || null
+        const employee = await this.db.select({ orgDepartmentId: employees.orgDepartmentId })
+            .from(employees)
+            .where(and(
+                eq(employees.email, user.email),
+                eq(employees.active, 1)
+            ))
+            .get()
+
+        return employee?.orgDepartmentId || null
     }
 
     async getUserDepartmentIds(userId: string): Promise<string[]> {
         try {
             // 首先检查新的多项目关联表
-            const userDepts = await this.db.prepare('select department_id from user_departments where user_id=?').bind(userId).all<{ department_id: string }>()
-            if (userDepts.results && userDepts.results.length > 0) {
-                return userDepts.results.map(r => r.department_id)
+            const userDepts = await this.db.select({ departmentId: userDepartments.departmentId })
+                .from(userDepartments)
+                .where(eq(userDepartments.userId, userId))
+                .all()
+
+            if (userDepts && userDepts.length > 0) {
+                return userDepts.map(r => r.departmentId)
             }
         } catch (err: any) {
             // 如果表不存在，忽略错误，继续向后兼容逻辑
@@ -114,8 +168,8 @@ export class UserService {
 
         // 向后兼容：如果没有多项目关联，检查旧的department_id字段
         const user = await this.getUserById(userId)
-        if (user?.department_id) {
-            return [user.department_id]
+        if (user?.departmentId) {
+            return [user.departmentId]
         }
 
         return []

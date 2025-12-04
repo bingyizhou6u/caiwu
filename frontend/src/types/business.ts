@@ -54,23 +54,33 @@ export interface AccountTransaction {
 
 export interface Borrowing {
     id: string
-    borrowing_date: string
+    borrow_date: string
     borrower: string
+    borrower_name?: string
+    borrower_email?: string
     amount_cents: number
     currency: string
+    account_id?: string
+    account_name?: string
     reason?: string
     expected_repay_date?: string
     status: 'pending' | 'approved' | 'rejected' | 'repaid' | 'partial_repaid'
     repaid_amount_cents: number
+    creator_name?: string
     memo?: string
 }
 
 export interface Repayment {
     id: string
-    repayment_date: string
+    repay_date: string
     borrowing_id: string
     amount_cents: number
+    currency: string
     account_id: string
+    account_name?: string
+    borrower_name?: string
+    borrower_email?: string
+    creator_name?: string
     memo?: string
 }
 
@@ -82,7 +92,7 @@ export interface ARAP {
     party_name: string
     amount_cents: number
     currency: string
-    status: 'pending' | 'paid' | 'partial_paid' | 'overdue' | 'bad_debt'
+    status: 'pending' | 'paid' | 'partial_paid' | 'overdue' | 'bad_debt' | 'open'
     paid_amount_cents: number
     memo?: string
 }

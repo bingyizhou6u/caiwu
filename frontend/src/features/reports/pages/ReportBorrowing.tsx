@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card, Table, Space, Button, message, Breadcrumb, Statistic, Tag } from 'antd'
 import { HomeOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { apiRequest } from '../../../utils/api'
+import { api as apiClient } from '../../../api/http'
 import type { ColumnsType } from 'antd/es/table'
 
 type ViewLevel = 'summary' | 'detail'
@@ -53,6 +53,8 @@ const formatAmount = (cents: number, currency: string) => {
   return `${(cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`
 }
 
+import { PageContainer } from '../../../components/PageContainer'
+
 export function ReportBorrowing() {
   const [viewLevel, setViewLevel] = useState<ViewLevel>('summary')
   const [summaries, setSummaries] = useState<BorrowerSummary[]>([])
@@ -61,11 +63,13 @@ export function ReportBorrowing() {
   const [selectedUserName, setSelectedUserName] = useState<string>('')
   const [loading, setLoading] = useState(false)
 
-  const loadSummary = async () => {
+  const loadBorrowersSummary = async () => {
     setLoading(true)
     try {
-      const { results } = await apiRequest(api.reports.borrowingSummary)
-      setSummaries(results)
+      const results = await apiClient.get<{ results: BorrowerSummary[] }>(
+        api.reports.borrowingSummary
+      )
+      setSummaries(results.results || [])
       setViewLevel('summary')
     } catch (error: any) {
       message.error(error.message || '加载借款报表失败')
@@ -77,8 +81,10 @@ export function ReportBorrowing() {
   const loadDetail = async (userId: string, userName: string) => {
     setLoading(true)
     try {
-      const { data } = await apiRequest(api.reports.borrowingDetail(userId))
-      setDetail(data as BorrowerDetail)
+      const data = await apiClient.get<BorrowerDetail>(
+        api.reports.borrowingDetail(userId)
+      )
+      setDetail(data)
       setSelectedUserId(userId)
       setSelectedUserName(userName)
       setViewLevel('detail')
@@ -90,7 +96,7 @@ export function ReportBorrowing() {
   }
 
   useEffect(() => {
-    loadSummary()
+    loadBorrowersSummary()
   }, [])
 
   // 汇总表格列
@@ -279,21 +285,21 @@ export function ReportBorrowing() {
     })
 
     return (
-      <Card>
-        <Breadcrumb style={{ marginBottom: 16 }}>
-          <Breadcrumb.Item>
-            <Button type="link" icon={<HomeOutlined />} onClick={() => {
+      <PageContainer
+        title={`${selectedUserName} - 借款明细`}
+        breadcrumb={[
+          { title: '报表中心' },
+          {
+            title: '借款报表', onClick: () => {
               setViewLevel('summary')
               setDetail(null)
-              loadSummary()
-            }}>
-              借款报表
-            </Button>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>{selectedUserName}</Breadcrumb.Item>
-        </Breadcrumb>
-
-        <Card size="small" style={{ marginBottom: 16 }}>
+              loadBorrowersSummary()
+            }
+          },
+          { title: '借款明细' }
+        ]}
+      >
+        <Card size="small" style={{ marginBottom: 16 }} bordered={false} className="page-card">
           <Space direction="vertical" size="small" style={{ width: '100%' }}>
             <div><strong>借款人：</strong>{detail.user.name}</div>
             {detail.user.email && <div><strong>邮箱：</strong>{detail.user.email}</div>}
@@ -302,7 +308,7 @@ export function ReportBorrowing() {
 
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {Object.values(borrowerCurrencyStats).map((stat) => (
-            <Card key={stat.currency} title={`${stat.currency} 币种统计`} size="small">
+            <Card key={stat.currency} title={`${stat.currency} 币种统计`} size="small" bordered={false} className="page-card">
               <Space size="large">
                 <Statistic
                   title="借款总额"
@@ -328,8 +334,9 @@ export function ReportBorrowing() {
           ))}
         </Space>
 
-        <Card title="借款记录" style={{ marginTop: 16 }}>
+        <Card title="借款记录" style={{ marginTop: 16 }} bordered={false} className="page-card">
           <Table
+            className="table-striped"
             columns={borrowingColumns}
             dataSource={detail.borrowings}
             rowKey="id"
@@ -338,8 +345,9 @@ export function ReportBorrowing() {
           />
         </Card>
 
-        <Card title="还款记录" style={{ marginTop: 16 }}>
+        <Card title="还款记录" style={{ marginTop: 16 }} bordered={false} className="page-card">
           <Table
+            className="table-striped"
             columns={repaymentColumns}
             dataSource={detail.repayments}
             rowKey="id"
@@ -347,13 +355,16 @@ export function ReportBorrowing() {
             size="small"
           />
         </Card>
-      </Card>
+      </PageContainer>
     )
   }
 
   return (
-    <Card>
-      <Card title="借款报表" style={{ marginBottom: 16 }}>
+    <PageContainer
+      title="借款报表"
+      breadcrumb={[{ title: '报表中心' }, { title: '借款报表' }]}
+    >
+      <Card title="借款概览" style={{ marginBottom: 16 }} bordered={false} className="page-card">
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {Object.values(currencyStats).map((stat) => (
             <Card key={stat.currency} title={`${stat.currency} 币种汇总`} size="small">
@@ -388,8 +399,9 @@ export function ReportBorrowing() {
         </Space>
       </Card>
 
-      <Card title="个人借款汇总">
+      <Card title="个人借款汇总" bordered={false} className="page-card">
         <Table
+          className="table-striped"
           columns={summaryColumns}
           dataSource={summaries}
           rowKey={(record) => `${record.user_id}-${record.currency}`}
@@ -398,7 +410,7 @@ export function ReportBorrowing() {
           scroll={{ x: 800 }}
         />
       </Card>
-    </Card>
+    </PageContainer>
   )
 }
 

@@ -1,5 +1,9 @@
 import { v4 as uuid } from 'uuid'
 import { logAudit } from '../utils/audit'
+import { DrizzleD1Database } from 'drizzle-orm/d1'
+import { eq, and, isNull } from 'drizzle-orm'
+import { orgDepartments } from '../db/schema.js'
+import * as schema from '../db/schema.js'
 
 // 项目部门配置
 const PROJECT_DEPARTMENTS = [
@@ -70,39 +74,42 @@ const DEV_GROUPS = [
 ]
 
 export class DepartmentService {
-    constructor(private db: D1Database) { }
+    constructor(private db: DrizzleD1Database<typeof schema>) { }
 
     // 为新项目创建默认组织部门
-    async createDefaultOrgDepartments(projectId: string, userId?: string) {
+    async createDefaultOrgDepartments(projectId: string | null, userId?: string) {
         const now = Date.now()
         const createdIds: string[] = []
 
         for (const dept of PROJECT_DEPARTMENTS) {
             // 检查是否已存在相同名称的部门
-            const existed = await this.db.prepare(`
-                select id from org_departments 
-                where project_id = ? and parent_id IS NULL and name = ? and active = 1
-            `).bind(projectId, dept.name).first<{ id: string }>()
+            const existed = await this.db.select({ id: orgDepartments.id })
+                .from(orgDepartments)
+                .where(and(
+                    projectId ? eq(orgDepartments.projectId, projectId) : isNull(orgDepartments.projectId),
+                    isNull(orgDepartments.parentId),
+                    eq(orgDepartments.name, dept.name),
+                    eq(orgDepartments.active, 1)
+                ))
+                .get()
 
             if (!existed?.id) {
                 const id = uuid()
-                await this.db.prepare(`
-                    insert into org_departments(id, project_id, parent_id, name, code, description, allowed_modules, allowed_positions, default_position_id, active, sort_order, created_at, updated_at)
-                    values(?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-                `).bind(
+                await this.db.insert(orgDepartments).values({
                     id,
                     projectId,
-                    null,
-                    dept.name,
-                    dept.code,
-                    dept.description,
-                    dept.allowed_modules,
-                    dept.allowed_positions,
-                    dept.default_position_id,
-                    dept.sort_order,
-                    now,
-                    now
-                ).run()
+                    parentId: null,
+                    name: dept.name,
+                    code: dept.code,
+                    description: dept.description,
+                    allowedModules: dept.allowed_modules,
+                    allowedPositions: dept.allowed_positions,
+                    defaultPositionId: dept.default_position_id,
+                    active: 1,
+                    sortOrder: dept.sort_order,
+                    createdAt: now,
+                    updatedAt: now
+                }).execute()
 
                 createdIds.push(id)
 
@@ -110,23 +117,21 @@ export class DepartmentService {
                 if (dept.name === '开发部') {
                     for (const group of DEV_GROUPS) {
                         const groupId = uuid()
-                        await this.db.prepare(`
-                            insert into org_departments(id, project_id, parent_id, name, code, description, allowed_modules, allowed_positions, default_position_id, active, sort_order, created_at, updated_at)
-                            values(?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-                        `).bind(
-                            groupId,
+                        await this.db.insert(orgDepartments).values({
+                            id: groupId,
                             projectId,
-                            id,
-                            group.name,
-                            group.code,
-                            group.name,
-                            '["self.*"]',
-                            '["pos-team-leader", "pos-team-engineer"]',
-                            'pos-team-engineer',
-                            group.sort_order,
-                            now,
-                            now
-                        ).run()
+                            parentId: id,
+                            name: group.name,
+                            code: group.code,
+                            description: group.name,
+                            allowedModules: '["self.*"]',
+                            allowedPositions: '["pos-team-leader", "pos-team-engineer"]',
+                            defaultPositionId: 'pos-team-engineer',
+                            active: 1,
+                            sortOrder: group.sort_order,
+                            createdAt: now,
+                            updatedAt: now
+                        }).execute()
                     }
                 }
 

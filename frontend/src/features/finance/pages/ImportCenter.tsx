@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { Card, Upload, Select, Button, message, Space, Typography } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { useImportData } from '../../../hooks/business/useImport'
 
 const { Text } = Typography
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function ImportCenter() {
   const [kind, setKind] = useState<string>('flows')
   const [file, setFile] = useState<File | null>(null)
+  const { mutateAsync: importData, isPending: importing } = useImportData()
 
   const downloadExample = () => {
     const examples: Record<string, string> = {
@@ -28,18 +31,20 @@ export function ImportCenter() {
     }
   }
 
-  const upload = async () => {
-    if (!file) return message.error('请选择CSV文件')
-    try {
+  const upload = withErrorHandler(
+    async () => {
+      if (!file) {
+        message.error('请选择CSV文件')
+        return
+      }
       const text = await file.text()
-      const j = await apiClient.post<any>(`${api.import}?kind=${kind}`, text, {
-        headers: { 'Content-Type': 'text/csv' }
-      })
-      message.success(`导入成功：${j.inserted}`)
-    } catch (error: any) {
-      message.error(error.message || '导入失败')
+      const result = await importData({ kind, text })
+      message.success(`导入成功：${result.inserted}`)
+    },
+    {
+      errorMessage: '导入失败'
     }
-  }
+  )
 
   const getFieldDescription = () => {
     const descriptions: Record<string, string> = {
@@ -52,30 +57,30 @@ export function ImportCenter() {
   }
 
   return (
-    <Card title="导入中心">
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Select style={{ width: 220 }} value={kind} onChange={setKind} options={[
-            { value: 'flows', label: '流水 flows' },
-            { value: 'AR', label: '应收 AR' },
-            { value: 'AP', label: '应付 AP' },
-            { value: 'opening', label: '期初 opening' },
-          ]} />
-          <Button icon={<DownloadOutlined />} onClick={downloadExample}>下载示例文件</Button>
-          <Upload beforeUpload={(f) => { setFile(f); return false }} maxCount={1} accept=".csv">
-            <Button>选择CSV</Button>
-          </Upload>
-          <Button type="primary" onClick={upload}>上传导入</Button>
-        </div>
-        <div style={{ padding: 12, background: '#f5f5f5', borderRadius: 4 }}>
-          <Text type="secondary" style={{ whiteSpace: 'pre-line' }}>{getFieldDescription()}</Text>
-        </div>
-      </Space>
-    </Card>
+    <PageContainer
+      title="导入中心"
+      breadcrumb={[{ title: '财务管理' }, { title: '导入中心' }]}
+    >
+      <Card bordered={false} className="page-card">
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Select style={{ width: 220 }} value={kind} onChange={setKind} options={[
+              { value: 'flows', label: '流水 flows' },
+              { value: 'AR', label: '应收 AR' },
+              { value: 'AP', label: '应付 AP' },
+              { value: 'opening', label: '期初 opening' },
+            ]} />
+            <Button icon={<DownloadOutlined />} onClick={downloadExample}>下载示例文件</Button>
+            <Upload beforeUpload={(f) => { setFile(f); return false }} maxCount={1} accept=".csv">
+              <Button>选择CSV</Button>
+            </Upload>
+            <Button type="primary" onClick={upload} loading={importing}>上传导入</Button>
+          </div>
+          <div style={{ padding: 12, background: '#f5f5f5', borderRadius: 4 }}>
+            <Text type="secondary" style={{ whiteSpace: 'pre-line' }}>{getFieldDescription()}</Text>
+          </div>
+        </Space>
+      </Card>
+    </PageContainer>
   )
 }
-
-
-
-
-

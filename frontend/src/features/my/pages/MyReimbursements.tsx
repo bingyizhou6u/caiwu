@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Card, Table, Button, Tag, Space, Modal, Form, Select, DatePicker, InputNumber, Input, message, Statistic, Row, Col, Typography } from 'antd'
 import { PlusOutlined, FileTextOutlined } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 
@@ -49,6 +48,8 @@ const statusLabels: Record<string, string> = {
   rejected: '已驳回',
   paid: '已支付',
 }
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function MyReimbursements() {
   const [loading, setLoading] = useState(true)
@@ -128,9 +129,10 @@ export function MyReimbursements() {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}>我的报销</Title>
-
+    <PageContainer
+      title="我的报销"
+      breadcrumb={[{ title: '个人中心' }, { title: '我的报销' }]}
+    >
       {/* 报销统计 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={12} sm={6}>
@@ -180,6 +182,8 @@ export function MyReimbursements() {
 
       <Card
         title="报销记录"
+        bordered={false}
+        className="page-card"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
             发起报销
@@ -187,6 +191,7 @@ export function MyReimbursements() {
         }
       >
         <Table
+          className="table-striped"
           dataSource={reimbursements}
           columns={columns}
           rowKey="id"
@@ -235,7 +240,7 @@ export function MyReimbursements() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageContainer>
   )
 }
 

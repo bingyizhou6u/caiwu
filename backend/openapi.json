@@ -3812,7 +3812,7 @@
         }
       }
     },
-    "/api/dashboard/stats": {
+    "/api/reports/dashboard/stats": {
       "get": {
         "tags": [
           "Reports"
@@ -3950,7 +3950,7 @@
         }
       }
     },
-    "/api/department-cash": {
+    "/api/reports/department-cash": {
       "get": {
         "tags": [
           "Reports"
@@ -3999,7 +3999,7 @@
         }
       }
     },
-    "/api/site-growth": {
+    "/api/reports/site-growth": {
       "get": {
         "tags": [
           "Reports"
@@ -4072,7 +4072,7 @@
         }
       }
     },
-    "/api/ar-ap/summary": {
+    "/api/reports/ar-ap/summary": {
       "get": {
         "tags": [
           "Reports"
@@ -4156,7 +4156,7 @@
         }
       }
     },
-    "/api/ar-ap/detail": {
+    "/api/reports/ar-ap/detail": {
       "get": {
         "tags": [
           "Reports"
@@ -4225,7 +4225,7 @@
         }
       }
     },
-    "/api/expense/summary": {
+    "/api/reports/expense/summary": {
       "get": {
         "tags": [
           "Reports"
@@ -4282,7 +4282,7 @@
         }
       }
     },
-    "/api/expense/detail": {
+    "/api/reports/expense/detail": {
       "get": {
         "tags": [
           "Reports"
@@ -4347,7 +4347,7 @@
         }
       }
     },
-    "/api/account/balance": {
+    "/api/reports/account/balance": {
       "get": {
         "tags": [
           "Reports"
@@ -4391,7 +4391,7 @@
         }
       }
     },
-    "/api/borrowing/summary": {
+    "/api/reports/borrowing/summary": {
       "get": {
         "tags": [
           "Reports"
@@ -4447,7 +4447,7 @@
         }
       }
     },
-    "/api/borrowing/detail/{id}": {
+    "/api/reports/borrowing/detail/{id}": {
       "get": {
         "tags": [
           "Reports"
@@ -4508,7 +4508,7 @@
         }
       }
     },
-    "/api/new-site-revenue": {
+    "/api/reports/new-site-revenue": {
       "get": {
         "tags": [
           "Reports"
@@ -4576,7 +4576,7 @@
         }
       }
     },
-    "/api/salary/employee": {
+    "/api/reports/employee-salary": {
       "get": {
         "tags": [
           "Reports"
@@ -4635,7 +4635,7 @@
         }
       }
     },
-    "/api/annual-leave": {
+    "/api/reports/annual-leave": {
       "get": {
         "tags": [
           "Reports"
@@ -5126,6 +5126,169 @@
         "responses": {
           "200": {
             "description": "Employee updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/employees/:id/regularize": {
+      "post": {
+        "summary": "Regularize employee",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "regular_date": {
+                    "type": "string",
+                    "example": "2023-04-01"
+                  }
+                },
+                "required": [
+                  "regular_date"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Employee regularized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/employees/:id/leave": {
+      "post": {
+        "summary": "Employee leave (resign)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "leave_date": {
+                    "type": "string",
+                    "example": "2023-12-31"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "example": "Personal reasons"
+                  }
+                },
+                "required": [
+                  "leave_date"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Employee resigned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/employees/:id/rejoin": {
+      "post": {
+        "summary": "Employee rejoin",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "join_date": {
+                    "type": "string",
+                    "example": "2024-01-01"
+                  }
+                },
+                "required": [
+                  "join_date"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Employee rejoined",
             "content": {
               "application/json": {
                 "schema": {
@@ -5731,6 +5894,66 @@
                   },
                   "required": [
                     "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/borrowings/{id}/status": {
+      "put": {
+        "summary": "Update borrowing status",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "memo": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
                   ]
                 }
               }
@@ -6678,81 +6901,9 @@
         }
       }
     },
-    "/api/salary-payments/{id}/employee-confirm": {
-      "post": {
-        "summary": "Employee confirm salary",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {}
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Confirmed payment",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/salary-payments/{id}/finance-approve": {
-      "post": {
-        "summary": "Finance approve salary",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {}
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Approved payment",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/salary-payments/{id}/payment-transfer": {
-      "post": {
-        "summary": "Mark payment as transferred",
+    "/api/salary-payments/{id}/status": {
+      "put": {
+        "summary": "Update salary payment status",
         "parameters": [
           {
             "schema": {
@@ -6770,57 +6921,24 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "account_id": {
+                  "status": {
                     "type": "string",
-                    "format": "uuid"
-                  }
-                },
-                "required": [
-                  "account_id"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Transferred payment",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/salary-payments/{id}/payment-confirm": {
-      "post": {
-        "summary": "Confirm payment with voucher",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
+                    "enum": [
+                      "employee_confirmed",
+                      "finance_approved",
+                      "paid"
+                    ]
+                  },
                   "payment_voucher_path": {
                     "type": "string",
                     "format": "uri"
+                  },
+                  "account_id": {
+                    "type": "string"
                   }
                 },
                 "required": [
-                  "payment_voucher_path"
+                  "status"
                 ]
               }
             }
@@ -6828,7 +6946,7 @@
         },
         "responses": {
           "200": {
-            "description": "Confirmed payment",
+            "description": "Updated status",
             "content": {
               "application/json": {
                 "schema": {}
@@ -6904,9 +7022,9 @@
         }
       }
     },
-    "/api/salary-payments/{id}/allocations/approve": {
-      "post": {
-        "summary": "Approve currency allocation",
+    "/api/salary-payments/{id}/allocations/status": {
+      "put": {
+        "summary": "Update allocation status",
         "parameters": [
           {
             "schema": {
@@ -6924,6 +7042,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  },
                   "allocation_ids": {
                     "type": "array",
                     "items": {
@@ -6934,53 +7059,9 @@
                   "approve_all": {
                     "type": "boolean"
                   }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated payment",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/salary-payments/{id}/allocations/reject": {
-      "post": {
-        "summary": "Reject currency allocation",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "allocation_ids": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uuid"
-                    }
-                  }
                 },
                 "required": [
-                  "allocation_ids"
+                  "status"
                 ]
               }
             }
@@ -6988,7 +7069,7 @@
         },
         "responses": {
           "200": {
-            "description": "Updated payment",
+            "description": "Updated allocation status",
             "content": {
               "application/json": {
                 "schema": {}
@@ -12198,6 +12279,42 @@
         }
       }
     },
+    "/api/rental-payable-bills/:id/mark-paid": {
+      "post": {
+        "summary": "Mark bill as paid",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marked as paid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/position-permissions": {
       "get": {
         "tags": [
@@ -16187,6 +16304,44 @@
         "responses": {
           "200": {
             "description": "Updated expense reimbursement status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expense-reimbursements/{id}/pay": {
+      "post": {
+        "tags": [
+          "Expense Reimbursements"
+        ],
+        "summary": "Pay expense reimbursement",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paid expense reimbursement",
             "content": {
               "application/json": {
                 "schema": {

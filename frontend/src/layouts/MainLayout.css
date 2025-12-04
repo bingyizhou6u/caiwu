@@ -1,0 +1,245 @@
+.main-layout {
+    min-height: 100vh;
+}
+
+.main-sider {
+    overflow: auto;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1001;
+    background: var(--sidebar-bg) !important;
+    backdrop-filter: blur(10px);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo-container {
+    height: 64px;
+    margin: 16px 16px 24px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: white;
+    font-weight: 700;
+    font-size: 20px;
+    transition: var(--transition-base);
+    letter-spacing: 0.5px;
+    /* Removed boxed background for cleaner look */
+}
+
+.logo-icon {
+    font-size: 28px;
+    color: var(--color-primary);
+    filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
+}
+
+.logo-text {
+    background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo-container.collapsed {
+    margin: 16px 8px;
+}
+
+.main-content-layout {
+    transition: var(--transition-base);
+    background: var(--color-bg-layout);
+}
+
+/* Sidebar Menu Customization */
+.main-sider .ant-menu.ant-menu-dark {
+    background: transparent;
+    padding: 0 8px;
+}
+
+.main-sider .ant-menu-dark .ant-menu-item {
+    border-radius: 8px;
+    /* Pill shape */
+    margin: 4px 0;
+    width: 100%;
+    transition: all 0.3s;
+    height: 44px;
+    line-height: 44px;
+}
+
+.main-sider .ant-menu-dark .ant-menu-item-selected {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
+    color: #fff;
+    font-weight: 500;
+    position: relative;
+}
+
+.main-sider .ant-menu-dark .ant-menu-item-selected::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    background: var(--color-primary);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+}
+
+.main-sider .ant-menu-dark .ant-menu-sub {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 8px;
+}
+
+/* Header Polish */
+.main-header {
+    padding: 0 24px;
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02);
+    /* Very subtle shadow */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    height: 64px;
+}
+
+.trigger-btn {
+    font-size: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+}
+
+.trigger-btn:hover {
+    color: var(--color-text-primary);
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-dropdown {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px 8px 4px 4px;
+    border-radius: 24px;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+}
+
+.user-dropdown:hover {
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #818cf8 100%);
+    margin-right: 10px;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    border: 2px solid white;
+}
+
+.user-name {
+    margin-right: 6px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: 14px;
+}
+
+/* Global Search Polish */
+.global-search-input {
+    width: 240px;
+    transition: all 0.3s;
+    background: rgba(0, 0, 0, 0.04) !important;
+    border-radius: 8px !important;
+    height: 36px !important;
+}
+
+.global-search-input:hover,
+.global-search-input:focus-within {
+    width: 320px;
+    background: white !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.global-search-input .ant-select-selector {
+    height: 36px !important;
+    padding: 0 12px !important;
+}
+
+.global-search-input .ant-select-selection-placeholder {
+    line-height: 36px !important;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.global-search-input .ant-select-selection-search-input {
+    height: 36px !important;
+}
+
+/* Content Area */
+.main-content {
+    margin: 0;
+    /* Tabs handle top spacing */
+    overflow: initial;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-wrapper {
+    padding: 24px;
+    min-height: 360px;
+    background: var(--color-bg-container);
+    border-radius: var(--radius-lg);
+    margin: 16px;
+    box-shadow: var(--shadow-card);
+    /* Fade in animation for content */
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* User Menu Dropdown */
+.user-menu-profile {
+    padding: 4px 0;
+    min-width: 120px;
+}
+
+.user-menu-name {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 2px;
+}
+
+.user-menu-email {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}

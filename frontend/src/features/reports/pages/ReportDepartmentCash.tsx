@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Card, Button, Table, Space, message } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { api } from '../../../config/api'
-import { apiRequest } from '../../../utils/api'
+import { api as apiClient } from '../../../api/http'
 import { DateRangePicker } from '../../../components/DateRangePicker'
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportDepartmentCash() {
   const [rows, setRows] = useState<any[]>([])
@@ -13,7 +15,7 @@ export function ReportDepartmentCash() {
 
   const load = async () => {
     try {
-      const { data } = await apiRequest(`${api.reports.departmentCash}?start=${start}&end=${end}`)
+      const data = await apiClient.get<any>(`${api.reports.departmentCash}?start=${start}&end=${end}`)
       const j = data as any
       setRows(j.rows ?? [])
     } catch (error: any) {
@@ -22,22 +24,28 @@ export function ReportDepartmentCash() {
   }
 
   return (
-    <Card title="项目汇总">
-      <Space style={{ marginBottom: 12 }} wrap>
-        <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-        <Button type="primary" onClick={load}>查询</Button>
-      </Space>
-      <Table 
-        rowKey="department_id" 
-        dataSource={rows} 
-        columns={[
-          { title: '项目', dataIndex: 'department_name' },
-          { title: '收入', dataIndex: 'income_cents', render: (v:number)=> (v/100).toFixed(2) },
-          { title: '支出', dataIndex: 'expense_cents', render: (v:number)=> (v/100).toFixed(2) },
-          { title: '净额', dataIndex: 'net_cents', render: (v:number)=> (v/100).toFixed(2) },
-        ]} 
-      />
-    </Card>
+    <PageContainer
+      title="项目汇总"
+      breadcrumb={[{ title: '报表中心' }, { title: '项目汇总' }]}
+    >
+      <Card bordered={false} className="page-card">
+        <Space style={{ marginBottom: 12 }} wrap>
+          <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
+          <Button type="primary" onClick={load}>查询</Button>
+        </Space>
+        <Table
+          className="table-striped"
+          rowKey="department_id"
+          dataSource={rows}
+          columns={[
+            { title: '项目', dataIndex: 'department_name' },
+            { title: '收入', dataIndex: 'income_cents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '支出', dataIndex: 'expense_cents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '净额', dataIndex: 'net_cents', render: (v: number) => (v / 100).toFixed(2) },
+          ]}
+        />
+      </Card>
+    </PageContainer>
   )
 }
 

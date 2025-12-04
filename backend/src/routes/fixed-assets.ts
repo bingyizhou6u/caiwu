@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
 import { hasPermission, getUserPosition, getUserId } from '../utils/permissions.js'
+import { requirePermission, protectRoute } from '../middleware/permission.js'
 import { logAuditAction } from '../utils/audit.js'
 import { Errors } from '../utils/errors.js'
 import {
@@ -294,8 +295,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'create')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'create', async (c) => {
     const body = c.req.valid('json')
     const userId = getUserId(c)
 
@@ -323,7 +323,7 @@ fixedAssetsRoutes.openapi(
     }))
 
     return c.json({ id: result.id, asset_code: result.assetCode })
-  }
+  })
 )
 
 // Update Fixed Asset
@@ -353,8 +353,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'update')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'update', async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
     const userId = getUserId(c)
@@ -377,7 +376,7 @@ fixedAssetsRoutes.openapi(
     logAuditAction(c, 'update', 'fixed_asset', id, JSON.stringify(body))
 
     return c.json({ ok: true })
-  }
+  })
 )
 
 // Delete Fixed Asset
@@ -400,8 +399,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'delete')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'delete', async (c) => {
     const { id } = c.req.valid('param')
 
     await c.var.services.fixedAsset.delete(id)
@@ -409,7 +407,7 @@ fixedAssetsRoutes.openapi(
     logAuditAction(c, 'delete', 'fixed_asset', id)
 
     return c.json({ ok: true })
-  }
+  })
 )
 
 // Create Depreciation
@@ -439,8 +437,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'depreciate')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'depreciate', async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
     const userId = getUserId(c)
@@ -457,7 +454,7 @@ fixedAssetsRoutes.openapi(
     }))
 
     return c.json({ id: result.id })
-  }
+  })
 )
 
 // Transfer Fixed Asset
@@ -487,8 +484,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'transfer')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'transfer', async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
     const userId = getUserId(c)
@@ -509,7 +505,7 @@ fixedAssetsRoutes.openapi(
     }))
 
     return c.json({ ok: true })
-  }
+  })
 )
 
 // Purchase Fixed Asset (with Flow)
@@ -542,8 +538,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'create')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'create', async (c) => {
     const body = c.req.valid('json')
     const userId = getUserId(c)
 
@@ -577,7 +572,7 @@ fixedAssetsRoutes.openapi(
       asset_code: result.assetCode,
       flow_id: result.flowId
     })
-  }
+  })
 )
 
 // Sell Fixed Asset
@@ -610,8 +605,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'dispose')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'dispose', async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
     const userId = getUserId(c)
@@ -637,7 +631,7 @@ fixedAssetsRoutes.openapi(
       ok: true,
       flow_id: result.flowId
     })
-  }
+  })
 )
 
 // Allocate Fixed Asset
@@ -666,8 +660,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'allocate')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'allocate', async (c) => {
     const body = c.req.valid('json')
     const userId = getUserId(c)
 
@@ -685,7 +678,7 @@ fixedAssetsRoutes.openapi(
     }))
 
     return c.json({ id: result.id })
-  }
+  })
 )
 
 // Return Fixed Asset
@@ -715,8 +708,7 @@ fixedAssetsRoutes.openapi(
       }
     }
   }),
-  async (c) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'allocate')) throw Errors.FORBIDDEN()
+  protectRoute('asset', 'fixed', 'allocate', async (c) => {
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
     const userId = getUserId(c)
@@ -733,5 +725,5 @@ fixedAssetsRoutes.openapi(
     }))
 
     return c.json({ ok: true })
-  }
+  })
 )

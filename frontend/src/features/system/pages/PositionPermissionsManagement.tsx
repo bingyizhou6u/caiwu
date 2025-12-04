@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Card, Table, message, Tag, Space, Collapse, Tooltip, Button } from 'antd'
+import { Card, Table, Tag, Space, Collapse, Tooltip, Button } from 'antd'
 import { ReloadOutlined, InfoCircleOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
 import type { ColumnsType } from 'antd/es/table'
-import { apiGet } from '../../../utils/api'
+import { usePositions } from '../../../hooks'
+import type { Position } from '../../../types'
+
 
 const { Panel } = Collapse
 
@@ -108,7 +108,7 @@ const FUNCTION_ROLE_LABELS: Record<string, string> = {
 // 权限详情展示
 function PermissionDetail({ permissions }: { permissions: any }) {
   const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
-  
+
   if (Object.keys(perms).length === 0) {
     return <span style={{ color: '#999' }}>无权限配置</span>
   }
@@ -118,17 +118,17 @@ function PermissionDetail({ permissions }: { permissions: any }) {
       {Object.entries(PERMISSION_MODULES).map(([moduleKey, moduleConfig]) => {
         const modulePerms = perms[moduleKey]
         if (!modulePerms || Object.keys(modulePerms).length === 0) return null
-        
+
         return (
-          <Panel 
-            header={<span style={{ fontWeight: 500 }}>{moduleConfig.label}</span>} 
+          <Panel
+            header={<span style={{ fontWeight: 500 }}>{moduleConfig.label}</span>}
             key={moduleKey}
           >
             <Space direction="vertical" style={{ width: '100%' }}>
               {Object.entries(modulePerms).map(([subKey, actions]) => {
                 const subConfig = moduleConfig.subModules[subKey]
                 const actionList = Array.isArray(actions) ? actions : []
-                
+
                 return (
                   <div key={subKey} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Tag color="blue">{subConfig?.label || subKey}</Tag>
@@ -149,7 +149,7 @@ function PermissionDetail({ permissions }: { permissions: any }) {
 // 权限摘要显示
 function PermissionSummary({ permissions }: { permissions: any }) {
   const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
-  
+
   const moduleCounts: string[] = []
   Object.entries(PERMISSION_MODULES).forEach(([moduleKey, moduleConfig]) => {
     const modulePerms = perms[moduleKey]
@@ -173,38 +173,23 @@ function PermissionSummary({ permissions }: { permissions: any }) {
   )
 }
 
+import { PageContainer } from '../../../components/PageContainer'
+
 export function PositionPermissionsManagement() {
-  const [positions, setPositions] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const loadPositions = async () => {
-    setLoading(true)
-    try {
-      const results = await apiGet(api.positionPermissions)
-      setPositions(results || [])
-    } catch (error: any) {
-      message.error(error.message || '加载职位列表失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadPositions()
-  }, [])
+  const { data: positions = [], isLoading, refetch } = usePositions()
 
   const columns: ColumnsType<any> = [
     { title: '职位代码', dataIndex: 'code', width: 140 },
     { title: '职位名称', dataIndex: 'name', width: 120 },
-    { 
-      title: '层级', 
-      dataIndex: 'level', 
+    {
+      title: '层级',
+      dataIndex: 'level',
       width: 80,
       render: (v: number) => <Tag>{LEVEL_LABELS[v] || v}</Tag>
     },
-    { 
-      title: '职能', 
-      dataIndex: 'function_role', 
+    {
+      title: '职能',
+      dataIndex: 'function_role',
       width: 80,
       render: (v: string) => <Tag color="cyan">{FUNCTION_ROLE_LABELS[v] || v}</Tag>
     },
@@ -221,51 +206,59 @@ export function PositionPermissionsManagement() {
       render: (v: any) => <PermissionSummary permissions={v} />
     },
     { title: '描述', dataIndex: 'description', ellipsis: true },
-    { 
-      title: '状态', 
-      dataIndex: 'active', 
+    {
+      title: '状态',
+      dataIndex: 'active',
       width: 70,
       render: (v: number) => v === 1 ? <Tag color="green">启用</Tag> : <Tag color="red">禁用</Tag>
     },
   ]
 
   return (
-    <Card
-      title={
-        <Space>
-          <span>权限管理</span>
-          <Tooltip title="职位权限由系统预设，如需调整请联系系统管理员">
-            <InfoCircleOutlined style={{ color: '#1890ff', cursor: 'pointer' }} />
-          </Tooltip>
-        </Space>
-      }
-      extra={
-        <Button icon={<ReloadOutlined />} onClick={loadPositions} loading={loading}>刷新</Button>
-      }
+    <PageContainer
+      title="权限管理"
+      breadcrumb={[{ title: '系统设置' }, { title: '权限管理' }]}
     >
-      <Table
-        columns={columns}
-        dataSource={positions}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 20 }}
-        scroll={{ x: 1000 }}
-        locale={{ emptyText: '暂无职位数据' }}
-        expandable={{
-          expandedRowRender: (record) => (
-            <div style={{ padding: '12px 0' }}>
-              <h4 style={{ marginBottom: 12 }}>权限详情</h4>
-              <PermissionDetail permissions={record.permissions} />
-            </div>
-          ),
-          rowExpandable: (record) => {
-            const perms = typeof record.permissions === 'string' 
-              ? JSON.parse(record.permissions || '{}') 
-              : record.permissions || {}
-            return Object.keys(perms).length > 0
-          },
-        }}
-      />
-    </Card>
+      <Card
+        title={
+          <Space>
+            <span>权限管理</span>
+            <Tooltip title="职位权限由系统预设，如需调整请联系系统管理员">
+              <InfoCircleOutlined style={{ color: '#1890ff', cursor: 'pointer' }} />
+            </Tooltip>
+          </Space>
+        }
+        extra={
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
+        }
+        className="page-card"
+        bordered={false}
+      >
+        <Table
+          className="table-striped"
+          columns={columns}
+          dataSource={positions}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{ pageSize: 20 }}
+          scroll={{ x: 1000 }}
+          locale={{ emptyText: '暂无职位数据' }}
+          expandable={{
+            expandedRowRender: (record) => (
+              <div style={{ padding: '12px 0' }}>
+                <h4 style={{ marginBottom: 12 }}>权限详情</h4>
+                <PermissionDetail permissions={record.permissions} />
+              </div>
+            ),
+            rowExpandable: (record) => {
+              const perms = typeof record.permissions === 'string'
+                ? JSON.parse(record.permissions || '{}')
+                : record.permissions || {}
+              return Object.keys(perms).length > 0
+            },
+          }}
+        />
+      </Card>
+    </PageContainer>
   )
 }

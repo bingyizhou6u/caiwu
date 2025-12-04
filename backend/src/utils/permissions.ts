@@ -55,19 +55,19 @@ export function getDepartmentModules(c: Context<{ Bindings: Env, Variables: AppV
  */
 export function hasDepartmentModuleAccess(c: Context<{ Bindings: Env, Variables: AppVariables }>, module: string): boolean {
   const position = getUserPosition(c)
-  
+
   // 总部人员（level=1）不受部门模块限制
   if (position && position.level === 1) {
     return true
   }
-  
+
   const deptModules = getDepartmentModules(c)
-  
+
   // 如果包含 '*'，表示允许所有模块
   if (deptModules.includes('*')) {
     return true
   }
-  
+
   // 检查模块是否匹配（支持通配符，如 hr.* 匹配 hr.employee、hr.leave 等）
   return deptModules.some(m => {
     if (m.endsWith('.*')) {
@@ -177,7 +177,7 @@ export async function canViewEmployee(
     const target = await c.env.DB.prepare(
       'SELECT department_id FROM employees WHERE id = ?'
     ).bind(targetEmployeeId).first()
-    
+
     return target ? target.department_id === employee.department_id : false
   }
 
@@ -186,7 +186,7 @@ export async function canViewEmployee(
     const target = await c.env.DB.prepare(
       'SELECT org_department_id FROM employees WHERE id = ?'
     ).bind(targetEmployeeId).first()
-    
+
     return target ? target.org_department_id === employee.org_department_id : false
   }
 
@@ -224,7 +224,7 @@ export async function canApproveApplication(
     const applicant = await c.env.DB.prepare(
       'SELECT department_id FROM employees WHERE id = ?'
     ).bind(applicantEmployeeId).first()
-    
+
     return applicant ? applicant.department_id === employee.department_id : false
   }
 
@@ -233,17 +233,17 @@ export async function canApproveApplication(
     const applicant = await c.env.DB.prepare(
       'SELECT org_department_id, position_id FROM employees WHERE id = ?'
     ).bind(applicantEmployeeId).first()
-    
+
     if (!applicant) return false
-    
+
     // 必须是同一个组
     if (applicant.org_department_id !== employee.org_department_id) return false
-    
+
     // 必须是工程师
     const applicantPosition = await c.env.DB.prepare(
       'SELECT code FROM positions WHERE id = ?'
     ).bind(applicant.position_id).first()
-    
+
     return applicantPosition ? applicantPosition.code === 'team_engineer' : false
   }
 
@@ -277,7 +277,7 @@ export function getDataAccessFilter(
 ): { where: string, binds: any[] } {
   const position = getUserPosition(c)
   const employee = getUserEmployee(c)
-  
+
   if (!position || !employee) {
     return { where: '1=0', binds: [] }
   }

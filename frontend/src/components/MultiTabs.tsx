@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { Tabs } from 'antd'
+import { Tabs, Dropdown, MenuProps } from 'antd'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { ReloadOutlined, CloseOutlined, ArrowRightOutlined, BlockOutlined } from '@ant-design/icons'
 import { pageTitles, KEY_TO_PATH } from '../config/menu'
+import './MultiTabs.css'
 
 interface TabItem {
     key: string
@@ -34,11 +36,6 @@ export const MultiTabs: React.FC = () => {
             if (entry) {
                 const key = entry[0]
                 title = pageTitles[key] || title
-            } else {
-                // Fallback: try to match path suffix if exact match fails
-                // e.g. /hr/employees/123 -> match /hr/employees?
-                // For now, simple exact match is enough for main menu items.
-                // For detail pages, we might want to show "Detail".
             }
 
             setItems(prev => [...prev, { key: path, label: title, closable: true }])
@@ -67,15 +64,94 @@ export const MultiTabs: React.FC = () => {
         setItems(newItems)
     }
 
+    // Context Menu Actions
+    const handleMenuClick = (key: string, action: string) => {
+        switch (action) {
+            case 'refresh':
+                navigate(0) // Simple reload
+                break
+            case 'close':
+                remove(key)
+                break
+            case 'closeOthers':
+                const newItemsOthers = items.filter(item => item.key === key || item.key === '/dashboard')
+                setItems(newItemsOthers)
+                if (activeKey !== key) {
+                    setActiveKey(key)
+                    navigate(key)
+                }
+                break
+            case 'closeRight':
+                const index = items.findIndex(item => item.key === key)
+                const newItemsRight = items.slice(0, index + 1)
+                setItems(newItemsRight)
+                if (items.findIndex(item => item.key === activeKey) > index) {
+                    setActiveKey(key)
+                    navigate(key)
+                }
+                break
+            case 'closeAll':
+                const newItemsAll = items.filter(item => item.key === '/dashboard')
+                setItems(newItemsAll)
+                setActiveKey('/dashboard')
+                navigate('/dashboard')
+                break
+        }
+    }
+
+    const renderTabLabel = (item: TabItem) => {
+        const menuItems: MenuProps['items'] = [
+            {
+                key: 'refresh',
+                label: '刷新',
+                icon: <ReloadOutlined />,
+                onClick: () => handleMenuClick(item.key, 'refresh')
+            },
+            {
+                key: 'close',
+                label: '关闭当前',
+                icon: <CloseOutlined />,
+                disabled: !item.closable,
+                onClick: () => handleMenuClick(item.key, 'close')
+            },
+            {
+                key: 'closeOthers',
+                label: '关闭其他',
+                icon: <BlockOutlined />,
+                onClick: () => handleMenuClick(item.key, 'closeOthers')
+            },
+            {
+                key: 'closeRight',
+                label: '关闭右侧',
+                icon: <ArrowRightOutlined />,
+                onClick: () => handleMenuClick(item.key, 'closeRight')
+            },
+            {
+                key: 'closeAll',
+                label: '关闭全部',
+                icon: <CloseOutlined />,
+                onClick: () => handleMenuClick(item.key, 'closeAll')
+            }
+        ]
+
+        return (
+            <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
+                <span className="tab-label-container">
+                    {item.label}
+                </span>
+            </Dropdown>
+        )
+    }
+
     return (
         <Tabs
+            className="multi-tabs-wrapper"
             type="editable-card"
             hideAdd
             activeKey={activeKey}
-            items={items}
+            items={items.map(item => ({ ...item, label: renderTabLabel(item) }))}
             onChange={onChange}
             onEdit={onEdit}
-            tabBarStyle={{ margin: 0, background: '#f0f2f5', paddingTop: 6, paddingLeft: 16, paddingRight: 16 }}
         />
     )
 }

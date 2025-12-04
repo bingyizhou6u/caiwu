@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Card, Table, Tabs, Tag, Typography, Spin, Empty } from 'antd'
 import { ToolOutlined } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 
@@ -21,6 +20,8 @@ interface Asset {
   return_date: string | null
   memo: string
 }
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function MyAssets() {
   const [loading, setLoading] = useState(true)
@@ -69,36 +70,41 @@ export function MyAssets() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}>我的资产</Title>
-
-      <Tabs defaultActiveKey="current" items={[
-        {
-          key: 'current',
-          label: `当前持有 (${current.length})`,
-          children: current.length > 0 ? (
-            <Table
-              dataSource={current}
-              columns={columns}
-              rowKey="id"
-              pagination={false}
-            />
-          ) : <Empty description="暂无持有资产" />
-        },
-        {
-          key: 'returned',
-          label: `已归还 (${returned.length})`,
-          children: returned.length > 0 ? (
-            <Table
-              dataSource={returned}
-              columns={returnedColumns}
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-            />
-          ) : <Empty description="暂无归还记录" />
-        },
-      ]} />
-    </div>
+    <PageContainer
+      title="我的资产"
+      breadcrumb={[{ title: '个人中心' }, { title: '我的资产' }]}
+    >
+      <Card bordered={false} className="page-card">
+        <Tabs defaultActiveKey="current" items={[
+          {
+            key: 'current',
+            label: `当前持有 (${current.length})`,
+            children: current.length > 0 ? (
+              <Table
+                className="table-striped"
+                dataSource={current}
+                columns={columns}
+                rowKey="id"
+                pagination={false}
+              />
+            ) : <Empty description="暂无持有资产" />
+          },
+          {
+            key: 'returned',
+            label: `已归还 (${returned.length})`,
+            children: returned.length > 0 ? (
+              <Table
+                className="table-striped"
+                dataSource={returned}
+                columns={returnedColumns}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+              />
+            ) : <Empty description="暂无归还记录" />
+          },
+        ]} />
+      </Card>
+    </PageContainer>
   )
 }
 

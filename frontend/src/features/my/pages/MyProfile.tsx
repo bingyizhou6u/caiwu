@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Card, Descriptions, Button, Modal, Form, Input, message, Spin, Typography, Avatar, Space, Divider } from 'antd'
 import { UserOutlined, EditOutlined, PhoneOutlined, MailOutlined, IdcardOutlined, BankOutlined, TeamOutlined } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 
 const { Title } = Typography
@@ -25,6 +24,8 @@ interface Profile {
   emergencyContact: string
   emergencyPhone: string
 }
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function MyProfile() {
   const [loading, setLoading] = useState(true)
@@ -84,11 +85,12 @@ export function MyProfile() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}>个人信息</Title>
-
+    <PageContainer
+      title="个人信息"
+      breadcrumb={[{ title: '个人中心' }, { title: '个人信息' }]}
+    >
       {/* 基本信息卡片 */}
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24 }} bordered={false} className="page-card">
         <Space size="large" align="start">
           <Avatar size={80} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
           <div>
@@ -105,6 +107,8 @@ export function MyProfile() {
       {/* 详细信息 */}
       <Card
         title="详细信息"
+        bordered={false}
+        className="page-card"
         extra={
           <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
             编辑
@@ -151,7 +155,7 @@ export function MyProfile() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageContainer>
   )
 }
 

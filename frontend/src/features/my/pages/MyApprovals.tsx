@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Card, Table, Tabs, Tag, Button, Space, Modal, Input, message, Badge, Typography, Empty } from 'antd'
 import { CheckOutlined, CloseOutlined, CalendarOutlined, FileTextOutlined, BankOutlined } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 
@@ -64,6 +63,8 @@ const expenseTypeLabels: Record<string, string> = {
   transport: '交通',
   other: '其他',
 }
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function MyApprovals() {
   const [loading, setLoading] = useState(true)
@@ -172,55 +173,60 @@ export function MyApprovals() {
   const totalPending = counts.leaves + counts.reimbursements + counts.borrowings
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}>
-        我的审批
-        {totalPending > 0 && <Badge count={totalPending} style={{ marginLeft: 8 }} />}
-      </Title>
+    <PageContainer
+      title={
+        <Space>
+          我的审批
+          {totalPending > 0 && <Badge count={totalPending} />}
+        </Space>
+      }
+      breadcrumb={[{ title: '个人中心' }, { title: '我的审批' }]}
+    >
+      <Card bordered={false} className="page-card">
+        <Tabs defaultActiveKey="leaves" items={[
+          {
+            key: 'leaves',
+            label: <><CalendarOutlined /> 请假 <Badge count={counts.leaves} size="small" /></>,
+            children: leaves.length > 0 ? (
+              <Table className="table-striped" dataSource={leaves} columns={leaveColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+            ) : <Empty description="暂无待审批请假" />
+          },
+          {
+            key: 'reimbursements',
+            label: <><FileTextOutlined /> 报销 <Badge count={counts.reimbursements} size="small" /></>,
+            children: reimbursements.length > 0 ? (
+              <Table className="table-striped" dataSource={reimbursements} columns={reimbursementColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+            ) : <Empty description="暂无待审批报销" />
+          },
+          {
+            key: 'borrowings',
+            label: <><BankOutlined /> 借支 <Badge count={counts.borrowings} size="small" /></>,
+            children: borrowings.length > 0 ? (
+              <Table className="table-striped" dataSource={borrowings} columns={borrowingColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+            ) : <Empty description="暂无待审批借支" />
+          },
+        ]} />
 
-      <Tabs defaultActiveKey="leaves" items={[
-        {
-          key: 'leaves',
-          label: <><CalendarOutlined /> 请假 <Badge count={counts.leaves} size="small" /></>,
-          children: leaves.length > 0 ? (
-            <Table dataSource={leaves} columns={leaveColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
-          ) : <Empty description="暂无待审批请假" />
-        },
-        {
-          key: 'reimbursements',
-          label: <><FileTextOutlined /> 报销 <Badge count={counts.reimbursements} size="small" /></>,
-          children: reimbursements.length > 0 ? (
-            <Table dataSource={reimbursements} columns={reimbursementColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
-          ) : <Empty description="暂无待审批报销" />
-        },
-        {
-          key: 'borrowings',
-          label: <><BankOutlined /> 借支 <Badge count={counts.borrowings} size="small" /></>,
-          children: borrowings.length > 0 ? (
-            <Table dataSource={borrowings} columns={borrowingColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
-          ) : <Empty description="暂无待审批借支" />
-        },
-      ]} />
-
-      {/* 审批操作弹窗 */}
-      <Modal
-        title={actionModal?.action === 'approve' ? '确认通过' : '确认驳回'}
-        open={!!actionModal?.visible}
-        onOk={handleAction}
-        onCancel={() => { setActionModal(null); setMemo('') }}
-        confirmLoading={submitting}
-        okText={actionModal?.action === 'approve' ? '通过' : '驳回'}
-        okButtonProps={{ danger: actionModal?.action === 'reject' }}
-      >
-        <p>{actionModal?.action === 'approve' ? '确定要通过此申请吗？' : '确定要驳回此申请吗？'}</p>
-        <TextArea
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          placeholder="审批备注（可选）"
-          rows={3}
-        />
-      </Modal>
-    </div>
+        {/* 审批操作弹窗 */}
+        <Modal
+          title={actionModal?.action === 'approve' ? '确认通过' : '确认驳回'}
+          open={!!actionModal?.visible}
+          onOk={handleAction}
+          onCancel={() => { setActionModal(null); setMemo('') }}
+          confirmLoading={submitting}
+          okText={actionModal?.action === 'approve' ? '通过' : '驳回'}
+          okButtonProps={{ danger: actionModal?.action === 'reject' }}
+        >
+          <p>{actionModal?.action === 'approve' ? '确定要通过此申请吗？' : '确定要驳回此申请吗？'}</p>
+          <TextArea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="审批备注（可选）"
+            rows={3}
+          />
+        </Modal>
+      </Card>
+    </PageContainer>
   )
 }
 

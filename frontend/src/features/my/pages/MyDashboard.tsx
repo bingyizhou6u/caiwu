@@ -9,7 +9,6 @@ import {
   ClockCircleOutlined
 } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 
@@ -78,6 +77,8 @@ const expenseTypeLabels: Record<string, string> = {
   other: '其他',
 }
 
+import { PageContainer } from '../../../components/PageContainer'
+
 export function MyDashboard() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
@@ -114,9 +115,12 @@ export function MyDashboard() {
   const mainSalary = stats.salary.find(s => s.currency_id === 'CNY')
 
   return (
-    <div style={{ padding: 24 }}>
+    <PageContainer
+      title="个人首页"
+      breadcrumb={[{ title: '个人中心' }, { title: '首页' }]}
+    >
       {/* 用户信息卡片 */}
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24 }} bordered={false} className="page-card">
         <Space size="large">
           <Avatar size={64} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
           <div>
@@ -131,7 +135,7 @@ export function MyDashboard() {
       {/* 统计卡片 */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card bordered={false} className="page-card">
             <Statistic
               title="本月薪资"
               value={mainSalary ? mainSalary.total_cents / 100 : 0}
@@ -142,7 +146,7 @@ export function MyDashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card bordered={false} className="page-card">
             <Statistic
               title={stats.annualLeave.isFirstCycle ? "年假（试用期）" : `年假（第${stats.annualLeave.cycleNumber}周期）`}
               value={stats.annualLeave.remaining}
@@ -158,7 +162,7 @@ export function MyDashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card bordered={false} className="page-card">
             <Statistic
               title="待报销"
               value={stats.pendingReimbursementCents / 100}
@@ -169,7 +173,7 @@ export function MyDashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card bordered={false} className="page-card">
             <Statistic
               title="借支余额"
               value={stats.borrowingBalanceCents / 100}
@@ -183,7 +187,7 @@ export function MyDashboard() {
       </Row>
 
       {/* 最近申请 */}
-      <Card title="最近申请" style={{ marginTop: 24 }}>
+      <Card title="最近申请" style={{ marginTop: 24 }} bordered={false} className="page-card">
         <List
           dataSource={recentApplications}
           locale={{ emptyText: '暂无申请记录' }}
@@ -225,7 +229,7 @@ export function MyDashboard() {
           )}
         />
       </Card>
-    </div>
+    </PageContainer>
   )
 }
 

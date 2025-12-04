@@ -35,8 +35,14 @@ export const useAppStore = create<AppState>()(
       userInfo: null,
       token: null,
       isAuthenticated: false,
-      setUserInfo: (userInfo) => set({ userInfo, isAuthenticated: !!userInfo }),
-      setToken: (token) => set({ token }),
+      setUserInfo: (userInfo) => set((state) => ({
+        userInfo,
+        isAuthenticated: !!(userInfo && state.token)
+      })),
+      setToken: (token) => set((state) => ({
+        token,
+        isAuthenticated: !!(token && state.userInfo)
+      })),
       logout: () => set({ userInfo: null, token: null, isAuthenticated: false }),
     }),
     {
@@ -45,8 +51,14 @@ export const useAppStore = create<AppState>()(
         collapsed: state.collapsed,
         userInfo: state.userInfo,
         token: state.token,
-        isAuthenticated: state.isAuthenticated
+        // isAuthenticated is NOT persisted - computed from token/userInfo
       }),
+      onRehydrateStorage: () => (state) => {
+        // After loading from localStorage, recompute isAuthenticated
+        if (state) {
+          state.isAuthenticated = !!(state.token && state.userInfo)
+        }
+      },
     }
   )
 )

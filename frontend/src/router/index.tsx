@@ -16,6 +16,7 @@ const EmailNotificationSettings = lazy(() => import('../features/system/pages/Em
 const SiteConfigManagement = lazy(() => import('../features/system/pages/SiteConfigManagement'))
 const IPWhitelistManagement = lazy(() => import('../features/system/pages/IPWhitelistManagement'))
 const AuditLogs = lazy(() => import('../features/system/pages/AuditLogs').then(m => ({ default: m.AuditLogs })))
+const SystemSettings = lazy(() => import('../features/system/pages/SystemSettings').then(m => ({ default: m.SystemSettings })))
 
 // Finance
 const Flows = lazy(() => import('../features/finance/pages/Flows').then(m => ({ default: m.Flows })))
@@ -61,7 +62,7 @@ const MyLeaves = lazy(() => import('../features/my/pages/MyLeaves').then(m => ({
 const MyReimbursements = lazy(() => import('../features/my/pages/MyReimbursements').then(m => ({ default: m.MyReimbursements })))
 const MyBorrowings = lazy(() => import('../features/my/pages/MyBorrowings').then(m => ({ default: m.MyBorrowings })))
 const MyAssets = lazy(() => import('../features/my/pages/MyAssets').then(m => ({ default: m.MyAssets })))
-const MyProfile = lazy(() => import('../features/my/pages/MyProfile').then(m => ({ default: m.MyProfile })))
+
 const CompanyPolicies = lazy(() => import('../features/my/pages/CompanyPolicies').then(m => ({ default: m.CompanyPolicies })))
 const MyApprovals = lazy(() => import('../features/my/pages/MyApprovals').then(m => ({ default: m.MyApprovals })))
 const Dashboard = lazy(() => import('../features/dashboard/pages/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -144,6 +145,7 @@ export const router = createBrowserRouter([
             { path: 'system/config', element: <Suspense fallback={<Loading />}><SiteConfigManagement /></Suspense> },
             { path: 'system/ip-whitelist', element: <Suspense fallback={<Loading />}><IPWhitelistManagement /></Suspense> },
             { path: 'system/audit', element: <Suspense fallback={<Loading />}><AuditLogs /></Suspense> },
+            { path: 'system/settings', element: <Suspense fallback={<Loading />}><SystemSettings /></Suspense> },
         ]
     }
 ])

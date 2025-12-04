@@ -3,7 +3,6 @@ import { Card, Table, Typography, Space, Spin, Select, Row, Col, Statistic, Prog
 import { CalendarOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 
 const { Title, Text } = Typography
@@ -36,6 +35,8 @@ interface AnnualLeaveConfig {
   cycleMonths: number
   daysPerCycle: number
 }
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportAnnualLeave() {
   const [loading, setLoading] = useState(true)
@@ -156,9 +157,10 @@ export function ReportAnnualLeave() {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}>年假统计报表</Title>
-
+    <PageContainer
+      title="年假统计报表"
+      breadcrumb={[{ title: '报表中心' }, { title: '年假统计报表' }]}
+    >
       {config && (
         <Alert
           message={`当前年假制度：${config.cycleMonths === 6 ? '半年制' : '年制'}，每周期 ${config.daysPerCycle} 天`}
@@ -168,7 +170,7 @@ export function ReportAnnualLeave() {
         />
       )}
 
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24 }} bordered={false} className="page-card">
         <Row gutter={24}>
           <Col span={6}>
             <Statistic
@@ -206,7 +208,7 @@ export function ReportAnnualLeave() {
         </Row>
       </Card>
 
-      <Card>
+      <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 16 }}>
           <Text>筛选项目：</Text>
           <Select
@@ -223,6 +225,7 @@ export function ReportAnnualLeave() {
         </Space>
 
         <Table
+          className="table-striped"
           loading={loading}
           columns={columns}
           dataSource={data}
@@ -232,7 +235,7 @@ export function ReportAnnualLeave() {
           size="small"
         />
       </Card>
-    </div>
+    </PageContainer>
   )
 }
 

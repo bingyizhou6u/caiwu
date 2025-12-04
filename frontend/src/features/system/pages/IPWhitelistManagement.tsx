@@ -1,274 +1,148 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Table, Button, Input, Modal, Form, message, Space, Popconfirm, Switch, Card, Alert } from 'antd'
 import { PlusOutlined, DeleteOutlined, SyncOutlined, ReloadOutlined, FileAddOutlined } from '@ant-design/icons'
-import type { TableRowSelection } from 'antd/es/table/interface'
-import { api } from '../../../config/api'
-import { apiGet, apiPost, apiDelete, apiRequest } from '../../../utils/api'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { useIPWhitelist, useIPRuleStatus, useCreateIPRule, useToggleIPRule, useAddIP, useDeleteIP, useBatchAddIP, useBatchDeleteIP, useSyncIPWhitelist } from '../../../hooks/business/useIPWhitelist'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useTableActions } from '../../../hooks/forms/useTableActions'
+import { ipWhitelistSchema, ipBatchSchema } from '../../../validations/ipWhitelist.schema'
+import type { IPWhitelist } from '../../../hooks/business/useIPWhitelist'
+import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 
-interface IPWhitelist {
-  id: string
-  ip_address: string
-  description?: string
-  cloudflare_rule_id?: string
-  created_at: number
-  updated_at: number
-}
-
-interface RuleStatus {
-  enabled: boolean
-  ruleId?: string
-  rulesetId?: string
-}
+import { PageContainer } from '../../../components/PageContainer'
 
 const IPWhitelistManagement: React.FC = () => {
-  const [data, setData] = useState<IPWhitelist[]>([])
-  const [loading, setLoading] = useState(false)
+  const { data: data = [], isLoading, refetch } = useIPWhitelist()
+  const { data: ruleStatus, isLoading: loadingRule, refetch: refetchRule } = useIPRuleStatus()
+
+  const { mutateAsync: createRule } = useCreateIPRule()
+  const { mutateAsync: toggleRule } = useToggleIPRule()
+  const { mutateAsync: addIP } = useAddIP()
+  const { mutateAsync: deleteIP } = useDeleteIP()
+  const { mutateAsync: batchAddIP } = useBatchAddIP()
+  const { mutateAsync: batchDeleteIP } = useBatchDeleteIP()
+  const { mutateAsync: syncIP, isPending: syncing } = useSyncIPWhitelist()
+
   const [modalOpen, setModalOpen] = useState(false)
   const [batchModalOpen, setBatchModalOpen] = useState(false)
-  const [form] = Form.useForm()
-  const [batchForm] = Form.useForm()
-  const [syncing, setSyncing] = useState(false)
-  const [ruleStatus, setRuleStatus] = useState<RuleStatus | null>(null)
-  const [loadingRule, setLoadingRule] = useState(false)
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
-  const [batchDeleting, setBatchDeleting] = useState(false)
 
-  useEffect(() => {
-    // 按顺序执行：1. 同步规则状态 2. 同步IP列表 3. 加载数据
-    const initialize = async () => {
-      try {
-        // 1. 先从Cloudflare同步规则状态（会自动同步到数据库）
-        await loadRuleStatus()
-        
-        // 2. 再从Cloudflare同步IP列表到数据库
-        await syncFromCloudflare()
-        
-        // 3. 最后从数据库加载并显示数据
-        await loadData()
-      } catch (error: any) {
-        console.error('Failed to initialize:', error)
-        // 即使同步失败，也尝试加载现有数据
-        await loadData()
-      }
+  const { form, validateWithZod } = useZodForm(ipWhitelistSchema)
+  const { form: batchForm, validateWithZod: validateBatch } = useZodForm(ipBatchSchema)
+
+  const tableActions = useTableActions<IPWhitelist>()
+  const { selectedRowKeys, rowSelection, clearSelection } = tableActions
+
+  const handleCreateRule = useMemo(() => withErrorHandler(
+    async () => {
+      await createRule()
+      refetchRule()
+    },
+    {
+      successMessage: '规则创建成功',
+      errorMessage: '创建规则失败'
     }
-    
-    initialize()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  ), [createRule, refetchRule])
 
-  const syncFromCloudflare = async () => {
-    try {
-      const result = await apiPost(api.ipWhitelistSync, {})
-      if (result.synced > 0) {
-        message.success(`已从Cloudflare同步 ${result.synced} 条IP记录`)
-      }
-    } catch (error: any) {
-      console.error('Failed to sync from Cloudflare:', error)
-      // 同步失败不影响继续加载
-    }
-  }
-
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const data = await apiGet(api.ipWhitelist)
-      setData(data || [])
-    } catch (error: any) {
-      message.error(error.message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadRuleStatus = async () => {
-    setLoadingRule(true)
-    try {
-      // apiGet 返回数组，但此接口返回对象，需要使用 apiRequest
-      const response = await apiRequest(api.ipWhitelistRule)
-      const result = response.data || response.results?.[0] || { enabled: false }
-      setRuleStatus(result as RuleStatus)
-    } catch (error: any) {
-      console.error('Failed to load rule status:', error)
-      setRuleStatus({ enabled: false })
-    } finally {
-      setLoadingRule(false)
-    }
-  }
-
-  const handleCreateRule = async () => {
-    try {
-      await apiPost(api.ipWhitelistRuleCreate, {})
-      message.success('规则创建成功')
-      loadRuleStatus()
-    } catch (error: any) {
-      message.error(error.message || '创建规则失败')
-    }
-  }
-
-  const handleToggleRule = async (enabled: boolean) => {
-    try {
-      // 如果规则不存在，先创建规则
+  const handleToggleRule = useMemo(() => withErrorHandler(
+    async (enabled: boolean) => {
       if (!ruleStatus?.ruleId) {
-        await handleCreateRule()
-        // 重新加载状态
-        await loadRuleStatus()
-        // 如果创建成功，再次尝试切换
-        const updatedResponse = await apiRequest(api.ipWhitelistRule)
-        const updatedStatus = updatedResponse.data || updatedResponse.results?.[0] as RuleStatus
-        if (updatedStatus?.ruleId && enabled) {
-          await apiPost(api.ipWhitelistRuleToggle, { enabled })
-          message.success('规则已启用')
-          loadRuleStatus()
-          return
-        }
-      } else {
-        await apiPost(api.ipWhitelistRuleToggle, { enabled })
-        message.success(enabled ? '规则已启用' : '规则已停用')
-        loadRuleStatus()
+        await createRule()
       }
-    } catch (error: any) {
-      message.error(error.message || '操作失败')
-      loadRuleStatus() // 重新加载状态以恢复开关状态
+      await toggleRule(enabled)
+      refetchRule()
+      return enabled ? '规则已启用' : '规则已停用'
+    },
+    {
+      showSuccess: true,
+      onSuccess: (msg) => message.success(msg),
+      errorMessage: '操作失败',
+      onError: () => refetchRule()
     }
-  }
+  ), [ruleStatus, createRule, toggleRule, refetchRule])
 
-  const handleAdd = async (values: { ip_address: string, description?: string }) => {
-    try {
-      await apiPost(api.ipWhitelist, values)
-      message.success('添加成功')
+  const handleAdd = useMemo(() => withErrorHandler(
+    async () => {
+      const values = await validateWithZod()
+      await addIP(values)
       setModalOpen(false)
       form.resetFields()
-      loadData()
-    } catch (error: any) {
-      console.error('Error adding IP:', error)
-      message.error(error.message || '添加失败')
+      refetch()
+    },
+    {
+      successMessage: '添加成功',
+      errorMessage: '添加失败'
     }
-  }
+  ), [form, validateWithZod, addIP, refetch])
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiDelete(api.ipWhitelistById(id))
-      message.success('删除成功')
-      loadData()
-    } catch (error: any) {
-      message.error(error.message || '删除失败')
-    }
-  }
-
-  const handleSync = async () => {
-    setSyncing(true)
-    try {
-      const result = await apiPost(api.ipWhitelistSync, {})
-      message.success(`同步成功，新增 ${result.synced} 条记录`)
-      loadData()
-    } catch (error: any) {
-      message.error(error.message || '同步失败')
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  // 批量添加IP
-  const handleBatchAdd = async (values: { ips_text: string, description?: string }) => {
-    try {
-      // 解析IP地址文本（每行一个）
+  const handleBatchAdd = useMemo(() => withErrorHandler(
+    async () => {
+      const values = await validateBatch()
       const ipLines = values.ips_text
         .split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0)
 
-      if (ipLines.length === 0) {
-        message.error('请输入至少一个IP地址')
-        return
-      }
-
-      // 验证IP地址格式
-      const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/
-      const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$/i
-
-      const invalidIPs: string[] = []
-      for (const ip of ipLines) {
-        if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
-          invalidIPs.push(ip)
-        }
-      }
-
-      if (invalidIPs.length > 0) {
-        message.error(`以下IP地址格式无效：${invalidIPs.join(', ')}`)
-        return
-      }
-
-      // 构建批量添加的请求体
       const ips = ipLines.map(ip => ({
         ip,
         description: values.description || undefined,
       }))
 
-      const result = await apiPost(api.ipWhitelistBatch, { ips })
-      
-      if (result.success) {
+      const result = await batchAddIP(ips)
+      setBatchModalOpen(false)
+      batchForm.resetFields()
+      refetch()
+      return result
+    },
+    {
+      onSuccess: (result) => {
         if (result.failedCount > 0) {
           message.warning(`批量添加完成：成功 ${result.successCount} 条，失败 ${result.failedCount} 条`)
-          if (result.errors && result.errors.length > 0) {
-            console.error('批量添加错误详情：', result.errors)
-          }
         } else {
           message.success(`批量添加成功：共添加 ${result.successCount} 条IP地址`)
         }
-        setBatchModalOpen(false)
-        batchForm.resetFields()
-        loadData()
-      } else {
-        message.error(`批量添加失败：${result.errors?.map((e: any) => e.error).join(', ') || '未知错误'}`)
-      }
-    } catch (error: any) {
-      console.error('Error batch adding IPs:', error)
-      message.error(error.message || '批量添加失败')
+      },
+      errorMessage: '批量添加失败'
     }
-  }
+  ), [batchForm, validateBatch, batchAddIP, refetch])
 
-  // 批量删除IP
-  const handleBatchDelete = async () => {
-    if (selectedRowKeys.length === 0) {
-      message.warning('请先选择要删除的IP地址')
-      return
+  const handleDelete = useMemo(() => withErrorHandler(
+    async (id: string) => {
+      await deleteIP(id)
+      refetch()
+    },
+    {
+      successMessage: '删除成功',
+      errorMessage: '删除失败'
     }
+  ), [deleteIP, refetch])
 
-    setBatchDeleting(true)
-    try {
-      const result = await apiRequest(api.ipWhitelistBatch, {
-        method: 'DELETE',
-        body: JSON.stringify({ ids: selectedRowKeys }),
-      })
-      
-      const data = result.data || result
-      if (data.success) {
+  const { handleBatch: handleBatchDelete, loading: batchDeleting } = useBatchOperation(
+    batchDeleteIP,
+    tableActions,
+    {
+      onSuccess: (data: any) => {
+        refetch()
         if (data.failedCount > 0) {
           message.warning(`批量删除完成：成功 ${data.successCount} 条，失败 ${data.failedCount} 条`)
         } else {
           message.success(`批量删除成功：共删除 ${data.successCount} 条IP地址`)
         }
-        setSelectedRowKeys([])
-        loadData()
-      } else {
-        message.error('批量删除失败')
-      }
-    } catch (error: any) {
-      console.error('Error batch deleting IPs:', error)
-      message.error(error.message || '批量删除失败')
-    } finally {
-      setBatchDeleting(false)
+      },
+      errorMessage: '批量删除失败'
     }
-  }
+  )
 
-  // Table行选择配置
-  const rowSelection: TableRowSelection<IPWhitelist> = {
-    selectedRowKeys,
-    onChange: (keys: React.Key[]) => {
-      setSelectedRowKeys(keys)
+  const handleSync = useMemo(() => withErrorHandler(
+    async () => {
+      const result = await syncIP()
+      refetch()
+      return result
     },
-    getCheckboxProps: () => ({}),
-  }
+    {
+      onSuccess: (result) => message.success(`同步成功，新增 ${result.synced} 条记录`),
+      errorMessage: '同步失败'
+    }
+  ), [syncIP, refetch])
 
   const columns = [
     {
@@ -291,7 +165,7 @@ const IPWhitelistManagement: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_: any, record: IPWhitelist) => (
+      render: (_: unknown, record: IPWhitelist) => (
         <Popconfirm
           title="确定要删除此IP白名单吗？"
           onConfirm={() => handleDelete(record.id)}
@@ -307,13 +181,12 @@ const IPWhitelistManagement: React.FC = () => {
   ]
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>IP白名单管理</h2>
-      </div>
-
+    <PageContainer
+      title="IP白名单管理"
+      breadcrumb={[{ title: '系统设置' }, { title: 'IP白名单管理' }]}
+    >
       {/* 规则状态卡片 */}
-      <Card style={{ marginBottom: '16px' }}>
+      <Card style={{ marginBottom: '16px' }} className="page-card" bordered={false}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ margin: 0 }}>自定义规则状态</h3>
@@ -367,11 +240,11 @@ const IPWhitelistManagement: React.FC = () => {
       </Card>
 
       {/* IP列表 */}
-      <Card>
+      <Card className="page-card" bordered={false}>
         <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0 }}>IP白名单列表</h3>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
             <Button
               icon={<SyncOutlined />}
               onClick={handleSync}
@@ -379,8 +252,8 @@ const IPWhitelistManagement: React.FC = () => {
             >
               从 Cloudflare 同步
             </Button>
-            <Button 
-              danger 
+            <Button
+              danger
               disabled={selectedRowKeys.length === 0}
               icon={<DeleteOutlined />}
               loading={batchDeleting}
@@ -405,9 +278,10 @@ const IPWhitelistManagement: React.FC = () => {
         </div>
 
         <Table
+          className="table-striped"
           columns={columns}
           dataSource={data}
-          loading={loading}
+          loading={isLoading}
           rowKey="id"
           pagination={{ pageSize: 20 }}
           rowSelection={rowSelection}
@@ -421,38 +295,16 @@ const IPWhitelistManagement: React.FC = () => {
           setModalOpen(false)
           form.resetFields()
         }}
-        onOk={() => form.submit()}
+        onOk={handleAdd}
       >
         <Form
           form={form}
           layout="vertical"
-          onFinish={handleAdd}
         >
           <Form.Item
             label="IP地址"
             name="ip_address"
-            rules={[
-              { required: true, message: '请输入IP地址' },
-              {
-                validator: (_: any, value: string) => {
-                  if (!value) return Promise.resolve()
-                  
-                  // IPv4 验证（支持CIDR）
-                  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/
-                  if (ipv4Regex.test(value)) {
-                    return Promise.resolve()
-                  }
-                  
-                  // IPv6 验证（包括压缩格式、CIDR等）
-                  const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(?:\/(?:[0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-8]))?$/i
-                  if (ipv6Regex.test(value)) {
-                    return Promise.resolve()
-                  }
-                  
-                  return Promise.reject(new Error('请输入有效的IPv4或IPv6地址'))
-                },
-              },
-            ]}
+            rules={[{ required: true }]}
           >
             <Input placeholder="例如: 175.157.96.241 或 2001:db8::1" />
           </Form.Item>
@@ -473,23 +325,20 @@ const IPWhitelistManagement: React.FC = () => {
           setBatchModalOpen(false)
           batchForm.resetFields()
         }}
-        onOk={() => batchForm.submit()}
+        onOk={handleBatchAdd}
       >
         <Form
           form={batchForm}
           layout="vertical"
-          onFinish={handleBatchAdd}
         >
           <Form.Item
             label="IP地址列表"
             name="ips_text"
-            rules={[
-              { required: true, message: '请输入IP地址列表' },
-            ]}
+            rules={[{ required: true }]}
             extra="每行输入一个IP地址（支持IPv4和IPv6，包括CIDR格式）"
           >
-            <Input.TextArea 
-              rows={10} 
+            <Input.TextArea
+              rows={10}
               placeholder={`例如：\n175.157.96.241\n192.168.1.0/24\n2001:db8::1\n2402:4000:126a:ede6:150f:2c99:837a:48d3`}
             />
           </Form.Item>
@@ -502,9 +351,8 @@ const IPWhitelistManagement: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageContainer>
   )
 }
 
 export default IPWhitelistManagement
-

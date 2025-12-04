@@ -1,0 +1,54 @@
+.multi-tabs-wrapper .ant-tabs-nav {
+    margin: 0 !important;
+    background: var(--color-bg-layout);
+    padding: 6px 16px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.multi-tabs-wrapper .ant-tabs-tab {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 8px 8px 0 0 !important;
+    margin-right: 4px !important;
+    padding: 8px 16px !important;
+    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1) !important;
+    color: var(--color-text-secondary);
+}
+
+.multi-tabs-wrapper .ant-tabs-tab:hover {
+    background: rgba(0, 0, 0, 0.02) !important;
+    color: var(--color-text-primary);
+}
+
+.multi-tabs-wrapper .ant-tabs-tab-active {
+    background: var(--color-bg-container) !important;
+    color: var(--color-primary) !important;
+    font-weight: 500;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.multi-tabs-wrapper .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: var(--color-primary) !important;
+}
+
+.multi-tabs-wrapper .ant-tabs-ink-bar {
+    display: none !important;
+}
+
+/* Tab Content Wrapper */
+.multi-tabs-wrapper .ant-tabs-content-holder {
+    background: var(--color-bg-layout);
+}
+
+/* Tab Label & Icon */
+.tab-label-container {
+    display: inline-block;
+    width: 100%;
+    height: 100%;
+    user-select: none;
+}
+
+/* Context Menu Dropdown Item */
+.ant-dropdown-menu-item {
+    border-radius: 4px;
+}

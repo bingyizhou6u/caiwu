@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Card, Table, Button, Tag, Space, Modal, Form, Select, DatePicker, InputNumber, Input, message, Statistic, Row, Col, Typography, Alert } from 'antd'
 import { PlusOutlined, CalendarOutlined } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 
@@ -56,6 +55,8 @@ const statusLabels: Record<string, string> = {
   approved: '已通过',
   rejected: '已驳回',
 }
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function MyLeaves() {
   const [loading, setLoading] = useState(true)
@@ -134,9 +135,10 @@ export function MyLeaves() {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}>我的请假</Title>
-
+    <PageContainer
+      title="我的请假"
+      breadcrumb={[{ title: '个人中心' }, { title: '我的请假' }]}
+    >
       {/* 年假周期信息 */}
       {annualLeaveInfo && !annualLeaveInfo.isFirstCycle && (
         <Alert
@@ -183,6 +185,8 @@ export function MyLeaves() {
 
       <Card
         title="请假记录"
+        bordered={false}
+        className="page-card"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
             发起请假
@@ -190,6 +194,7 @@ export function MyLeaves() {
         }
       >
         <Table
+          className="table-striped"
           dataSource={leaves}
           columns={columns}
           rowKey="id"
@@ -227,7 +232,7 @@ export function MyLeaves() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageContainer>
   )
 }
 

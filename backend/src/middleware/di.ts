@@ -25,13 +25,13 @@ export const di = async (c: Context<{ Bindings: Env, Variables: AppVariables }>,
     // Initialize services
     const systemConfigService = new SystemConfigService(db)
     const siteConfigService = new SiteConfigService(db)
-    const userService = new UserService(c.env.DB) // UserService still uses raw D1 for now? Let's assume yes based on previous code.
+    const userService = new UserService(db) // Updated to use Drizzle db
     const employeeService = new EmployeeService(db)
     const financeService = new FinanceService(db)
     const importService = new ImportService(db)
     const salaryPaymentService = new SalaryPaymentService(db)
     const reportService = new ReportService(db)
-    const authService = new AuthService(db, c.env.SESSIONS_KV) // Updated to use Drizzle db
+    const authService = new AuthService(db, c.env.SESSIONS_KV, systemConfigService) // Updated to use Drizzle db
     const masterDataService = new MasterDataService(db) // Updated to use Drizzle db
     const fixedAssetService = new FixedAssetService(db)
     const rentalService = new RentalService(db)

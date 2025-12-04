@@ -43,24 +43,46 @@ export class EmployeeService {
             id: employees.id,
             name: employees.name,
             email: employees.email,
-            departmentId: employees.departmentId,
-            departmentName: departments.name,
-            orgDepartmentId: employees.orgDepartmentId,
-            orgDepartmentName: orgDepartments.name,
-            orgDepartmentCode: orgDepartments.code,
-            positionId: employees.positionId,
-            positionName: positions.name,
-            positionLevel: positions.level,
-            joinDate: employees.joinDate,
+            department_id: employees.departmentId,
+            department_name: departments.name,
+            org_department_id: employees.orgDepartmentId,
+            org_department_name: orgDepartments.name,
+            org_department_code: orgDepartments.code,
+            position_id: employees.positionId,
+            position_name: positions.name,
+            position_level: positions.level,
+            position_code: positions.code,
+            join_date: employees.joinDate,
             status: employees.status,
             active: employees.active,
             phone: employees.phone,
-            avatar: sql<string>`''`, // Placeholder as avatar is not in employees table but might be needed by frontend
+            probation_salary_cents: employees.probationSalaryCents,
+            regular_salary_cents: employees.regularSalaryCents,
+            living_allowance_cents: employees.livingAllowanceCents,
+            housing_allowance_cents: employees.housingAllowanceCents,
+            transportation_allowance_cents: employees.transportationAllowanceCents,
+            meal_allowance_cents: employees.mealAllowanceCents,
+            regular_date: employees.regularDate,
+            birthday: employees.birthday,
+            usdt_address: employees.usdtAddress,
+            emergency_contact: employees.emergencyContact,
+            emergency_phone: employees.emergencyPhone,
+            address: employees.address,
+            memo: employees.memo,
+            work_schedule: employees.workSchedule,
+            annual_leave_cycle_months: employees.annualLeaveCycleMonths,
+            annual_leave_days: employees.annualLeaveDays,
+            created_at: employees.createdAt,
+            updated_at: employees.updatedAt,
+            user_id: users.id,
+            user_active: users.active,
+            user_last_login_at: users.lastLoginAt,
         })
             .from(employees)
             .leftJoin(departments, eq(employees.departmentId, departments.id))
             .leftJoin(orgDepartments, eq(employees.orgDepartmentId, orgDepartments.id))
             .leftJoin(positions, eq(employees.positionId, positions.id))
+            .leftJoin(users, eq(employees.email, users.email))
             .where(and(...conditions))
             .orderBy(desc(employees.createdAt))
             .limit(filters.limit || 100)

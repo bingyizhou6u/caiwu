@@ -1,0 +1,234 @@
+
+ RUN  v3.2.4 /Users/aren/caiwu/caiwu-app/frontend
+
+ ✓ src/hooks/business/__tests__/useExpenses.test.tsx (6 tests) 330ms
+ ✓ src/hooks/business/__tests__/useCurrencies.test.tsx (7 tests) 391ms
+ ✓ src/hooks/business/__tests__/useFixedAssets.test.tsx (9 tests) 496ms
+ ❯ src/hooks/business/__tests__/useIPWhitelist.test.tsx (9 tests | 1 failed) 499ms
+   × useIPWhitelist > useIPWhitelist > should fetch IP whitelist 68ms
+     → expected { results: [ { id: '1', …(1) } ] } to deeply equal [ { id: '1', ip_address: '1.2.3.4' } ]
+   ✓ useIPWhitelist > useIPRuleStatus > should fetch IP rule status 53ms
+   ✓ useIPWhitelist > useCreateIPRule > should create IP rule 54ms
+   ✓ useIPWhitelist > useToggleIPRule > should toggle IP rule 53ms
+   ✓ useIPWhitelist > useAddIP > should add IP 54ms
+   ✓ useIPWhitelist > useDeleteIP > should delete IP 53ms
+   ✓ useIPWhitelist > useBatchAddIP > should batch add IP 54ms
+   ✓ useIPWhitelist > useBatchDeleteIP > should batch delete IP 53ms
+   ✓ useIPWhitelist > useSyncIPWhitelist > should sync IP whitelist 55ms
+ ✓ src/hooks/business/__tests__/useARAP.test.tsx (9 tests) 498ms
+ ✓ src/hooks/business/__tests__/useAccountHooks.test.tsx (9 tests) 499ms
+ ❯ src/hooks/business/__tests__/useHRHooks.test.tsx (18 tests | 3 failed) 981ms
+   × useAllowances > useAllowances > should fetch allowances 65ms
+     → expected { results: [ { id: '1', …(1) } ] } to deeply equal [ { id: '1', amount_cents: 100 } ]
+   ✓ useAllowances > useCreateAllowance > should create allowance 54ms
+   ✓ useAllowances > useUpdateAllowance > should update allowance 55ms
+   ✓ useAllowances > useDeleteAllowance > should delete allowance 52ms
+   ✓ useAllowances > useGenerateAllowances > should generate allowances 54ms
+   × useLeaves > useLeaves > should fetch leaves 53ms
+     → expected { results: [ { id: '1', days: 1 } ] } to deeply equal [ { id: '1', days: 1 } ]
+   ✓ useLeaves > useCreateLeave > should create leave 54ms
+   ✓ useLeaves > useUpdateLeave > should update leave 54ms
+   ✓ useLeaves > useDeleteLeave > should delete leave 58ms
+   ✓ useLeaves > useApproveLeave > should approve leave 55ms
+   × useSalaryPayments > useSalaryPayments > should fetch salary payments 54ms
+     → expected { results: [ { id: '1', …(1) } ] } to deeply equal [ { id: '1', salary_cents: 10000 } ]
+   ✓ useSalaryPayments > useGenerateSalaryPayments > should generate salary payments 53ms
+   ✓ useSalaryPayments > useEmployeeConfirmSalary > should confirm salary by employee 53ms
+   ✓ useSalaryPayments > useFinanceApproveSalary > should approve salary by finance 54ms
+   ✓ useSalaryPayments > usePaymentTransferSalary > should transfer salary payment 53ms
+   ✓ useSalaryPayments > useRequestAllocationSalary > should request salary allocation 53ms
+   ✓ useSalaryPayments > useApproveAllocationSalary > should approve salary allocation 53ms
+   ✓ useSalaryPayments > useConfirmPaymentSalary > should confirm salary payment 54ms
+ ✓ src/hooks/business/__tests__/useCategories.test.tsx (5 tests) 293ms
+ ✓ src/hooks/__tests__/useBusinessData.test.tsx (5 tests) 288ms
+ ✓ src/hooks/business/__tests__/useFlows.test.tsx (4 tests) 171ms
+ ✓ src/hooks/business/__tests__/useAuditLogs.test.tsx (4 tests) 231ms
+ ✓ src/utils/__tests__/useApiQuery.test.tsx (5 tests) 280ms
+ ✓ src/hooks/business/__tests__/useEmployees.test.tsx (5 tests) 282ms
+ ✓ src/hooks/business/__tests__/usePositions.test.tsx (1 test) 63ms
+ ✓ src/hooks/business/__tests__/useDepartments.test.tsx (1 test) 65ms
+ ✓ src/hooks/business/__tests__/useSystemConfig.test.tsx (2 tests) 128ms
+stderr | src/hooks/business/__tests__/useBatchOperation.test.tsx > useBatchOperation > should handle batch operation failure
+[API Error] Error: Failed
+    at [90m/Users/aren/caiwu/caiwu-app/frontend/[39msrc/hooks/business/__tests__/useBatchOperation.test.tsx:42:56
+    at [90mfile:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1574:12[90m)[39m
+    at runSuite [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runSuite [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runFiles [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1787:3[90m)[39m
+
+ ✓ src/hooks/business/__tests__/useSites.test.tsx (1 test) 64ms
+ ✓ src/hooks/business/__tests__/useBatchOperation.test.tsx (2 tests) 15ms
+ ✓ src/hooks/forms/__tests__/useFormModal.test.tsx (9 tests) 16ms
+ ✓ src/hooks/business/__tests__/useVendors.test.tsx (1 test) 65ms
+ ✓ src/hooks/business/__tests__/useImport.test.tsx (1 test) 78ms
+ ✓ src/utils/__tests__/formatters.test.ts (8 tests) 103ms
+ ✓ src/utils/__tests__/permissions.test.ts (10 tests) 27ms
+ ✓ src/hooks/forms/__tests__/useTableActions.test.tsx (5 tests) 20ms
+stderr | src/utils/__tests__/errorHandler.test.ts > errorHandler > handleApiError > should handle error with response message
+[API Error] { response: { data: { message: [32m'API Error'[39m } } }
+
+stderr | src/utils/__tests__/errorHandler.test.ts > errorHandler > handleApiError > should handle error with simple message
+[API Error] { message: [32m'Network Error'[39m }
+
+stderr | src/utils/__tests__/errorHandler.test.ts > errorHandler > handleApiError > should use default message if no error message found
+[API Error] {}
+
+stderr | src/utils/__tests__/errorHandler.test.ts > errorHandler > handleApiError > should use provided default message
+[API Error] {}
+
+stderr | src/utils/__tests__/errorHandler.test.ts > errorHandler > withErrorHandler > should handle operation failure
+[API Error] Error: Fail
+    at [90m/Users/aren/caiwu/caiwu-app/frontend/[39msrc/utils/__tests__/errorHandler.test.ts:60:27
+    at [90mfile:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1574:12[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at runSuite [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runSuite [90m(file:///Users/aren/caiwu/caiwu-app/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1729:8[90m)[39m
+
+ ✓ src/utils/__tests__/errorHandler.test.ts (6 tests) 19ms
+ ✓ src/hooks/forms/__tests__/useZodForm.test.tsx (4 tests) 25ms
+ ✓ src/utils/__tests__/cache.test.ts (9 tests) 9ms
+ ✓ src/utils/__tests__/loaders.test.ts (5 tests) 5ms
+ ✓ src/utils/__tests__/image.test.ts (5 tests) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/hooks/business/__tests__/useHRHooks.test.tsx > useAllowances > useAllowances > should fetch allowances
+AssertionError: expected { results: [ { id: '1', …(1) } ] } to deeply equal [ { id: '1', amount_cents: 100 } ]
+
+[32m- Expected:[39m 
+[
+  {
+    "amount_cents": 100,
+    "id": "1",
+  },
+]
+
+[31m+ Received:[39m 
+{
+  "results": [
+    {
+      "amount_cents": 100,
+      "id": "1",
+    },
+  ],
+}
+
+ ❯ src/hooks/business/__tests__/useHRHooks.test.tsx:71:41
+     69|             await waitFor(() => expect(result.current.isSuccess).toBe(…
+     70| 
+     71|             expect(result.current.data).toEqual(mockData.results)
+       |                                         ^
+     72|         })
+     73|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/hooks/business/__tests__/useHRHooks.test.tsx > useLeaves > useLeaves > should fetch leaves
+AssertionError: expected { results: [ { id: '1', days: 1 } ] } to deeply equal [ { id: '1', days: 1 } ]
+
+[32m- Expected:[39m 
+[
+  {
+    "days": 1,
+    "id": "1",
+  },
+]
+
+[31m+ Received:[39m 
+{
+  "results": [
+    {
+      "days": 1,
+      "id": "1",
+    },
+  ],
+}
+
+ ❯ src/hooks/business/__tests__/useHRHooks.test.tsx:156:41
+    154|             await waitFor(() => expect(result.current.isSuccess).toBe(…
+    155| 
+    156|             expect(result.current.data).toEqual(mockData.results)
+       |                                         ^
+    157|         })
+    158|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/hooks/business/__tests__/useHRHooks.test.tsx > useSalaryPayments > useSalaryPayments > should fetch salary payments
+AssertionError: expected { results: [ { id: '1', …(1) } ] } to deeply equal [ { id: '1', salary_cents: 10000 } ]
+
+[32m- Expected:[39m 
+[
+  {
+    "id": "1",
+    "salary_cents": 10000,
+  },
+]
+
+[31m+ Received:[39m 
+{
+  "results": [
+    {
+      "id": "1",
+      "salary_cents": 10000,
+    },
+  ],
+}
+
+ ❯ src/hooks/business/__tests__/useHRHooks.test.tsx:241:41
+    239|             await waitFor(() => expect(result.current.isSuccess).toBe(…
+    240| 
+    241|             expect(result.current.data).toEqual(mockData.results)
+       |                                         ^
+    242|         })
+    243|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/hooks/business/__tests__/useIPWhitelist.test.tsx > useIPWhitelist > useIPWhitelist > should fetch IP whitelist
+AssertionError: expected { results: [ { id: '1', …(1) } ] } to deeply equal [ { id: '1', ip_address: '1.2.3.4' } ]
+
+[32m- Expected:[39m 
+[
+  {
+    "id": "1",
+    "ip_address": "1.2.3.4",
+  },
+]
+
+[31m+ Received:[39m 
+{
+  "results": [
+    {
+      "id": "1",
+      "ip_address": "1.2.3.4",
+    },
+  ],
+}
+
+ ❯ src/hooks/business/__tests__/useIPWhitelist.test.tsx:58:41
+     56|             await waitFor(() => expect(result.current.isSuccess).toBe(…
+     57| 
+     58|             expect(result.current.data).toEqual(mockData.results)
+       |                                         ^
+     59|         })
+     60|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed | 27 passed (29)
+      Tests  4 failed | 161 passed (165)
+   Start at  16:25:26
+   Duration  5.16s (transform 606ms, setup 1.60s, collect 3.57s, tests 5.94s, environment 15.46s, prepare 2.56s)
+

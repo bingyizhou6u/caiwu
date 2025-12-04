@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { UserService } from '../../src/services/UserService';
-import { uuid } from '../../src/utils/db';
+import { uuid, createDb } from '../../src/utils/db';
 import schema from '../../src/db/schema.sql?raw';
 
 describe('UserService', () => {
@@ -16,7 +16,8 @@ describe('UserService', () => {
     });
 
     beforeEach(() => {
-        userService = new UserService(env.DB);
+        const db = createDb(env.DB);
+        userService = new UserService(db);
     });
 
     it('should get user by id', async () => {

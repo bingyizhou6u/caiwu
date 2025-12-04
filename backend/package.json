@@ -9,6 +9,7 @@
     "migrate": "wrangler d1 execute caiwu-db --file src/db/schema.sql",
     "migrate:all": "bash -c 'for file in src/db/migration_*.sql; do echo \"Running: $file\"; wrangler d1 execute caiwu-db --remote --file=\"$file\" || echo \"Failed or already applied: $file\"; done'",
     "migrate:remote": "bash -c 'for file in src/db/migration_*.sql; do echo \"Running: $file\"; wrangler d1 execute caiwu-db --remote --file=\"$file\" || echo \"Failed or already applied: $file\"; done'",
+    "gen:openapi": "tsx scripts/export-openapi.ts",
     "test": "vitest"
   },
   "devDependencies": {

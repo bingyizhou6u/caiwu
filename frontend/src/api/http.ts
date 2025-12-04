@@ -28,10 +28,13 @@ class ApiClient {
                 headers,
             })
 
-            // Handle 401 Unauthorized
+            // Handle 401 Unauthorized - token invalid or expired
             if (response.status === 401) {
                 logout()
-                // Optional: Redirect to login is handled by the Router/AuthGuard
+                // Force redirect to login page
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login'
+                }
                 throw new Error('Unauthorized')
             }
 

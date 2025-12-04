@@ -5,11 +5,16 @@ import type { ColumnsType } from 'antd/es/table'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { EyeOutlined, UploadOutlined, ReloadOutlined } from '@ant-design/icons'
-import { apiGet, apiPost, apiPut, apiDelete, safeApiCall, handleConflictError } from '../../../utils/api'
 import { formatAmount } from '../../../utils/formatters'
 import { loadCurrencies, loadAccounts, loadExpenseCategories, loadEmployees } from '../../../utils/loaders'
-import { convertToWebP, uploadImageAsWebP } from '../../../utils/image'
+import { uploadImageAsWebP } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
+import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useApproveExpense, usePayExpense } from '../../../hooks/business/useExpenses'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { expenseSchema, approveExpenseSchema } from '../../../validations/expense.schema'
+import type { ExpenseReimbursement } from '../../../hooks/business/useExpenses'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -36,63 +41,59 @@ const STATUS_COLORS: Record<string, string> = {
   paid: 'blue',
 }
 
-type ExpenseReimbursement = {
-  id: string
-  employee_id: string
-  employee_name?: string
-  department_id?: string
-  department_name?: string
-  expense_type: string
-  amount_cents: number
-  expense_date: string
-  description: string
-  currency_id?: string
-  currency_code?: string
-  currency_name?: string
-  account_id?: string
-  account_name?: string
-  voucher_url?: string
-  status: 'pending' | 'approved' | 'rejected' | 'paid'
-  memo?: string
-  approved_by?: string
-  approver_name?: string
-  approved_at?: number
-  paid_at?: number
-  created_by?: string
-  creator_name?: string
-  created_at: number
-}
+import { PageContainer } from '../../../components/PageContainer'
 
 export function ExpenseReimbursement() {
-  const [data, setData] = useState<ExpenseReimbursement[]>([])
+  const { data: expenses = [], isLoading, refetch } = useExpenses()
+  const { mutateAsync: createExpense } = useCreateExpense()
+  const { mutateAsync: updateExpense } = useUpdateExpense()
+  const { mutateAsync: deleteExpense } = useDeleteExpense()
+  const { mutateAsync: approveExpense } = useApproveExpense()
+  const { mutateAsync: payExpense } = usePayExpense()
+
   const [employees, setEmployees] = useState<any[]>([])
   const [currencies, setCurrencies] = useState<any[]>([])
   const [accounts, setAccounts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [approveOpen, setApproveOpen] = useState(false)
+
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string>('')
-  const [currentReimbursement, setCurrentReimbursement] = useState<ExpenseReimbursement | null>(null)
-  const [createForm] = Form.useForm()
-  const [editForm] = Form.useForm()
-  const [approveForm] = Form.useForm()
   const [createVoucherFile, setCreateVoucherFile] = useState<File | null>(null)
   const [editVoucherFile, setEditVoucherFile] = useState<File | null>(null)
-  
+  const [submitting, setSubmitting] = useState(false)
+
   const { hasPermission, canManageSubordinates, isManager: _isManager } = usePermissions()
   const canEdit = hasPermission('hr', 'reimbursement', 'view')
   const canApprove = hasPermission('hr', 'reimbursement', 'approve') || canManageSubordinates
   const isManager = _isManager()
 
-  const loadReimbursements = async () => {
-    setLoading(true)
-    const result = await safeApiCall(() => apiGet(api.expenseReimbursements), '获取报销记录失败')
-    if (result) setData(result)
-    setLoading(false)
-  }
+  const {
+    isOpen: createOpen,
+    openCreate,
+    close: closeCreate,
+  } = useFormModal<ExpenseReimbursement>()
+
+  const {
+    isOpen: editOpen,
+    data: editRow,
+    openEdit,
+    close: closeEdit,
+  } = useFormModal<ExpenseReimbursement>()
+
+  const {
+    isOpen: approveOpen,
+    data: approveRow,
+    openEdit: openApprove,
+    close: closeApprove,
+  } = useFormModal<ExpenseReimbursement>()
+
+  const { form: createForm, validateWithZod: validateCreate } = useZodForm(expenseSchema)
+  const { form: editForm, validateWithZod: validateEdit } = useZodForm(expenseSchema)
+  const { form: approveForm, validateWithZod: validateApprove } = useZodForm(approveExpenseSchema)
+
+  useEffect(() => {
+    loadMasterData()
+  }, [])
 
   const loadMasterData = async () => {
     try {
@@ -103,23 +104,23 @@ export function ExpenseReimbursement() {
         loadEmployees()
       ])
       // 将SelectOption格式转换为原始格式
-      setCurrencies(currenciesData.map(c => ({ 
-        id: c.value as string, 
-        code: c.value as string, 
-        name: c.label.split(' - ')[1] || c.label 
+      setCurrencies(currenciesData.map(c => ({
+        id: c.value as string,
+        code: c.value as string,
+        name: c.label.split(' - ')[1] || c.label
       })))
-      setAccounts(accountsData.map(a => ({ 
-        id: a.value as string, 
-        name: a.label.split(' (')[0], 
-        currency: a.currency 
+      setAccounts(accountsData.map(a => ({
+        id: a.value as string,
+        name: a.label.split(' (')[0],
+        currency: a.currency
       })))
-      setCategories(categoriesData.map(c => ({ 
-        id: c.value as string, 
+      setCategories(categoriesData.map(c => ({
+        id: c.value as string,
         name: c.label,
         kind: 'expense'
       })))
-      setEmployees(employeesData.map(e => ({ 
-        id: e.value as string, 
+      setEmployees(employeesData.map(e => ({
+        id: e.value as string,
         name: e.label.split(' (')[0],
         active: 1
       })))
@@ -128,151 +129,135 @@ export function ExpenseReimbursement() {
     }
   }
 
-  useEffect(() => {
-    loadReimbursements()
-    loadMasterData()
-  }, [])
-
   const uploadVoucher = async (file: File): Promise<string> => {
     return uploadImageAsWebP(file, api.upload.voucher)
   }
 
-  const handleCreate = async () => {
-    const v = await createForm.validateFields()
-    try {
-      // 必须上传凭证
-      if (!createVoucherFile) {
-        message.error('请上传凭证')
-        return
+  const handleCreate = withErrorHandler(
+    async () => {
+      setSubmitting(true)
+      try {
+        const values = await validateCreate()
+
+        // 必须上传凭证
+        if (!createVoucherFile) {
+          throw new Error('请上传凭证')
+        }
+
+        // 先上传凭证
+        const voucherUrl = await uploadVoucher(createVoucherFile)
+
+        await createExpense({
+          ...values,
+          amount_cents: Math.round(values.amount * 100),
+          expense_date: dayjs(values.expense_date).format('YYYY-MM-DD'),
+          voucher_url: voucherUrl,
+        })
+        closeCreate()
+        createForm.resetFields()
+        setCreateVoucherFile(null)
+      } finally {
+        setSubmitting(false)
       }
-      
-      // 先上传凭证
-      const voucherUrl = await uploadVoucher(createVoucherFile)
-      
-      await apiPost(api.expenseReimbursements, {
-        employee_id: v.employee_id,
-        expense_type: v.expense_type,
-        amount_cents: Math.round(v.amount * 100),
-        expense_date: v.expense_date.format('YYYY-MM-DD'),
-        description: v.description,
-        currency_id: v.currency_id,
-        voucher_url: voucherUrl,
-        memo: v.memo,
-      })
-      message.success('创建成功')
-      setCreateOpen(false)
-      createForm.resetFields()
-      setCreateVoucherFile(null)
-      loadReimbursements()
-    } catch (error: any) {
-      message.error(error.message || '创建失败')
-    }
-  }
+    },
+    { successMessage: '创建成功' }
+  )
 
-  const handleEdit = (reimbursement: ExpenseReimbursement) => {
-    if (reimbursement.status !== 'pending') {
-      message.warning('只能编辑待审批的报销记录')
-      return
-    }
-    setCurrentReimbursement(reimbursement)
-    editForm.setFieldsValue({
-      expense_type: reimbursement.expense_type,
-      amount: reimbursement.amount_cents / 100,
-      expense_date: dayjs(reimbursement.expense_date),
-      description: reimbursement.description,
-      currency_id: reimbursement.currency_id,
-      voucher_url: reimbursement.voucher_url,
-      memo: reimbursement.memo,
-    })
-    setEditVoucherFile(null)
-    setEditOpen(true)
-  }
+  const handleUpdate = withErrorHandler(
+    async () => {
+      if (!editRow) return
+      setSubmitting(true)
+      try {
+        const values = await validateEdit()
+        let voucherUrl = editRow.voucher_url
 
-  const handleUpdate = async () => {
-    const v = await editForm.validateFields()
-    if (!currentReimbursement) return
-    try {
-      let voucherUrl = v.voucher_url
-      
-      // 如果有上传的新文件，先上传凭证
-      if (editVoucherFile) {
-        voucherUrl = await uploadVoucher(editVoucherFile)
+        // 如果有上传的新文件，先上传凭证
+        if (editVoucherFile) {
+          voucherUrl = await uploadVoucher(editVoucherFile)
+        }
+
+        await updateExpense({
+          id: editRow.id,
+          data: {
+            ...values,
+            amount_cents: Math.round(values.amount * 100),
+            expense_date: dayjs(values.expense_date).format('YYYY-MM-DD'),
+            voucher_url: voucherUrl,
+          }
+        })
+        closeEdit()
+        editForm.resetFields()
+        setEditVoucherFile(null)
+      } finally {
+        setSubmitting(false)
       }
-      
-      await apiPut(api.expenseReimbursementsById(currentReimbursement.id), {
-        expense_type: v.expense_type,
-        amount_cents: Math.round(v.amount * 100),
-        expense_date: v.expense_date.format('YYYY-MM-DD'),
-        description: v.description,
-        currency_id: v.currency_id,
-        voucher_url: voucherUrl,
-        memo: v.memo,
-      })
-      message.success('更新成功')
-      setEditOpen(false)
-      setCurrentReimbursement(null)
-      editForm.resetFields()
-      setEditVoucherFile(null)
-      loadReimbursements()
-    } catch (error: any) {
-      message.error(error.message || '更新失败')
-    }
-  }
+    },
+    { successMessage: '更新成功' }
+  )
 
-  const handleApprove = (reimbursement: ExpenseReimbursement) => {
-    setCurrentReimbursement(reimbursement)
-    approveForm.setFieldsValue({
-      status: 'approved',
-      account_id: reimbursement.account_id,
-      category_id: undefined,
-      memo: reimbursement.memo,
-    })
-    setApproveOpen(true)
-  }
+  const handleApproveConfirm = withErrorHandler(
+    async () => {
+      if (!approveRow) return
+      setSubmitting(true)
+      try {
+        const values = await validateApprove()
+        await approveExpense({
+          id: approveRow.id,
+          status: values.status,
+          account_id: values.status === 'approved' ? values.account_id : undefined,
+          category_id: values.status === 'approved' ? values.category_id : undefined,
+          memo: values.memo,
+        })
+        closeApprove()
+        approveForm.resetFields()
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    { successMessage: '操作成功' }
+  )
 
-  const handleApproveConfirm = async () => {
-    const v = await approveForm.validateFields()
-    if (!currentReimbursement) return
-    try {
-      await apiPost(api.expenseReimbursementsApprove(currentReimbursement.id), {
-        status: v.status,
-        account_id: v.status === 'approved' ? v.account_id : undefined,
-        category_id: v.status === 'approved' ? v.category_id : undefined,
-        memo: v.memo,
-      })
-      message.success(v.status === 'approved' ? '已批准' : '已拒绝')
-      setApproveOpen(false)
-      setCurrentReimbursement(null)
-      approveForm.resetFields()
-      loadReimbursements()
-    } catch (error: any) {
-      message.error(error.message || '操作失败')
-    }
-  }
+  const handlePay = withErrorHandler(
+    async (id: string) => {
+      await payExpense(id)
+    },
+    { successMessage: '已标记为已支付' }
+  )
 
-  const handlePay = async (id: string) => {
-    try {
-      await apiPost(api.expenseReimbursementsPay(id), {})
-      message.success('已标记为已支付')
-      loadReimbursements()
-    } catch (error: any) {
-      message.error(error.message || '操作失败')
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    try {
-      await apiDelete(api.expenseReimbursementsById(id))
-      message.success('删除成功')
-      loadReimbursements()
-    } catch (error: any) {
-      message.error(error.message || '删除失败')
-    }
-  }
+  const handleDelete = withErrorHandler(
+    async (id: string) => {
+      await deleteExpense(id)
+    },
+    { successMessage: '删除成功' }
+  )
 
   const handlePreview = (voucherUrl: string) => {
     setPreviewUrl(voucherUrl)
     setPreviewOpen(true)
+  }
+
+  const onEdit = (record: ExpenseReimbursement) => {
+    if (record.status !== 'pending') {
+      message.warning('只能编辑待审批的报销记录')
+      return
+    }
+    editForm.setFieldsValue({
+      ...record,
+      amount: record.amount_cents / 100,
+      expense_date: dayjs(record.expense_date),
+    })
+    setEditVoucherFile(null)
+    openEdit(record)
+  }
+
+  const onApprove = (record: ExpenseReimbursement) => {
+    approveForm.setFieldsValue({
+      status: 'approved',
+      account_id: record.account_id,
+      category_id: undefined,
+      memo: record.memo,
+    })
+    openApprove(record)
   }
 
   const columns: ColumnsType<ExpenseReimbursement> = [
@@ -370,12 +355,12 @@ export function ExpenseReimbursement() {
       render: (_: any, record: ExpenseReimbursement) => (
         <Space>
           {canEdit && record.status === 'pending' && (
-            <Button size="small" onClick={() => handleEdit(record)}>
+            <Button size="small" onClick={() => onEdit(record)}>
               编辑
             </Button>
           )}
           {canApprove && record.status === 'pending' && (
-            <Button size="small" type="primary" onClick={() => handleApprove(record)}>
+            <Button size="small" type="primary" onClick={() => onApprove(record)}>
               审批
             </Button>
           )}
@@ -402,359 +387,354 @@ export function ExpenseReimbursement() {
   ]
 
   return (
-    <Card
+    <PageContainer
       title="员工报销管理"
-      extra={
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadReimbursements} loading={loading}>刷新</Button>
-          {canEdit && (
-            <Button type="primary" onClick={() => setCreateOpen(true)}>
-              新建报销
-            </Button>
-          )}
-        </Space>
-      }
+      breadcrumb={[{ title: '人事管理' }, { title: '员工报销管理' }]}
     >
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 20 }}
-        scroll={{ x: 1400 }}
-      />
-
-      <Modal
-        title="新建报销"
-        open={createOpen}
-        onOk={handleCreate}
-        onCancel={() => {
-          setCreateOpen(false)
-          createForm.resetFields()
-          setCreateVoucherFile(null)
-        }}
-        okText="创建"
-        cancelText="取消"
-        width={600}
-      >
-        <Form form={createForm} layout="vertical">
-          <Form.Item
-            name="employee_id"
-            label="员工"
-            rules={[{ required: true, message: '请选择员工' }]}
-          >
-            <Select placeholder="请选择员工" showSearch optionFilterProp="children">
-              {employees.map((emp) => (
-                <Option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.department_name})
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="expense_type"
-            label="报销类型"
-            rules={[{ required: true, message: '请选择报销类型' }]}
-          >
-            <Select placeholder="请选择报销类型">
-              <Option value="travel">差旅费</Option>
-              <Option value="office">办公用品</Option>
-              <Option value="meal">餐饮</Option>
-              <Option value="transport">交通</Option>
-              <Option value="other">其他</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="currency_id"
-            label="币种"
-            rules={[{ required: true, message: '请选择币种' }]}
-          >
-            <Select placeholder="请选择币种">
-              {currencies.map((curr) => (
-                <Option key={curr.code} value={curr.code}>
-                  {curr.code} - {curr.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="amount"
-            label="报销金额"
-            rules={[{ required: true, message: '请输入报销金额' }]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              precision={2}
-              placeholder="请输入报销金额"
-            />
-          </Form.Item>
-          <Form.Item
-            name="expense_date"
-            label="报销日期"
-            rules={[{ required: true, message: '请选择报销日期' }]}
-          >
-            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="报销说明"
-            rules={[{ required: true, message: '请输入报销说明' }]}
-          >
-            <TextArea rows={3} placeholder="请输入报销说明" />
-          </Form.Item>
-          <Form.Item
-            name="voucher"
-            label="凭证"
-            rules={[{ required: true, message: '请上传凭证' }]}
-          >
-            <Upload
-              beforeUpload={(file) => {
-                if (!file.type.startsWith('image/')) {
-                  message.error('只能上传图片文件')
-                  return false
-                }
-                setCreateVoucherFile(file)
-                return false
-              }}
-              onRemove={() => {
-                setCreateVoucherFile(null)
-                createForm.setFieldsValue({ voucher: undefined })
-              }}
-              maxCount={1}
-              accept="image/*"
-            >
-              <Button icon={<UploadOutlined />}>上传凭证</Button>
-            </Upload>
-          </Form.Item>
-          <Form.Item name="memo" label="备注">
-            <TextArea rows={2} placeholder="可选，备注信息" />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="编辑报销"
-        open={editOpen}
-        onOk={handleUpdate}
-        onCancel={() => {
-          setEditOpen(false)
-          setCurrentReimbursement(null)
-          editForm.resetFields()
-          setEditVoucherFile(null)
-        }}
-        okText="保存"
-        cancelText="取消"
-        width={600}
-      >
-        <Form form={editForm} layout="vertical">
-          <Form.Item
-            name="expense_type"
-            label="报销类型"
-            rules={[{ required: true, message: '请选择报销类型' }]}
-          >
-            <Select placeholder="请选择报销类型">
-              <Option value="travel">差旅费</Option>
-              <Option value="office">办公用品</Option>
-              <Option value="meal">餐饮</Option>
-              <Option value="transport">交通</Option>
-              <Option value="other">其他</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="currency_id"
-            label="币种"
-            rules={[{ required: true, message: '请选择币种' }]}
-          >
-            <Select placeholder="请选择币种">
-              {currencies.map((curr) => (
-                <Option key={curr.code} value={curr.code}>
-                  {curr.code} - {curr.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="amount"
-            label="报销金额"
-            rules={[{ required: true, message: '请输入报销金额' }]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              precision={2}
-            />
-          </Form.Item>
-          <Form.Item
-            name="expense_date"
-            label="报销日期"
-            rules={[{ required: true, message: '请选择报销日期' }]}
-          >
-            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="报销说明"
-            rules={[{ required: true, message: '请输入报销说明' }]}
-          >
-            <TextArea rows={3} />
-          </Form.Item>
-          <Form.Item name="voucher" label="凭证">
-            <Upload
-              beforeUpload={(file) => {
-                if (!file.type.startsWith('image/')) {
-                  message.error('只能上传图片文件')
-                  return false
-                }
-                setEditVoucherFile(file)
-                return false
-              }}
-              onRemove={() => {
-                setEditVoucherFile(null)
-                editForm.setFieldsValue({ voucher: undefined })
-              }}
-              maxCount={1}
-              accept="image/*"
-            >
-              <Button icon={<UploadOutlined />}>
-                {currentReimbursement?.voucher_url ? '重新上传' : '上传凭证'}
+      <Card
+        title="员工报销管理"
+        extra={
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
+            {canEdit && (
+              <Button type="primary" onClick={openCreate}>
+                新建报销
               </Button>
-            </Upload>
-            {currentReimbursement?.voucher_url && !editVoucherFile && (
-              <div style={{ marginTop: 8 }}>
-                <Button
-                  size="small"
-                  icon={<EyeOutlined />}
-                  onClick={() => handlePreview(currentReimbursement.voucher_url!)}
-                >
-                  查看当前凭证
-                </Button>
-              </div>
             )}
-          </Form.Item>
-          <Form.Item name="memo" label="备注">
-            <TextArea rows={2} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="审批报销"
-        open={approveOpen}
-        onOk={handleApproveConfirm}
-        onCancel={() => {
-          setApproveOpen(false)
-          setCurrentReimbursement(null)
-          approveForm.resetFields()
-        }}
-        okText="确认"
-        cancelText="取消"
-        width={600}
+          </Space>
+        }
+        className="page-card"
+        bordered={false}
       >
-        <Form form={approveForm} layout="vertical">
-          <Form.Item label="员工姓名">
-            <Input value={currentReimbursement?.employee_name} disabled />
-          </Form.Item>
-          <Form.Item label="报销类型">
-            <Input value={EXPENSE_TYPE_LABELS[currentReimbursement?.expense_type || '']} disabled />
-          </Form.Item>
-          <Form.Item label="报销金额">
-            <Input value={`${formatAmount(currentReimbursement?.amount_cents || 0)} (${currentReimbursement?.currency_code || '-'})`} disabled />
-          </Form.Item>
-          <Form.Item label="报销日期">
-            <Input value={currentReimbursement?.expense_date} disabled />
-          </Form.Item>
-          <Form.Item label="报销说明">
-            <TextArea value={currentReimbursement?.description} rows={3} disabled />
-          </Form.Item>
-          {currentReimbursement?.voucher_url && (
-            <Form.Item label="凭证">
-              <Button
-                icon={<EyeOutlined />}
-                onClick={() => handlePreview(currentReimbursement.voucher_url!)}
-              >
-                查看凭证
-              </Button>
+        <Table
+          className="table-striped"
+          columns={columns}
+          dataSource={expenses}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{ pageSize: 20 }}
+          scroll={{ x: 1400 }}
+        />
+
+        <Modal
+          title="新建报销"
+          open={createOpen}
+          onOk={handleCreate}
+          onCancel={() => {
+            closeCreate()
+            createForm.resetFields()
+            setCreateVoucherFile(null)
+          }}
+          okText="创建"
+          cancelText="取消"
+          width={600}
+          confirmLoading={submitting}
+        >
+          <Form form={createForm} layout="vertical">
+            <Form.Item
+              name="employee_id"
+              label="员工"
+            >
+              <Select placeholder="请选择员工" showSearch optionFilterProp="children">
+                {employees.map((emp) => (
+                  <Option key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.department_name})
+                  </Option>
+                ))}
+              </Select>
             </Form.Item>
-          )}
-          <Form.Item
-            name="status"
-            label="审批结果"
-            rules={[{ required: true, message: '请选择审批结果' }]}
-          >
-            <Select>
-              <Option value="approved">批准</Option>
-              <Option value="rejected">拒绝</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => prevValues.status !== currentValues.status}
-          >
-            {({ getFieldValue }) => {
-              const status = getFieldValue('status')
-              if (status === 'approved') {
-                return (
-                  <>
-                    <Form.Item
-                      name="account_id"
-                      label="支出账户"
-                      rules={[{ required: true, message: '请选择支出账户' }]}
-                      dependencies={['status']}
-                    >
-                      <Select
-                        placeholder="请选择支出账户"
-                        showSearch
-                        optionFilterProp="children"
-                        filterOption={(input, option) =>
-                          String(option?.label || "").toLowerCase().includes(input.toLowerCase())
-                        }
+            <Form.Item
+              name="expense_type"
+              label="报销类型"
+            >
+              <Select placeholder="请选择报销类型">
+                <Option value="travel">差旅费</Option>
+                <Option value="office">办公用品</Option>
+                <Option value="meal">餐饮</Option>
+                <Option value="transport">交通</Option>
+                <Option value="other">其他</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="currency_id"
+              label="币种"
+            >
+              <Select placeholder="请选择币种">
+                {currencies.map((curr) => (
+                  <Option key={curr.code} value={curr.code}>
+                    {curr.code} - {curr.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="amount"
+              label="报销金额"
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                precision={2}
+                placeholder="请输入报销金额"
+              />
+            </Form.Item>
+            <Form.Item
+              name="expense_date"
+              label="报销日期"
+            >
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item
+              name="description"
+              label="报销说明"
+            >
+              <TextArea rows={3} placeholder="请输入报销说明" />
+            </Form.Item>
+            <Form.Item
+              name="voucher"
+              label="凭证"
+              required
+            >
+              <Upload
+                beforeUpload={(file) => {
+                  if (!file.type.startsWith('image/')) {
+                    message.error('只能上传图片文件')
+                    return false
+                  }
+                  setCreateVoucherFile(file)
+                  return false
+                }}
+                onRemove={() => {
+                  setCreateVoucherFile(null)
+                  createForm.setFieldsValue({ voucher: undefined })
+                }}
+                maxCount={1}
+                accept="image/*"
+              >
+                <Button icon={<UploadOutlined />}>上传凭证</Button>
+              </Upload>
+            </Form.Item>
+            <Form.Item name="memo" label="备注">
+              <TextArea rows={2} placeholder="可选，备注信息" />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        <Modal
+          title="编辑报销"
+          open={editOpen}
+          onOk={handleUpdate}
+          onCancel={() => {
+            closeEdit()
+            editForm.resetFields()
+            setEditVoucherFile(null)
+          }}
+          okText="保存"
+          cancelText="取消"
+          width={600}
+          confirmLoading={submitting}
+        >
+          <Form form={editForm} layout="vertical">
+            <Form.Item
+              name="expense_type"
+              label="报销类型"
+            >
+              <Select placeholder="请选择报销类型">
+                <Option value="travel">差旅费</Option>
+                <Option value="office">办公用品</Option>
+                <Option value="meal">餐饮</Option>
+                <Option value="transport">交通</Option>
+                <Option value="other">其他</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="currency_id"
+              label="币种"
+            >
+              <Select placeholder="请选择币种">
+                {currencies.map((curr) => (
+                  <Option key={curr.code} value={curr.code}>
+                    {curr.code} - {curr.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="amount"
+              label="报销金额"
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                precision={2}
+              />
+            </Form.Item>
+            <Form.Item
+              name="expense_date"
+              label="报销日期"
+            >
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item
+              name="description"
+              label="报销说明"
+            >
+              <TextArea rows={3} />
+            </Form.Item>
+            <Form.Item name="voucher" label="凭证">
+              <Upload
+                beforeUpload={(file) => {
+                  if (!file.type.startsWith('image/')) {
+                    message.error('只能上传图片文件')
+                    return false
+                  }
+                  setEditVoucherFile(file)
+                  return false
+                }}
+                onRemove={() => {
+                  setEditVoucherFile(null)
+                  editForm.setFieldsValue({ voucher: undefined })
+                }}
+                maxCount={1}
+                accept="image/*"
+              >
+                <Button icon={<UploadOutlined />}>
+                  {editRow?.voucher_url ? '重新上传' : '上传凭证'}
+                </Button>
+              </Upload>
+              {editRow?.voucher_url && !editVoucherFile && (
+                <div style={{ marginTop: 8 }}>
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={() => handlePreview(editRow.voucher_url!)}
+                  >
+                    查看当前凭证
+                  </Button>
+                </div>
+              )}
+            </Form.Item>
+            <Form.Item name="memo" label="备注">
+              <TextArea rows={2} />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        <Modal
+          title="审批报销"
+          open={approveOpen}
+          onOk={handleApproveConfirm}
+          onCancel={() => {
+            closeApprove()
+            approveForm.resetFields()
+          }}
+          okText="确认"
+          cancelText="取消"
+          width={600}
+          confirmLoading={submitting}
+        >
+          <Form form={approveForm} layout="vertical">
+            <Form.Item label="员工姓名">
+              <Input value={approveRow?.employee_name} disabled />
+            </Form.Item>
+            <Form.Item label="报销类型">
+              <Input value={EXPENSE_TYPE_LABELS[approveRow?.expense_type || '']} disabled />
+            </Form.Item>
+            <Form.Item label="报销金额">
+              <Input value={`${formatAmount(approveRow?.amount_cents || 0)} (${approveRow?.currency_code || '-'})`} disabled />
+            </Form.Item>
+            <Form.Item label="报销日期">
+              <Input value={approveRow?.expense_date} disabled />
+            </Form.Item>
+            <Form.Item label="报销说明">
+              <TextArea value={approveRow?.description} rows={3} disabled />
+            </Form.Item>
+            {approveRow?.voucher_url && (
+              <Form.Item label="凭证">
+                <Button
+                  icon={<EyeOutlined />}
+                  onClick={() => handlePreview(approveRow.voucher_url!)}
+                >
+                  查看凭证
+                </Button>
+              </Form.Item>
+            )}
+            <Form.Item
+              name="status"
+              label="审批结果"
+            >
+              <Select>
+                <Option value="approved">批准</Option>
+                <Option value="rejected">拒绝</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) => prevValues.status !== currentValues.status}
+            >
+              {({ getFieldValue }) => {
+                const status = getFieldValue('status')
+                if (status === 'approved') {
+                  return (
+                    <>
+                      <Form.Item
+                        name="account_id"
+                        label="支出账户"
+                        dependencies={['status']}
                       >
-                        {accounts
-                          .filter((acc: any) => acc.currency === currentReimbursement?.currency_id)
-                          .map((acc: any) => (
-                            <Option key={acc.id} value={acc.id}>
-                              {acc.name} ({acc.currency_code})
+                        <Select
+                          placeholder="请选择支出账户"
+                          showSearch
+                          optionFilterProp="children"
+                          filterOption={(input, option) =>
+                            String(option?.label || "").toLowerCase().includes(input.toLowerCase())
+                          }
+                        >
+                          {accounts
+                            .filter((acc: any) => acc.currency === approveRow?.currency_id)
+                            .map((acc: any) => (
+                              <Option key={acc.id} value={acc.id}>
+                                {acc.name} ({acc.currency_code})
+                              </Option>
+                            ))}
+                        </Select>
+                      </Form.Item>
+                      <Form.Item
+                        name="category_id"
+                        label="支出类别"
+                        dependencies={['status']}
+                      >
+                        <Select placeholder="请选择支出类别" showSearch optionFilterProp="children">
+                          {categories.map((cat: any) => (
+                            <Option key={cat.id} value={cat.id}>
+                              {cat.name}
                             </Option>
                           ))}
-                      </Select>
-                    </Form.Item>
-                    <Form.Item
-                      name="category_id"
-                      label="支出类别"
-                      rules={[{ required: true, message: '请选择支出类别' }]}
-                      dependencies={['status']}
-                    >
-                      <Select placeholder="请选择支出类别" showSearch optionFilterProp="children">
-                        {categories.map((cat: any) => (
-                          <Option key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </>
-                )
-              }
-              return null
-            }}
-          </Form.Item>
-          <Form.Item name="memo" label="审批备注">
-            <TextArea rows={2} placeholder="可选，审批备注" />
-          </Form.Item>
-        </Form>
-      </Modal>
+                        </Select>
+                      </Form.Item>
+                    </>
+                  )
+                }
+                return null
+              }}
+            </Form.Item>
+            <Form.Item name="memo" label="审批备注">
+              <TextArea rows={2} placeholder="可选，审批备注" />
+            </Form.Item>
+          </Form>
+        </Modal>
 
-      <Modal
-        title="查看凭证"
-        open={previewOpen}
-        onCancel={() => setPreviewOpen(false)}
-        footer={null}
-        width={800}
-      >
-        <img src={previewUrl} alt="凭证" style={{ width: '100%' }} />
-      </Modal>
-    </Card>
+        <Modal
+          title="查看凭证"
+          open={previewOpen}
+          onCancel={() => setPreviewOpen(false)}
+          footer={null}
+          width={800}
+        >
+          <img src={previewUrl} alt="凭证" style={{ width: '100%' }} />
+        </Modal>
+      </Card>
+    </PageContainer>
   )
 }
 

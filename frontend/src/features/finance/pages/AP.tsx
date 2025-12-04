@@ -5,72 +5,84 @@ import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../../config/api'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
-import { useApiQuery, useApiMutation } from '../../../utils/useApiQuery'
+import { useAPDocs, useCreateAP, useConfirmAP } from '../../../hooks'
 import { useAccounts, useExpenseCategories } from '../../../hooks/useBusinessData'
-import { ARAP } from '../../../types/business'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { createAPSchema, confirmAPSchema } from '../../../validations/ap.schema'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import type { ARAP } from '../../../types/business'
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function AP() {
-  const [open, setOpen] = useState(false)
-  const [form] = Form.useForm()
+  // Modals
+  const [createOpen, setCreateOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmForm] = Form.useForm()
-  const [confirmingDoc, setConfirmingDoc] = useState<any | null>(null)
+  const [confirmingDoc, setConfirmingDoc] = useState<ARAP | null>(null)
+
+  // Forms
+  const createForm = useZodForm(createAPSchema)
+  const confirmForm = useZodForm(confirmAPSchema)
+
+  // Upload state
   const [uploading, setUploading] = useState(false)
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [voucherUrl, setVoucherUrl] = useState<string | undefined>()
 
-  // 加载基础数据
+  // Data Hooks
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useExpenseCategories()
+  const { data: docs = [], isLoading: loading, refetch: load } = useAPDocs()
+  const { mutateAsync: createAP, isPending: isCreating } = useCreateAP()
+  const { mutateAsync: confirmAP, isPending: isConfirming } = useConfirmAP()
 
-  // 加载应付列表
-  const { data: docs = [], isPending: loading, refetch: load } = useApiQuery<ARAP[]>(
-    ['ap-docs'],
-    `${api.ar.docs}?kind=AP`,
-    {
-      select: (data: any) => data.results ?? []
-    }
-  )
-
-  // 创建应付 Mutation
-  const createMutation = useApiMutation(
-    () => {
-      message.success('已新增')
-      setOpen(false)
-      form.resetFields()
+  // Handlers
+  const handleCreate = withErrorHandler(
+    async () => {
+      const values = await createForm.validateWithZod()
+      await createAP({
+        party_id: values.party, // Note: Schema uses 'party', API expects 'party_id' or 'party_name'? Old code used 'party_id: v.party'. Assuming input is name but field is party_id.
+        // Wait, old code: `party_id: v.party`. Input label "供应商".
+        // If it's a text input, it's likely the name. The backend might handle it.
+        // Let's stick to old logic: pass `party` as `party_id`.
+        issue_date: values.issue_date.format('YYYY-MM-DD'),
+        due_date: values.due_date?.format('YYYY-MM-DD'),
+        amount_cents: Math.round(values.amount * 100),
+        memo: values.memo
+      })
+      setCreateOpen(false)
+      createForm.form.resetFields()
       load()
-    }
+    },
+    { successMessage: '已新增' }
   )
 
-  // 确认应付 Mutation
-  const confirmMutation = useApiMutation(
-    () => {
-      message.success('已确认并生成支出记录')
+  const handleConfirm = withErrorHandler(
+    async () => {
+      if (!voucherUrl) {
+        message.error('请先上传凭证')
+        return
+      }
+      if (!confirmingDoc) return
+
+      const values = await confirmForm.validateWithZod()
+      await confirmAP({
+        doc_id: confirmingDoc.id,
+        account_id: values.account_id,
+        category_id: values.category_id,
+        biz_date: values.biz_date.format('YYYY-MM-DD'),
+        memo: values.memo,
+        voucher_url: voucherUrl
+      })
       setConfirmOpen(false)
       setConfirmingDoc(null)
       setFileList([])
       setVoucherUrl(undefined)
+      confirmForm.form.resetFields()
       load()
-    }
+    },
+    { successMessage: '已确认并生成支出记录' }
   )
-
-  const createDoc = async () => {
-    try {
-      const v = await form.validateFields()
-      createMutation.mutate({
-        url: api.ar.docs,
-        method: 'POST',
-        body: {
-          kind: 'AP',
-          party_id: v.party,
-          issue_date: v.issue_date.format('YYYY-MM-DD'),
-          due_date: v.due_date?.format('YYYY-MM-DD'),
-          amount_cents: Math.round(Number(v.amount) * 100),
-          memo: v.memo
-        }
-      })
-    } catch (e) { }
-  }
 
   const handleUpload = async (file: File) => {
     setUploading(true)
@@ -94,128 +106,141 @@ export function AP() {
     }
   }
 
+  const openConfirmModal = (record: ARAP) => {
+    setConfirmingDoc(record)
+    setConfirmOpen(true)
+    setFileList([])
+    setVoucherUrl(undefined)
+    confirmForm.form.resetFields()
+    confirmForm.form.setFieldsValue({ biz_date: dayjs(record.issue_date) })
+  }
+
   return (
-    <Card title="应付">
-      <Space style={{ marginBottom: 12 }}>
-        <Button type="primary" onClick={() => setOpen(true)}>新建应付</Button>
-        <Button onClick={() => load()}>刷新</Button>
-      </Space>
-      <Table rowKey="id" loading={loading} dataSource={docs} columns={[
-        { title: '单号', dataIndex: 'doc_no' },
-        { title: '开立日期', dataIndex: 'issue_date' },
-        { title: '到期日', dataIndex: 'due_date' },
-        { title: '金额', dataIndex: 'amount_cents', render: (v: number) => (v / 100).toFixed(2) },
-        { title: '已结', dataIndex: 'settled_cents', render: (v: number) => (v / 100).toFixed(2) },
-        { title: '状态', dataIndex: 'status' },
-        {
-          title: '操作', render: (_: any, r: any) => <Space>
-            {r.status === 'open' && (
-              <Button size="small" type="primary" onClick={() => {
-                setConfirmingDoc(r)
-                setConfirmOpen(true)
-                confirmForm.resetFields()
-                setFileList([])
-                setVoucherUrl(undefined)
-                confirmForm.setFieldsValue({ biz_date: dayjs(r.issue_date) })
-              }}>确认</Button>
-            )}
-          </Space>
-        }
-      ]} />
-
-      <Modal title="新建应付" open={open} onOk={createDoc} confirmLoading={createMutation.isPending} onCancel={() => setOpen(false)} destroyOnClose>
-        <Form form={form} layout="vertical" initialValues={{ issue_date: dayjs() }}>
-          <Form.Item name="party" label="供应商">
-            <Input />
-          </Form.Item>
-          <Form.Item name="issue_date" label="开立日期" rules={[{ required: true }]}>
-            <DatePicker />
-          </Form.Item>
-          <Form.Item name="due_date" label="到期日">
-            <DatePicker />
-          </Form.Item>
-          <Form.Item name="amount" label="金额" rules={[{ required: true }]}>
-            <InputNumber min={0.01} step={0.01} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="memo" label="备注">
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal title="确认应付" open={confirmOpen} onCancel={() => {
-        setConfirmOpen(false)
-        setConfirmingDoc(null)
-        setFileList([])
-        setVoucherUrl(undefined)
-      }} footer={null} destroyOnClose>
-        {confirmingDoc && (
-          <Form form={confirmForm} layout="vertical" onFinish={async () => {
-            if (!voucherUrl) {
-              message.error('请先上传凭证')
-              return
+    <PageContainer
+      title="应付管理"
+      breadcrumb={[{ title: '财务管理' }, { title: '应付管理' }]}
+    >
+      <Card bordered={false} className="page-card">
+        <Space style={{ marginBottom: 12 }}>
+          <Button type="primary" onClick={() => {
+            setCreateOpen(true)
+            createForm.form.resetFields()
+            createForm.form.setFieldsValue({ issue_date: dayjs() })
+          }}>新建应付</Button>
+          <Button onClick={() => load()}>刷新</Button>
+        </Space>
+        <Table
+          className="table-striped"
+          rowKey="id"
+          loading={loading}
+          dataSource={docs}
+          columns={[
+            { title: '单号', dataIndex: 'doc_no' },
+            { title: '开立日期', dataIndex: 'issue_date' },
+            { title: '到期日', dataIndex: 'due_date' },
+            { title: '金额', dataIndex: 'amount_cents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '已结', dataIndex: 'settled_cents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '状态', dataIndex: 'status' },
+            {
+              title: '操作',
+              render: (_: any, r: ARAP) => (
+                <Space>
+                  {(r.status === 'open' || r.status === 'pending') && (
+                    <Button size="small" type="primary" onClick={() => openConfirmModal(r)}>确认</Button>
+                  )}
+                </Space>
+              )
             }
-            try {
-              const v = await confirmForm.validateFields()
-              confirmMutation.mutate({
-                url: api.ar.confirm,
-                method: 'POST',
-                body: {
-                  doc_id: confirmingDoc.id,
-                  account_id: v.account_id,
-                  category_id: v.category_id,
-                  biz_date: v.biz_date.format('YYYY-MM-DD'),
-                  memo: v.memo,
-                  voucher_url: voucherUrl
-                }
-              })
-            } catch (e) { }
-          }}>
-            <Form.Item label="金额">{(confirmingDoc.amount_cents / 100).toFixed(2)}</Form.Item>
-            <Form.Item name="account_id" label="账户" rules={[{ required: true }]}>
-              <Select options={accounts} placeholder="选择账户" showSearch />
+          ]}
+        />
+
+        <Modal
+          title="新建应付"
+          open={createOpen}
+          onOk={handleCreate}
+          confirmLoading={isCreating}
+          onCancel={() => setCreateOpen(false)}
+          destroyOnClose
+        >
+          <Form form={createForm.form} layout="vertical">
+            <Form.Item name="party" label="供应商" rules={[{ required: true, message: '请输入供应商名称' }]} className="form-full-width">
+              <Input />
             </Form.Item>
-            <Form.Item name="category_id" label="类别" rules={[{ required: true }]}>
-              <Select options={categories} placeholder="选择类别" />
+            <Form.Item name="issue_date" label="开立日期" rules={[{ required: true, message: '请选择开立日期' }]} className="form-full-width">
+              <DatePicker className="form-full-width" />
             </Form.Item>
-            <Form.Item name="biz_date" label="业务日期" rules={[{ required: true }]}>
-              <DatePicker style={{ width: '100%' }} />
+            <Form.Item name="due_date" label="到期日" className="form-full-width">
+              <DatePicker className="form-full-width" />
             </Form.Item>
-            <Form.Item name="memo" label="备注">
-              <Input.TextArea rows={2} />
+            <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]} className="form-full-width">
+              <InputNumber min={0.01} step={0.01} className="form-full-width" precision={2} />
             </Form.Item>
-            <Form.Item label="凭证" required>
-              <Upload
-                fileList={fileList}
-                beforeUpload={(file) => {
-                  handleUpload(file)
-                  return false
-                }}
-                onRemove={() => {
-                  setFileList([])
-                  setVoucherUrl(undefined)
-                }}
-                accept="image/*"
-                maxCount={1}
-              >
-                <Button icon={<UploadOutlined />} loading={uploading}>上传凭证</Button>
-              </Upload>
-              {voucherUrl && <div style={{ marginTop: 8, color: '#52c41a' }}>✓ 凭证已上传</div>}
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit" loading={confirmMutation.isPending}>确认</Button>
-                <Button onClick={() => {
-                  setConfirmOpen(false)
-                  setConfirmingDoc(null)
-                  setFileList([])
-                  setVoucherUrl(undefined)
-                }}>取消</Button>
-              </Space>
+            <Form.Item name="memo" label="备注" className="form-full-width">
+              <Input />
             </Form.Item>
           </Form>
-        )}
-      </Modal>
-    </Card>
+        </Modal>
+
+        <Modal
+          title="确认应付"
+          open={confirmOpen}
+          onCancel={() => {
+            setConfirmOpen(false)
+            setConfirmingDoc(null)
+            setFileList([])
+            setVoucherUrl(undefined)
+          }}
+          footer={null}
+          destroyOnClose
+        >
+          {confirmingDoc && (
+            <Form form={confirmForm.form} layout="vertical" onFinish={handleConfirm}>
+              <Form.Item label="金额">{(confirmingDoc.amount_cents / 100).toFixed(2)}</Form.Item>
+              <Form.Item name="account_id" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
+                <Select options={accounts} placeholder="选择账户" showSearch />
+              </Form.Item>
+              <Form.Item name="category_id" label="类别" rules={[{ required: true, message: '请选择类别' }]} className="form-full-width">
+                <Select options={categories} placeholder="选择类别" />
+              </Form.Item>
+              <Form.Item name="biz_date" label="业务日期" rules={[{ required: true, message: '请选择业务日期' }]} className="form-full-width">
+                <DatePicker className="form-full-width" />
+              </Form.Item>
+              <Form.Item name="memo" label="备注" className="form-full-width">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+              <Form.Item label="凭证" required className="form-full-width">
+                <Upload
+                  fileList={fileList}
+                  beforeUpload={(file) => {
+                    handleUpload(file)
+                    return false
+                  }}
+                  onRemove={() => {
+                    setFileList([])
+                    setVoucherUrl(undefined)
+                  }}
+                  accept="image/*"
+                  maxCount={1}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploading}>上传凭证</Button>
+                </Upload>
+                {voucherUrl && <div className="form-extra-info" style={{ color: 'var(--color-success)' }}>✓ 凭证已上传</div>}
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={isConfirming}>确认</Button>
+                  <Button onClick={() => {
+                    setConfirmOpen(false)
+                    setConfirmingDoc(null)
+                    setFileList([])
+                    setVoucherUrl(undefined)
+                  }}>取消</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          )}
+        </Modal>
+      </Card>
+    </PageContainer>
   )
 }

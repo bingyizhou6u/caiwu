@@ -1,76 +1,49 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { Card, Form, Input, Button, message, Space, Alert } from 'antd'
 import { SaveOutlined, ReloadOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { apiGet, apiPut } from '../../../utils/api'
+import { useSiteConfig, useUpdateSiteConfig } from '../../../hooks/business/useSiteConfig'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import type { SiteConfig } from '../../../hooks/business/useSiteConfig'
 
-interface SiteConfig {
-  id: string
-  config_key: string
-  config_value: string
-  description: string | null
-  is_encrypted: boolean
-  created_at: number
-  updated_at: number
-}
+import { PageContainer } from '../../../components/PageContainer'
 
 const SiteConfigManagement: React.FC = () => {
   const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [configs, setConfigs] = useState<SiteConfig[]>([])
+  const { data: configs = [], isLoading, refetch } = useSiteConfig()
+  const { mutateAsync: updateConfig, isPending: saving } = useUpdateSiteConfig()
 
   useEffect(() => {
-    loadConfigs()
-  }, [])
-
-  const loadConfigs = async () => {
-    setLoading(true)
-    try {
-      const data = await apiGet(api.siteConfig)
-      setConfigs(data || [])
-      
-      // 设置表单值
+    if (configs.length > 0) {
       const formValues: Record<string, string> = {}
-      data.forEach((config: SiteConfig) => {
+      configs.forEach((config: SiteConfig) => {
         formValues[config.config_key] = config.config_value || ''
       })
       form.setFieldsValue(formValues)
-    } catch (error: any) {
-      message.error(error.message || '加载配置失败')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [configs, form])
 
-  const handleSave = async () => {
-    try {
+  const handleSave = useMemo(() => withErrorHandler(
+    async () => {
       const values = await form.validateFields()
-      setSaving(true)
-      
-      // 批量更新
-      await apiPut(api.siteConfig, values)
-      
+      await updateConfig(values)
       message.success('配置保存成功')
-      loadConfigs()
-    } catch (error: any) {
-      if (error.errorFields) {
-        // 表单验证错误
-        return
-      }
-      message.error(error.message || '保存失败')
-    } finally {
-      setSaving(false)
+      refetch()
+    },
+    {
+      errorMessage: '保存失败'
     }
-  }
+  ), [form, updateConfig, refetch])
 
   return (
-    <div style={{ padding: '24px' }}>
+    <PageContainer
+      title="网站配置"
+      breadcrumb={[{ title: '系统设置' }, { title: '网站配置' }]}
+    >
       <Card
         title="网站配置"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={loadConfigs} loading={loading}>
+            <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
               刷新
             </Button>
             <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
@@ -78,6 +51,8 @@ const SiteConfigManagement: React.FC = () => {
             </Button>
           </Space>
         }
+        className="page-card"
+        bordered={false}
       >
         <Alert
           message="配置说明"
@@ -153,7 +128,7 @@ const SiteConfigManagement: React.FC = () => {
           </Card>
         </Form>
       </Card>
-    </div>
+    </PageContainer>
   )
 }
 

@@ -3,57 +3,17 @@ import { Card, Table, Button, Modal, Form, Space, message, Tag, Select, Upload, 
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import type { ColumnsType } from 'antd/es/table'
 import { formatAmount } from '../../../utils/formatters'
 import { loadCurrencies, loadAccounts } from '../../../utils/loaders'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
-
-const { TextArea } = Input
-
-type SalaryPayment = {
-  id: string
-  employee_id: string
-  employee_name: string
-  department_id: string
-  department_name?: string
-  year: number
-  month: number
-  salary_cents: number
-  status: 'pending_employee_confirmation' | 'pending_finance_approval' | 'pending_payment' | 'pending_payment_confirmation' | 'completed'
-  allocation_status?: 'pending' | 'requested' | 'approved'
-  account_id?: string
-  account_name?: string
-  account_currency?: string
-  employee_confirmed_at?: number
-  employee_confirmed_by?: string
-  employee_confirmed_by_name?: string
-  finance_approved_at?: number
-  finance_approved_by?: string
-  finance_approved_by_name?: string
-  payment_transferred_at?: number
-  payment_transferred_by?: string
-  payment_transferred_by_name?: string
-  payment_voucher_path?: string
-  payment_confirmed_at?: number
-  payment_confirmed_by?: string
-  payment_confirmed_by_name?: string
-  memo?: string
-  allocations?: Array<{
-    id: string
-    currency_id: string
-    currency_name?: string
-    amount_cents: number
-    account_id?: string
-    account_name?: string
-    status: 'pending' | 'approved' | 'rejected'
-    requested_by?: string
-    requested_by_name?: string
-    approved_by?: string
-    approved_by_name?: string
-  }>
-}
+import { useSalaryPayments, useGenerateSalaryPayments, useEmployeeConfirmSalary, useFinanceApproveSalary, usePaymentTransferSalary, useRequestAllocationSalary, useApproveAllocationSalary, useConfirmPaymentSalary } from '../../../hooks/business/useSalaryPayments'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { salaryPaymentGenerateSchema, salaryPaymentTransferSchema, salaryPaymentAllocationSchema, salaryPaymentConfirmSchema } from '../../../validations/salary.schema'
+import type { SalaryPayment } from '../../../hooks/business/useSalaryPayments'
 
 const STATUS_LABELS: Record<string, string> = {
   pending_employee_confirmation: '待员工确认',
@@ -71,52 +31,69 @@ const STATUS_COLORS: Record<string, string> = {
   completed: 'green',
 }
 
+import { PageContainer } from '../../../components/PageContainer'
+
 export function SalaryPayments() {
   const { hasPermission, isFinance } = usePermissions()
-  const [data, setData] = useState<SalaryPayment[]>([])
-  const [loading, setLoading] = useState(false)
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1)
   const [status, setStatus] = useState<string | undefined>(undefined)
-  const [generateOpen, setGenerateOpen] = useState(false)
-  const [generateYear, setGenerateYear] = useState<number>(new Date().getFullYear())
-  const [generateMonth, setGenerateMonth] = useState<number>(new Date().getMonth() + 1)
-  const [generateLoading, setGenerateLoading] = useState(false)
-  const [paymentTransferOpen, setPaymentTransferOpen] = useState(false)
-  const [paymentTransferForm] = Form.useForm()
-  const [allocationRequestOpen, setAllocationRequestOpen] = useState(false)
-  const [allocationRequestForm] = Form.useForm()
-  const [allocationApproveOpen, setAllocationApproveOpen] = useState(false)
+
+  const { data: payments = [], isLoading, refetch } = useSalaryPayments({ year, month, status })
+  const { mutateAsync: generatePayments, isPending: generating } = useGenerateSalaryPayments()
+  const { mutateAsync: employeeConfirm } = useEmployeeConfirmSalary()
+  const { mutateAsync: financeApprove } = useFinanceApproveSalary()
+  const { mutateAsync: paymentTransfer } = usePaymentTransferSalary()
+  const { mutateAsync: requestAllocation, isPending: allocating } = useRequestAllocationSalary()
+  const { mutateAsync: approveAllocation } = useApproveAllocationSalary()
+  const { mutateAsync: confirmPayment } = useConfirmPaymentSalary()
+
   const [accounts, setAccounts] = useState<Array<{ value: string, label: string, currency?: string }>>([])
   const [currencies, setCurrencies] = useState<Array<{ value: string, label: string }>>([])
-  const [allocationLoading, setAllocationLoading] = useState(false)
-  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false)
-  const [currentPayment, setCurrentPayment] = useState<SalaryPayment | null>(null)
-  const [paymentConfirmForm] = Form.useForm()
   const [uploading, setUploading] = useState(false)
-  const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [submitting, setSubmitting] = useState(false)
 
   const _isFinance = isFinance()
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ year: year.toString() })
-      if (month) params.append('month', month.toString())
-      if (status) params.append('status', status)
-      const result = await apiClient.get<any>(`${api.salaryPayments}?${params}`)
-      setData(result.results ?? result ?? [])
-    } catch (error: any) {
-      message.error('查询失败：' + (error.message || '网络错误'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  const {
+    isOpen: generateOpen,
+    openCreate: openGenerate,
+    close: closeGenerate,
+  } = useFormModal()
 
-  useEffect(() => {
-    load()
-  }, [year, month, status])
+  const {
+    isOpen: transferOpen,
+    data: transferRow,
+    openEdit: openTransfer,
+    close: closeTransfer,
+  } = useFormModal<SalaryPayment>()
+
+  const {
+    isOpen: allocationOpen,
+    data: allocationRow,
+    openEdit: openAllocation,
+    close: closeAllocation,
+  } = useFormModal<SalaryPayment>()
+
+  const {
+    isOpen: allocationApproveOpen,
+    data: allocationApproveRow,
+    openEdit: openAllocationApprove,
+    close: closeAllocationApprove,
+  } = useFormModal<SalaryPayment>()
+
+  const {
+    isOpen: confirmOpen,
+    data: confirmRow,
+    openEdit: openConfirm,
+    close: closeConfirm,
+  } = useFormModal<SalaryPayment>()
+
+  const { form: generateForm, validateWithZod: validateGenerate } = useZodForm(salaryPaymentGenerateSchema)
+  const { form: transferForm, validateWithZod: validateTransfer } = useZodForm(salaryPaymentTransferSchema)
+  const { form: allocationForm, validateWithZod: validateAllocation } = useZodForm(salaryPaymentAllocationSchema)
+  const { form: confirmForm, validateWithZod: validateConfirm } = useZodForm(salaryPaymentConfirmSchema)
 
   useEffect(() => {
     const loadMasterData = async () => {
@@ -134,66 +111,94 @@ export function SalaryPayments() {
     loadMasterData()
   }, [])
 
-  const handleGenerate = async () => {
-    setGenerateLoading(true)
-    try {
-      const result = await apiClient.post<any>(api.salaryPaymentsGenerate, { year: generateYear, month: generateMonth })
-      message.success(`成功生成${result.created}条薪资单`)
-      setGenerateOpen(false)
-      load()
-    } catch (error: any) {
-      message.error('生成失败：' + (error.message || '网络错误'))
-    } finally {
-      setGenerateLoading(false)
-    }
-  }
-
-  const handleEmployeeConfirm = async (id: string) => {
-    try {
-      await apiClient.post(api.salaryPaymentsEmployeeConfirm(id), {})
-      message.success('确认成功')
-      load()
-    } catch (error: any) {
-      message.error('确认失败：' + (error.message || '网络错误'))
-    }
-  }
-
-  const handleFinanceApprove = async (id: string) => {
-    try {
-      await apiClient.post(api.salaryPaymentsFinanceApprove(id), {})
-      message.success('确认成功')
-      load()
-    } catch (error: any) {
-      message.error('确认失败：' + (error.message || '网络错误'))
-    }
-  }
-
-  const handlePaymentTransfer = async (id: string) => {
-    const payment = data.find(p => p.id === id)
-    if (!payment) return
-
-    setCurrentPayment(payment)
-    paymentTransferForm.resetFields()
-    setPaymentTransferOpen(true)
-  }
-
-  const handlePaymentTransferConfirm = async () => {
-    if (!currentPayment) return
-    const v = await paymentTransferForm.validateFields()
-
-    try {
-      await apiClient.post(api.salaryPaymentsPaymentTransfer(currentPayment.id), {
-        account_id: v.account_id
+  // 初始化生成表单
+  useEffect(() => {
+    if (generateOpen) {
+      generateForm.setFieldsValue({
+        year: new Date().getFullYear(),
+        month: new Date().getMonth() + 1
       })
-      message.success('标记转账成功')
-      setPaymentTransferOpen(false)
-      setCurrentPayment(null)
-      paymentTransferForm.resetFields()
-      load()
-    } catch (error: any) {
-      message.error('标记转账失败：' + (error.message || '网络错误'))
     }
-  }
+  }, [generateOpen, generateForm])
+
+  const handleGenerate = withErrorHandler(
+    async () => {
+      const values = await validateGenerate()
+      const result = await generatePayments(values)
+      message.success(`成功生成${result.created}条薪资单`)
+      closeGenerate()
+    },
+    { errorMessage: '生成失败' }
+  )
+
+  const handleEmployeeConfirm = withErrorHandler(
+    async (id: string) => {
+      await employeeConfirm(id)
+    },
+    { successMessage: '确认成功' }
+  )
+
+  const handleFinanceApprove = withErrorHandler(
+    async (id: string) => {
+      await financeApprove(id)
+    },
+    { successMessage: '确认成功' }
+  )
+
+  const handlePaymentTransferConfirm = withErrorHandler(
+    async () => {
+      if (!transferRow) return
+      setSubmitting(true)
+      try {
+        const values = await validateTransfer()
+        await paymentTransfer({ id: transferRow.id, account_id: values.account_id })
+        message.success('标记转账成功')
+        closeTransfer()
+        transferForm.resetFields()
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    { errorMessage: '标记转账失败' }
+  )
+
+  const handleAllocationRequest = withErrorHandler(
+    async () => {
+      if (!allocationRow) return
+      setSubmitting(true)
+      try {
+        const values = await validateAllocation()
+        const allocations = values.allocations.map((a: any) => ({
+          currency_id: a.currency_id,
+          amount_cents: Math.round(a.amount_cents * 100),
+          account_id: a.account_id || undefined
+        }))
+
+        // 验证总额
+        const total = allocations.reduce((sum: number, a: any) => sum + (a.amount_cents || 0), 0)
+        if (total > allocationRow.salary_cents) {
+          throw new Error(`分配总额不能超过薪资总额 ${formatAmount(allocationRow.salary_cents)}`)
+        }
+
+        await requestAllocation({ id: allocationRow.id, allocations })
+        message.success('申请成功')
+        closeAllocation()
+        allocationForm.resetFields()
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    { errorMessage: '申请失败' }
+  )
+
+  const handleAllocationApprove = withErrorHandler(
+    async () => {
+      if (!allocationApproveRow) return
+      await approveAllocation({ id: allocationApproveRow.id, approve_all: true })
+      closeAllocationApprove()
+    },
+    { successMessage: '审批成功' }
+  )
 
   const handleUpload = async (file: File) => {
     setUploading(true)
@@ -205,8 +210,7 @@ export function SalaryPayments() {
       }
 
       const url = await uploadImageAsWebP(file, api.upload.voucher)
-      setVoucherFile(file)
-      paymentConfirmForm.setFieldValue('payment_voucher_path', url)
+      confirmForm.setFieldValue('payment_voucher_path', url)
       setFileList([{ uid: '1', name: file.name, status: 'done' }])
       message.success('凭证上传成功（已转换为WebP格式）')
       setUploading(false)
@@ -218,28 +222,45 @@ export function SalaryPayments() {
     }
   }
 
-  const handlePaymentConfirm = async () => {
-    const v = await paymentConfirmForm.validateFields()
-    if (!currentPayment) return
-
-    try {
-      await apiClient.post(api.salaryPaymentsPaymentConfirm(currentPayment.id), {
-        payment_voucher_path: v.payment_voucher_path
-      })
-      message.success('确认成功')
-      setPaymentConfirmOpen(false)
-      setCurrentPayment(null)
-      setVoucherFile(null)
-      setFileList([])
-      paymentConfirmForm.resetFields()
-      load()
-    } catch (error: any) {
-      message.error('确认失败：' + (error.message || '网络错误'))
-    }
-  }
+  const handlePaymentConfirm = withErrorHandler(
+    async () => {
+      if (!confirmRow) return
+      setSubmitting(true)
+      try {
+        const values = await validateConfirm()
+        await confirmPayment({ id: confirmRow.id, payment_voucher_path: values.payment_voucher_path })
+        message.success('确认成功')
+        closeConfirm()
+        setFileList([])
+        confirmForm.resetFields()
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    { errorMessage: '确认失败' }
+  )
 
   const showPreview = (url: string) => {
     window.open(api.vouchers(url), '_blank')
+  }
+
+  const onOpenTransfer = (record: SalaryPayment) => {
+    transferForm.resetFields()
+    openTransfer(record)
+  }
+
+  const onOpenAllocation = (record: SalaryPayment) => {
+    allocationForm.resetFields()
+    if (record.allocations && record.allocations.length > 0) {
+      allocationForm.setFieldsValue({
+        allocations: record.allocations.map(a => ({
+          currency_id: a.currency_id,
+          amount_cents: a.amount_cents / 100,
+          account_id: a.account_id
+        }))
+      })
+    }
+    openAllocation(record)
   }
 
   const columns: ColumnsType<SalaryPayment> = useMemo(() => [
@@ -335,42 +356,22 @@ export function SalaryPayments() {
             </Button>
           )}
           {record.status === 'pending_payment' && _isFinance && (
-            <Button size="small" type="primary" onClick={() => handlePaymentTransfer(record.id)}>
+            <Button size="small" type="primary" onClick={() => onOpenTransfer(record)}>
               标记转账
             </Button>
           )}
           {(record.status === 'pending_employee_confirmation' || record.status === 'pending_finance_approval') && (record.allocation_status === 'pending' || !record.allocation_status || record.allocation_status === 'requested') && (
-            <Button size="small" onClick={() => {
-              setCurrentPayment(record)
-              allocationRequestForm.resetFields()
-              if (record.allocations && record.allocations.length > 0) {
-                // 如果有现有分配，填充表单
-                allocationRequestForm.setFieldsValue({
-                  allocations: record.allocations.map(a => ({
-                    currency_id: a.currency_id,
-                    amount_cents: a.amount_cents / 100,
-                    account_id: a.account_id
-                  }))
-                })
-              }
-              setAllocationRequestOpen(true)
-            }}>
+            <Button size="small" onClick={() => onOpenAllocation(record)}>
               {record.allocation_status === 'requested' ? '修改币种分配' : '申请币种分配'}
             </Button>
           )}
           {record.status === 'pending_finance_approval' && record.allocation_status === 'requested' && _isFinance && (
-            <Button size="small" type="primary" onClick={() => {
-              setCurrentPayment(record)
-              setAllocationApproveOpen(true)
-            }}>
+            <Button size="small" type="primary" onClick={() => openAllocationApprove(record)}>
               审批币种分配
             </Button>
           )}
           {record.status === 'pending_payment_confirmation' && _isFinance && (
-            <Button size="small" type="primary" onClick={() => {
-              setCurrentPayment(record)
-              setPaymentConfirmOpen(true)
-            }}>
+            <Button size="small" type="primary" onClick={() => openConfirm(record)}>
               确认转账
             </Button>
           )}
@@ -382,7 +383,7 @@ export function SalaryPayments() {
         </Space>
       ),
     },
-  ], [_isFinance])
+  ], [_isFinance, handleEmployeeConfirm, handleFinanceApprove])
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => ({
     value: y,
@@ -395,348 +396,294 @@ export function SalaryPayments() {
   }))
 
   return (
-    <Card
+    <PageContainer
       title="薪资发放管理"
-      extra={
-        _isFinance && (
-          <Button type="primary" onClick={() => setGenerateOpen(true)}>
-            生成薪资单
-          </Button>
-        )
-      }
+      breadcrumb={[{ title: '人事管理' }, { title: '薪资发放管理' }]}
     >
-      <Space style={{ marginBottom: 16 }}>
-        <Select
-          style={{ width: 120 }}
-          value={year}
-          onChange={setYear}
-          options={yearOptions}
-        />
-        <Select
-          style={{ width: 120 }}
-          value={month}
-          onChange={setMonth}
-          placeholder="全部月份"
-          allowClear
-          options={monthOptions}
-        />
-        <Select
-          style={{ width: 150 }}
-          value={status}
-          onChange={setStatus}
-          placeholder="全部状态"
-          allowClear
-          options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
-        />
-        <Button onClick={load}>刷新</Button>
-      </Space>
-
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 20 }}
-        scroll={{ x: 1200 }}
-      />
-
-      <Modal
-        title="生成薪资单"
-        open={generateOpen}
-        onOk={handleGenerate}
-        onCancel={() => {
-          setGenerateOpen(false)
-          setGenerateYear(new Date().getFullYear())
-          setGenerateMonth(new Date().getMonth() + 1)
-        }}
-        okText="生成"
-        cancelText="取消"
-        confirmLoading={generateLoading}
+      <Card
+        title="薪资发放管理"
+        extra={
+          _isFinance && (
+            <Button type="primary" onClick={openGenerate}>
+              生成薪资单
+            </Button>
+          )
+        }
+        className="page-card"
+        bordered={false}
       >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <div>
-            <span>年份：</span>
-            <Select
-              style={{ width: 120 }}
-              value={generateYear}
-              onChange={setGenerateYear}
-              options={yearOptions}
-            />
-          </div>
-          <div>
-            <span>月份：</span>
-            <Select
-              style={{ width: 120 }}
-              value={generateMonth}
-              onChange={setGenerateMonth}
-              options={monthOptions}
-            />
-          </div>
+        <Space style={{ marginBottom: 16 }}>
+          <Select
+            style={{ width: 120 }}
+            value={year}
+            onChange={setYear}
+            options={yearOptions}
+          />
+          <Select
+            style={{ width: 120 }}
+            value={month}
+            onChange={setMonth}
+            placeholder="全部月份"
+            allowClear
+            options={monthOptions}
+          />
+          <Select
+            style={{ width: 150 }}
+            value={status}
+            onChange={setStatus}
+            placeholder="全部状态"
+            allowClear
+            options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+          />
+          <Button onClick={() => refetch()}>刷新</Button>
         </Space>
-      </Modal>
 
-      <Modal
-        title="标记转账 - 选择账户"
-        open={paymentTransferOpen}
-        onOk={handlePaymentTransferConfirm}
-        onCancel={() => {
-          setPaymentTransferOpen(false)
-          setCurrentPayment(null)
-          paymentTransferForm.resetFields()
-        }}
-        okText="确认"
-        cancelText="取消"
-        width={600}
-      >
-        <Form form={paymentTransferForm} layout="vertical">
-          <Form.Item label="员工姓名">
-            <Input value={currentPayment?.employee_name} disabled />
-          </Form.Item>
-          <Form.Item label="薪资">
-            <Input value={currentPayment ? formatAmount(currentPayment.salary_cents) : ''} disabled />
-          </Form.Item>
-          {currentPayment?.allocations && currentPayment.allocations.length > 0 && currentPayment.allocation_status === 'approved' && (
-            <Form.Item label="币种分配">
-              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-                {currentPayment.allocations.map((alloc, idx) => (
-                  <div key={idx} style={{ marginBottom: 8, padding: 8, background: '#f5f5f5', borderRadius: 4 }}>
-                    <div>{alloc.currency_name || currencies.find(c => c.value === alloc.currency_id)?.label || alloc.currency_id}: {formatAmount(alloc.amount_cents)}</div>
-                    {alloc.account_name && <div style={{ fontSize: 12, color: '#666' }}>账户: {alloc.account_name}</div>}
-                  </div>
-                ))}
-              </div>
+        <Table
+          className="table-striped"
+          columns={columns}
+          dataSource={payments}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{ pageSize: 20 }}
+          scroll={{ x: 1200 }}
+        />
+
+        <Modal
+          title="生成薪资单"
+          open={generateOpen}
+          onOk={handleGenerate}
+          onCancel={() => {
+            closeGenerate()
+            generateForm.resetFields()
+          }}
+          okText="生成"
+          cancelText="取消"
+          confirmLoading={generating}
+        >
+          <Form form={generateForm} layout="vertical">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Form.Item name="year" label="年份" rules={[{ required: true }]}>
+                <Select style={{ width: 120 }} options={yearOptions} />
+              </Form.Item>
+              <Form.Item name="month" label="月份" rules={[{ required: true }]}>
+                <Select style={{ width: 120 }} options={monthOptions} />
+              </Form.Item>
+            </Space>
+          </Form>
+        </Modal>
+
+        <Modal
+          title="标记转账 - 选择账户"
+          open={transferOpen}
+          onOk={handlePaymentTransferConfirm}
+          onCancel={() => {
+            closeTransfer()
+            transferForm.resetFields()
+          }}
+          okText="确认"
+          cancelText="取消"
+          width={600}
+          confirmLoading={submitting}
+        >
+          <Form form={transferForm} layout="vertical">
+            <Form.Item label="员工姓名">
+              <Input value={transferRow?.employee_name} disabled />
             </Form.Item>
-          )}
-          <Form.Item
-            name="account_id"
-            label="转账账户"
-            rules={[{ required: true, message: '请选择转账账户' }]}
-          >
-            <Select
-              placeholder="请选择账户"
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-              options={accounts}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="申请币种分配"
-        open={allocationRequestOpen}
-        onOk={async () => {
-          try {
-            const v = await allocationRequestForm.validateFields()
-            if (!currentPayment) return
-
-            const allocations = v.allocations.map((a: any) => ({
-              currency_id: a.currency_id,
-              amount_cents: Math.round(a.amount_cents * 100),
-              account_id: a.account_id || undefined
-            }))
-
-            setAllocationLoading(true)
-            await apiClient.post(api.salaryPaymentsAllocations(currentPayment.id), { allocations })
-            message.success('申请成功')
-            setAllocationRequestOpen(false)
-            setCurrentPayment(null)
-            allocationRequestForm.resetFields()
-            load()
-          } catch (error: any) {
-            message.error('申请失败：' + (error.message || '网络错误'))
-          } finally {
-            setAllocationLoading(false)
-          }
-        }}
-        onCancel={() => {
-          setAllocationRequestOpen(false)
-          setCurrentPayment(null)
-          allocationRequestForm.resetFields()
-        }}
-        okText="提交"
-        cancelText="取消"
-        width={700}
-        confirmLoading={allocationLoading}
-      >
-        <Form form={allocationRequestForm} layout="vertical">
-          <Form.Item label="员工姓名">
-            <Input value={currentPayment?.employee_name} disabled />
-          </Form.Item>
-          <Form.Item label="总薪资（USDT）">
-            <Input value={currentPayment ? formatAmount(currentPayment.salary_cents) : ''} disabled />
-          </Form.Item>
-          <Form.Item
-            name="allocations"
-            label="币种分配"
-            rules={[
-              { required: true, message: '请至少添加一种币种分配' },
-              {
-                validator: (_, value) => {
-                  if (!value || value.length === 0) {
-                    return Promise.reject(new Error('请至少添加一种币种分配'))
-                  }
-                  const total = value.reduce((sum: number, a: any) => sum + (a.amount_cents || 0), 0)
-                  const salaryTotal = currentPayment ? currentPayment.salary_cents / 100 : 0
-                  if (total > salaryTotal) {
-                    return Promise.reject(new Error(`分配总额不能超过薪资总额 ${formatAmount(salaryTotal * 100)}`))
-                  }
-                  return Promise.resolve()
-                }
-              }
-            ]}
-          >
-            <Form.List name="allocations">
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'currency_id']}
-                        rules={[{ required: true, message: '请选择币种' }]}
-                      >
-                        <Select placeholder="币种" style={{ width: 150 }} options={currencies} />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'amount_cents']}
-                        rules={[{ required: true, message: '请输入金额' }]}
-                      >
-                        <InputNumber placeholder="金额" min={0} precision={2} style={{ width: 150 }} />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'account_id']}
-                      >
-                        <Select
-                          placeholder="账户（可选）"
-                          style={{ width: 200 }}
-                          allowClear
-                          showSearch
-                          filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                          }
-                          options={accounts.filter(acc => {
-                            const currency = allocationRequestForm.getFieldValue(['allocations', name, 'currency_id'])
-                            return !currency || acc.currency === currency
-                          })}
-                        />
-                      </Form.Item>
-                      <Button onClick={() => remove(name)}>删除</Button>
-                    </Space>
+            <Form.Item label="薪资">
+              <Input value={transferRow ? formatAmount(transferRow.salary_cents) : ''} disabled />
+            </Form.Item>
+            {transferRow?.allocations && transferRow.allocations.length > 0 && transferRow.allocation_status === 'approved' && (
+              <Form.Item label="币种分配">
+                <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                  {transferRow.allocations.map((alloc, idx) => (
+                    <div key={idx} style={{ marginBottom: 8, padding: 8, background: '#f5f5f5', borderRadius: 4 }}>
+                      <div>{alloc.currency_name || currencies.find(c => c.value === alloc.currency_id)?.label || alloc.currency_id}: {formatAmount(alloc.amount_cents)}</div>
+                      {alloc.account_name && <div style={{ fontSize: 12, color: '#666' }}>账户: {alloc.account_name}</div>}
+                    </div>
                   ))}
-                  <Form.Item>
-                    <Button type="dashed" onClick={() => add()} block>
-                      添加币种分配
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="审批币种分配"
-        open={allocationApproveOpen}
-        onOk={async () => {
-          if (!currentPayment) return
-          try {
-            await apiClient.post(api.salaryPaymentsAllocationsApprove(currentPayment.id), { approve_all: true })
-            message.success('审批成功')
-            setAllocationApproveOpen(false)
-            setCurrentPayment(null)
-            load()
-          } catch (error: any) {
-            message.error('审批失败：' + (error.message || '网络错误'))
-          }
-        }}
-        onCancel={() => {
-          setAllocationApproveOpen(false)
-          setCurrentPayment(null)
-        }}
-        okText="全部批准"
-        cancelText="取消"
-        width={700}
-      >
-        {currentPayment?.allocations && currentPayment.allocations.length > 0 ? (
-          <div>
-            <p>员工: {currentPayment.employee_name}</p>
-            <p>总薪资: {formatAmount(currentPayment.salary_cents)}</p>
-            <Table
-              columns={[
-                { title: '币种', dataIndex: 'currency_name', key: 'currency_name', render: (_: any, r: any) => r.currency_name || currencies.find(c => c.value === r.currency_id)?.label || r.currency_id },
-                { title: '金额', dataIndex: 'amount_cents', key: 'amount_cents', render: (c: number) => formatAmount(c) },
-                { title: '账户', dataIndex: 'account_name', key: 'account_name', render: (n: string) => n || '-' },
-                {
-                  title: '状态', dataIndex: 'status', key: 'status', render: (s: string) => (
-                    <Tag color={s === 'approved' ? 'green' : s === 'rejected' ? 'red' : 'orange'}>
-                      {s === 'approved' ? '已批准' : s === 'rejected' ? '已拒绝' : '待审批'}
-                    </Tag>
-                  )
-                },
-              ]}
-              dataSource={currentPayment.allocations}
-              rowKey="id"
-              pagination={false}
-              size="small"
-            />
-          </div>
-        ) : (
-          <p>暂无分配记录</p>
-        )}
-      </Modal>
-
-      <Modal
-        title="确认转账并上传凭证"
-        open={paymentConfirmOpen}
-        onOk={handlePaymentConfirm}
-        onCancel={() => {
-          setPaymentConfirmOpen(false)
-          setCurrentPayment(null)
-          setVoucherFile(null)
-          setFileList([])
-          paymentConfirmForm.resetFields()
-        }}
-        okText="确认"
-        cancelText="取消"
-        width={600}
-      >
-        <Form form={paymentConfirmForm} layout="vertical">
-          <Form.Item label="员工姓名">
-            <Input value={currentPayment?.employee_name} disabled />
-          </Form.Item>
-          <Form.Item label="薪资">
-            <Input value={currentPayment ? formatAmount(currentPayment.salary_cents) : ''} disabled />
-          </Form.Item>
-          <Form.Item
-            name="payment_voucher_path"
-            label="转账凭证"
-            rules={[{ required: true, message: '请上传转账凭证' }]}
-          >
-            <Upload
-              fileList={fileList}
-              beforeUpload={handleUpload}
-              onRemove={() => {
-                setFileList([])
-                setVoucherFile(null)
-                paymentConfirmForm.setFieldValue('payment_voucher_path', undefined)
-              }}
-              maxCount={1}
-              accept="image/*"
+                </div>
+              </Form.Item>
+            )}
+            <Form.Item
+              name="account_id"
+              label="转账账户"
+              rules={[{ required: true, message: '请选择转账账户' }]}
             >
-              <Button icon={<UploadOutlined />} loading={uploading}>
-                上传凭证
-              </Button>
-            </Upload>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Card>
+              <Select
+                placeholder="请选择账户"
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={accounts}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        <Modal
+          title="申请币种分配"
+          open={allocationOpen}
+          onOk={handleAllocationRequest}
+          onCancel={() => {
+            closeAllocation()
+            allocationForm.resetFields()
+          }}
+          okText="提交"
+          cancelText="取消"
+          width={700}
+          confirmLoading={submitting || allocating}
+        >
+          <Form form={allocationForm} layout="vertical">
+            <Form.Item label="员工姓名">
+              <Input value={allocationRow?.employee_name} disabled />
+            </Form.Item>
+            <Form.Item label="总薪资（USDT）">
+              <Input value={allocationRow ? formatAmount(allocationRow.salary_cents) : ''} disabled />
+            </Form.Item>
+            <Form.Item
+              name="allocations"
+              label="币种分配"
+              rules={[
+                { required: true, message: '请至少添加一种币种分配' },
+              ]}
+            >
+              <Form.List name="allocations">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'currency_id']}
+                          rules={[{ required: true, message: '请选择币种' }]}
+                        >
+                          <Select placeholder="币种" style={{ width: 150 }} options={currencies} />
+                        </Form.Item>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'amount_cents']}
+                          rules={[{ required: true, message: '请输入金额' }]}
+                        >
+                          <InputNumber placeholder="金额" min={0} precision={2} style={{ width: 150 }} />
+                        </Form.Item>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'account_id']}
+                        >
+                          <Select
+                            placeholder="账户（可选）"
+                            style={{ width: 200 }}
+                            allowClear
+                            showSearch
+                            filterOption={(input, option) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
+                            options={accounts.filter(acc => {
+                              const currency = allocationForm.getFieldValue(['allocations', name, 'currency_id'])
+                              return !currency || acc.currency === currency
+                            })}
+                          />
+                        </Form.Item>
+                        <Button onClick={() => remove(name)}>删除</Button>
+                      </Space>
+                    ))}
+                    <Form.Item>
+                      <Button type="dashed" onClick={() => add()} block>
+                        添加币种分配
+                      </Button>
+                    </Form.Item>
+                  </>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        <Modal
+          title="审批币种分配"
+          open={allocationApproveOpen}
+          onOk={handleAllocationApprove}
+          onCancel={() => {
+            closeAllocationApprove()
+          }}
+          okText="全部批准"
+          cancelText="取消"
+          width={700}
+        >
+          {allocationApproveRow?.allocations && allocationApproveRow.allocations.length > 0 ? (
+            <div>
+              <p>员工: {allocationApproveRow.employee_name}</p>
+              <p>总薪资: {formatAmount(allocationApproveRow.salary_cents)}</p>
+              <Table
+                columns={[
+                  { title: '币种', dataIndex: 'currency_name', key: 'currency_name', render: (_: any, r: any) => r.currency_name || currencies.find(c => c.value === r.currency_id)?.label || r.currency_id },
+                  { title: '金额', dataIndex: 'amount_cents', key: 'amount_cents', render: (c: number) => formatAmount(c) },
+                  { title: '账户', dataIndex: 'account_name', key: 'account_name', render: (n: string) => n || '-' },
+                  {
+                    title: '状态', dataIndex: 'status', key: 'status', render: (s: string) => (
+                      <Tag color={s === 'approved' ? 'green' : s === 'rejected' ? 'red' : 'orange'}>
+                        {s === 'approved' ? '已批准' : s === 'rejected' ? '已拒绝' : '待审批'}
+                      </Tag>
+                    )
+                  },
+                ]}
+                dataSource={allocationApproveRow.allocations}
+                rowKey="id"
+                pagination={false}
+                size="small"
+              />
+            </div>
+          ) : (
+            <p>暂无分配记录</p>
+          )}
+        </Modal>
+
+        <Modal
+          title="确认转账并上传凭证"
+          open={confirmOpen}
+          onOk={handlePaymentConfirm}
+          onCancel={() => {
+            closeConfirm()
+            setFileList([])
+            confirmForm.resetFields()
+          }}
+          okText="确认"
+          cancelText="取消"
+          width={600}
+          confirmLoading={submitting}
+        >
+          <Form form={confirmForm} layout="vertical">
+            <Form.Item label="员工姓名">
+              <Input value={confirmRow?.employee_name} disabled />
+            </Form.Item>
+            <Form.Item label="薪资">
+              <Input value={confirmRow ? formatAmount(confirmRow.salary_cents) : ''} disabled />
+            </Form.Item>
+            <Form.Item
+              name="payment_voucher_path"
+              label="转账凭证"
+              rules={[{ required: true, message: '请上传转账凭证' }]}
+            >
+              <Upload
+                fileList={fileList}
+                beforeUpload={handleUpload}
+                onRemove={() => {
+                  setFileList([])
+                  confirmForm.setFieldValue('payment_voucher_path', undefined)
+                }}
+                maxCount={1}
+                accept="image/*"
+              >
+                <Button icon={<UploadOutlined />} loading={uploading}>
+                  上传凭证
+                </Button>
+              </Upload>
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Card>
+    </PageContainer>
   )
 }
 

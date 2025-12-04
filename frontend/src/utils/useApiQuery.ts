@@ -9,7 +9,7 @@ import { api as apiClient } from '../api/http'
  * 通用查询 Hook
  */
 export function useApiQuery<T = any>(
-  key: string | string[],
+  key: any,
   url: string,
   options?: {
     enabled?: boolean

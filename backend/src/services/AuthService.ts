@@ -4,6 +4,7 @@ import { Errors } from '../utils/errors.js'
 import { generateTotpSecret, verifyTotp } from '../utils/auth.js'
 import { logAudit } from '../utils/audit.js'
 import { UserService } from './UserService.js'
+import { SystemConfigService } from './SystemConfigService.js'
 import { getUserFullContext } from '../utils/db.js'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
@@ -13,8 +14,12 @@ import { users, employees, sessions } from '../db/schema.js'
 export class AuthService {
     private userService: UserService
 
-    constructor(private db: DrizzleD1Database<typeof schema>, private kv: KVNamespace) {
-        this.userService = new UserService(db.$client)
+    constructor(
+        private db: DrizzleD1Database<typeof schema>,
+        private kv: KVNamespace,
+        private systemConfigService: SystemConfigService
+    ) {
+        this.userService = new UserService(db)
     }
 
     async login(email: string, password: string, totp?: string, context?: any, deviceInfo?: { ip?: string, userAgent?: string }) {
@@ -37,30 +42,36 @@ export class AuthService {
         }
 
         if (user.active === 0) throw Errors.FORBIDDEN('账号已停用')
-        if (!user.password_hash) throw Errors.FORBIDDEN('密码未设置')
+        if (!user.passwordHash) throw Errors.FORBIDDEN('密码未设置')
 
-        const ok = await bcrypt.compare(password, user.password_hash)
+        const ok = await bcrypt.compare(password, user.passwordHash!)
         if (!ok) throw Errors.UNAUTHORIZED('用户名或密码错误')
 
         // Check password change requirement
-        if (user.must_change_password === 1) {
+        if (user.mustChangePassword === 1) {
             return { status: 'must_change_password', message: '首次登录，请修改密码' }
         }
 
+        // Check 2FA Config
+        const twoFaConfig = await this.systemConfigService.get('2fa_enabled')
+        const is2FaEnabled = twoFaConfig ? (twoFaConfig.value === true || twoFaConfig.value === 'true') : true // Default to true if not set
+
         // Check TOTP
-        if (user.password_changed === 1) {
-            if (user.totp_secret) {
-                if (!totp) return { status: 'need_totp', message: '请输入Google验证码' }
-                if (!verifyTotp(totp, user.totp_secret)) throw Errors.UNAUTHORIZED('Google验证码错误')
+        if (is2FaEnabled) {
+            if (user.passwordChanged === 1) {
+                if (user.totpSecret) {
+                    if (!totp) return { status: 'need_totp', message: '请输入Google验证码' }
+                    if (!verifyTotp(totp, user.totpSecret)) throw Errors.UNAUTHORIZED('Google验证码错误')
+                } else {
+                    return { status: 'need_bind_totp', message: '请绑定Google验证码' }
+                }
             } else {
-                return { status: 'need_bind_totp', message: '请绑定Google验证码' }
-            }
-        } else {
-            if (!user.totp_secret) {
-                return { status: 'need_bind_totp', message: '请绑定Google验证码' }
-            } else {
-                if (!totp) return { status: 'need_totp', message: '请输入Google验证码' }
-                if (!verifyTotp(totp, user.totp_secret)) throw Errors.UNAUTHORIZED('Google验证码错误')
+                if (!user.totpSecret) {
+                    return { status: 'need_bind_totp', message: '请绑定Google验证码' }
+                } else {
+                    if (!totp) return { status: 'need_totp', message: '请输入Google验证码' }
+                    if (!verifyTotp(totp, user.totpSecret)) throw Errors.UNAUTHORIZED('Google验证码错误')
+                }
             }
         }
 
@@ -77,7 +88,7 @@ export class AuthService {
 
         // Audit log
         if (context) {
-            await logAudit(this.db.$client, user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }), deviceInfo?.ip, undefined)
+            await logAudit(this.db, user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }), deviceInfo?.ip, undefined)
         }
 
         return {
@@ -119,7 +130,7 @@ export class AuthService {
 
         // 2. 写入 KV (作为高性能缓存)
         // 获取完整的上下文信息
-        const fullContext = await getUserFullContext(this.db.$client, userId)
+        const fullContext = await getUserFullContext(this.db, userId)
         if (fullContext) {
             const sessionData = {
                 session: { id, user_id: userId, expires_at: expires },
@@ -158,7 +169,7 @@ export class AuthService {
     async logout(sessionId: string) {
         const session = await this.getSession(sessionId)
         if (session) {
-            await logAudit(this.db.$client, session.user_id, 'logout', 'user', session.user_id)
+            await logAudit(this.db, session.user_id, 'logout', 'user', session.user_id)
         }
         await this.kv.delete(`session:${sessionId}`)
         await this.db.delete(sessions).where(eq(sessions.id, sessionId)).run()
@@ -168,7 +179,8 @@ export class AuthService {
         const user = await this.userService.getUserByEmail(email)
         if (!user) throw Errors.UNAUTHORIZED('用户不存在')
 
-        const ok = await bcrypt.compare(oldPassword, user.password_hash)
+        if (!user.passwordHash) throw Errors.UNAUTHORIZED('密码未设置')
+        const ok = await bcrypt.compare(oldPassword, user.passwordHash)
         if (!ok) throw Errors.UNAUTHORIZED('原密码错误')
 
         const hash = await bcrypt.hash(newPassword, 10)
@@ -182,7 +194,7 @@ export class AuthService {
             .where(eq(users.id, user.id))
             .run()
 
-        await logAudit(this.db.$client, user.id, 'change_password_first', 'user', user.id)
+        await logAudit(this.db, user.id, 'change_password_first', 'user', user.id)
 
         return { status: 'success' }
     }
@@ -191,10 +203,11 @@ export class AuthService {
         const user = await this.userService.getUserByEmail(email)
         if (!user) throw Errors.UNAUTHORIZED('用户不存在')
 
-        const ok = await bcrypt.compare(password, user.password_hash)
+        if (!user.passwordHash) throw Errors.UNAUTHORIZED('密码未设置')
+        const ok = await bcrypt.compare(password, user.passwordHash)
         if (!ok) throw Errors.UNAUTHORIZED('密码错误')
 
-        if (user.totp_secret) throw Errors.BUSINESS_ERROR('Google验证码已绑定')
+        if (user.totpSecret) throw Errors.BUSINESS_ERROR('Google验证码已绑定')
 
         const { secret, otpauthUrl } = generateTotpSecret(email)
         return { secret, otpauthUrl }
@@ -204,7 +217,8 @@ export class AuthService {
         const user = await this.userService.getUserByEmail(email)
         if (!user) throw Errors.UNAUTHORIZED('用户不存在')
 
-        const ok = await bcrypt.compare(password, user.password_hash)
+        if (!user.passwordHash) throw Errors.UNAUTHORIZED('密码未设置')
+        const ok = await bcrypt.compare(password, user.passwordHash)
         if (!ok) throw Errors.UNAUTHORIZED('密码错误')
 
         if (!verifyTotp(totp, secret)) throw Errors.UNAUTHORIZED('验证码错误')
@@ -216,7 +230,7 @@ export class AuthService {
             .where(eq(users.id, user.id))
             .run()
 
-        await logAudit(this.db.$client, user.id, 'bind_totp', 'user', user.id)
+        await logAudit(this.db, user.id, 'bind_totp', 'user', user.id)
 
         // Auto login after bind
         return this.login(email, password, totp)

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Card, Table, Button, Tag, Space, Modal, Form, Select, InputNumber, Input, message, Statistic, Row, Col, Typography, Progress } from 'antd'
 import { PlusOutlined, BankOutlined } from '@ant-design/icons'
 import { api } from '../../../config/api'
-import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 
@@ -39,6 +38,8 @@ const statusLabels: Record<string, string> = {
   approved: '已通过',
   rejected: '已驳回',
 }
+
+import { PageContainer } from '../../../components/PageContainer'
 
 export function MyBorrowings() {
   const [loading, setLoading] = useState(true)
@@ -126,9 +127,10 @@ export function MyBorrowings() {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={4}>我的借支</Title>
-
+    <PageContainer
+      title="我的借支"
+      breadcrumb={[{ title: '个人中心' }, { title: '我的借支' }]}
+    >
       {/* 借支统计 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}>
@@ -174,6 +176,8 @@ export function MyBorrowings() {
 
       <Card
         title="借支记录"
+        bordered={false}
+        className="page-card"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
             申请借支
@@ -181,6 +185,7 @@ export function MyBorrowings() {
         }
       >
         <Table
+          className="table-striped"
           dataSource={borrowings}
           columns={columns}
           rowKey="id"
@@ -214,7 +219,7 @@ export function MyBorrowings() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageContainer>
   )
 }
 

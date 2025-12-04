@@ -17,6 +17,8 @@ const STATUS_OPTIONS = [
   { value: 'maintenance', label: '维修中' },
 ]
 
+import { PageContainer } from '../../../components/PageContainer'
+
 export function FixedAssetSale() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -148,139 +150,145 @@ export function FixedAssetSale() {
   }
 
   return (
-    <Card title="资产卖出">
-      <Space style={{ marginBottom: 16 }} wrap>
-        <Button onClick={load}>刷新</Button>
-        <Input.Search
-          placeholder="搜索资产编号、名称"
-          style={{ width: 300 }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onSearch={load}
-          allowClear
-        />
-        <Select
-          placeholder="状态筛选"
-          allowClear
-          style={{ width: 150 }}
-          value={statusFilter}
-          onChange={setStatusFilter}
-        >
-          {STATUS_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
-        </Select>
-      </Space>
+    <PageContainer
+      title="资产卖出"
+      breadcrumb={[{ title: '资产管理' }, { title: '资产卖出' }]}
+    >
+      <Card bordered={false} className="page-card">
+        <Space style={{ marginBottom: 16 }} wrap>
+          <Button onClick={load}>刷新</Button>
+          <Input.Search
+            placeholder="搜索资产编号、名称"
+            style={{ width: 300 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onSearch={load}
+            allowClear
+          />
+          <Select
+            placeholder="状态筛选"
+            allowClear
+            style={{ width: 150 }}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          >
+            {STATUS_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
+          </Select>
+        </Space>
 
-      <Table
-        rowKey="id"
-        loading={loading}
-        dataSource={data.filter(a => a.status !== 'sold' && a.status !== 'scrapped')}
-        columns={[
-          { title: '资产编号', dataIndex: 'asset_code', width: 120 },
-          { title: '资产名称', dataIndex: 'name', width: 200 },
-          { title: '类别', dataIndex: 'category', width: 100 },
-          {
-            title: '购买价格',
-            width: 120,
-            render: (_: any, r: any) => {
-              const price = r.purchase_price_cents ? formatAmount(r.purchase_price_cents) : '0.00'
-              return `${price} ${r.currency || ''}`
-            }
-          },
-          {
-            title: '当前净值',
-            width: 120,
-            render: (_: any, r: any) => {
-              const value = r.current_value_cents ? formatAmount(r.current_value_cents) : '0.00'
-              return `${value} ${r.currency || ''}`
-            }
-          },
-          {
-            title: '状态',
-            dataIndex: 'status',
-            width: 100,
-            render: (v: string) => {
-              const option = STATUS_OPTIONS.find(o => o.value === v)
-              const colors: Record<string, string> = {
-                in_use: 'green',
-                idle: 'orange',
-                maintenance: 'blue',
+        <Table
+          className="table-striped"
+          rowKey="id"
+          loading={loading}
+          dataSource={data.filter(a => a.status !== 'sold' && a.status !== 'scrapped')}
+          columns={[
+            { title: '资产编号', dataIndex: 'asset_code', width: 120 },
+            { title: '资产名称', dataIndex: 'name', width: 200 },
+            { title: '类别', dataIndex: 'category', width: 100 },
+            {
+              title: '购买价格',
+              width: 120,
+              render: (_: any, r: any) => {
+                const price = r.purchase_price_cents ? formatAmount(r.purchase_price_cents) : '0.00'
+                return `${price} ${r.currency || ''}`
               }
-              return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
-            }
-          },
-          {
-            title: '操作',
-            width: 100,
-            render: (_: any, r: any) => (
-              <Button size="small" type="primary" onClick={() => handleSale(r)} disabled={r.status === 'sold'}>
-                卖出
-              </Button>
-            )
-          },
-        ]}
-        scroll={{ x: 900 }}
-        pagination={{ pageSize: 20 }}
-      />
-
-      <Modal
-        title={`卖出资产：${currentAsset?.name || ''}`}
-        open={open}
-        onCancel={() => { setOpen(false); setCurrentAsset(null); form.resetFields(); setVoucherFile(null); setFileList([]) }}
-        onOk={handleSubmit}
-        width={800}
-      >
-        {currentAsset && (
-          <Form form={form} layout="vertical">
-            <Form.Item label="资产信息">
-              <div>
-                <p>资产编号：{currentAsset.asset_code}</p>
-                <p>资产名称：{currentAsset.name}</p>
-                <p>购买价格：{formatAmount(currentAsset.purchase_price_cents)} {currentAsset.currency}</p>
-                <p>当前净值：{formatAmount(currentAsset.current_value_cents)} {currentAsset.currency}</p>
-              </div>
-            </Form.Item>
-            <Form.Item name="sale_date" label="卖出日期" rules={[{ required: true }]}>
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-            </Form.Item>
-            <Form.Item name="sale_price_cents" label="卖出价格" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入卖出价格" />
-            </Form.Item>
-            <Form.Item name="account_id" label="收入账户" rules={[{ required: true }]}>
-              <Select
-                options={accounts.filter(a => a.currency === currentAsset.currency)}
-                showSearch
-                optionFilterProp="label"
-                placeholder="选择账户"
-              />
-            </Form.Item>
-            <Form.Item name="category_id" label="收入类别" rules={[{ required: true }]}>
-              <Select options={categories} showSearch optionFilterProp="label" placeholder="选择类别" />
-            </Form.Item>
-            <Form.Item name="sale_buyer" label="买方信息">
-              <Input placeholder="买方姓名或公司名称" />
-            </Form.Item>
-            <Form.Item name="voucher_url" label="卖出凭证">
-              <Upload
-                fileList={fileList}
-                beforeUpload={handleUpload}
-                onRemove={() => {
-                  setVoucherFile(null)
-                  setFileList([])
-                  form.setFieldsValue({ voucher_url: undefined })
-                }}
-              >
-                <Button icon={<UploadOutlined />} loading={uploading}>
-                  上传凭证
+            },
+            {
+              title: '当前净值',
+              width: 120,
+              render: (_: any, r: any) => {
+                const value = r.current_value_cents ? formatAmount(r.current_value_cents) : '0.00'
+                return `${value} ${r.currency || ''}`
+              }
+            },
+            {
+              title: '状态',
+              dataIndex: 'status',
+              width: 100,
+              render: (v: string) => {
+                const option = STATUS_OPTIONS.find(o => o.value === v)
+                const colors: Record<string, string> = {
+                  in_use: 'green',
+                  idle: 'orange',
+                  maintenance: 'blue',
+                }
+                return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
+              }
+            },
+            {
+              title: '操作',
+              width: 100,
+              render: (_: any, r: any) => (
+                <Button size="small" type="primary" onClick={() => handleSale(r)} disabled={r.status === 'sold'}>
+                  卖出
                 </Button>
-              </Upload>
-            </Form.Item>
-            <Form.Item name="sale_memo" label="备注">
-              <TextArea rows={3} placeholder="备注信息" />
-            </Form.Item>
-          </Form>
-        )}
-      </Modal>
-    </Card>
+              )
+            },
+          ]}
+          scroll={{ x: 900 }}
+          pagination={{ pageSize: 20 }}
+        />
+
+        <Modal
+          title={`卖出资产：${currentAsset?.name || ''}`}
+          open={open}
+          onCancel={() => { setOpen(false); setCurrentAsset(null); form.resetFields(); setVoucherFile(null); setFileList([]) }}
+          onOk={handleSubmit}
+          width={800}
+        >
+          {currentAsset && (
+            <Form form={form} layout="vertical">
+              <Form.Item label="资产信息">
+                <div>
+                  <p>资产编号：{currentAsset.asset_code}</p>
+                  <p>资产名称：{currentAsset.name}</p>
+                  <p>购买价格：{formatAmount(currentAsset.purchase_price_cents)} {currentAsset.currency}</p>
+                  <p>当前净值：{formatAmount(currentAsset.current_value_cents)} {currentAsset.currency}</p>
+                </div>
+              </Form.Item>
+              <Form.Item name="sale_date" label="卖出日期" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+              </Form.Item>
+              <Form.Item name="sale_price_cents" label="卖出价格" rules={[{ required: true }]}>
+                <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入卖出价格" />
+              </Form.Item>
+              <Form.Item name="account_id" label="收入账户" rules={[{ required: true }]}>
+                <Select
+                  options={accounts.filter(a => a.currency === currentAsset.currency)}
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="选择账户"
+                />
+              </Form.Item>
+              <Form.Item name="category_id" label="收入类别" rules={[{ required: true }]}>
+                <Select options={categories} showSearch optionFilterProp="label" placeholder="选择类别" />
+              </Form.Item>
+              <Form.Item name="sale_buyer" label="买方信息">
+                <Input placeholder="买方姓名或公司名称" />
+              </Form.Item>
+              <Form.Item name="voucher_url" label="卖出凭证">
+                <Upload
+                  fileList={fileList}
+                  beforeUpload={handleUpload}
+                  onRemove={() => {
+                    setVoucherFile(null)
+                    setFileList([])
+                    form.setFieldsValue({ voucher_url: undefined })
+                  }}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploading}>
+                    上传凭证
+                  </Button>
+                </Upload>
+              </Form.Item>
+              <Form.Item name="sale_memo" label="备注">
+                <TextArea rows={3} placeholder="备注信息" />
+              </Form.Item>
+            </Form>
+          )}
+        </Modal>
+      </Card>
+    </PageContainer>
   )
 }
 

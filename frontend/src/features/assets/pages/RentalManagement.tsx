@@ -7,10 +7,11 @@ import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 import { formatAmount } from '../../../utils/formatters'
 import { loadCurrencies, loadDepartments, loadAccounts, loadExpenseCategories, loadEmployees } from '../../../utils/loaders'
-import { apiGet } from '../../../utils/api'
 import type { RentalProperty, RentalPayableBill, DormitoryAllocation, SelectOption } from '../../../types/rental'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
+import { PageContainer } from '../../../components/PageContainer'
+import { VirtualTable } from '../../../components/VirtualTable'
 
 const { TextArea } = Input
 
@@ -80,9 +81,8 @@ export function RentalManagement() {
       const params = new URLSearchParams()
       if (propertyTypeFilter) params.append('property_type', propertyTypeFilter)
       if (statusFilter) params.append('status', statusFilter)
-
-      const rows = await apiGet(`${api.rentalProperties}?${params.toString()}`)
-      setData(rows)
+      const response = await apiClient.get<{ results: any[] }>(`${api.rentalProperties}?${params.toString()}`)
+      setData(response.results)
     } catch (error: any) {
       message.error(`查询失败: ${error.message || '网络错误'}`)
     } finally {
@@ -111,8 +111,8 @@ export function RentalManagement() {
 
   const loadPayableBills = useCallback(async () => {
     try {
-      const rows = await apiGet(`${api.rentalPayableBills}?status=unpaid`)
-      setPayableBills(rows)
+      const response = await apiClient.get<{ results: any[] }>(`${api.rentalPayableBills}?status=unpaid`)
+      setPayableBills(response.results)
     } catch (error: any) {
       message.error(`加载应付账单失败: ${error.message || '网络错误'}`)
     }
@@ -314,179 +314,190 @@ export function RentalManagement() {
   }
 
   return (
-    <Card title="租房管理">
-      <Space style={{ marginBottom: 16 }} wrap>
-        {canManageRental && (
-          <Button type="primary" onClick={() => { setCreateOpen(true); createForm.resetFields() }}>
-            新建租赁
-          </Button>
-        )}
-        <Button onClick={load}>刷新</Button>
-        <Select
-          placeholder="类型筛选"
-          allowClear
-          style={{ width: 150 }}
-          value={propertyTypeFilter}
-          onChange={setPropertyTypeFilter}
-        >
-          {PROPERTY_TYPE_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
-        </Select>
-        <Select
-          placeholder="状态筛选"
-          allowClear
-          style={{ width: 150 }}
-          value={statusFilter}
-          onChange={setStatusFilter}
-        >
-          {STATUS_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
-        </Select>
-      </Space>
-
-      <Table
-        rowKey="id"
-        loading={loading}
-        dataSource={data}
-        columns={[
-          { title: '房屋编号', dataIndex: 'property_code', width: 120 },
-          { title: '房屋名称', dataIndex: 'name', width: 200 },
-          {
-            title: '类型',
-            dataIndex: 'property_type',
-            width: 100,
-            render: (v: string) => {
-              const option = PROPERTY_TYPE_OPTIONS.find(o => o.value === v)
-              return option?.label || v
-            }
-          },
-          {
-            title: '租金',
-            width: 120,
-            render: (_: any, r: any) => {
-              if (r.rent_type === 'yearly') {
-                const rent = r.yearly_rent_cents ? formatAmount(r.yearly_rent_cents) : '0.00'
-                return `${rent} ${r.currency || ''}/年`
-              } else {
-                const rent = r.monthly_rent_cents ? formatAmount(r.monthly_rent_cents) : '0.00'
-                return `${rent} ${r.currency || ''}/月`
+    <PageContainer
+      title="租房管理"
+      breadcrumb={[
+        { title: '首页', path: '/' },
+        { title: '资产管理' },
+        { title: '租房管理' }
+      ]}
+      extra={
+        <Space wrap>
+          {canManageRental && (
+            <Button type="primary" onClick={() => { setCreateOpen(true); createForm.resetFields() }}>
+              新建租赁
+            </Button>
+          )}
+          <Button onClick={load}>刷新</Button>
+          <Select
+            placeholder="类型筛选"
+            allowClear
+            style={{ width: 150 }}
+            value={propertyTypeFilter}
+            onChange={setPropertyTypeFilter}
+          >
+            {PROPERTY_TYPE_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
+          </Select>
+          <Select
+            placeholder="状态筛选"
+            allowClear
+            style={{ width: 150 }}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          >
+            {STATUS_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
+          </Select>
+        </Space>
+      }
+    >
+      <Card bordered={false} className="page-card">
+        <VirtualTable
+          className="table-striped"
+          rowKey="id"
+          loading={loading}
+          dataSource={data}
+          columns={[
+            { title: '房屋编号', dataIndex: 'property_code', width: 120 },
+            { title: '房屋名称', dataIndex: 'name', width: 200 },
+            {
+              title: '类型',
+              dataIndex: 'property_type',
+              width: 100,
+              render: (v: string) => {
+                const option = PROPERTY_TYPE_OPTIONS.find(o => o.value === v)
+                return option?.label || v
               }
-            }
-          },
-          {
-            title: '付款周期',
-            width: 100,
-            render: (_: any, r: any) => {
-              const period = PAYMENT_PERIOD_OPTIONS.find(o => o.value === r.payment_period_months)
-              return period?.label || `${r.payment_period_months || 1}月`
-            }
-          },
-          { title: '租赁开始', dataIndex: 'lease_start_date', width: 120 },
-          { title: '租赁结束', dataIndex: 'lease_end_date', width: 120 },
-          {
-            title: '使用项目/员工',
-            width: 200,
-            render: (_: any, r: any) => {
-              if (r.property_type === 'office') {
-                return r.department_name || '-'
-              } else {
-                // 住宅：显示分配的员工数量（需要从详情中获取）
-                return r.allocations_count ? `${r.allocations_count}人` : '-'
+            },
+            {
+              title: '租金',
+              width: 120,
+              render: (_: any, r: any) => {
+                if (r.rent_type === 'yearly') {
+                  const rent = r.yearly_rent_cents ? formatAmount(r.yearly_rent_cents) : '0.00'
+                  return `${rent} ${r.currency || ''}/年`
+                } else {
+                  const rent = r.monthly_rent_cents ? formatAmount(r.monthly_rent_cents) : '0.00'
+                  return `${rent} ${r.currency || ''}/月`
+                }
               }
-            }
-          },
-          {
-            title: '状态',
-            dataIndex: 'status',
-            width: 100,
-            render: (v: string) => {
-              const option = STATUS_OPTIONS.find(o => o.value === v)
-              const colors: Record<string, string> = {
-                active: 'green',
-                expired: 'orange',
-                terminated: 'red',
+            },
+            {
+              title: '付款周期',
+              width: 100,
+              render: (_: any, r: any) => {
+                const period = PAYMENT_PERIOD_OPTIONS.find(o => o.value === r.payment_period_months)
+                return period?.label || `${r.payment_period_months || 1}月`
               }
-              return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
-            }
-          },
-          {
-            title: '操作',
-            width: 250,
-            fixed: 'right',
-            render: (_: any, r: any) => (
-              <Space>
-                <Button size="small" onClick={() => loadDetail(r.id)}>详情</Button>
-                {canManageRental && (
-                  <>
-                    <Button size="small" onClick={() => {
-                      setCurrentProperty(r)
-                      editForm.setFieldsValue({
-                        property_code: r.property_code,
-                        name: r.name,
-                        property_type: r.property_type,
-                        address: r.address,
-                        area_sqm: r.area_sqm,
-                        rent_type: r.rent_type || 'monthly',
-                        monthly_rent_cents: r.monthly_rent_cents ? r.monthly_rent_cents / 100 : null,
-                        yearly_rent_cents: r.yearly_rent_cents ? r.yearly_rent_cents / 100 : null,
-                        payment_period_months: r.payment_period_months || 1,
-                        currency: r.currency,
-                        landlord_name: r.landlord_name,
-                        landlord_contact: r.landlord_contact,
-                        lease_start_date: r.lease_start_date ? dayjs(r.lease_start_date) : null,
-                        lease_end_date: r.lease_end_date ? dayjs(r.lease_end_date) : null,
-                        deposit_cents: r.deposit_cents ? r.deposit_cents / 100 : null,
-                        payment_method: r.payment_method,
-                        payment_day: r.payment_day || 1,
-                        department_id: r.department_id,
-                        status: r.status,
-                        memo: r.memo,
-                        contract_file_url: r.contract_file_url,
-                      })
-                      setContractFileList(r.contract_file_url ? [{ uid: '1', name: '合同文件', status: 'done', url: r.contract_file_url }] : [])
-                      setEditOpen(true)
-                    }}>编辑</Button>
-                    <Button size="small" type="primary" onClick={() => {
-                      setCurrentProperty(r)
-                      paymentForm.resetFields()
-                      // 计算本次付款金额（根据付款周期）
-                      let amount = null
-                      if (r.rent_type === 'yearly') {
-                        // 年租：根据付款周期计算
-                        amount = r.yearly_rent_cents ? (r.yearly_rent_cents / 100 / (12 / (r.payment_period_months || 1))) : null
-                      } else {
-                        // 月租：根据付款周期计算
-                        amount = r.monthly_rent_cents ? (r.monthly_rent_cents / 100 * (r.payment_period_months || 1)) : null
-                      }
-                      paymentForm.setFieldsValue({
-                        property_id: r.id,
-                        payment_date: dayjs(),
-                        amount_cents: amount,
-                        currency: r.currency,
-                        payment_method: r.payment_method,
-                      })
-                      setVoucherFile(null)
-                      setFileList([])
-                      setPaymentOpen(true)
-                    }}>记录付款</Button>
-                    {r.property_type === 'dormitory' && canAllocate && (
+            },
+            { title: '租赁开始', dataIndex: 'lease_start_date', width: 120 },
+            { title: '租赁结束', dataIndex: 'lease_end_date', width: 120 },
+            {
+              title: '使用项目/员工',
+              width: 200,
+              render: (_: any, r: any) => {
+                if (r.property_type === 'office') {
+                  return r.department_name || '-'
+                } else {
+                  // 住宅：显示分配的员工数量（需要从详情中获取）
+                  return r.allocations_count ? `${r.allocations_count}人` : '-'
+                }
+              }
+            },
+            {
+              title: '状态',
+              dataIndex: 'status',
+              width: 100,
+              render: (v: string) => {
+                const option = STATUS_OPTIONS.find(o => o.value === v)
+                const colors: Record<string, string> = {
+                  active: 'green',
+                  expired: 'orange',
+                  terminated: 'red',
+                }
+                return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
+              }
+            },
+            {
+              title: '操作',
+              width: 250,
+              fixed: 'right',
+              render: (_: any, r: any) => (
+                <Space>
+                  <Button size="small" onClick={() => loadDetail(r.id)}>详情</Button>
+                  {canManageRental && (
+                    <>
                       <Button size="small" onClick={() => {
                         setCurrentProperty(r)
-                        allocateForm.resetFields()
-                        allocateForm.setFieldsValue({
-                          allocation_date: dayjs(),
-                          monthly_rent_cents: null,
+                        editForm.setFieldsValue({
+                          property_code: r.property_code,
+                          name: r.name,
+                          property_type: r.property_type,
+                          address: r.address,
+                          area_sqm: r.area_sqm,
+                          rent_type: r.rent_type || 'monthly',
+                          monthly_rent_cents: r.monthly_rent_cents ? r.monthly_rent_cents / 100 : null,
+                          yearly_rent_cents: r.yearly_rent_cents ? r.yearly_rent_cents / 100 : null,
+                          payment_period_months: r.payment_period_months || 1,
+                          currency: r.currency,
+                          landlord_name: r.landlord_name,
+                          landlord_contact: r.landlord_contact,
+                          lease_start_date: r.lease_start_date ? dayjs(r.lease_start_date) : null,
+                          lease_end_date: r.lease_end_date ? dayjs(r.lease_end_date) : null,
+                          deposit_cents: r.deposit_cents ? r.deposit_cents / 100 : null,
+                          payment_method: r.payment_method,
+                          payment_day: r.payment_day || 1,
+                          department_id: r.department_id,
+                          status: r.status,
+                          memo: r.memo,
+                          contract_file_url: r.contract_file_url,
                         })
-                        setAllocateOpen(true)
-                      }}>分配宿舍</Button>
-                    )}
-                  </>
-                )}
-              </Space>
-            )
-          },
-        ]}
-        scroll={{ x: 1200 }}
-        pagination={{ pageSize: 20 }}
-      />
+                        setContractFileList(r.contract_file_url ? [{ uid: '1', name: '合同文件', status: 'done', url: r.contract_file_url }] : [])
+                        setEditOpen(true)
+                      }}>编辑</Button>
+                      <Button size="small" type="primary" onClick={() => {
+                        setCurrentProperty(r)
+                        paymentForm.resetFields()
+                        // 计算本次付款金额（根据付款周期）
+                        let amount = null
+                        if (r.rent_type === 'yearly') {
+                          // 年租：根据付款周期计算
+                          amount = r.yearly_rent_cents ? (r.yearly_rent_cents / 100 / (12 / (r.payment_period_months || 1))) : null
+                        } else {
+                          // 月租：根据付款周期计算
+                          amount = r.monthly_rent_cents ? (r.monthly_rent_cents / 100 * (r.payment_period_months || 1)) : null
+                        }
+                        paymentForm.setFieldsValue({
+                          property_id: r.id,
+                          payment_date: dayjs(),
+                          amount_cents: amount,
+                          currency: r.currency,
+                          payment_method: r.payment_method,
+                        })
+                        setVoucherFile(null)
+                        setFileList([])
+                        setPaymentOpen(true)
+                      }}>记录付款</Button>
+                      {r.property_type === 'dormitory' && canAllocate && (
+                        <Button size="small" onClick={() => {
+                          setCurrentProperty(r)
+                          allocateForm.resetFields()
+                          allocateForm.setFieldsValue({
+                            allocation_date: dayjs(),
+                            monthly_rent_cents: null,
+                          })
+                          setAllocateOpen(true)
+                        }}>分配宿舍</Button>
+                      )}
+                    </>
+                  )}
+                </Space>
+              )
+            },
+          ]}
+          scroll={{ x: 1200 }}
+          pagination={{ pageSize: 20 }}
+        />
+      </Card>
 
       {/* 新建租赁 */}
       <Modal
@@ -537,6 +548,22 @@ export function RentalManagement() {
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
             <Select options={currencies} showSearch optionFilterProp="label" />
+          </Form.Item>
+
+          <Form.Item name="employee_id" label="员工" required className="form-no-margin-bottom">
+            <Select options={employees} showSearch optionFilterProp="label" placeholder="选择员工" allowClear />
+          </Form.Item>
+          <Form.Item name="start_date" label="开始日期" required className="form-no-margin-bottom">
+            <DatePicker className="form-full-width" format="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="end_date" label="结束日期" className="form-no-margin-bottom">
+            <DatePicker className="form-full-width" format="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="monthly_amount_cents" label="月租金" required className="form-no-margin-bottom">
+            <InputNumber className="form-full-width" min={0} precision={2} placeholder="员工月租金" />
+          </Form.Item>
+          <Form.Item name="memo" label="备注">
+            <TextArea rows={3} placeholder="备注信息" />
           </Form.Item>
           <Form.Item name="landlord_name" label="房东姓名">
             <Input placeholder="房东姓名" />
@@ -966,7 +993,7 @@ export function RentalManagement() {
           </Form>
         )}
       </Modal>
-    </Card>
+    </PageContainer>
   )
 }
 

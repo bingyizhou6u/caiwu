@@ -1,39 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, DatePicker, InputNumber } from 'antd'
-import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, DatePicker, InputNumber, Popconfirm } from 'antd'
+import { UploadOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import type { ColumnsType } from 'antd/es/table'
 import { formatAmount } from '../../../utils/formatters'
 import dayjs from 'dayjs'
 import { loadCurrencies, loadAccounts, loadEmployees } from '../../../utils/loaders'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
+import { useAllowances, useCreateAllowance, useUpdateAllowance, useDeleteAllowance, useGenerateAllowances } from '../../../hooks/business/useAllowances'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { allowancePaymentSchema, allowancePaymentUpdateSchema, allowancePaymentGenerateSchema } from '../../../validations/allowance.schema'
+import type { AllowancePayment } from '../../../hooks/business/useAllowances'
 
 const { TextArea } = Input
-
-type AllowancePayment = {
-  id: string
-  employee_id: string
-  employee_name: string
-  department_id?: string
-  department_name?: string
-  year: number
-  month: number
-  allowance_type: 'living' | 'housing' | 'transportation' | 'meal' | 'birthday'
-  currency_id: string
-  currency_name?: string
-  amount_cents: number
-  payment_date: string
-  payment_method: 'cash' | 'transfer'
-  voucher_url?: string
-  memo?: string
-  created_by?: string
-  created_by_name?: string
-  created_at: number
-  updated_at: number
-}
 
 const ALLOWANCE_TYPE_LABELS: Record<string, string> = {
   living: '生活补贴',
@@ -48,56 +31,55 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   transfer: '转账',
 }
 
+import { PageContainer } from '../../../components/PageContainer'
+
 export function AllowancePayments() {
   const { hasPermission } = usePermissions()
-  const [data, setData] = useState<AllowancePayment[]>([])
-  const [loading, setLoading] = useState(false)
+  const canManage = hasPermission('finance', 'allowance-payment', 'create')
+
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1)
   const [allowanceType, setAllowanceType] = useState<string | undefined>(undefined)
   const [employeeId, setEmployeeId] = useState<string | undefined>(undefined)
-  const [generateOpen, setGenerateOpen] = useState(false)
-  const [generateYear, setGenerateYear] = useState<number>(new Date().getFullYear())
-  const [generateMonth, setGenerateMonth] = useState<number>(new Date().getMonth() + 1)
-  const [generateDate, setGenerateDate] = useState<string>(dayjs().format('YYYY-MM-DD'))
-  const [generateLoading, setGenerateLoading] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createForm] = Form.useForm()
-  const [createLoading, setCreateLoading] = useState(false)
+
+  const { data: allowances = [], isLoading, refetch } = useAllowances({ year, month, allowance_type: allowanceType, employee_id: employeeId })
+  const { mutateAsync: createAllowance } = useCreateAllowance()
+  const { mutateAsync: updateAllowance } = useUpdateAllowance()
+  const { mutateAsync: deleteAllowance } = useDeleteAllowance()
+  const { mutateAsync: generateAllowances } = useGenerateAllowances()
+
   const [employees, setEmployees] = useState<Array<{ value: string, label: string }>>([])
   const [currencies, setCurrencies] = useState<Array<{ value: string, label: string }>>([])
   const [accounts, setAccounts] = useState<Array<{ value: string, label: string, currency?: string }>>([])
-  const [editOpen, setEditOpen] = useState(false)
-  const [editForm] = Form.useForm()
-  const [currentRecord, setCurrentRecord] = useState<AllowancePayment | null>(null)
-  const [editLoading, setEditLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
+
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [generateLoading, setGenerateLoading] = useState(false)
 
-  const canManage = hasPermission('finance', 'allowance-payment', 'create')
+  const {
+    isOpen: createOpen,
+    openCreate,
+    close: closeCreate,
+  } = useFormModal<AllowancePayment>()
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (year) params.append('year', year.toString())
-      if (month) params.append('month', month.toString())
-      if (allowanceType) params.append('allowance_type', allowanceType)
-      if (employeeId) params.append('employee_id', employeeId)
+  const {
+    isOpen: editOpen,
+    data: editRow,
+    openEdit,
+    close: closeEdit,
+  } = useFormModal<AllowancePayment>()
 
-      const d = await apiClient.get<any>(`${api.allowancePayments}?${params.toString()}`)
-      setData(d.results || [])
-    } catch (error: any) {
-      message.error('加载失败：' + (error.message || '网络错误'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  const {
+    isOpen: generateOpen,
+    openCreate: openGenerate,
+    close: closeGenerate,
+  } = useFormModal<any>()
 
-  useEffect(() => {
-    load()
-  }, [year, month, allowanceType, employeeId])
+  const { form: createForm, validateWithZod: validateCreate } = useZodForm(allowancePaymentSchema)
+  const { form: editForm, validateWithZod: validateEdit } = useZodForm(allowancePaymentUpdateSchema)
+  const { form: generateForm, validateWithZod: validateGenerate } = useZodForm(allowancePaymentGenerateSchema)
 
   useEffect(() => {
     const loadMasterData = async () => {
@@ -123,107 +105,105 @@ export function AllowancePayments() {
     loadMasterData()
   }, [canManage])
 
-  const handleGenerate = async () => {
-    if (!generateDate) {
-      message.error('请选择发放日期')
-      return
-    }
+  const handleGenerate = withErrorHandler(
+    async () => {
+      setGenerateLoading(true)
+      try {
+        const values = await validateGenerate()
+        const d = await generateAllowances({
+          year: values.year,
+          month: values.month,
+          payment_date: dayjs(values.payment_date).format('YYYY-MM-DD'),
+        })
+        message.success(`成功生成 ${d.created} 条补贴发放记录`)
+        closeGenerate()
+        generateForm.resetFields()
+      } finally {
+        setGenerateLoading(false)
+      }
+    },
+    { successMessage: '生成成功' } // message is handled manually above for dynamic count
+  )
 
-    setGenerateLoading(true)
-    try {
-      const d = await apiClient.post<any>(api.allowancePaymentsGenerate, {
-        year: generateYear,
-        month: generateMonth,
-        payment_date: generateDate,
-      })
-      message.success(`成功生成 ${d.created} 条补贴发放记录`)
-      setGenerateOpen(false)
-      load()
-    } catch (error: any) {
-      message.error('生成失败：' + (error.message || '网络错误'))
-    } finally {
-      setGenerateLoading(false)
-    }
-  }
+  const handleCreate = withErrorHandler(
+    async () => {
+      setSubmitting(true)
+      try {
+        const values = await validateCreate()
+        await createAllowance({
+          ...values,
+          amount_cents: Math.round(values.amount * 100),
+          payment_date: dayjs(values.payment_date).format('YYYY-MM-DD'),
+        })
+        closeCreate()
+        createForm.resetFields()
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    { successMessage: '创建成功' }
+  )
 
-  const handleCreate = async (v: any) => {
-    setCreateLoading(true)
-    try {
-      await apiClient.post(api.allowancePayments, {
-        employee_id: v.employee_id,
-        year: v.year,
-        month: v.month,
-        allowance_type: v.allowance_type,
-        currency_id: v.currency_id,
-        amount_cents: Math.round(v.amount * 100),
-        payment_date: v.payment_date,
-        payment_method: v.payment_method || 'cash',
-        memo: v.memo,
-      })
-      message.success('创建成功')
-      setCreateOpen(false)
-      createForm.resetFields()
-      load()
-    } catch (error: any) {
-      message.error('创建失败：' + (error.message || '网络错误'))
-    } finally {
-      setCreateLoading(false)
-    }
-  }
+  const handleUpdate = withErrorHandler(
+    async () => {
+      if (!editRow) return
+      setSubmitting(true)
+      try {
+        const values = await validateEdit()
+        await updateAllowance({
+          id: editRow.id,
+          data: {
+            ...values,
+            payment_date: dayjs(values.payment_date).format('YYYY-MM-DD'),
+          }
+        })
+        closeEdit()
+        editForm.resetFields()
+        setVoucherFile(null)
+        setFileList([])
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    { successMessage: '更新成功' }
+  )
 
-  const handleEdit = (record: AllowancePayment) => {
-    setCurrentRecord(record)
-    editForm.setFieldsValue({
-      payment_date: dayjs(record.payment_date),
-      payment_method: record.payment_method,
-      memo: record.memo,
-    })
-    setEditOpen(true)
-  }
-
-  const handleUpdate = async (v: any) => {
-    if (!currentRecord) return
-    setEditLoading(true)
-    try {
-      await apiClient.put(api.allowancePaymentsById(currentRecord.id), {
-        payment_date: v.payment_date,
-        payment_method: v.payment_method,
-        voucher_url: v.voucher_url,
-        memo: v.memo,
-      })
-      message.success('更新成功')
-      setEditOpen(false)
-      setCurrentRecord(null)
-      editForm.resetFields()
-      load()
-    } catch (error: any) {
-      message.error('更新失败：' + (error.message || '网络错误'))
-    } finally {
-      setEditLoading(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除这条补贴发放记录吗？',
-      onOk: async () => {
-        try {
-          await apiClient.delete(api.allowancePaymentsById(id))
-          message.success('删除成功')
-          load()
-        } catch (error: any) {
-          message.error('删除失败：' + (error.message || '网络错误'))
-        }
-      },
-    })
-  }
+  const handleDelete = withErrorHandler(
+    async (id: string) => {
+      await deleteAllowance(id)
+    },
+    { successMessage: '删除成功' }
+  )
 
   const handleUpload = async (file: File): Promise<string> => {
     if (!isSupportedImageType(file)) {
       throw new Error('只允许上传图片格式（JPEG、PNG、GIF、WebP）')
     }
     return uploadImageAsWebP(file, api.upload.voucher)
+  }
+
+  const onEdit = (record: AllowancePayment) => {
+    editForm.setFieldsValue({
+      payment_date: dayjs(record.payment_date),
+      payment_method: record.payment_method,
+      memo: record.memo,
+      voucher_url: record.voucher_url,
+    })
+    if (record.voucher_url) {
+      setFileList([{ uid: '-1', name: '凭证', status: 'done', url: api.vouchers(record.voucher_url) }])
+    } else {
+      setFileList([])
+    }
+    openEdit(record)
+  }
+
+  const onGenerateOpen = () => {
+    generateForm.setFieldsValue({
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1,
+      payment_date: dayjs(),
+    })
+    openGenerate()
   }
 
   const columns: ColumnsType<AllowancePayment> = [
@@ -317,12 +297,19 @@ export function AllowancePayments() {
         <Space>
           {canManage && (
             <>
-              <Button type="link" size="small" onClick={() => handleEdit(record)}>
+              <Button type="link" size="small" onClick={() => onEdit(record)}>
                 编辑
               </Button>
-              <Button type="link" size="small" danger onClick={() => handleDelete(record.id)}>
-                删除
-              </Button>
+              <Popconfirm
+                title="确定要删除这条补贴发放记录吗？"
+                onConfirm={() => handleDelete(record.id)}
+                okText="确定"
+                cancelText="取消"
+              >
+                <Button type="link" size="small" danger>
+                  删除
+                </Button>
+              </Popconfirm>
             </>
           )}
         </Space>
@@ -341,227 +328,222 @@ export function AllowancePayments() {
   }))
 
   return (
-    <Card
+    <PageContainer
       title="补贴发放管理"
-      extra={
-        canManage && (
-          <Space>
-            <Button onClick={() => setGenerateOpen(true)}>
-              生成补贴发放
-            </Button>
-            <Button type="primary" onClick={() => setCreateOpen(true)}>
-              新建发放记录
-            </Button>
-          </Space>
-        )
-      }
+      breadcrumb={[{ title: '人事管理' }, { title: '补贴发放管理' }]}
     >
-      <Space style={{ marginBottom: 16 }}>
-        <Select
-          style={{ width: 120 }}
-          value={year}
-          onChange={setYear}
-          options={yearOptions}
-        />
-        <Select
-          style={{ width: 120 }}
-          value={month}
-          onChange={setMonth}
-          placeholder="全部月份"
-          allowClear
-          options={monthOptions}
-        />
-        <Select
-          style={{ width: 120 }}
-          value={allowanceType}
-          onChange={setAllowanceType}
-          placeholder="全部类型"
-          allowClear
-          options={Object.entries(ALLOWANCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
-        />
-        {canManage && (
+      <Card
+        title="补贴发放管理"
+        extra={
+          canManage && (
+            <Space>
+              <Button onClick={onGenerateOpen}>
+                生成补贴发放
+              </Button>
+              <Button type="primary" onClick={openCreate}>
+                新建发放记录
+              </Button>
+            </Space>
+          )
+        }
+        className="page-card"
+        bordered={false}
+      >
+        <Space style={{ marginBottom: 16 }}>
           <Select
-            style={{ width: 150 }}
-            value={employeeId}
-            onChange={setEmployeeId}
-            placeholder="全部员工"
-            allowClear
-            showSearch
-            options={employees}
-            filterOption={(input, option) =>
-              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-            }
+            style={{ width: 120 }}
+            value={year}
+            onChange={setYear}
+            options={yearOptions}
           />
-        )}
-        <Button onClick={load}>刷新</Button>
-      </Space>
-
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 20 }}
-        scroll={{ x: 1400 }}
-      />
-
-      <Modal
-        title="生成补贴发放"
-        open={generateOpen}
-        onOk={handleGenerate}
-        onCancel={() => setGenerateOpen(false)}
-        confirmLoading={generateLoading}
-      >
-        <Form layout="vertical">
-          <Form.Item label="年份">
+          <Select
+            style={{ width: 120 }}
+            value={month}
+            onChange={setMonth}
+            placeholder="全部月份"
+            allowClear
+            options={monthOptions}
+          />
+          <Select
+            style={{ width: 120 }}
+            value={allowanceType}
+            onChange={setAllowanceType}
+            placeholder="全部类型"
+            allowClear
+            options={Object.entries(ALLOWANCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+          />
+          {canManage && (
             <Select
-              value={generateYear}
-              onChange={setGenerateYear}
-              options={yearOptions}
-            />
-          </Form.Item>
-          <Form.Item label="月份">
-            <Select
-              value={generateMonth}
-              onChange={setGenerateMonth}
-              options={monthOptions}
-            />
-          </Form.Item>
-          <Form.Item label="发放日期" required>
-            <DatePicker
-              style={{ width: '100%' }}
-              value={generateDate ? dayjs(generateDate) : null}
-              onChange={(date) => setGenerateDate(date ? date.format('YYYY-MM-DD') : '')}
-              format="YYYY-MM-DD"
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="新建发放记录"
-        open={createOpen}
-        onOk={() => createForm.submit()}
-        onCancel={() => {
-          setCreateOpen(false)
-          createForm.resetFields()
-        }}
-        confirmLoading={createLoading}
-        width={600}
-      >
-        <Form
-          form={createForm}
-          layout="vertical"
-          onFinish={handleCreate}
-        >
-          <Form.Item name="employee_id" label="员工" rules={[{ required: true, message: '请选择员工' }]}>
-            <Select
-              placeholder="请选择员工"
+              style={{ width: 150 }}
+              value={employeeId}
+              onChange={setEmployeeId}
+              placeholder="全部员工"
+              allowClear
               showSearch
               options={employees}
               filterOption={(input, option) =>
                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
             />
-          </Form.Item>
-          <Form.Item name="year" label="年份" rules={[{ required: true, message: '请选择年份' }]}>
-            <Select placeholder="请选择年份" options={yearOptions} />
-          </Form.Item>
-          <Form.Item name="month" label="月份" rules={[{ required: true, message: '请选择月份' }]}>
-            <Select placeholder="请选择月份" options={monthOptions} />
-          </Form.Item>
-          <Form.Item name="allowance_type" label="补贴类型" rules={[{ required: true, message: '请选择补贴类型' }]}>
-            <Select
-              placeholder="请选择补贴类型"
-              options={Object.entries(ALLOWANCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
-            />
-          </Form.Item>
-          <Form.Item name="currency_id" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
-            <Select placeholder="请选择币种" options={currencies} />
-          </Form.Item>
-          <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>
-            <InputNumber
-              style={{ width: '100%' }}
-              placeholder="请输入金额"
-              min={0}
-              precision={2}
-            />
-          </Form.Item>
-          <Form.Item name="payment_date" label="发放日期" rules={[{ required: true, message: '请选择发放日期' }]}>
-            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-          </Form.Item>
-          <Form.Item name="payment_method" label="发放方式" initialValue="cash">
-            <Select
-              options={Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({ value, label }))}
-            />
-          </Form.Item>
-          <Form.Item name="memo" label="备注">
-            <TextArea rows={3} placeholder="请输入备注" />
-          </Form.Item>
-        </Form>
-      </Modal>
+          )}
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
+        </Space>
 
-      <Modal
-        title="编辑发放记录"
-        open={editOpen}
-        onOk={() => editForm.submit()}
-        onCancel={() => {
-          setEditOpen(false)
-          setCurrentRecord(null)
-          editForm.resetFields()
-        }}
-        confirmLoading={editLoading}
-        width={600}
-      >
-        <Form
-          form={editForm}
-          layout="vertical"
-          onFinish={handleUpdate}
+        <Table
+          className="table-striped"
+          columns={columns}
+          dataSource={allowances}
+          rowKey="id"
+          loading={isLoading}
+          pagination={{ pageSize: 20 }}
+          scroll={{ x: 1400 }}
+        />
+
+        <Modal
+          title="生成补贴发放"
+          open={generateOpen}
+          onOk={handleGenerate}
+          onCancel={() => {
+            closeGenerate()
+            generateForm.resetFields()
+          }}
+          confirmLoading={generateLoading}
         >
-          <Form.Item name="payment_date" label="发放日期" rules={[{ required: true, message: '请选择发放日期' }]}>
-            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-          </Form.Item>
-          <Form.Item name="payment_method" label="发放方式" rules={[{ required: true, message: '请选择发放方式' }]}>
-            <Select
-              options={Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({ value, label }))}
-            />
-          </Form.Item>
-          <Form.Item name="voucher_url" label="凭证">
-            <Upload
-              fileList={fileList}
-              beforeUpload={(file) => {
-                setVoucherFile(file)
-                setFileList([{ uid: '-1', name: file.name, status: 'uploading' }])
-                handleUpload(file)
-                  .then((url) => {
-                    editForm.setFieldsValue({ voucher_url: url })
-                    setFileList([{ uid: '-1', name: file.name, status: 'done' }])
-                    setUploading(false)
-                  })
-                  .catch((error) => {
-                    message.error('上传失败：' + error.message)
-                    setFileList([])
-                    setUploading(false)
-                  })
-                return false
-              }}
-              onRemove={() => {
-                setVoucherFile(null)
-                setFileList([])
-                editForm.setFieldsValue({ voucher_url: undefined })
-              }}
-            >
-              <Button icon={<UploadOutlined />} loading={uploading}>
-                上传凭证
-              </Button>
-            </Upload>
-          </Form.Item>
-          <Form.Item name="memo" label="备注">
-            <TextArea rows={3} placeholder="请输入备注" />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Card>
+          <Form form={generateForm} layout="vertical">
+            <Form.Item name="year" label="年份">
+              <Select options={yearOptions} />
+            </Form.Item>
+            <Form.Item name="month" label="月份">
+              <Select options={monthOptions} />
+            </Form.Item>
+            <Form.Item name="payment_date" label="发放日期">
+              <DatePicker
+                style={{ width: '100%' }}
+                format="YYYY-MM-DD"
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        <Modal
+          title="新建发放记录"
+          open={createOpen}
+          onOk={handleCreate}
+          onCancel={() => {
+            closeCreate()
+            createForm.resetFields()
+          }}
+          confirmLoading={submitting}
+          width={600}
+        >
+          <Form form={createForm} layout="vertical">
+            <Form.Item name="employee_id" label="员工">
+              <Select
+                placeholder="请选择员工"
+                showSearch
+                options={employees}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+            <Form.Item name="year" label="年份">
+              <Select placeholder="请选择年份" options={yearOptions} />
+            </Form.Item>
+            <Form.Item name="month" label="月份">
+              <Select placeholder="请选择月份" options={monthOptions} />
+            </Form.Item>
+            <Form.Item name="allowance_type" label="补贴类型">
+              <Select
+                placeholder="请选择补贴类型"
+                options={Object.entries(ALLOWANCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+              />
+            </Form.Item>
+            <Form.Item name="currency_id" label="币种">
+              <Select placeholder="请选择币种" options={currencies} />
+            </Form.Item>
+            <Form.Item name="amount" label="金额">
+              <InputNumber
+                style={{ width: '100%' }}
+                placeholder="请输入金额"
+                min={0}
+                precision={2}
+              />
+            </Form.Item>
+            <Form.Item name="payment_date" label="发放日期">
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item name="payment_method" label="发放方式" initialValue="cash">
+              <Select
+                options={Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({ value, label }))}
+              />
+            </Form.Item>
+            <Form.Item name="memo" label="备注">
+              <TextArea rows={3} placeholder="请输入备注" />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        <Modal
+          title="编辑发放记录"
+          open={editOpen}
+          onOk={handleUpdate}
+          onCancel={() => {
+            closeEdit()
+            editForm.resetFields()
+            setVoucherFile(null)
+            setFileList([])
+          }}
+          confirmLoading={submitting}
+          width={600}
+        >
+          <Form form={editForm} layout="vertical">
+            <Form.Item name="payment_date" label="发放日期">
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item name="payment_method" label="发放方式">
+              <Select
+                options={Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({ value, label }))}
+              />
+            </Form.Item>
+            <Form.Item name="voucher_url" label="凭证">
+              <Upload
+                fileList={fileList}
+                beforeUpload={(file) => {
+                  setVoucherFile(file)
+                  setFileList([{ uid: '-1', name: file.name, status: 'uploading' }])
+                  setUploading(true)
+                  handleUpload(file)
+                    .then((url) => {
+                      editForm.setFieldsValue({ voucher_url: url })
+                      setFileList([{ uid: '-1', name: file.name, status: 'done', url: api.vouchers(url) }])
+                      setUploading(false)
+                    })
+                    .catch((error) => {
+                      message.error('上传失败：' + error.message)
+                      setFileList([])
+                      setUploading(false)
+                    })
+                  return false
+                }}
+                onRemove={() => {
+                  setVoucherFile(null)
+                  setFileList([])
+                  editForm.setFieldsValue({ voucher_url: undefined })
+                }}
+              >
+                <Button icon={<UploadOutlined />} loading={uploading}>
+                  上传凭证
+                </Button>
+              </Upload>
+            </Form.Item>
+            <Form.Item name="memo" label="备注">
+              <TextArea rows={3} placeholder="请输入备注" />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Card>
+    </PageContainer>
   )
 }
 

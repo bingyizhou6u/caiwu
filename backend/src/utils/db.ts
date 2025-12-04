@@ -1,48 +1,72 @@
 import { v4 as uuid } from 'uuid'
+import { DrizzleD1Database, drizzle } from 'drizzle-orm/d1'
+import { eq, and, gt } from 'drizzle-orm'
+import * as schema from '../db/schema.js'
+import { users, sessions, employees, positions, orgDepartments } from '../db/schema.js'
 
 export { uuid }
-
-import { drizzle } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
 
 export function createDb(d1: D1Database) {
   return drizzle(d1, { schema })
 }
 
-export async function getUserByEmail(db: D1Database, email: string) {
-  return db.prepare('select * from users where email=?').bind(email).first<any>()
+export async function getUserByEmail(db: DrizzleD1Database<typeof schema>, email: string) {
+  return await db.select()
+    .from(users)
+    .where(eq(users.email, email))
+    .get()
 }
 
-export async function getUserById(db: D1Database, id: string) {
-  return db.prepare('select * from users where id=?').bind(id).first<any>()
+export async function getUserById(db: DrizzleD1Database<typeof schema>, id: string) {
+  return await db.select()
+    .from(users)
+    .where(eq(users.id, id))
+    .get()
 }
 
-
-export async function createSession(db: D1Database, user_id: string) {
+export async function createSession(db: DrizzleD1Database<typeof schema>, user_id: string) {
   const id = uuid()
   const expires = Date.now() + 1000 * 60 * 60 * 24 * 7
-  await db.prepare('insert into sessions(id,user_id,expires_at) values(?,?,?)').bind(id, user_id, expires).run()
+
+  await db.insert(sessions).values({
+    id,
+    userId: user_id,
+    expiresAt: expires,
+    createdAt: Date.now()
+  }).execute()
+
   return { id, expires }
 }
 
-export async function getSession(db: D1Database, id: string) {
-  const s = await db.prepare('select * from sessions where id=?').bind(id).first<any>()
+export async function getSession(db: DrizzleD1Database<typeof schema>, id: string) {
+  const s = await db.select()
+    .from(sessions)
+    .where(eq(sessions.id, id))
+    .get()
+
   if (!s) return null
-  if (s.expires_at && s.expires_at < Date.now()) return null
+  if (s.expiresAt && s.expiresAt < Date.now()) return null
   return s
 }
 
 // 获取用户的 employee_id（通过 email 匹配）
-export async function getUserEmployeeId(db: D1Database, userId: string): Promise<string | null> {
+export async function getUserEmployeeId(db: DrizzleD1Database<typeof schema>, userId: string): Promise<string | null> {
   const user = await getUserById(db, userId)
   if (!user?.email) return null
 
-  const employee = await db.prepare('select id from employees where email=? and active=1').bind(user.email).first<{ id: string }>()
+  const employee = await db.select({ id: employees.id })
+    .from(employees)
+    .where(and(
+      eq(employees.email, user.email),
+      eq(employees.active, 1)
+    ))
+    .get()
+
   return employee?.id || null
 }
 
 // 获取用户的职位信息（必须从员工记录获取）
-export async function getUserPosition(db: D1Database, userId: string): Promise<{
+export async function getUserPosition(db: DrizzleD1Database<typeof schema>, userId: string): Promise<{
   id: string
   code: string
   name: string
@@ -51,30 +75,35 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
   can_manage_subordinates: number
   permissions: any
 } | null> {
-  const result = await db.prepare(`
-    select 
-      p.id,
-      p.code,
-      p.name,
-      p.level,
-      p.function_role,
-      p.can_manage_subordinates,
-      p.permissions
-    from users u
-    inner join employees e on e.email = u.email and e.active = 1
-    inner join positions p on p.id = e.position_id and p.active = 1
-    where u.id = ?
-  `).bind(userId).first<{
-    id: string
-    code: string
-    name: string
-    level: number
-    function_role: string
-    can_manage_subordinates: number
-    permissions: string
-  }>()
+  const result = await db.select({
+    id: positions.id,
+    code: positions.code,
+    name: positions.name,
+    level: positions.level,
+    function_role: positions.functionRole,
+    can_manage_subordinates: positions.canManageSubordinates,
+    permissions: positions.permissions
+  })
+    .from(users)
+    .innerJoin(employees, and(
+      eq(employees.email, users.email),
+      eq(employees.active, 1)
+    ))
+    .innerJoin(positions, and(
+      eq(positions.id, employees.positionId),
+      eq(positions.active, 1)
+    ))
+    .where(eq(users.id, userId))
+    .get()
 
   if (!result) return null
+
+  let permissions = {}
+  try {
+    permissions = JSON.parse(result.permissions || '{}')
+  } catch (err) {
+    console.error('Failed to parse permissions JSON:', err)
+  }
 
   return {
     id: result.id,
@@ -83,12 +112,12 @@ export async function getUserPosition(db: D1Database, userId: string): Promise<{
     level: result.level,
     function_role: result.function_role,
     can_manage_subordinates: result.can_manage_subordinates,
-    permissions: JSON.parse(result.permissions || '{}')
+    permissions
   }
 }
 
 // 优化版本：一次性获取session、user、position、employee和部门模块信息
-export async function getSessionWithUserAndPosition(db: D1Database, sessionId: string): Promise<{
+export async function getSessionWithUserAndPosition(db: DrizzleD1Database<typeof schema>, sessionId: string): Promise<{
   session: { id: string, user_id: string, expires_at: number } | null
   user: { id: string, email: string, name: string } | null
   position: {
@@ -107,73 +136,74 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
   } | null
   departmentModules: string[] // 部门允许的模块列表
 } | null> {
-  const result = await db.prepare(`
-    select 
-      s.id as session_id,
-      s.user_id,
-      s.expires_at,
-      u.id as user_id,
-      u.email,
-      e.name,
-      p.id as position_id,
-      p.code as position_code,
-      p.name as position_name,
-      p.level as position_level,
-      p.function_role as position_function_role,
-      p.can_manage_subordinates as position_can_manage_subordinates,
-      p.permissions as position_permissions,
-      e.id as employee_id,
-      e.org_department_id,
-      e.department_id as employee_department_id,
-      od.allowed_modules as department_allowed_modules
-    from sessions s
-    inner join users u on u.id = s.user_id
-    left join employees e on e.email = u.email and e.active = 1
-    left join positions p on p.id = e.position_id and p.active = 1
-    left join org_departments od on od.id = e.org_department_id and od.active = 1
-    where s.id = ? and s.expires_at > ?
-  `).bind(sessionId, Date.now()).first<{
-    session_id: string
-    user_id: string
-    expires_at: number
-    email: string
-    name: string | null
-    position_id: string | null
-    position_code: string | null
-    position_name: string | null
-    position_level: number | null
-    position_function_role: string | null
-    position_can_manage_subordinates: number | null
-    position_permissions: string | null
-    employee_id: string | null
-    org_department_id: string | null
-    employee_department_id: string | null
-    department_allowed_modules: string | null
-  }>()
+  const now = Date.now()
 
-  if (!result) return null
+  const result = await db.select({
+    // session
+    sessionId: sessions.id,
+    userId: sessions.userId,
+    expiresAt: sessions.expiresAt,
+    // user
+    userEmail: users.email,
+    // employee
+    employeeName: employees.name,
+    employeeId: employees.id,
+    orgDepartmentId: employees.orgDepartmentId,
+    employeeDepartmentId: employees.departmentId,
+    // position
+    positionId: positions.id,
+    positionCode: positions.code,
+    positionName: positions.name,
+    positionLevel: positions.level,
+    positionFunctionRole: positions.functionRole,
+    positionCanManageSubordinates: positions.canManageSubordinates,
+    positionPermissions: positions.permissions,
+    // org department
+    departmentAllowedModules: orgDepartments.allowedModules
+  })
+    .from(sessions)
+    .innerJoin(users, eq(users.id, sessions.userId))
+    .leftJoin(employees, and(
+      eq(employees.email, users.email),
+      eq(employees.active, 1)
+    ))
+    .leftJoin(positions, and(
+      eq(positions.id, employees.positionId),
+      eq(positions.active, 1)
+    ))
+    .leftJoin(orgDepartments, and(
+      eq(orgDepartments.id, employees.orgDepartmentId),
+      eq(orgDepartments.active, 1)
+    ))
+    .where(and(
+      eq(sessions.id, sessionId),
+      gt(sessions.expiresAt, now)
+    ))
+    .get()
 
-  const position = result.position_id ? {
-    id: result.position_id,
-    code: result.position_code!,
-    name: result.position_name!,
-    level: result.position_level!,
-    function_role: result.position_function_role!,
-    can_manage_subordinates: result.position_can_manage_subordinates!,
-    permissions: JSON.parse(result.position_permissions || '{}')
+  if (!result || !result.expiresAt) return null
+
+  const position = result.positionId ? {
+    id: result.positionId,
+    code: result.positionCode!,
+    name: result.positionName!,
+    level: result.positionLevel!,
+    function_role: result.positionFunctionRole!,
+    can_manage_subordinates: result.positionCanManageSubordinates!,
+    permissions: JSON.parse(result.positionPermissions || '{}')
   } : null
 
-  const employee = result.employee_id ? {
-    id: result.employee_id,
-    org_department_id: result.org_department_id,
-    department_id: result.employee_department_id
+  const employee = result.employeeId ? {
+    id: result.employeeId,
+    org_department_id: result.orgDepartmentId,
+    department_id: result.employeeDepartmentId
   } : null
 
   // 解析部门允许的模块
   let departmentModules: string[] = ['*'] // 默认允许所有模块
-  if (result.department_allowed_modules) {
+  if (result.departmentAllowedModules) {
     try {
-      departmentModules = JSON.parse(result.department_allowed_modules)
+      departmentModules = JSON.parse(result.departmentAllowedModules)
     } catch {
       departmentModules = ['*']
     }
@@ -181,14 +211,14 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
 
   return {
     session: {
-      id: result.session_id,
-      user_id: result.user_id,
-      expires_at: result.expires_at
+      id: result.sessionId,
+      user_id: result.userId,
+      expires_at: result.expiresAt
     },
     user: {
-      id: result.user_id,
-      email: result.email,
-      name: result.name || result.email.split('@')[0]
+      id: result.userId,
+      email: result.userEmail,
+      name: result.employeeName || result.userEmail.split('@')[0]
     },
     position,
     employee,
@@ -197,7 +227,7 @@ export async function getSessionWithUserAndPosition(db: D1Database, sessionId: s
 }
 
 // 获取用户完整的上下文信息（用于生成 Session 缓存）
-export async function getUserFullContext(db: D1Database, userId: string): Promise<{
+export async function getUserFullContext(db: DrizzleD1Database<typeof schema>, userId: string): Promise<{
   user: { id: string, email: string, name: string }
   position: {
     id: string
@@ -215,66 +245,64 @@ export async function getUserFullContext(db: D1Database, userId: string): Promis
   } | null
   departmentModules: string[]
 } | null> {
-  const result = await db.prepare(`
-    select 
-      u.id as user_id,
-      u.email,
-      e.name,
-      p.id as position_id,
-      p.code as position_code,
-      p.name as position_name,
-      p.level as position_level,
-      p.function_role as position_function_role,
-      p.can_manage_subordinates as position_can_manage_subordinates,
-      p.permissions as position_permissions,
-      e.id as employee_id,
-      e.org_department_id,
-      e.department_id as employee_department_id,
-      od.allowed_modules as department_allowed_modules
-    from users u
-    left join employees e on e.email = u.email and e.active = 1
-    left join positions p on p.id = e.position_id and p.active = 1
-    left join org_departments od on od.id = e.org_department_id and od.active = 1
-    where u.id = ?
-  `).bind(userId).first<{
-    user_id: string
-    email: string
-    name: string | null
-    position_id: string | null
-    position_code: string | null
-    position_name: string | null
-    position_level: number | null
-    position_function_role: string | null
-    position_can_manage_subordinates: number | null
-    position_permissions: string | null
-    employee_id: string | null
-    org_department_id: string | null
-    employee_department_id: string | null
-    department_allowed_modules: string | null
-  }>()
+  const result = await db.select({
+    // user
+    userId: users.id,
+    userEmail: users.email,
+    // employee
+    employeeName: employees.name,
+    employeeId: employees.id,
+    orgDepartmentId: employees.orgDepartmentId,
+    employeeDepartmentId: employees.departmentId,
+    // position
+    positionId: positions.id,
+    positionCode: positions.code,
+    positionName: positions.name,
+    positionLevel: positions.level,
+    positionFunctionRole: positions.functionRole,
+    positionCanManageSubordinates: positions.canManageSubordinates,
+    positionPermissions: positions.permissions,
+    // org department
+    departmentAllowedModules: orgDepartments.allowedModules
+  })
+    .from(users)
+    .leftJoin(employees, and(
+      eq(employees.email, users.email),
+      eq(employees.active, 1)
+    ))
+    .leftJoin(positions, and(
+      eq(positions.id, employees.positionId),
+      eq(positions.active, 1)
+    ))
+    .leftJoin(orgDepartments, and(
+      eq(orgDepartments.id, employees.orgDepartmentId),
+      eq(orgDepartments.active, 1)
+    ))
+    .where(eq(users.id, userId))
+    .get()
 
   if (!result) return null
 
-  const position = result.position_id ? {
-    id: result.position_id,
-    code: result.position_code!,
-    name: result.position_name!,
-    level: result.position_level!,
-    function_role: result.position_function_role!,
-    can_manage_subordinates: result.position_can_manage_subordinates!,
-    permissions: JSON.parse(result.position_permissions || '{}')
+  const position = result.positionId ? {
+    id: result.positionId,
+    code: result.positionCode!,
+    name: result.positionName!,
+    level: result.positionLevel!,
+    function_role: result.positionFunctionRole!,
+    can_manage_subordinates: result.positionCanManageSubordinates!,
+    permissions: JSON.parse(result.positionPermissions || '{}')
   } : null
 
-  const employee = result.employee_id ? {
-    id: result.employee_id,
-    org_department_id: result.org_department_id,
-    department_id: result.employee_department_id
+  const employee = result.employeeId ? {
+    id: result.employeeId,
+    org_department_id: result.orgDepartmentId,
+    department_id: result.employeeDepartmentId
   } : null
 
   let departmentModules: string[] = ['*']
-  if (result.department_allowed_modules) {
+  if (result.departmentAllowedModules) {
     try {
-      departmentModules = JSON.parse(result.department_allowed_modules)
+      departmentModules = JSON.parse(result.departmentAllowedModules)
     } catch {
       departmentModules = ['*']
     }
@@ -282,13 +310,12 @@ export async function getUserFullContext(db: D1Database, userId: string): Promis
 
   return {
     user: {
-      id: result.user_id,
-      email: result.email,
-      name: result.name || result.email.split('@')[0]
+      id: result.userId,
+      email: result.userEmail,
+      name: result.employeeName || result.userEmail.split('@')[0]
     },
     position,
     employee,
     departmentModules
   }
 }
-

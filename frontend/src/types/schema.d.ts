@@ -2332,7 +2332,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/dashboard/stats": {
+    "/api/reports/dashboard/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -2398,7 +2398,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/department-cash": {
+    "/api/reports/department-cash": {
         parameters: {
             query?: never;
             header?: never;
@@ -2438,7 +2438,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/site-growth": {
+    "/api/reports/site-growth": {
         parameters: {
             query?: never;
             header?: never;
@@ -2484,7 +2484,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ar-ap/summary": {
+    "/api/reports/ar-ap/summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -2532,7 +2532,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ar-ap/detail": {
+    "/api/reports/ar-ap/detail": {
         parameters: {
             query?: never;
             header?: never;
@@ -2575,7 +2575,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/expense/summary": {
+    "/api/reports/expense/summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -2617,7 +2617,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/expense/detail": {
+    "/api/reports/expense/detail": {
         parameters: {
             query?: never;
             header?: never;
@@ -2660,7 +2660,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/account/balance": {
+    "/api/reports/account/balance": {
         parameters: {
             query?: never;
             header?: never;
@@ -2701,7 +2701,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/borrowing/summary": {
+    "/api/reports/borrowing/summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -2743,7 +2743,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/borrowing/detail/{id}": {
+    "/api/reports/borrowing/detail/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2787,7 +2787,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/new-site-revenue": {
+    "/api/reports/new-site-revenue": {
         parameters: {
             query?: never;
             header?: never;
@@ -2830,7 +2830,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/salary/employee": {
+    "/api/reports/employee-salary": {
         parameters: {
             query?: never;
             header?: never;
@@ -2872,7 +2872,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/annual-leave": {
+    "/api/reports/annual-leave": {
         parameters: {
             query?: never;
             header?: never;

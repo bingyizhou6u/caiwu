@@ -1,5 +1,5 @@
 
-import { EmailMessage } from "cloudflare:email"
+// import { EmailMessage } from "cloudflare:email"
 // class EmailMessage {
 //   constructor(from: string, to: string, body: string) { }
 // }
@@ -54,6 +54,7 @@ export async function sendEmail(
     }
 
     // 创建 EmailMessage
+    const { EmailMessage } = await import("cloudflare:email")
     const emailMessage = new EmailMessage(fromEmail, to, msg.asRaw())
 
     // 发送邮件
