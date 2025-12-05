@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Layout, Card, Form, Input, Button, message, Spin } from 'antd'
 import { useNavigate } from 'react-router-dom'
+import { ThunderboltFilled } from '@ant-design/icons'
 import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import { useAppStore } from '../../../store/useAppStore'
+import './Login.css'
 
 const { Header, Content } = Layout
 
@@ -99,9 +101,7 @@ export function Login() {
         try {
             if (!hasTotp && !totpData) {
                 // Get QR Code
-                // Get QR Code
                 const qrData = await apiClient.post<any>(api.auth.getTotpQr, { email: loginEmail, password: loginPassword })
-
                 setTotpData(qrData)
                 message.info('请先扫描二维码')
                 setLoading(false)
@@ -110,18 +110,14 @@ export function Login() {
 
             if (hasTotp) {
                 // Verify TOTP
-                // Verify TOTP
                 const data = await apiClient.post<any>(api.auth.loginPassword, { email: loginEmail, password: loginPassword, totp: v.totp })
-
                 setUserInfo(data.user)
                 setToken(data.token)
                 message.success('登录成功')
                 navigate('/dashboard')
             } else {
                 // Bind TOTP
-                // Bind TOTP
                 const data = await apiClient.post<any>(api.auth.bindTotpFirst, { email: loginEmail, password: loginPassword, secret: totpData.secret, totp: v.totp })
-
                 setUserInfo(data.user)
                 setToken(data.token)
                 message.success('Google验证码已绑定，登录成功')
@@ -158,25 +154,20 @@ export function Login() {
     }, [loginStep])
 
     return (
-        <Layout style={{ minHeight: '100vh' }}>
-            <Header
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    color: 'white',
-                    zIndex: 1000,
-                    height: 64,
-                    lineHeight: '64px',
-                    padding: '0 24px'
-                }}
-            >
-                AR公司管理系统 {apiOk ? '' : '（API未连接）'}
+        <Layout className="login-layout">
+            <Header className="login-header">
+                <div className="login-header-title">
+                    <ThunderboltFilled className="login-header-logo" />
+                    <span>AR公司管理系统</span>
+                </div>
+                <div className="login-header-status">
+                    <span className={`status-dot ${apiOk ? 'connected' : 'disconnected'}`}></span>
+                    <span>{apiOk ? '已连接' : 'API未连接'}</span>
+                </div>
             </Header>
-            <Content style={{ padding: 24, marginTop: 64, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <Content className="login-content">
                 {loginStep === 'login' ? (
-                    <Card title="登录" style={{ width: 360 }}>
+                    <Card title="登录" className="login-card" style={{ width: 400 }}>
                         <Form layout="vertical" onFinish={onLogin} onFinishFailed={() => message.error('请检查表单填写')}>
                             <Form.Item name="email" label="邮箱" rules={[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '邮箱格式不正确' }]}>
                                 <Input placeholder="请输入邮箱地址" />
@@ -184,7 +175,7 @@ export function Login() {
                             <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
                                 <Input.Password placeholder="请输入密码" />
                             </Form.Item>
-                            <Form.Item>
+                            <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
                                 <Button type="primary" htmlType="submit" loading={loading} disabled={!apiOk} block>
                                     登录
                                 </Button>
@@ -192,10 +183,10 @@ export function Login() {
                         </Form>
                     </Card>
                 ) : loginStep === 'changePassword' ? (
-                    <Card title="首次登录 - 修改密码" style={{ width: 360 }}>
+                    <Card title="首次登录 - 修改密码" className="login-card" style={{ width: 400 }}>
                         <Form layout="vertical" onFinish={onChangePassword} onFinishFailed={() => message.error('请检查表单填写')}>
                             <Form.Item>
-                                <div style={{ marginBottom: 16, color: '#666' }}>
+                                <div className="login-info-text">
                                     邮箱：<strong>{loginEmail}</strong>
                                 </div>
                             </Form.Item>
@@ -218,7 +209,7 @@ export function Login() {
                             ]}>
                                 <Input.Password placeholder="请再次输入新密码" />
                             </Form.Item>
-                            <Form.Item>
+                            <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
                                 <Button type="primary" htmlType="submit" loading={loading} disabled={!apiOk} block>
                                     修改密码
                                 </Button>
@@ -226,7 +217,7 @@ export function Login() {
                         </Form>
                     </Card>
                 ) : (
-                    <Card title={hasTotp ? "二步验证" : "绑定Google验证码"} style={{ width: 400 }}>
+                    <Card title={hasTotp ? "二步验证" : "绑定Google验证码"} className="login-card" style={{ width: 420 }}>
                         {!hasTotp && !totpData ? (
                             <div style={{ textAlign: 'center', padding: 20 }}>
                                 <Button type="primary" onClick={async () => {
@@ -247,16 +238,16 @@ export function Login() {
                             <Form layout="vertical" onFinish={onTwoFactor} onFinishFailed={() => message.error('请检查表单填写')}>
                                 {!hasTotp && totpData && (
                                     <Form.Item>
-                                        <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                                            <div style={{ marginBottom: 8 }}>请使用Google Authenticator扫描二维码</div>
-                                            <img src={totpData.qrCode} alt="QR Code" style={{ width: 200, height: 200, border: '1px solid #ddd', borderRadius: 4 }} />
+                                        <div className="qr-code-container">
+                                            <div className="qr-code-hint">请使用Google Authenticator扫描二维码</div>
+                                            <img src={totpData.qrCode} alt="QR Code" style={{ width: 200, height: 200 }} />
                                         </div>
                                     </Form.Item>
                                 )}
-                                <Form.Item name="totp" label={hasTotp ? "Google验证码" : "Google验证码"} rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '请输入6位数字验证码' }]}>
-                                    <Input placeholder="请输入6位验证码" maxLength={6} style={{ letterSpacing: 8, fontSize: 20, textAlign: 'center' }} />
+                                <Form.Item name="totp" label="Google验证码" rules={[{ required: true, message: '请输入验证码' }, { pattern: /^\d{6}$/, message: '请输入6位数字验证码' }]}>
+                                    <Input placeholder="请输入6位验证码" maxLength={6} className="totp-input" />
                                 </Form.Item>
-                                <Form.Item>
+                                <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
                                     <Button type="primary" htmlType="submit" loading={loading} disabled={!apiOk} block>
                                         {hasTotp ? '验证登录' : '绑定验证码'}
                                     </Button>

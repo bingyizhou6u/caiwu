@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Select, Input, Tag, Empty } from 'antd'
+import { useState, useMemo } from 'react'
+import { Select, Tag } from 'antd'
 import { SearchOutlined, UserOutlined, BankOutlined, ShopOutlined, LaptopOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useEmployees } from '../hooks/business/useEmployees'
@@ -14,7 +14,6 @@ export function GlobalSearch() {
     const navigate = useNavigate()
     const [searchValue, setSearchValue] = useState('')
     const debouncedSearch = useDebounce(searchValue, 500)
-    const [options, setOptions] = useState<any[]>([])
 
     // Queries
     const { data: employees = [], isFetching: loadingEmployees } = useEmployees({ search: debouncedSearch })
@@ -24,15 +23,14 @@ export function GlobalSearch() {
 
     const loading = loadingEmployees || loadingAssets || loadingVendors || loadingAccounts
 
-    useEffect(() => {
+    const options = useMemo(() => {
         if (!debouncedSearch) {
-            setOptions([])
-            return
+            return []
         }
 
         const newOptions = []
 
-        if (employees.length > 0) {
+        if (employees?.length > 0) {
             newOptions.push({
                 label: <span><UserOutlined /> 员工</span>,
                 options: employees.slice(0, 5).map((emp: any) => ({
@@ -49,7 +47,7 @@ export function GlobalSearch() {
             })
         }
 
-        if (assets.length > 0) {
+        if (assets?.length > 0) {
             newOptions.push({
                 label: <span><LaptopOutlined /> 固定资产</span>,
                 options: assets.slice(0, 5).map((asset: any) => ({
@@ -66,7 +64,7 @@ export function GlobalSearch() {
             })
         }
 
-        if (vendors.length > 0) {
+        if (vendors?.length > 0) {
             newOptions.push({
                 label: <span><ShopOutlined /> 供应商</span>,
                 options: vendors.slice(0, 5).map((vendor: any) => ({
@@ -78,7 +76,7 @@ export function GlobalSearch() {
             })
         }
 
-        if (accounts.length > 0) {
+        if (accounts?.length > 0) {
             newOptions.push({
                 label: <span><BankOutlined /> 账户</span>,
                 options: accounts.slice(0, 5).map((acc: any) => ({
@@ -95,7 +93,7 @@ export function GlobalSearch() {
             })
         }
 
-        setOptions(newOptions)
+        return newOptions
     }, [debouncedSearch, employees, assets, vendors, accounts])
 
     const handleSelect = (value: string, option: any) => {

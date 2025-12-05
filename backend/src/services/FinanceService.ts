@@ -178,7 +178,75 @@ export class FinanceService {
         }))
     }
 
-    // ... createAccountTransfer ...
+    async createAccountTransfer(data: {
+        transferDate: string
+        fromAccountId: string
+        toAccountId: string
+        fromAmountCents: number
+        toAmountCents: number
+        exchangeRate?: number
+        memo?: string
+        voucherUrls?: string[]
+        createdBy?: string
+    }) {
+        const id = uuid()
+        const now = Date.now()
+        const voucherUrlJson = JSON.stringify(data.voucherUrls ?? [])
+
+        // 1. Create Transfer Record
+        await this.db.insert(accountTransfers).values({
+            id,
+            transferDate: data.transferDate,
+            fromAccountId: data.fromAccountId,
+            toAccountId: data.toAccountId,
+            fromCurrency: (await this.getAccountCurrency(data.fromAccountId)) || 'CNY', // Helper needed or assumption
+            toCurrency: (await this.getAccountCurrency(data.toAccountId)) || 'CNY',
+            fromAmountCents: data.fromAmountCents,
+            toAmountCents: data.toAmountCents,
+            exchangeRate: data.exchangeRate,
+            memo: data.memo,
+            voucherUrl: voucherUrlJson,
+            createdBy: data.createdBy,
+            createdAt: now
+        }).execute()
+
+        // 2. Create Transaction for From Account (Out)
+        const fromBalanceBefore = await this.getAccountBalanceBefore(data.fromAccountId, data.transferDate, now)
+        const fromBalanceAfter = fromBalanceBefore - data.fromAmountCents
+        await this.db.insert(accountTransactions).values({
+            id: uuid(),
+            accountId: data.fromAccountId,
+            flowId: id, // Link to transfer ID
+            transactionDate: data.transferDate,
+            transactionType: 'transfer_out',
+            amountCents: -data.fromAmountCents,
+            balanceBeforeCents: fromBalanceBefore,
+            balanceAfterCents: fromBalanceAfter,
+            createdAt: now
+        }).execute()
+
+        // 3. Create Transaction for To Account (In)
+        const toBalanceBefore = await this.getAccountBalanceBefore(data.toAccountId, data.transferDate, now)
+        const toBalanceAfter = toBalanceBefore + data.toAmountCents
+        await this.db.insert(accountTransactions).values({
+            id: uuid(),
+            accountId: data.toAccountId,
+            flowId: id, // Link to transfer ID
+            transactionDate: data.transferDate,
+            transactionType: 'transfer_in',
+            amountCents: data.toAmountCents,
+            balanceBeforeCents: toBalanceBefore,
+            balanceAfterCents: toBalanceAfter,
+            createdAt: now
+        }).execute()
+
+        return { id }
+    }
+
+    async getAccountCurrency(accountId: string) {
+        const account = await this.db.select({ currency: accounts.currency }).from(accounts).where(eq(accounts.id, accountId)).get()
+        return account?.currency
+    }
 
     async getAccountTransfer(id: string) {
         const transfer = await this.db.select().from(accountTransfers).where(eq(accountTransfers.id, id)).get()

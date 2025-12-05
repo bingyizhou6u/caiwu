@@ -71,7 +71,6 @@ export async function getUserPosition(db: DrizzleD1Database<typeof schema>, user
   code: string
   name: string
   level: number
-  function_role: string
   can_manage_subordinates: number
   permissions: any
 } | null> {
@@ -80,7 +79,6 @@ export async function getUserPosition(db: DrizzleD1Database<typeof schema>, user
     code: positions.code,
     name: positions.name,
     level: positions.level,
-    function_role: positions.functionRole,
     can_manage_subordinates: positions.canManageSubordinates,
     permissions: positions.permissions
   })
@@ -110,7 +108,6 @@ export async function getUserPosition(db: DrizzleD1Database<typeof schema>, user
     code: result.code,
     name: result.name,
     level: result.level,
-    function_role: result.function_role,
     can_manage_subordinates: result.can_manage_subordinates,
     permissions
   }
@@ -125,7 +122,6 @@ export async function getSessionWithUserAndPosition(db: DrizzleD1Database<typeof
     code: string
     name: string
     level: number
-    function_role: string
     can_manage_subordinates: number
     permissions: any
   } | null
@@ -155,7 +151,6 @@ export async function getSessionWithUserAndPosition(db: DrizzleD1Database<typeof
     positionCode: positions.code,
     positionName: positions.name,
     positionLevel: positions.level,
-    positionFunctionRole: positions.functionRole,
     positionCanManageSubordinates: positions.canManageSubordinates,
     positionPermissions: positions.permissions,
     // org department
@@ -188,7 +183,6 @@ export async function getSessionWithUserAndPosition(db: DrizzleD1Database<typeof
     code: result.positionCode!,
     name: result.positionName!,
     level: result.positionLevel!,
-    function_role: result.positionFunctionRole!,
     can_manage_subordinates: result.positionCanManageSubordinates!,
     permissions: JSON.parse(result.positionPermissions || '{}')
   } : null
@@ -234,7 +228,6 @@ export async function getUserFullContext(db: DrizzleD1Database<typeof schema>, u
     code: string
     name: string
     level: number
-    function_role: string
     can_manage_subordinates: number
     permissions: any
   } | null
@@ -259,7 +252,6 @@ export async function getUserFullContext(db: DrizzleD1Database<typeof schema>, u
     positionCode: positions.code,
     positionName: positions.name,
     positionLevel: positions.level,
-    positionFunctionRole: positions.functionRole,
     positionCanManageSubordinates: positions.canManageSubordinates,
     positionPermissions: positions.permissions,
     // org department
@@ -288,7 +280,6 @@ export async function getUserFullContext(db: DrizzleD1Database<typeof schema>, u
     code: result.positionCode!,
     name: result.positionName!,
     level: result.positionLevel!,
-    function_role: result.positionFunctionRole!,
     can_manage_subordinates: result.positionCanManageSubordinates!,
     permissions: JSON.parse(result.positionPermissions || '{}')
   } : null

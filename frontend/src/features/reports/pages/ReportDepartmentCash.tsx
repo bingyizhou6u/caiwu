@@ -25,8 +25,8 @@ export function ReportDepartmentCash() {
 
   return (
     <PageContainer
-      title="项目汇总"
-      breadcrumb={[{ title: '报表中心' }, { title: '项目汇总' }]}
+      title="项目汇总报表"
+      breadcrumb={[{ title: '报表中心' }, { title: '项目汇总报表' }]}
     >
       <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 12 }} wrap>

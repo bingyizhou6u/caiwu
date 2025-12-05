@@ -25,8 +25,8 @@ export function ReportSiteGrowth() {
 
   return (
     <PageContainer
-      title="站点增长"
-      breadcrumb={[{ title: '报表中心' }, { title: '站点增长' }]}
+      title="站点增长报表"
+      breadcrumb={[{ title: '报表中心' }, { title: '站点增长报表' }]}
     >
       <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 12 }} wrap>

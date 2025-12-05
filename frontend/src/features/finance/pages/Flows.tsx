@@ -168,8 +168,8 @@ export function Flows() {
 
   return (
     <PageContainer
-      title="记账管理"
-      breadcrumb={[{ title: '财务管理' }, { title: '记账管理' }]}
+      title="收支记账"
+      breadcrumb={[{ title: '财务管理' }, { title: '收支记账' }]}
     >
       <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 12 }}>

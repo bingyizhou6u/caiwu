@@ -184,8 +184,8 @@ export function ReportEmployeeSalary() {
 
   return (
     <PageContainer
-      title="员工薪资表"
-      breadcrumb={[{ title: '报表中心' }, { title: '员工薪资表' }]}
+      title="员工薪资报表"
+      breadcrumb={[{ title: '报表中心' }, { title: '员工薪资报表' }]}
       extra={
         <Space>
           <Select

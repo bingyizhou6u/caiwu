@@ -1,12 +1,15 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { eq, and, ne, desc } from 'drizzle-orm'
+import { eq, and, ne } from 'drizzle-orm'
 import * as schema from '../db/schema.js'
-import { positions, employees, users } from '../db/schema.js'
+import { positions, employees, users, sessions } from '../db/schema.js'
 import { Errors } from '../utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
 export class PositionService {
-    constructor(private db: DrizzleD1Database<typeof schema>) { }
+    constructor(
+        private db: DrizzleD1Database<typeof schema>,
+        private kv?: KVNamespace
+    ) { }
 
     async getPositions() {
         // Return all positions, ordered by sort_order and name
@@ -101,7 +104,59 @@ export class PositionService {
 
         await this.db.update(positions).set(updates).where(eq(positions.id, id)).execute()
 
+        // 如果更新了权限，需要清除受影响用户的 Session 缓存
+        if (data.permissions !== undefined && this.kv) {
+            await this.invalidateSessionsForPosition(id)
+        }
+
         return { id, ...data }
+    }
+
+    /**
+     * 清除使用该职位的所有用户的 Session 缓存
+     * 强制用户下次请求时重新加载权限
+     */
+    private async invalidateSessionsForPosition(positionId: string) {
+        if (!this.kv) return
+
+        try {
+            // 1. 查找使用该职位的所有员工
+            const affectedEmployees = await this.db.select({ email: employees.email })
+                .from(employees)
+                .where(and(eq(employees.positionId, positionId), eq(employees.active, 1)))
+                .all()
+
+            if (affectedEmployees.length === 0) return
+
+            // 2. 通过邮箱找到对应的用户
+            const emails = affectedEmployees.map(e => e.email).filter(Boolean)
+            if (emails.length === 0) return
+
+            // 3. 查找这些用户的所有活跃 Session
+            for (const email of emails) {
+                const user = await this.db.select({ id: users.id })
+                    .from(users)
+                    .where(eq(users.email, email!))
+                    .get()
+
+                if (!user) continue
+
+                const userSessions = await this.db.select({ id: sessions.id })
+                    .from(sessions)
+                    .where(eq(sessions.userId, user.id))
+                    .all()
+
+                // 4. 删除 KV 中的 Session 缓存
+                for (const session of userSessions) {
+                    await this.kv.delete(`session:${session.id}`)
+                }
+            }
+
+            console.log(`Invalidated sessions for position ${positionId}, affected ${emails.length} users`)
+        } catch (error) {
+            console.error('Failed to invalidate sessions:', error)
+            // 不抛出错误，权限更新成功但缓存清除失败不应该影响主流程
+        }
     }
 
     async deletePosition(id: string) {

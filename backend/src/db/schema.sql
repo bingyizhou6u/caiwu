@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS employees (
   memo TEXT,
   birthday TEXT,
   regular_date TEXT,
+  work_schedule TEXT,
+  annual_leave_cycle_months INTEGER,
+  annual_leave_days INTEGER,
   created_at INTEGER,
   updated_at INTEGER
 );
@@ -245,9 +248,11 @@ CREATE TABLE IF NOT EXISTS employee_leaves (
   days INTEGER NOT NULL,
   status TEXT DEFAULT 'pending',
   reason TEXT,
+  memo TEXT,
   approved_by TEXT,
   approved_at INTEGER,
-  created_at INTEGER
+  created_at INTEGER,
+  updated_at INTEGER
 );
 
 -- Salary Payments table
@@ -371,6 +376,7 @@ CREATE TABLE IF NOT EXISTS repayments (
   currency TEXT NOT NULL,
   repay_date TEXT NOT NULL,
   memo TEXT,
+  created_by TEXT,
   created_at INTEGER,
   updated_at INTEGER
 );
@@ -620,6 +626,36 @@ CREATE TABLE IF NOT EXISTS rental_payable_bills (
   paid_payment_id TEXT,
   memo TEXT,
   created_by TEXT,
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+-- Expense Reimbursements table
+CREATE TABLE IF NOT EXISTS expense_reimbursements (
+  id TEXT PRIMARY KEY,
+  employee_id TEXT NOT NULL,
+  expense_type TEXT NOT NULL, -- travel, office, meal, transport, other
+  amount_cents INTEGER NOT NULL,
+  currency_id TEXT DEFAULT 'CNY',
+  expense_date TEXT NOT NULL,
+  description TEXT NOT NULL,
+  voucher_url TEXT,
+  status TEXT DEFAULT 'pending', -- pending, approved, rejected
+  approved_by TEXT,
+  approved_at INTEGER,
+  memo TEXT,
+  created_by TEXT,
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+-- Site Config table
+CREATE TABLE IF NOT EXISTS site_config (
+  id TEXT PRIMARY KEY,
+  config_key TEXT NOT NULL UNIQUE,
+  config_value TEXT,
+  description TEXT,
+  is_encrypted INTEGER DEFAULT 0,
   created_at INTEGER,
   updated_at INTEGER
 );

@@ -12,7 +12,6 @@ export interface Position {
   code: string
   name: string
   level: number // 1-总部 2-项目 3-组
-  function_role: 'director' | 'hr' | 'finance' | 'admin' | 'developer' | 'support' | 'member'
   can_manage_subordinates: number
   permissions: any // JSON权限配置
 }

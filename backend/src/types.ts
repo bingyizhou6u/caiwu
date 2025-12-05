@@ -24,7 +24,6 @@ export type AppVariables = {
     code: string
     name: string
     level: number
-    function_role: 'director' | 'hr' | 'finance' | 'admin' | 'developer' | 'support' | 'member'
     can_manage_subordinates: number
     permissions: Record<string, Record<string, string[]>>
   }

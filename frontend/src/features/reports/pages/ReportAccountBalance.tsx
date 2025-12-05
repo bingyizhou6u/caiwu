@@ -152,8 +152,8 @@ export function ReportAccountBalance() {
 
   return (
     <PageContainer
-      title="账户余额汇总"
-      breadcrumb={[{ title: '报表中心' }, { title: '账户余额汇总' }]}
+      title="账户余额报表"
+      breadcrumb={[{ title: '报表中心' }, { title: '账户余额报表' }]}
     >
       <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 12 }} wrap>

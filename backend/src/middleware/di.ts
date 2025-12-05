@@ -39,7 +39,7 @@ export const di = async (c: Context<{ Bindings: Env, Variables: AppVariables }>,
     const myService = new MyService(db)
     const auditService = new AuditService(db)
     const ipWhitelistService = new IPWhitelistService(c.env)
-    const positionService = new PositionService(db)
+    const positionService = new PositionService(db, c.env.SESSIONS_KV)
 
     // Inject into context
     c.set('db', db)

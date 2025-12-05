@@ -361,8 +361,8 @@ export function ReportBorrowing() {
 
   return (
     <PageContainer
-      title="借款报表"
-      breadcrumb={[{ title: '报表中心' }, { title: '借款报表' }]}
+      title="借款统计报表"
+      breadcrumb={[{ title: '报表中心' }, { title: '借款统计报表' }]}
     >
       <Card title="借款概览" style={{ marginBottom: 16 }} bordered={false} className="page-card">
         <Space direction="vertical" size="large" style={{ width: '100%' }}>

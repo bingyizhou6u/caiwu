@@ -1,9 +1,15 @@
-import { Card, Table, Tag, Space, Collapse, Tooltip, Button } from 'antd'
-import { ReloadOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import { useState, useMemo, useEffect } from 'react'
+import { Card, Table, Tag, Space, Collapse, Button, Checkbox, Form, message } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { usePositions } from '../../../hooks'
+import { ActionColumn } from '../../../components/ActionColumn'
+import { FormModal } from '../../../components/FormModal'
+import { usePositions, useFormModal } from '../../../hooks'
+import { usePermissions } from '../../../utils/permissions'
+import { api } from '../../../config/api'
+import { api as apiClient } from '../../../api/http'
 import type { Position } from '../../../types'
-
+import { PageContainer } from '../../../components/PageContainer'
 
 const { Panel } = Collapse
 
@@ -15,74 +21,76 @@ const ACTION_LABELS: Record<string, string> = {
   delete: '删除',
   export: '导出',
   approve: '审批',
-  reject: '拒绝',
   allocate: '分配',
-  all: '全部',
+  view_sensitive: '敏感信息',
 }
 
-// 权限模块配置
+// 权限模块配置 - 与数据库中的权限结构保持一致
 const PERMISSION_MODULES: Record<string, {
   label: string
-  subModules: Record<string, { label: string }>
+  subModules: Record<string, { label: string; actions: string[] }>
 }> = {
   finance: {
     label: '财务模块',
     subModules: {
-      flow: { label: '资金流水' },
-      transfer: { label: '账户转账' },
-      ar: { label: '应收管理' },
-      ap: { label: '应付管理' },
-      borrowing: { label: '借支管理' },
+      flow: { label: '资金流水', actions: ['view', 'create', 'update', 'delete', 'export'] },
+      transfer: { label: '账户转账', actions: ['view', 'create'] },
+      ar: { label: '应收管理', actions: ['view', 'create', 'update', 'delete'] },
+      ap: { label: '应付管理', actions: ['view', 'create', 'update', 'delete'] },
+      borrowing: { label: '借支管理', actions: ['view', 'create', 'update', 'delete'] },
+      salary: { label: '工资发放', actions: ['view', 'create', 'update'] },
+      allowance: { label: '补贴发放', actions: ['view', 'create'] },
+      site_bill: { label: '站点账单', actions: ['view', 'create', 'update'] },
     }
   },
   hr: {
     label: '人事模块',
     subModules: {
-      employee: { label: '员工管理' },
-      salary: { label: '工资管理' },
-      leave: { label: '请假管理' },
-      reimbursement: { label: '报销审批' },
+      employee: { label: '员工管理', actions: ['view', 'create', 'update', 'delete', 'view_sensitive'] },
+      salary: { label: '薪资查看', actions: ['view', 'create'] },
+      leave: { label: '请假管理', actions: ['view', 'create', 'update', 'delete', 'approve'] },
+      reimbursement: { label: '报销管理', actions: ['view', 'create', 'update', 'delete', 'approve'] },
     }
   },
   asset: {
     label: '资产模块',
     subModules: {
-      fixed: { label: '固定资产' },
-      rental: { label: '租赁管理' },
+      fixed: { label: '固定资产', actions: ['view', 'create', 'update', 'delete', 'allocate'] },
+      rental: { label: '租赁管理', actions: ['view', 'create', 'update', 'delete'] },
     }
   },
   site: {
     label: '站点模块',
     subModules: {
-      info: { label: '站点信息' },
-      bill: { label: '站点账单' },
+      info: { label: '站点信息', actions: ['view', 'create', 'update', 'delete'] },
+      bill: { label: '费用账单', actions: ['view', 'create', 'update', 'delete'] },
     }
   },
   report: {
     label: '报表模块',
     subModules: {
-      view: { label: '报表查看' },
-      export: { label: '报表导出' },
+      view: { label: '报表查看', actions: ['view'] },
+      export: { label: '报表导出', actions: ['export'] },
     }
   },
   system: {
     label: '系统模块',
     subModules: {
-      user: { label: '用户管理' },
-      position: { label: '职位管理' },
-      department: { label: '项目管理' },
-      audit: { label: '审计日志' },
-      config: { label: '系统配置' },
+      user: { label: '用户管理', actions: ['view', 'create', 'update', 'delete'] },
+      position: { label: '职位管理', actions: ['view', 'create', 'update', 'delete'] },
+      department: { label: '项目管理', actions: ['view', 'create', 'update', 'delete'] },
+      audit: { label: '审计日志', actions: ['view'] },
+      config: { label: '系统配置', actions: ['view', 'update'] },
     }
   },
   self: {
     label: '个人模块',
     subModules: {
-      leave: { label: '我的请假' },
-      reimbursement: { label: '我的报销' },
-      salary: { label: '我的工资' },
-      asset: { label: '我的资产' },
-      borrowing: { label: '我的借支' },
+      leave: { label: '我的请假', actions: ['view', 'create'] },
+      reimbursement: { label: '我的报销', actions: ['view', 'create'] },
+      salary: { label: '我的工资', actions: ['view'] },
+      asset: { label: '我的资产', actions: ['view'] },
+      borrowing: { label: '我的借支', actions: ['view'] },
     }
   },
 }
@@ -94,15 +102,31 @@ const LEVEL_LABELS: Record<number, string> = {
   3: '组',
 }
 
-// 职能角色选项
-const FUNCTION_ROLE_LABELS: Record<string, string> = {
-  director: '主管',
-  hr: '人事',
-  finance: '财务',
-  admin: '行政',
-  developer: '开发',
-  support: '客服',
-  member: '工程师',
+// 权限摘要显示
+function PermissionSummary({ permissions }: { permissions: any }) {
+  const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
+
+  const moduleCounts: string[] = []
+  Object.entries(PERMISSION_MODULES).forEach(([moduleKey, moduleConfig]) => {
+    const modulePerms = perms[moduleKey]
+    if (modulePerms && Object.keys(modulePerms).length > 0) {
+      const subCount = Object.keys(modulePerms).length
+      const totalSubs = Object.keys(moduleConfig.subModules).length
+      moduleCounts.push(`${moduleConfig.label.replace('模块', '')}(${subCount}/${totalSubs})`)
+    }
+  })
+
+  if (moduleCounts.length === 0) {
+    return <Tag color="default">无权限</Tag>
+  }
+
+  return (
+    <Space wrap size={[4, 4]}>
+      {moduleCounts.map((m, i) => (
+        <Tag key={i} color="blue">{m}</Tag>
+      ))}
+    </Space>
+  )
 }
 
 // 权限详情展示
@@ -146,37 +170,152 @@ function PermissionDetail({ permissions }: { permissions: any }) {
   )
 }
 
-// 权限摘要显示
-function PermissionSummary({ permissions }: { permissions: any }) {
-  const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
+// 权限编辑表单 - 使用内部 state 管理
+function PermissionEditForm({
+  initialPermissions,
+  onChange
+}: {
+  initialPermissions: Record<string, Record<string, string[]>>
+  onChange: (perms: Record<string, Record<string, string[]>>) => void
+}) {
+  const [permissions, setPermissions] = useState<Record<string, Record<string, string[]>>>({})
 
-  const moduleCounts: string[] = []
-  Object.entries(PERMISSION_MODULES).forEach(([moduleKey, moduleConfig]) => {
-    const modulePerms = perms[moduleKey]
-    if (modulePerms && Object.keys(modulePerms).length > 0) {
-      const subCount = Object.keys(modulePerms).length
-      const totalSubs = Object.keys(moduleConfig.subModules).length
-      moduleCounts.push(`${moduleConfig.label.replace('模块', '')}(${subCount}/${totalSubs})`)
-    }
-  })
+  // 初始化权限
+  useEffect(() => {
+    setPermissions(initialPermissions || {})
+  }, [initialPermissions])
 
-  if (moduleCounts.length === 0) {
-    return <Tag color="default">无权限</Tag>
+  const isChecked = (module: string, subModule: string, action: string) => {
+    return permissions[module]?.[subModule]?.includes(action) || false
+  }
+
+  const toggleAction = (module: string, subModule: string, action: string, checked: boolean) => {
+    setPermissions(prev => {
+      const newPerms = JSON.parse(JSON.stringify(prev)) // 深拷贝
+      if (!newPerms[module]) newPerms[module] = {}
+      if (!newPerms[module][subModule]) newPerms[module][subModule] = []
+
+      const actions = [...newPerms[module][subModule]]
+      if (checked) {
+        if (!actions.includes(action)) actions.push(action)
+      } else {
+        const idx = actions.indexOf(action)
+        if (idx >= 0) actions.splice(idx, 1)
+      }
+
+      newPerms[module][subModule] = actions
+
+      if (actions.length === 0) {
+        delete newPerms[module][subModule]
+        if (Object.keys(newPerms[module]).length === 0) {
+          delete newPerms[module]
+        }
+      }
+
+      // 通知父组件
+      onChange(newPerms)
+      return newPerms
+    })
+  }
+
+  const toggleSubModule = (module: string, subModule: string, checked: boolean) => {
+    const actions = PERMISSION_MODULES[module].subModules[subModule].actions
+    setPermissions(prev => {
+      const newPerms = JSON.parse(JSON.stringify(prev))
+      if (!newPerms[module]) newPerms[module] = {}
+
+      if (checked) {
+        newPerms[module][subModule] = [...actions]
+      } else {
+        delete newPerms[module][subModule]
+        if (Object.keys(newPerms[module]).length === 0) {
+          delete newPerms[module]
+        }
+      }
+
+      onChange(newPerms)
+      return newPerms
+    })
+  }
+
+  const isSubModuleAllChecked = (module: string, subModule: string) => {
+    const actions = PERMISSION_MODULES[module].subModules[subModule].actions
+    return actions.every(action => isChecked(module, subModule, action))
+  }
+
+  const isSubModulePartialChecked = (module: string, subModule: string) => {
+    const actions = PERMISSION_MODULES[module].subModules[subModule].actions
+    const checkedCount = actions.filter(action => isChecked(module, subModule, action)).length
+    return checkedCount > 0 && checkedCount < actions.length
   }
 
   return (
-    <Space wrap size={[4, 4]}>
-      {moduleCounts.map((m, i) => (
-        <Tag key={i} color="blue">{m}</Tag>
+    <Collapse size="small" defaultActiveKey={['finance', 'hr', 'asset', 'site', 'report', 'system', 'self']}>
+      {Object.entries(PERMISSION_MODULES).map(([moduleKey, moduleConfig]) => (
+        <Panel header={moduleConfig.label} key={moduleKey}>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {Object.entries(moduleConfig.subModules).map(([subKey, subConfig]) => (
+              <div key={subKey} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
+                <Checkbox
+                  checked={isSubModuleAllChecked(moduleKey, subKey)}
+                  indeterminate={isSubModulePartialChecked(moduleKey, subKey)}
+                  onChange={(e) => toggleSubModule(moduleKey, subKey, e.target.checked)}
+                >
+                  <span style={{ fontWeight: 500, minWidth: 80, display: 'inline-block' }}>{subConfig.label}</span>
+                </Checkbox>
+                <Space size={4} wrap>
+                  {subConfig.actions.map(action => (
+                    <Checkbox
+                      key={action}
+                      checked={isChecked(moduleKey, subKey, action)}
+                      onChange={(e) => toggleAction(moduleKey, subKey, action, e.target.checked)}
+                    >
+                      {ACTION_LABELS[action] || action}
+                    </Checkbox>
+                  ))}
+                </Space>
+              </div>
+            ))}
+          </div>
+        </Panel>
       ))}
-    </Space>
+    </Collapse>
   )
 }
 
-import { PageContainer } from '../../../components/PageContainer'
-
 export function PositionPermissionsManagement() {
   const { data: positions = [], isLoading, refetch } = usePositions()
+  const modal = useFormModal<Position>()
+  const [form] = Form.useForm()
+  const { hasPermission } = usePermissions()
+  const canEdit = hasPermission('system', 'position', 'update')
+
+  // 编辑权限状态
+  const [editingPermissions, setEditingPermissions] = useState<Record<string, Record<string, string[]>>>({})
+
+  // 编辑时初始化
+  useEffect(() => {
+    if (modal.isEdit && modal.data) {
+      const perms = typeof modal.data.permissions === 'string'
+        ? JSON.parse(modal.data.permissions || '{}')
+        : modal.data.permissions || {}
+      setEditingPermissions(perms)
+    }
+  }, [modal.isEdit, modal.data])
+
+  const handleSubmit = useMemo(() => async () => {
+    if (!modal.data) return
+    try {
+      await apiClient.put(`${api.positions}/${modal.data.id}`, {
+        permissions: editingPermissions
+      })
+      message.success('权限保存成功')
+      modal.close()
+      refetch()
+    } catch (error: any) {
+      message.error(error.message || '保存失败')
+    }
+  }, [modal, editingPermissions, refetch])
 
   const columns: ColumnsType<any> = [
     { title: '职位代码', dataIndex: 'code', width: 140 },
@@ -186,12 +325,6 @@ export function PositionPermissionsManagement() {
       dataIndex: 'level',
       width: 80,
       render: (v: number) => <Tag>{LEVEL_LABELS[v] || v}</Tag>
-    },
-    {
-      title: '职能',
-      dataIndex: 'function_role',
-      width: 80,
-      render: (v: string) => <Tag color="cyan">{FUNCTION_ROLE_LABELS[v] || v}</Tag>
     },
     {
       title: '管理下属',
@@ -212,6 +345,19 @@ export function PositionPermissionsManagement() {
       width: 70,
       render: (v: number) => v === 1 ? <Tag color="green">启用</Tag> : <Tag color="red">禁用</Tag>
     },
+    {
+      title: '操作',
+      width: 100,
+      render: (_: any, record: Position) => (
+        <ActionColumn
+          record={record}
+          canEdit={canEdit}
+          canDelete={false}
+          onEdit={() => modal.openEdit(record)}
+          editText="编辑权限"
+        />
+      )
+    }
   ]
 
   return (
@@ -219,21 +365,10 @@ export function PositionPermissionsManagement() {
       title="权限管理"
       breadcrumb={[{ title: '系统设置' }, { title: '权限管理' }]}
     >
-      <Card
-        title={
-          <Space>
-            <span>权限管理</span>
-            <Tooltip title="职位权限由系统预设，如需调整请联系系统管理员">
-              <InfoCircleOutlined style={{ color: '#1890ff', cursor: 'pointer' }} />
-            </Tooltip>
-          </Space>
-        }
-        extra={
+      <Card bordered={false} className="page-card">
+        <Space style={{ marginBottom: 12 }}>
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
-        }
-        className="page-card"
-        bordered={false}
-      >
+        </Space>
         <Table
           className="table-striped"
           columns={columns}
@@ -241,7 +376,7 @@ export function PositionPermissionsManagement() {
           rowKey="id"
           loading={isLoading}
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 1100 }}
           locale={{ emptyText: '暂无职位数据' }}
           expandable={{
             expandedRowRender: (record) => (
@@ -259,6 +394,23 @@ export function PositionPermissionsManagement() {
           }}
         />
       </Card>
+
+      <FormModal
+        title={modal.data ? `编辑权限：${modal.data.name}` : '编辑权限'}
+        open={modal.isEdit}
+        form={form}
+        onSubmit={handleSubmit}
+        onCancel={() => {
+          modal.close()
+          setEditingPermissions({})
+        }}
+        width={900}
+      >
+        <PermissionEditForm
+          initialPermissions={editingPermissions}
+          onChange={setEditingPermissions}
+        />
+      </FormModal>
     </PageContainer>
   )
 }

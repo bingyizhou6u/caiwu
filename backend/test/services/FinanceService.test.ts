@@ -3,7 +3,8 @@ import { env } from 'cloudflare:test'
 import { FinanceService } from '../../src/services/FinanceService'
 import { createDb } from '../../src/utils/db'
 import { uuid } from '../../src/utils/db'
-import { accounts, categories, sites, departments, users, employees, currencies } from '../../src/db/schema'
+import { accounts, categories, sites, departments, users, employees, currencies, accountTransactions } from '../../src/db/schema'
+import { eq } from 'drizzle-orm'
 import schemaSql from '../../src/db/schema.sql?raw'
 
 async function applySchema(db: any) {
@@ -282,6 +283,54 @@ describe('FinanceService', () => {
 
             const result = await service.deleteSiteBill(id)
             expect(result.ok).toBe(true)
+        })
+    })
+
+    describe('Balance Calculation', () => {
+        it('should handle backdated transactions (snapshot behavior)', async () => {
+            // 1. Create Initial Transaction (T1) on 2023-01-10
+            const t1 = await service.createCashFlow({
+                bizDate: '2023-01-10',
+                type: 'income',
+                accountId,
+                amountCents: 1000,
+                createdBy: userId
+            })
+
+            // 2. Create Future Transaction (T2) on 2023-01-20
+            const t2 = await service.createCashFlow({
+                bizDate: '2023-01-20',
+                type: 'income',
+                accountId,
+                amountCents: 2000,
+                createdBy: userId
+            })
+
+            // 3. Backdate Transaction (T3) on 2023-01-15 (Between T1 and T2)
+            const t3 = await service.createCashFlow({
+                bizDate: '2023-01-15',
+                type: 'income',
+                accountId,
+                amountCents: 500,
+                createdBy: userId
+            })
+
+            // Verify Balances
+            // T1 Balance: Opening(100000) + 1000 = 101000
+            // T2 Balance: T1_Balance(101000) + 2000 = 103000 (Calculated at creation time)
+            // T3 Balance: T1_Balance(101000) + 500 = 101500 (Calculated at creation time, finding T1 as last before)
+
+            // Fetch transaction records to verify snapshots
+            const txs = await db.select().from(accountTransactions).where(eq(accountTransactions.accountId, accountId)).orderBy(accountTransactions.transactionDate).execute()
+            
+            // Note: DB returns all. Let's find by flowId
+            const tx1 = txs.find((t: any) => t.flowId === t1.id)
+            const tx2 = txs.find((t: any) => t.flowId === t2.id)
+            const tx3 = txs.find((t: any) => t.flowId === t3.id)
+
+            expect(tx1.balanceAfterCents).toBe(101000)
+            expect(tx2.balanceAfterCents).toBe(103000) // T2 is NOT recalculated
+            expect(tx3.balanceAfterCents).toBe(101500) // T3 is based on T1
         })
     })
 })

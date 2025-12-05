@@ -2,6 +2,7 @@
     min-height: 100vh;
 }
 
+/* ========== SIDEBAR ========== */
 .main-sider {
     overflow: auto;
     height: 100vh;
@@ -10,14 +11,33 @@
     top: 0;
     bottom: 0;
     z-index: 1001;
-    background: var(--sidebar-bg) !important;
-    backdrop-filter: blur(10px);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
 }
 
+/* Custom Scrollbar for Sidebar */
+.main-sider::-webkit-scrollbar {
+    width: 4px;
+}
+
+.main-sider::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.main-sider::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.main-sider::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Logo */
 .logo-container {
     height: 64px;
-    margin: 16px 16px 24px 16px;
+    margin: 16px 16px 32px 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -27,86 +47,205 @@
     font-size: 20px;
     transition: var(--transition-base);
     letter-spacing: 0.5px;
-    /* Removed boxed background for cleaner look */
+    position: relative;
+}
+
+.logo-container::after {
+    content: '';
+    position: absolute;
+    bottom: -16px;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
 }
 
 .logo-icon {
-    font-size: 28px;
-    color: var(--color-primary);
-    filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
+    font-size: 32px;
+    color: #818cf8;
+    filter: drop-shadow(0 0 16px rgba(129, 140, 248, 0.7));
+    animation: logoPulse 3s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 16px rgba(129, 140, 248, 0.7));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 24px rgba(129, 140, 248, 0.9));
+    }
 }
 
 .logo-text {
-    background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+    background: linear-gradient(135deg, #fff 0%, #c7d2fe 100%);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    font-size: 22px;
+    letter-spacing: 1px;
 }
 
 .logo-container.collapsed {
-    margin: 16px 8px;
+    margin: 16px 8px 32px 8px;
 }
 
-.main-content-layout {
-    transition: var(--transition-base);
-    background: var(--color-bg-layout);
+.logo-container.collapsed::after {
+    left: 8px;
+    right: 8px;
 }
 
-/* Sidebar Menu Customization */
+/* ========== MENU STYLES ========== */
 .main-sider .ant-menu.ant-menu-dark {
     background: transparent;
-    padding: 0 8px;
+    padding: 0 12px;
 }
 
+/* Menu Item Base */
 .main-sider .ant-menu-dark .ant-menu-item {
-    border-radius: 8px;
-    /* Pill shape */
+    border-radius: 10px;
     margin: 4px 0;
-    width: 100%;
-    transition: all 0.3s;
-    height: 44px;
-    line-height: 44px;
+    height: 46px;
+    line-height: 46px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 14px;
+    position: relative;
+    overflow: hidden;
 }
 
-.main-sider .ant-menu-dark .ant-menu-item-selected {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
+.main-sider .ant-menu-dark .ant-menu-item .anticon {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+/* Menu Item Hover */
+.main-sider .ant-menu-dark .ant-menu-item:hover {
+    background: rgba(99, 102, 241, 0.12);
     color: #fff;
+}
+
+.main-sider .ant-menu-dark .ant-menu-item:hover .anticon {
+    transform: scale(1.1);
+}
+
+/* Menu Item Selected */
+.main-sider .ant-menu-dark .ant-menu-item-selected {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0.08) 100%) !important;
+    color: #fff !important;
     font-weight: 500;
-    position: relative;
 }
 
 .main-sider .ant-menu-dark .ant-menu-item-selected::before {
     content: '';
     position: absolute;
     left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 3px;
-    background: var(--color-primary);
+    top: 6px;
+    bottom: 6px;
+    width: 4px;
+    background: linear-gradient(180deg, #818cf8 0%, #6366f1 100%);
     border-radius: 0 4px 4px 0;
-    box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 12px rgba(129, 140, 248, 0.8);
 }
 
+.main-sider .ant-menu-dark .ant-menu-item-selected::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.05));
+    pointer-events: none;
+}
+
+/* Submenu Title */
+.main-sider .ant-menu-dark .ant-menu-submenu-title {
+    border-radius: 10px;
+    margin: 4px 0;
+    height: 46px;
+    line-height: 46px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 14px;
+}
+
+.main-sider .ant-menu-dark .ant-menu-submenu-title .anticon {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.main-sider .ant-menu-dark .ant-menu-submenu-title:hover {
+    background: rgba(99, 102, 241, 0.12);
+    color: #fff;
+}
+
+.main-sider .ant-menu-dark .ant-menu-submenu-title:hover .anticon {
+    transform: scale(1.1);
+}
+
+/* Submenu Arrow */
+.main-sider .ant-menu-dark .ant-menu-submenu-arrow {
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.3s ease;
+}
+
+.main-sider .ant-menu-dark .ant-menu-submenu-title:hover .ant-menu-submenu-arrow {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Submenu Open State */
+.main-sider .ant-menu-dark .ant-menu-submenu-open>.ant-menu-submenu-title {
+    color: #fff;
+    background: rgba(99, 102, 241, 0.08);
+}
+
+/* Submenu Container */
 .main-sider .ant-menu-dark .ant-menu-sub {
-    background: rgba(0, 0, 0, 0.2) !important;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15) !important;
+    border-radius: 10px;
+    padding: 4px 0;
+    margin-top: 4px;
 }
 
-/* Header Polish */
+.main-sider .ant-menu-dark .ant-menu-sub .ant-menu-item {
+    height: 40px;
+    line-height: 40px;
+    margin: 2px 4px;
+    padding-left: 48px !important;
+    font-size: 13px;
+}
+
+/* Menu Group Title */
+.main-sider .ant-menu-dark .ant-menu-item-group-title {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 16px 16px 8px;
+}
+
+/* ========== HEADER ========== */
+.main-content-layout {
+    transition: var(--transition-base);
+    background: var(--color-bg-layout);
+}
+
 .main-header {
     padding: 0 24px;
-    background: rgba(255, 255, 255, 0.85) !important;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02);
-    /* Very subtle shadow */
-    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
     height: 64px;
 }
 
@@ -114,7 +253,7 @@
     font-size: 18px;
     width: 40px;
     height: 40px;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -124,8 +263,13 @@
 }
 
 .trigger-btn:hover {
-    color: var(--color-text-primary);
-    background: rgba(0, 0, 0, 0.04);
+    color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.08);
+    transform: scale(1.05);
+}
+
+.trigger-btn:active {
+    transform: scale(0.95);
 }
 
 .header-right {
@@ -138,22 +282,22 @@
     cursor: pointer;
     display: flex;
     align-items: center;
-    padding: 4px 8px 4px 4px;
-    border-radius: 24px;
+    padding: 4px 12px 4px 4px;
+    border-radius: 28px;
     transition: all 0.3s;
     border: 1px solid transparent;
 }
 
 .user-dropdown:hover {
-    background-color: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border-color: rgba(0, 0, 0, 0.05);
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: rgba(99, 102, 241, 0.15);
 }
 
 .user-avatar {
-    background: linear-gradient(135deg, var(--color-primary) 0%, #818cf8 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
     margin-right: 10px;
-    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
     border: 2px solid white;
 }
 
@@ -164,41 +308,44 @@
     font-size: 14px;
 }
 
-/* Global Search Polish */
+/* ========== GLOBAL SEARCH ========== */
 .global-search-input {
     width: 240px;
-    transition: all 0.3s;
-    background: rgba(0, 0, 0, 0.04) !important;
-    border-radius: 8px !important;
-    height: 36px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-radius: 10px !important;
+    height: 38px !important;
 }
 
-.global-search-input:hover,
+.global-search-input:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
 .global-search-input:focus-within {
     width: 320px;
     background: white !important;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
 .global-search-input .ant-select-selector {
-    height: 36px !important;
-    padding: 0 12px !important;
+    height: 38px !important;
+    padding: 0 14px !important;
+    border-radius: 10px !important;
 }
 
 .global-search-input .ant-select-selection-placeholder {
-    line-height: 36px !important;
+    line-height: 38px !important;
     font-size: 13px;
-    color: var(--color-text-secondary);
+    color: var(--color-text-tertiary);
 }
 
 .global-search-input .ant-select-selection-search-input {
-    height: 36px !important;
+    height: 38px !important;
 }
 
-/* Content Area */
+/* ========== CONTENT AREA ========== */
 .main-content {
     margin: 0;
-    /* Tabs handle top spacing */
     overflow: initial;
     display: flex;
     flex-direction: column;
@@ -210,15 +357,15 @@
     background: var(--color-bg-container);
     border-radius: var(--radius-lg);
     margin: 16px;
-    box-shadow: var(--shadow-card);
-    /* Fade in animation for content */
-    animation: fadeIn 0.3s ease-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--color-border);
+    animation: contentFadeIn 0.3s ease-out;
 }
 
-@keyframes fadeIn {
+@keyframes contentFadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
     }
 
     to {
@@ -227,19 +374,49 @@
     }
 }
 
-/* User Menu Dropdown */
+/* ========== USER MENU DROPDOWN ========== */
 .user-menu-profile {
-    padding: 4px 0;
-    min-width: 120px;
+    padding: 8px 4px;
+    min-width: 140px;
 }
 
 .user-menu-name {
     font-weight: 600;
     color: var(--color-text-primary);
     margin-bottom: 2px;
+    font-size: 14px;
 }
 
 .user-menu-email {
     font-size: 12px;
     color: var(--color-text-secondary);
+}
+
+/* ========== COLLAPSED STATE ========== */
+.main-sider.ant-layout-sider-collapsed .ant-menu-item {
+    padding: 0 !important;
+    text-align: center;
+}
+
+.main-sider.ant-layout-sider-collapsed .ant-menu-item .anticon {
+    margin: 0;
+    font-size: 20px;
+}
+
+.main-sider.ant-layout-sider-collapsed .ant-menu-submenu-title {
+    padding: 0 !important;
+    text-align: center;
+}
+
+.main-sider.ant-layout-sider-collapsed .ant-menu-submenu-title .anticon {
+    margin: 0;
+    font-size: 20px;
+}
+
+/* Tooltip for collapsed menu */
+.ant-menu-inline-collapsed-tooltip .ant-tooltip-inner {
+    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 500;
 }

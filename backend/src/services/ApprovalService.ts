@@ -200,6 +200,10 @@ export class ApprovalService {
         if (!reimbursement) throw Errors.NOT_FOUND('报销记录');
         if (reimbursement.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
+        const employeeService = new EmployeeService(this.db);
+        const subordinateIds = await employeeService.getSubordinateEmployeeIds(userId);
+        if (!subordinateIds.includes(reimbursement.employeeId)) throw Errors.FORBIDDEN('无权审批');
+
         const now = Date.now();
         await this.db.update(schema.expenseReimbursements).set({
             status: 'approved',
@@ -214,6 +218,10 @@ export class ApprovalService {
         const reimbursement = await this.db.select().from(schema.expenseReimbursements).where(eq(schema.expenseReimbursements.id, id)).get();
         if (!reimbursement) throw Errors.NOT_FOUND('报销记录');
         if (reimbursement.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+
+        const employeeService = new EmployeeService(this.db);
+        const subordinateIds = await employeeService.getSubordinateEmployeeIds(userId);
+        if (!subordinateIds.includes(reimbursement.employeeId)) throw Errors.FORBIDDEN('无权审批');
 
         const now = Date.now();
         await this.db.update(schema.expenseReimbursements).set({
@@ -230,6 +238,16 @@ export class ApprovalService {
         if (!borrowing) throw Errors.NOT_FOUND('借支记录');
         if (borrowing.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
+        const employeeService = new EmployeeService(this.db);
+        const subordinateIds = await employeeService.getSubordinateEmployeeIds(userId);
+        
+        // Borrowing is linked to userId, need to check if user maps to a subordinate employee
+        const borrowerUser = await this.db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, borrowing.userId)).get();
+        if (!borrowerUser) throw Errors.FORBIDDEN('无法找到申请人信息');
+
+        const borrowerEmployee = await this.db.select().from(schema.employees).where(eq(schema.employees.email, borrowerUser.email)).get();
+        if (!borrowerEmployee || !subordinateIds.includes(borrowerEmployee.id)) throw Errors.FORBIDDEN('无权审批');
+
         const now = Date.now();
         await this.db.update(schema.borrowings).set({
             status: 'approved',
@@ -243,6 +261,15 @@ export class ApprovalService {
         const borrowing = await this.db.select().from(schema.borrowings).where(eq(schema.borrowings.id, id)).get();
         if (!borrowing) throw Errors.NOT_FOUND('借支记录');
         if (borrowing.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+
+        const employeeService = new EmployeeService(this.db);
+        const subordinateIds = await employeeService.getSubordinateEmployeeIds(userId);
+
+        const borrowerUser = await this.db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, borrowing.userId)).get();
+        if (!borrowerUser) throw Errors.FORBIDDEN('无法找到申请人信息');
+
+        const borrowerEmployee = await this.db.select().from(schema.employees).where(eq(schema.employees.email, borrowerUser.email)).get();
+        if (!borrowerEmployee || !subordinateIds.includes(borrowerEmployee.id)) throw Errors.FORBIDDEN('无权审批');
 
         const now = Date.now();
         await this.db.update(schema.borrowings).set({
