@@ -1,0 +1,52 @@
+.employee-form .phone-code-select {
+    width: 30%;
+}
+
+.employee-form .phone-number-input {
+    width: 70%;
+}
+
+.employee-form .position-role {
+    color: var(--color-text-secondary);
+    margin-left: 8px;
+    font-size: 12px;
+}
+
+/* 成功模态框样式 */
+.success-modal-highlight {
+    margin-top: 8px;
+    font-weight: bold;
+    color: var(--color-primary);
+}
+
+.success-modal-info-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--color-bg-layout);
+    border-radius: 4px;
+}
+
+.success-modal-info-box p {
+    margin: 4px 0;
+}
+
+.success-text-bold {
+    margin: 8px 0;
+    color: var(--color-success);
+    font-weight: bold;
+}
+
+.error-text-small {
+    margin: 4px 0;
+    font-size: 12px;
+    color: var(--color-error);
+}
+
+.success-modal-warning-box {
+    margin-top: 12px;
+    padding: 10px;
+    background: #fff3cd;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #856404;
+}

@@ -1,0 +1,4 @@
+issue_date,due_date,amount,party_id,site_id,department_id,memo
+2025-01-10,2025-02-10,2000.00,party-id-003,site-id-001,dept-id-001,供应商C应付款
+2025-01-12,2025-02-12,1500.00,party-id-004,site-id-002,dept-id-001,供应商D应付款
+

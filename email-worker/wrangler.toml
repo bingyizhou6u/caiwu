@@ -1,0 +1,17 @@
+name = "caiwu-email"
+main = "src/index.ts"
+compatibility_date = "2024-11-21"
+compatibility_flags = ["nodejs_compat"]
+account_id = "611d1a2e53f6c6d0922ff231e6a63211"
+
+# Cloudflare built-in email binding
+[[send_email]]
+name = "EMAIL"
+
+[vars]
+# 邮件发件人（可按需调整，需在 Cloudflare Email Routing 域名下）
+EMAIL_FROM = "noreply@cloudflarets.com"
+
+# EMAIL_TOKEN 请使用 wrangler secret 设置，避免明文：
+# wrangler secret put EMAIL_TOKEN
+

@@ -1,0 +1,44 @@
+{
+  "name": "caiwu-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && npm run build-worker",
+    "build-worker": "esbuild _worker.ts --bundle --format=esm --outfile=dist/_worker.js --platform=neutral --target=es2022",
+    "preview": "vite preview --port 5173",
+    "test": "vitest",
+    "gen:types": "openapi-typescript ../backend/openapi.json -o src/types/schema.d.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.11",
+    "antd": "^5.19.2",
+    "dayjs": "^1.11.13",
+    "qrcode.react": "^4.2.0",
+    "rc-virtual-list": "^3.19.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.9.6",
+    "zod": "^4.1.13",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251014.0",
+    "@playwright/test": "^1.57.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^5.1.0",
+    "esbuild": "^0.25.11",
+    "jsdom": "^27.0.1",
+    "openapi-typescript": "^7.10.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8",
+    "vite-plugin-compression": "^0.5.1",
+    "vitest": "^3.2.4"
+  }
+}

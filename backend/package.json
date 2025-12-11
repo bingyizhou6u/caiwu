@@ -1,0 +1,42 @@
+{
+  "name": "caiwu-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy src/index.ts",
+    "migrate": "wrangler d1 execute caiwu-db --file src/db/schema.sql",
+    "migrate:all": "bash -c 'for file in src/db/migration_*.sql; do echo \"Running: $file\"; wrangler d1 execute caiwu-db --remote --file=\"$file\" || echo \"Failed or already applied: $file\"; done'",
+    "migrate:remote": "bash -c 'for file in src/db/migration_*.sql; do echo \"Running: $file\"; wrangler d1 execute caiwu-db --remote --file=\"$file\" || echo \"Failed or already applied: $file\"; done'",
+    "gen:openapi": "tsx scripts/export-openapi.ts",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.9",
+    "@cloudflare/workers-types": "^4.20251014.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.10.1",
+    "@types/uuid": "^10.0.0",
+    "better-sqlite3": "^12.5.0",
+    "drizzle-kit": "^0.31.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.4",
+    "vitest-mock-extended": "^3.1.0",
+    "wrangler": "^4.51.0"
+  },
+  "dependencies": {
+    "@cloudflare/mcp-server-cloudflare": "^0.2.0",
+    "@hono/swagger-ui": "^0.5.2",
+    "@hono/zod-openapi": "^0.18.3",
+    "bcryptjs": "^3.0.2",
+    "drizzle-orm": "^0.44.7",
+    "hono": "^4.5.5",
+    "mimetext": "^3.0.27",
+    "otplib": "^12.0.1",
+    "qrcode-svg": "^1.1.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.23.8"
+  }
+}

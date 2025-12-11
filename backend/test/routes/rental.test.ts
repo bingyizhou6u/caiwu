@@ -1,0 +1,266 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { Hono } from 'hono'
+import { rentalRoutes } from '../../src/routes/rental.js'
+import { Errors } from '../../src/utils/errors.js'
+import { v4 as uuid } from 'uuid'
+
+// Mock audit utils
+vi.mock('../../src/utils/audit.js', () => ({
+    logAuditAction: vi.fn(),
+}))
+
+// Mock permissions
+vi.mock('../../src/utils/permissions.js', () => ({
+    hasPermission: vi.fn(() => true),
+    getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager' })),
+}))
+
+const mockRentalService = {
+    listProperties: vi.fn(),
+    getProperty: vi.fn(),
+    createProperty: vi.fn(),
+    updateProperty: vi.fn(),
+    deleteProperty: vi.fn(),
+    listAllocations: vi.fn(),
+    allocateDormitory: vi.fn(),
+    returnDormitory: vi.fn(),
+    listPayments: vi.fn(),
+    createPayment: vi.fn(),
+    updatePayment: vi.fn(),
+    deletePayment: vi.fn(),
+    generatePayableBills: vi.fn(),
+    listPayableBills: vi.fn(),
+}
+
+describe('Rental Routes', () => {
+    let app: Hono<{ Variables: any }>
+    const validId = uuid()
+    const validPropId = uuid()
+    const validEmpId = uuid()
+    const validAccId = uuid()
+
+    beforeEach(() => {
+        app = new Hono()
+
+        // Mock middleware
+        app.use('*', async (c, next) => {
+            c.set('userId', 'user123')
+            c.set('services', {
+                rental: mockRentalService
+            } as any)
+            await next()
+        })
+
+        app.onError((err, c) => {
+            if (err instanceof Error && 'statusCode' in err) {
+                return c.json({ error: err.message }, (err as any).statusCode)
+            }
+            return c.json({ error: err.message }, 500)
+        })
+
+        app.route('/', rentalRoutes)
+    })
+
+    // --- Properties ---
+
+    it('should list properties', async () => {
+        const mockResult = [{ property: { id: validId, name: 'Office 1' } }]
+        mockRentalService.listProperties.mockResolvedValue(mockResult)
+
+        const res = await app.request('/rental-properties', {
+            method: 'GET',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ results: mockResult })
+    })
+
+    it('should get property details', async () => {
+        const mockResult = { id: validId, name: 'Office 1' }
+        mockRentalService.getProperty.mockResolvedValue(mockResult)
+
+        const res = await app.request(`/rental-properties/${validId}`, {
+            method: 'GET',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual(mockResult)
+    })
+
+    it('should create property', async () => {
+        const mockResult = { id: validId }
+        mockRentalService.createProperty.mockResolvedValue(mockResult)
+
+        const res = await app.request('/rental-properties', {
+            method: 'POST',
+            body: JSON.stringify({
+                propertyCode: 'P001',
+                name: 'Office 1',
+                propertyType: 'office',
+                currency: 'CNY',
+                rentType: 'monthly',
+                monthlyRentCents: 10000
+            }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ id: validId, propertyCode: 'P001' })
+    })
+
+    it('should update property', async () => {
+        mockRentalService.updateProperty.mockResolvedValue(undefined)
+
+        const res = await app.request(`/rental-properties/${validId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name: 'Office 1 Updated' }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ ok: true })
+    })
+
+    it('should delete property', async () => {
+        mockRentalService.deleteProperty.mockResolvedValue({ propertyCode: 'P001', name: 'Office 1' })
+
+        const res = await app.request(`/rental-properties/${validId}`, {
+            method: 'DELETE',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ ok: true })
+    })
+
+    // --- Allocations ---
+
+    it('should list allocations', async () => {
+        const mockResult = [{ allocation: { id: validId } }]
+        mockRentalService.listAllocations.mockResolvedValue(mockResult)
+
+        const res = await app.request('/rental-properties/allocations', {
+            method: 'GET',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ results: mockResult })
+    })
+
+    it('should allocate dormitory', async () => {
+        const mockResult = { id: validId }
+        mockRentalService.allocateDormitory.mockResolvedValue(mockResult)
+
+        const res = await app.request(`/rental-properties/${validPropId}/allocate-dormitory`, {
+            method: 'POST',
+            body: JSON.stringify({
+                employeeId: validEmpId,
+                allocationDate: '2023-01-01'
+            }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual(mockResult)
+    })
+
+    it('should return dormitory', async () => {
+        mockRentalService.returnDormitory.mockResolvedValue(undefined)
+
+        const res = await app.request(`/rental-properties/allocations/${validId}/return`, {
+            method: 'POST',
+            body: JSON.stringify({
+                returnDate: '2023-02-01'
+            }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ ok: true })
+    })
+
+    // --- Payments ---
+
+    it('should list payments', async () => {
+        const mockResult = [{ payment: { id: validId } }]
+        mockRentalService.listPayments.mockResolvedValue(mockResult)
+
+        const res = await app.request('/rental-payments', {
+            method: 'GET',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ results: mockResult })
+    })
+
+    it('should create payment', async () => {
+        const mockResult = { id: validId, flowId: 'f1', voucherNo: 'v1' }
+        mockRentalService.createPayment.mockResolvedValue(mockResult)
+
+        const res = await app.request('/rental-payments', {
+            method: 'POST',
+            body: JSON.stringify({
+                propertyId: validPropId,
+                paymentDate: '2023-01-01',
+                year: 2023,
+                month: 1,
+                amountCents: 1000,
+                currency: 'CNY',
+                accountId: validAccId
+            }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ id: validId, flowId: 'f1', voucherNo: 'v1' })
+    })
+
+    it('should update payment', async () => {
+        mockRentalService.updatePayment.mockResolvedValue(undefined)
+
+        const res = await app.request(`/rental-payments/${validId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ amountCents: 2000 }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ ok: true })
+    })
+
+    it('should delete payment', async () => {
+        mockRentalService.deletePayment.mockResolvedValue({ propertyId: validPropId, year: 2023, month: 1 })
+
+        const res = await app.request(`/rental-payments/${validId}`, {
+            method: 'DELETE',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ ok: true })
+    })
+
+    // --- Bills ---
+
+    it('should generate payable bills', async () => {
+        const mockResult = { generated: 1, bills: [{ id: validId }] }
+        mockRentalService.generatePayableBills.mockResolvedValue(mockResult)
+
+        const res = await app.request('/rental-properties/generate-payable-bills', {
+            method: 'POST',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual(mockResult)
+    })
+
+    it('should list payable bills', async () => {
+        const mockResult = [{ bill: { id: validId } }]
+        mockRentalService.listPayableBills.mockResolvedValue(mockResult)
+
+        const res = await app.request('/rental-payable-bills', {
+            method: 'GET',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ results: mockResult })
+    })
+})

@@ -1,0 +1,412 @@
+# AR公司财务管理系统 - AI 助手配置
+
+> 本文件为 Antigravity AI 助手提供项目上下文，每次对话时自动加载。
+
+---
+
+## 项目概述
+
+**项目名称**: caiwu-main  
+**类型**: 企业财务管理系统  
+**技术栈**: React + TypeScript + Vite (前端) | Hono + Cloudflare Workers + D1 (后端)  
+**语言**: 代码用英文，注释和文档用中文  
+**开发阶段**: **测试阶段** (开发过程中不考虑兼容性问题，优先使用最新特性)
+
+
+---
+
+## 🚨 核心架构事实 (必读)
+
+> **请始终牢记以下事实，不要重复询问：**
+
+1. **部署架构**:
+   - **前端**: Cloudflare Pages
+   - **后端**: Cloudflare Workers
+   - **数据库**: Cloudflare D1 (SQLite)
+   - **存储**: Cloudflare R2 & KV
+
+2. **关键技术决策**:
+   - **ORM**: 必须使用 **Drizzle ORM** (严禁使用 Prisma)
+   - **状态管理**: 必须使用 **React Query** (严禁使用 Redux)
+   - **用户表**: 严禁寻找 `users` 表，所有用户数据都在 `employees` 表中
+   - **金额格式**: 所有金额以 **整数 (cents)** 存储
+
+---
+
+## 核心技术决策
+
+### 已确定的架构决策
+
+1. **权限系统**: 5层安全架构
+   - 网络层: IP白名单
+   - 认证层: JWT + TOTP双因素
+   - 功能权限层: RBAC基于职位
+   - 数据范围层: getDataAccessFilter
+   - 审批流程层: ApprovalService
+3. **用户模型**: 已删除 `users` 表，用户信息合并到 `employees` 表
+4. **前端状态**: 使用 React Query 管理服务端状态，不用 Redux
+5. **UI组件库**: Ant Design
+6. **部署平台**: Cloudflare Workers + Pages
+
+### 编码规范
+
+- 后端服务类命名: `XxxService.ts`
+- 后端路由命名: `xxx.ts` (小写复数)
+- 前端页面命名: `XxxPage.tsx`
+- API 路径: `/api/xxx`
+
+---
+
+## 关键目录结构
+
+```
+backend/src/
+├── services/      # 业务逻辑层 (重要)
+├── routes/        # API 路由
+├── db/schema.ts   # 数据库表定义 (核心)
+├── middleware/    # 中间件
+└── utils/permissions.ts  # 权限定义
+
+frontend/src/
+├── features/      # 功能模块 (按业务划分)
+├── hooks/         # 自定义 Hooks
+├── components/    # 公共组件
+└── config/menu.ts # 菜单配置
+```
+
+---
+
+## 项目文档
+
+完整文档位于 `.qoder/repowiki/zh/content/`，包含：
+- 系统概述和快速入门
+- 核心功能模块说明
+- API 参考文档
+- 数据库设计文档
+- 认证与权限系统说明
+
+**知识索引**: `.agent/KNOWLEDGE_INDEX.md`
+
+---
+
+## 当前开发重点
+
+- 财务流程优化
+- 报表功能完善
+- 性能优化
+
+---
+
+## 用户偏好
+
+- 回复语言: **中文**
+- 代码注释: **中文**
+- 解释风格: **简洁直接**
+- 错误处理: **详细说明原因**
+
+---
+
+## 常用命令
+
+```bash
+# 启动开发环境
+cd backend && npm run dev    # 后端 :8787
+cd frontend && npm run dev   # 前端 :5173
+
+# 数据库迁移
+cd backend && npm run migrate:all
+
+# 运行测试
+cd backend && npm test
+cd frontend && npx playwright test
+```
+
+---
+
+## 注意事项
+
+1. 后端运行在 Cloudflare Workers 环境，不支持 Node.js 原生 API
+2. 数据库是 SQLite (D1)，语法与 MySQL 不同
+3. 修改 schema.ts 后需要生成迁移文件
+4. 敏感信息（密码、API Key）不要硬编码
+
+---
+
+## 核心数据表
+
+### 组织架构
+| 表名 | 说明 | 关键字段 |
+|------|------|---------|
+| `employees` | 员工信息（含认证） | id, email, name, positionId, departmentId, passwordHash, totpSecret |
+| `positions` | 职位定义 | code, level, functionRole, permissions |
+| `departments` | 项目/部门 | hqId, name |
+| `headquarters` | 总部 | name |
+| `orgDepartments` | 组织架构部门 | projectId, parentId, allowedModules |
+
+### 财务相关
+| 表名 | 说明 | 关键字段 |
+|------|------|---------|
+| `accounts` | 账户 | name, type, currency, openingCents |
+| `cashFlows` | 现金流水 | type(income/expense), accountId, amountCents |
+| `arApDocs` | 应收应付单据 | kind(AR/AP), amountCents, status |
+| `settlements` | 结算记录 | docId, flowId, settleAmountCents |
+| `accountTransfers` | 账户转账 | fromAccountId, toAccountId, exchangeRate |
+
+### 薪资补贴
+| 表名 | 说明 | 关键字段 |
+|------|------|---------|
+| `employeeSalaries` | 员工薪资标准 | salaryType(probation/regular), amountCents |
+| `salaryPayments` | 薪资发放记录 | status, allocationStatus |
+| `salaryPaymentAllocations` | 薪资分配（多币种） | currencyId, amountCents |
+| `employeeAllowances` | 员工补贴标准 | allowanceType, amountCents |
+| `allowancePayments` | 补贴发放记录 | year, month, paymentDate |
+
+### 资产管理
+| 表名 | 说明 | 关键字段 |
+|------|------|---------|
+| `fixedAssets` | 固定资产 | assetCode, status, currentValueCents |
+| `fixedAssetAllocations` | 资产分配 | assetId, employeeId |
+| `rentalProperties` | 租赁物业 | propertyType, monthlyRentCents |
+| `dormitoryAllocations` | 宿舍分配 | propertyId, employeeId |
+
+### 借款报销
+| 表名 | 说明 | 关键字段 |
+|------|------|---------|
+| `borrowings` | 借款 | userId, amountCents, status |
+| `repayments` | 还款 | borrowingId, amountCents |
+| `expenseReimbursements` | 费用报销 | expenseType, status |
+
+---
+
+## 核心业务流程
+
+### 1. 薪资发放流程
+```
+生成薪资 → 员工确认 → 财务审批 → 货币分配申请 → 分配审批 → 转账支付 → 确认完成
+```
+状态流转: `pending_employee_confirmation` → `pending_finance_approval` → `pending_payment` → `pending_payment_confirmation` → `completed`
+
+### 2. 借款流程
+```
+员工申请借款 → 审批 → 放款（创建流水） → 还款（多次） → 结清
+```
+状态: `pending` → `approved` → `outstanding` → `partial` → `repaid`
+
+### 3. 应收应付结算
+```
+创建 AR/AP 单据 → 关联现金流水 → 创建结算记录 → 更新单据状态
+```
+状态: `open` → `partial` → `settled`
+
+### 4. 员工入职流程
+```
+创建员工 → 设置薪资/补贴 → 发送激活邮件 → 首次登录改密码 → 绑定 TOTP
+```
+
+### 5. 2FA 重置流程 (设备丢失)
+- **自主重置**: 登录页点击"2FA设备丢失" → 输入邮箱 → 收取重置邮件 → 点击链接确认 → 2FA移除 → 密码登录
+- **管理员重置**: 管理员在"人员管理" → 找到员工 → 点击"重置2FA" → 确认操作 → 2FA移除
+
+---
+
+## 关键服务类
+
+| 服务 | 职责 | 关键方法 |
+|------|------|---------|
+| `EmployeeService` | 员工 CRUD、状态管理 | create, update, changeStatus |
+| `AuthService` | 认证、JWT、密码 | login, verifyTotp, changePassword |
+| `FinanceService` | 财务流水、账户 | createFlow, getAccountBalance |
+| `SalaryService` | 薪资发放全流程 | generatePayment, confirmPayment |
+| `MasterDataService` | 主数据管理 | 各类基础数据 CRUD |
+| `ApprovalService` | 审批流程 | approve, reject |
+| `ReportService` | 报表生成 | 各类统计报表 |
+
+---
+
+## 权限层级说明
+
+```
+职位层级 (level):
+  1 - 超级管理员 (hq_manager)
+  2 - 项目主管 (project_manager)
+  3 - 组长 (team_leader)
+  4 - 高级工程师 (senior_engineer)
+  5 - 工程师 (engineer)
+
+功能角色 (functionRole):
+  - manager: 管理类
+  - finance: 财务类
+  - hr: 人事类
+  - engineer: 工程类
+
+数据范围:
+  - 总部主管: 可见所有项目
+  - 项目主管: 仅可见本项目
+  - 组长及以下: 仅可见本组
+```
+
+---
+
+## 常见开发任务
+
+### 添加新的 API 端点
+1. 在 `backend/src/routes/` 创建或修改路由文件
+2. 在 `backend/src/services/` 添加业务逻辑
+3. 在 `backend/src/index.ts` 注册路由
+4. 添加权限检查 (`protectRoute` 或 `hasPermission`)
+
+### 添加新的数据表
+1. 在 `backend/src/db/schema.ts` 定义表结构
+2. 运行 `npm run generate` 生成迁移
+3. 运行 `npm run migrate:all` 应用迁移
+
+### 添加前端页面
+1. 在 `frontend/src/features/xxx/` 创建页面组件
+2. 在 `frontend/src/router/index.tsx` 添加路由
+3. 在 `frontend/src/config/menu.ts` 添加菜单项
+
+### 调试 API 问题
+1. 检查浏览器控制台的网络请求
+2. 后端日志在 Wrangler 终端输出
+3. 使用 `console.log` 调试（Workers 环境支持）
+
+---
+
+## 金额处理规范
+
+- **所有金额存储为整数 (cents)**，避免浮点数精度问题
+- 前端显示时除以 100
+- 变量命名: `amountCents`, `salaryCents`, `priceCents`
+- 金额计算用 `Math.round()` 确保整数
+
+---
+
+## Cloudflare 部署配置
+
+### 服务架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Cloudflare 平台                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ caiwu-backend│  │  caiwu-email │  │ Cloudflare   │       │
+│  │  (Workers)   │──│  (Workers)   │  │   Pages      │       │
+│  │  :8787       │  │              │  │  (Frontend)  │       │
+│  └──────┬───────┘  └──────────────┘  └──────────────┘       │
+│         │                                                    │
+│  ┌──────┴───────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  D1 Database │  │   R2 Bucket  │  │   KV Store   │       │
+│  │  (caiwu-db)  │  │  (vouchers)  │  │  (sessions)  │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 资源绑定
+
+| 服务 | 名称 | 绑定变量 | 用途 |
+|------|------|---------|------|
+| **Workers** | caiwu-backend | - | 后端 API |
+| **Workers** | caiwu-email | EMAIL_SERVICE | 邮件发送 |
+| **D1** | caiwu-db | DB | SQLite 数据库 |
+| **R2** | caiwu-vouchers | VOUCHERS | 凭证图片存储 |
+| **KV** | sessions | SESSIONS_KV | 会话存储 |
+
+### 环境变量
+
+| 变量 | 说明 | 设置方式 |
+|------|------|---------|
+| `AUTH_JWT_SECRET` | JWT 签名密钥 | `wrangler secret put` |
+| `EMAIL_TOKEN` | 邮件服务 Token | `wrangler secret put` |
+| `CF_ACCOUNT_ID` | Cloudflare 账户 ID | wrangler.toml 中配置 |
+| `CF_ZONE_ID` | 域名 Zone ID | wrangler.toml 中配置 |
+| `CF_IP_LIST_ID` | IP 白名单列表 ID | wrangler.toml 中配置 |
+
+### 部署命令
+
+```bash
+# 后端部署
+cd backend && npm run deploy
+
+# 前端构建（部署到 Pages 需要在 Cloudflare Dashboard 配置）
+cd frontend && npm run build
+
+# 邮件服务部署
+cd email-worker && wrangler deploy
+```
+
+### 数据库迁移
+
+```bash
+# 本地迁移（开发环境）
+cd backend && npm run migrate
+
+# 远程迁移（生产环境）
+cd backend && npm run migrate:remote
+
+# 迁移所有文件
+cd backend && npm run migrate:all
+```
+
+### Secret 管理
+
+```bash
+# 设置 JWT 密钥（后端）
+cd backend && wrangler secret put AUTH_JWT_SECRET
+
+# 设置邮件 Token（邮件服务）
+cd email-worker && wrangler secret put EMAIL_TOKEN
+
+# 查看已设置的 Secret
+wrangler secret list
+```
+
+### wrangler.toml 关键配置
+
+```toml
+# 后端配置示例
+name = "caiwu-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-21"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "caiwu-db"
+
+# R2 存储绑定
+[[r2_buckets]]
+binding = "VOUCHERS"
+bucket_name = "caiwu-vouchers"
+
+# KV 命名空间绑定
+[[kv_namespaces]]
+binding = "SESSIONS_KV"
+
+# 邮件服务绑定
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "caiwu-email"
+```
+
+### 常见部署问题
+
+| 问题 | 解决方案 |
+|------|---------|
+| "binding not found" | 检查 wrangler.toml 中的 binding 名称是否正确 |
+| "D1_ERROR" | 运行 `npm run migrate:remote` 应用迁移 |
+| "Authentication failed" | 运行 `wrangler login` 重新登录 |
+| "Secret not found" | 运行 `wrangler secret put <KEY>` 设置密钥 |
+| "Pages 部署失败" | 检查 `npm run build` 是否成功，查看构建日志 |
+
+### 本地开发 vs 生产环境
+
+| 配置 | 本地 (dev) | 生产 (production) |
+|------|-----------|------------------|
+| 数据库 | 本地 SQLite | Cloudflare D1 |
+| API 地址 | localhost:8787 | your-domain.workers.dev |
+| JWT Secret | env.dev.vars 中配置 | wrangler secret |
+| 日志 | 终端输出 | Cloudflare Dashboard |

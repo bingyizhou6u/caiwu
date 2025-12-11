@@ -1,0 +1,44 @@
+name = "caiwu-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-21"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "caiwu-db"
+database_id = "582b2cc8-fb7f-47a3-9b12-a264621c2eeb"
+
+[[r2_buckets]]
+binding = "VOUCHERS"
+bucket_name = "caiwu-vouchers"
+
+[[kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "35e234c4fcf04c5e84b814e0aed53788"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+
+[vars]
+CF_ACCOUNT_ID = "611d1a2e53f6c6d0922ff231e6a63211"
+CF_ZONE_ID = "18ecc2631881b0e9e03b3ab259d69249"
+CF_IP_LIST_ID = "d506362da37b45a2a510eb348d8f1ed2"
+
+# 邮件服务绑定（指向 email-worker）
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "caiwu-email"
+environment = "production"
+
+# 生产环境密钥通过 Cloudflare Secret 设置
+# 请运行: wrangler secret put AUTH_JWT_SECRET
+
+# 开发环境配置（仅用于本地测试）
+[env.dev.vars]
+AUTH_JWT_SECRET = "dev-jwt-secret-for-local-testing-only"

@@ -1,0 +1,4 @@
+type,ref_id,amount,as_of
+account,account-id-001,10000.00,2025-01-01
+account,account-id-002,5000.00,2025-01-01
+

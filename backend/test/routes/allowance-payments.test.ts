@@ -1,0 +1,193 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { Hono } from 'hono'
+import { allowancePaymentsRoutes } from '../../src/routes/allowance-payments.js'
+import { Errors } from '../../src/utils/errors.js'
+import { v4 as uuid } from 'uuid'
+
+// Mock audit utils
+vi.mock('../../src/utils/audit.js', () => ({
+    logAuditAction: vi.fn(),
+}))
+
+// Mock permissions
+vi.mock('../../src/utils/permissions.js', () => ({
+    hasPermission: vi.fn(() => true),
+    getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager', level: 1 })),
+    getUserId: vi.fn(() => 'user1'),
+    isTeamMember: vi.fn(() => false),
+}))
+
+const mockAllowancePaymentService = {
+    listAllowancePayments: vi.fn(),
+    createAllowancePayment: vi.fn(),
+    updateAllowancePayment: vi.fn(),
+    deleteAllowancePayment: vi.fn(),
+    generateAllowancePayments: vi.fn(),
+}
+
+describe('Allowance Payments Routes', () => {
+    let app: Hono<{ Variables: any }>
+    const validId = uuid()
+    const validEmpId = uuid()
+
+    beforeEach(() => {
+        app = new Hono()
+
+        // Mock middleware
+        app.use('*', async (c, next) => {
+            c.set('userId', 'user123')
+            c.set('services', {
+                allowancePayment: mockAllowancePaymentService
+            } as any)
+            await next()
+        })
+
+        app.onError((err, c) => {
+            if (err instanceof Error && 'statusCode' in err) {
+                return c.json({ error: err.message }, (err as any).statusCode)
+            }
+            return c.json({ error: err.message }, 500)
+        })
+
+        app.route('/', allowancePaymentsRoutes)
+
+        // 默认 mock 返回，避免未设置时抛错
+        mockAllowancePaymentService.listAllowancePayments.mockResolvedValue([])
+        mockAllowancePaymentService.createAllowancePayment.mockResolvedValue({
+            payment: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 0, year: 2023, month: 1 },
+            currencyName: 'RMB',
+            employeeName: 'John'
+        })
+        mockAllowancePaymentService.updateAllowancePayment.mockResolvedValue({
+            payment: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 0, year: 2023, month: 1 },
+            currencyName: 'RMB',
+            employeeName: 'John'
+        })
+        mockAllowancePaymentService.deleteAllowancePayment.mockResolvedValue({ id: validId })
+        mockAllowancePaymentService.generateAllowancePayments.mockResolvedValue({ created: 0, ids: [] })
+    })
+
+    it('should list allowance payments', async () => {
+        const mockResult = [{
+            payment: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 500, year: 2023, month: 1 },
+            currencyName: 'RMB',
+            employeeName: 'John'
+        }]
+        mockAllowancePaymentService.listAllowancePayments.mockResolvedValue(mockResult)
+
+        const res = await app.request(`/allowance-payments?year=2023&month=1`, {
+            method: 'GET',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({
+            results: [{
+                id: validId,
+                employeeId: validEmpId,
+                allowanceType: 'meal',
+                currencyId: 'CNY',
+                amountCents: 500,
+                year: 2023,
+                month: 1,
+                currencyName: 'RMB',
+                employeeName: 'John'
+            }]
+        })
+    })
+
+    it('should create allowance payment', async () => {
+        const mockPayment = { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 500, year: 2023, month: 1 }
+        const mockResult = {
+            payment: mockPayment,
+            currencyName: 'RMB',
+            employeeName: 'John'
+        }
+        mockAllowancePaymentService.createAllowancePayment.mockResolvedValue(mockResult)
+
+        const res = await app.request('/allowance-payments', {
+            method: 'POST',
+            body: JSON.stringify({
+                employeeId: validEmpId,
+                year: 2023,
+                month: 1,
+                allowanceType: 'meal',
+                currencyId: 'CNY',
+                amountCents: 500,
+                paymentDate: '2023-01-01'
+            }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({
+            id: validId,
+            employeeId: validEmpId,
+            allowanceType: 'meal',
+            currencyId: 'CNY',
+            amountCents: 500,
+            year: 2023,
+            month: 1,
+            currencyName: 'RMB',
+            employeeName: 'John'
+        })
+    })
+
+    it('should update allowance payment', async () => {
+        const mockResult = {
+            payment: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 600, year: 2023, month: 1 },
+            currencyName: 'RMB',
+            employeeName: 'John'
+        }
+        mockAllowancePaymentService.updateAllowancePayment.mockResolvedValue(mockResult)
+
+        const res = await app.request(`/allowance-payments/${validId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                amountCents: 600
+            }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({
+            id: validId,
+            employeeId: validEmpId,
+            allowanceType: 'meal',
+            currencyId: 'CNY',
+            amountCents: 600,
+            year: 2023,
+            month: 1,
+            currencyName: 'RMB',
+            employeeName: 'John'
+        })
+    })
+
+    it('should delete allowance payment', async () => {
+        mockAllowancePaymentService.deleteAllowancePayment.mockResolvedValue({ id: validId })
+
+        const res = await app.request(`/allowance-payments/${validId}`, {
+            method: 'DELETE',
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ ok: true })
+    })
+
+    it('should generate allowance payments', async () => {
+        const mockResult = { created: 1, ids: [validId] }
+        mockAllowancePaymentService.generateAllowancePayments.mockResolvedValue(mockResult)
+
+        const res = await app.request('/allowance-payments/generate', {
+            method: 'POST',
+            body: JSON.stringify({
+                year: 2023,
+                month: 1,
+                paymentDate: '2023-01-01'
+            }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual(mockResult)
+    })
+})
