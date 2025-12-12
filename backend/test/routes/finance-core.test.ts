@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest'
 import app from '../../src/index'
 import { env } from 'cloudflare:test'
-import { createDb } from '../../src/utils/db'
+import { createDb } from '../../src/db/index'
 import { uuid } from '../../src/utils/db'
 import { accounts, categories, sites, departments, employees, currencies } from '../../src/db/schema'
 import schemaSql from '../../src/db/schema.sql?raw'
@@ -9,6 +9,10 @@ import { FinanceService } from '../../src/services/FinanceService'
 import { AuthService } from '../../src/services/AuthService'
 import { MasterDataService } from '../../src/services/MasterDataService'
 import { SalaryPaymentService } from '../../src/services/SalaryPaymentService'
+import { ArApService } from '../../src/services/ArApService'
+import { BorrowingService } from '../../src/services/BorrowingService'
+import { SiteBillService } from '../../src/services/SiteBillService'
+import { AccountTransferService } from '../../src/services/AccountTransferService'
 
 // Mock permissions
 vi.mock('../../src/utils/permissions', async () => {
@@ -36,6 +40,21 @@ vi.mock('../../src/utils/audit', () => ({
     logAudit: vi.fn(),
     logAuditAction: vi.fn()
 }))
+
+// Mock createDb in db/index to inject transaction mock globally for DI
+vi.mock('../../src/db/index', async () => {
+    const actual = await vi.importActual<any>('../../src/db/index')
+    return {
+        ...actual,
+        createDb: (d1: any) => {
+            const db = actual.createDb(d1)
+            // Mock transaction to bypass D1 emulator limitation in tests
+            // @ts-ignore
+            db.transaction = async (cb) => cb(db)
+            return db
+        }
+    }
+})
 
 async function applySchema(db: any) {
     const statements = schemaSql.split(';').filter(s => s.trim())
@@ -65,10 +84,23 @@ describe('Finance Core Routes', () => {
 
         // Setup services
         const mockSystemConfigService = { get: async () => ({ value: 'false' }) } as any
-        const authService = new AuthService(db, env.SESSIONS_KV, mockSystemConfigService)
+        const mockAuditService = { log: async () => { } } as any
+        const mockEmailService = {
+            sendActivationEmail: vi.fn(),
+            sendLoginNotificationEmail: vi.fn(),
+            sendPasswordResetLinkEmail: vi.fn(),
+            sendPasswordChangedNotificationEmail: vi.fn(),
+            sendTotpResetEmail: vi.fn(),
+            sendEmail: vi.fn()
+        } as any
+        const authService = new AuthService(db, env.SESSIONS_KV, mockSystemConfigService, mockAuditService, mockEmailService)
         const masterDataService = new MasterDataService(db)
         const financeService = new FinanceService(db)
         const salaryPaymentService = new SalaryPaymentService(db)
+        const arApService = new ArApService(db, financeService)
+        const borrowingService = new BorrowingService(db)
+        const siteBillService = new SiteBillService(db)
+        const accountTransferService = new AccountTransferService(db, financeService)
 
         // Inject services into app
         app.use('*', async (c, next) => {
@@ -76,7 +108,11 @@ describe('Finance Core Routes', () => {
                 auth: authService,
                 masterData: masterDataService,
                 finance: financeService,
-                salaryPayment: salaryPaymentService
+                salaryPayment: salaryPaymentService,
+                arAp: arApService,
+                borrowing: borrowingService,
+                siteBill: siteBillService,
+                accountTransfer: accountTransferService
             } as any)
             c.set('userId', '550e8400-e29b-41d4-a716-446655440000')
             await next()

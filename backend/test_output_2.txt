@@ -1,0 +1,350 @@
+
+> caiwu-backend@0.1.0 test
+> vitest test/services/ApprovalService.test.ts
+
+
+ RUN  v3.2.4 /Users/aren/code/caiwu-main/backend
+
+[vpw:debug] Adding `enable_nodejs_tty_module` compatibility flag during tests as this feature is needed to support the Vitest runner.
+[vpw:debug] Adding `enable_nodejs_fs_module` compatibility flag during tests as this feature is needed to support the Vitest runner.
+[vpw:debug] Adding `enable_nodejs_http_modules` compatibility flag during tests as this feature is needed to support the Vitest runner.
+[vpw:debug] Adding `enable_nodejs_perf_hooks_module` compatibility flag during tests as this feature is needed to support the Vitest runner.
+[vpw:info] Starting isolated runtimes for vitest.config.ts...
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should approve leave for subordinate
+[PermissionService] canApprove: actor=c2c1efc3-5059-451a-b318-c918047ba66d, applicant=1b6693c6-b9ff-4246-a44d-5d373e570972
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should approve leave for subordinate
+[PermissionService] actor found: {
+  id: 'c2c1efc3-5059-451a-b318-c918047ba66d',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: 'cb131761-cec5-49c4-afa6-a0812e08a5b9'
+}
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should approve leave for subordinate
+[PermissionService] position found: {
+  id: 'cb131761-cec5-49c4-afa6-a0812e08a5b9',
+  code: 'project_manager',
+  name: 'Project Manager',
+  level: 2,
+  functionRole: 'director',
+  canManageSubordinates: 1,
+  description: null,
+  permissions: null,
+  sortOrder: 0,
+  active: 1,
+  createdAt: null,
+  updatedAt: null
+}
+[PermissionService] checking app: actor=c2c1efc3-5059-451a-b318-c918047ba66d, pos=project_manager, level=2, canManage=1
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should approve leave for subordinate
+[PermissionService] applicant found: undefined
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should approve leave for subordinate
+[PermissionService] canApproveApplication result: false
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should throw FORBIDDEN for non-subordinate
+[PermissionService] canApprove: actor=c8f55905-50ee-4a37-bdfe-e3de3db2d160, applicant=e721a660-285d-4400-8990-9ec7454f58c7
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should throw FORBIDDEN for non-subordinate
+[PermissionService] actor found: {
+  id: 'c8f55905-50ee-4a37-bdfe-e3de3db2d160',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: 'cb131761-cec5-49c4-afa6-a0812e08a5b9'
+}
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should throw FORBIDDEN for non-subordinate
+[PermissionService] position found: {
+  id: 'cb131761-cec5-49c4-afa6-a0812e08a5b9',
+  code: 'project_manager',
+  name: 'Project Manager',
+  level: 2,
+  functionRole: 'director',
+  canManageSubordinates: 1,
+  description: null,
+  permissions: null,
+  sortOrder: 0,
+  active: 1,
+  createdAt: null,
+  updatedAt: null
+}
+[PermissionService] checking app: actor=c8f55905-50ee-4a37-bdfe-e3de3db2d160, pos=project_manager, level=2, canManage=1
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should throw FORBIDDEN for non-subordinate
+[PermissionService] applicant found: undefined
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should throw FORBIDDEN for non-subordinate
+[PermissionService] canApproveApplication result: false
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > rejectLeave > should reject leave
+[PermissionService] canApprove: actor=060760e7-b402-44c4-9537-5d5d3fbeb4f3, applicant=d1ed0383-caf6-4fef-8f5c-aa919fbbdf10
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > rejectLeave > should reject leave
+[PermissionService] actor found: {
+  id: '060760e7-b402-44c4-9537-5d5d3fbeb4f3',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: 'cb131761-cec5-49c4-afa6-a0812e08a5b9'
+}
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > rejectLeave > should reject leave
+[PermissionService] position found: {
+  id: 'cb131761-cec5-49c4-afa6-a0812e08a5b9',
+  code: 'project_manager',
+  name: 'Project Manager',
+  level: 2,
+  functionRole: 'director',
+  canManageSubordinates: 1,
+  description: null,
+  permissions: null,
+  sortOrder: 0,
+  active: 1,
+  createdAt: null,
+  updatedAt: null
+}
+[PermissionService] checking app: actor=060760e7-b402-44c4-9537-5d5d3fbeb4f3, pos=project_manager, level=2, canManage=1
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > rejectLeave > should reject leave
+[PermissionService] applicant found: undefined
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > rejectLeave > should reject leave
+[PermissionService] canApproveApplication result: false
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should approve reimbursement
+[PermissionService] canApprove: actor=44cea88e-5627-487b-8106-b16819cc36ed, applicant=161199a0-f5ee-4ad7-8c2d-79b1513420c4
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should approve reimbursement
+[PermissionService] actor found: {
+  id: '44cea88e-5627-487b-8106-b16819cc36ed',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: 'cb131761-cec5-49c4-afa6-a0812e08a5b9'
+}
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should approve reimbursement
+[PermissionService] position found: {
+  id: 'cb131761-cec5-49c4-afa6-a0812e08a5b9',
+  code: 'project_manager',
+  name: 'Project Manager',
+  level: 2,
+  functionRole: 'director',
+  canManageSubordinates: 1,
+  description: null,
+  permissions: null,
+  sortOrder: 0,
+  active: 1,
+  createdAt: null,
+  updatedAt: null
+}
+[PermissionService] checking app: actor=44cea88e-5627-487b-8106-b16819cc36ed, pos=project_manager, level=2, canManage=1
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should approve reimbursement
+[PermissionService] applicant found: undefined
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should approve reimbursement
+[PermissionService] canApproveApplication result: false
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should throw FORBIDDEN for non-subordinate reimbursement
+[PermissionService] canApprove: actor=ad965519-a9d4-43bd-84a5-61f79536d0a9, applicant=b5690895-d12a-4911-bb7b-aedc1408d0ad
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should throw FORBIDDEN for non-subordinate reimbursement
+[PermissionService] actor found: {
+  id: 'ad965519-a9d4-43bd-84a5-61f79536d0a9',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: 'cb131761-cec5-49c4-afa6-a0812e08a5b9'
+}
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should throw FORBIDDEN for non-subordinate reimbursement
+[PermissionService] position found: {
+  id: 'cb131761-cec5-49c4-afa6-a0812e08a5b9',
+  code: 'project_manager',
+  name: 'Project Manager',
+  level: 2,
+  functionRole: 'director',
+  canManageSubordinates: 1,
+  description: null,
+  permissions: null,
+  sortOrder: 0,
+  active: 1,
+  createdAt: null,
+  updatedAt: null
+}
+[PermissionService] checking app: actor=ad965519-a9d4-43bd-84a5-61f79536d0a9, pos=project_manager, level=2, canManage=1
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should throw FORBIDDEN for non-subordinate reimbursement
+[PermissionService] applicant found: undefined
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should throw FORBIDDEN for non-subordinate reimbursement
+[PermissionService] canApproveApplication result: false
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should approve borrowing
+[PermissionService] canApprove: actor=6ff1cdec-eb0d-4379-af66-84b540ad7d46, applicant=3c92c4df-d0b4-4da4-bb76-7db53c5905bc
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should approve borrowing
+[PermissionService] actor found: {
+  id: '6ff1cdec-eb0d-4379-af66-84b540ad7d46',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: 'cb131761-cec5-49c4-afa6-a0812e08a5b9'
+}
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should approve borrowing
+[PermissionService] position found: {
+  id: 'cb131761-cec5-49c4-afa6-a0812e08a5b9',
+  code: 'project_manager',
+  name: 'Project Manager',
+  level: 2,
+  functionRole: 'director',
+  canManageSubordinates: 1,
+  description: null,
+  permissions: null,
+  sortOrder: 0,
+  active: 1,
+  createdAt: null,
+  updatedAt: null
+}
+[PermissionService] checking app: actor=6ff1cdec-eb0d-4379-af66-84b540ad7d46, pos=project_manager, level=2, canManage=1
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should approve borrowing
+[PermissionService] applicant found: {
+  id: '3c92c4df-d0b4-4da4-bb76-7db53c5905bc',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: '08a5ebca-0ffa-4f10-95bc-9bb660bcc995'
+}
+[PermissionService] project_manager check: actorDept=387996fb-a28a-4808-ab7d-e2a7ec6ab5cf, appDept=387996fb-a28a-4808-ab7d-e2a7ec6ab5cf
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should approve borrowing
+[PermissionService] canApproveApplication result: true
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should throw FORBIDDEN for non-subordinate borrowing
+[PermissionService] canApprove: actor=dc1f0a95-6aba-4d62-a980-ede3033480a4, applicant=717acb2e-4678-40f1-bd03-6fd635235dd8
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should throw FORBIDDEN for non-subordinate borrowing
+[PermissionService] actor found: {
+  id: 'dc1f0a95-6aba-4d62-a980-ede3033480a4',
+  departmentId: '387996fb-a28a-4808-ab7d-e2a7ec6ab5cf',
+  orgDepartmentId: null,
+  positionId: 'cb131761-cec5-49c4-afa6-a0812e08a5b9'
+}
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should throw FORBIDDEN for non-subordinate borrowing
+[PermissionService] position found: {
+  id: 'cb131761-cec5-49c4-afa6-a0812e08a5b9',
+  code: 'project_manager',
+  name: 'Project Manager',
+  level: 2,
+  functionRole: 'director',
+  canManageSubordinates: 1,
+  description: null,
+  permissions: null,
+  sortOrder: 0,
+  active: 1,
+  createdAt: null,
+  updatedAt: null
+}
+[PermissionService] checking app: actor=dc1f0a95-6aba-4d62-a980-ede3033480a4, pos=project_manager, level=2, canManage=1
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should throw FORBIDDEN for non-subordinate borrowing
+[PermissionService] applicant found: {
+  id: '717acb2e-4678-40f1-bd03-6fd635235dd8',
+  departmentId: '4b1c3209-085f-43c7-ae98-a067c864b437',
+  orgDepartmentId: null,
+  positionId: '08a5ebca-0ffa-4f10-95bc-9bb660bcc995'
+}
+[PermissionService] project_manager check: actorDept=387996fb-a28a-4808-ab7d-e2a7ec6ab5cf, appDept=4b1c3209-085f-43c7-ae98-a067c864b437
+
+stdout | test/services/ApprovalService.test.ts > ApprovalService > approveBorrowing > should throw FORBIDDEN for non-subordinate borrowing
+[PermissionService] canApproveApplication result: false
+
+ ❯ test/services/ApprovalService.test.ts (9 tests | 4 failed) 132ms
+   × ApprovalService > getPendingApprovals > should return pending items for subordinates 12ms
+     → expected +0 to be 1 // Object.is equality
+   ✓ ApprovalService > getPendingApprovals > should NOT return items for non-subordinates 9ms
+   × ApprovalService > approveLeave > should approve leave for subordinate 7ms
+     → 无权审批
+   ✓ ApprovalService > approveLeave > should throw FORBIDDEN for non-subordinate 10ms
+   × ApprovalService > rejectLeave > should reject leave 6ms
+     → 无权审批
+   × ApprovalService > approveReimbursement > should approve reimbursement 5ms
+     → 无权审批
+   ✓ ApprovalService > approveReimbursement > should throw FORBIDDEN for non-subordinate reimbursement 9ms
+   ✓ ApprovalService > approveBorrowing > should approve borrowing 9ms
+   ✓ ApprovalService > approveBorrowing > should throw FORBIDDEN for non-subordinate borrowing 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/services/ApprovalService.test.ts > ApprovalService > getPendingApprovals > should return pending items for subordinates
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/services/ApprovalService.test.ts:169:42
+    167|             const result = await service.getPendingApprovals(managerUs…
+    168| 
+    169|             expect(result.counts.leaves).toBe(1)
+       |                                          ^
+    170|             expect(result.counts.reimbursements).toBe(1)
+    171|             expect(result.counts.borrowings).toBe(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/services/ApprovalService.test.ts > ApprovalService > approveLeave > should approve leave for subordinate
+AppError: 无权审批
+ ❯ createError src/utils/errors.ts:28:10
+     26|   details?: any
+     27| ): AppError {
+     28|   return new AppError(statusCode, code, message, details)
+       |          ^
+     29| }
+     30| 
+ ❯ Object.FORBIDDEN src/utils/errors.ts:37:36
+ ❯ ApprovalService.approveLeave src/services/ApprovalService.ts:168:39
+ ❯ test/services/ApprovalService.test.ts:207:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/services/ApprovalService.test.ts > ApprovalService > rejectLeave > should reject leave
+AppError: 无权审批
+ ❯ createError src/utils/errors.ts:28:10
+     26|   details?: any
+     27| ): AppError {
+     28|   return new AppError(statusCode, code, message, details)
+       |          ^
+     29| }
+     30| 
+ ❯ Object.FORBIDDEN src/utils/errors.ts:37:36
+ ❯ ApprovalService.rejectLeave src/services/ApprovalService.ts:186:39
+ ❯ test/services/ApprovalService.test.ts:247:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/services/ApprovalService.test.ts > ApprovalService > approveReimbursement > should approve reimbursement
+AppError: 无权审批
+ ❯ createError src/utils/errors.ts:28:10
+     26|   details?: any
+     27| ): AppError {
+     28|   return new AppError(statusCode, code, message, details)
+       |          ^
+     29| }
+     30| 
+ ❯ Object.FORBIDDEN src/utils/errors.ts:37:36
+ ❯ ApprovalService.approveReimbursement src/services/ApprovalService.ts:204:39
+ ❯ test/services/ApprovalService.test.ts:280:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 5 passed (9)
+   Start at  18:40:23
+   Duration  1.42s (transform 258ms, setup 0ms, collect 651ms, tests 132ms, environment 0ms, prepare 77ms)
+
+[vpw:debug] Shutting down runtimes...

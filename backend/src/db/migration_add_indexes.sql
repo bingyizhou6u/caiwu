@@ -28,6 +28,8 @@ CREATE INDEX IF NOT EXISTS idx_rental_payable_bills_property_id ON rental_payabl
 CREATE INDEX IF NOT EXISTS idx_rental_payable_bills_status ON rental_payable_bills(status);
 
 -- 资金流水索引
+CREATE INDEX IF NOT EXISTS idx_cash_flows_biz_date ON cash_flows(biz_date);
+CREATE INDEX IF NOT EXISTS idx_cash_flows_account_id ON cash_flows(account_id);
 CREATE INDEX IF NOT EXISTS idx_cash_flows_department_id ON cash_flows(department_id);
 CREATE INDEX IF NOT EXISTS idx_cash_flows_created_by ON cash_flows(created_by);
 CREATE INDEX IF NOT EXISTS idx_cash_flows_category_id ON cash_flows(category_id);
@@ -70,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_site_bills_site_id ON site_bills(site_id);
 CREATE INDEX IF NOT EXISTS idx_site_bills_status ON site_bills(status);
 
 -- AR/AP 索引
+CREATE INDEX IF NOT EXISTS idx_ar_ap_docs_kind ON ar_ap_docs(kind);
 CREATE INDEX IF NOT EXISTS idx_ar_ap_docs_department_id ON ar_ap_docs(department_id);
 CREATE INDEX IF NOT EXISTS idx_ar_ap_docs_status ON ar_ap_docs(status);
 CREATE INDEX IF NOT EXISTS idx_settlements_doc_id ON settlements(doc_id);

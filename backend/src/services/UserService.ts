@@ -5,6 +5,11 @@ import * as schema from '../db/schema.js'
 import { Errors } from '../utils/errors.js'
 
 export class UserService {
+    /**
+     * Helper service to lookup employee information based on Auth User ID.
+     * Note: The standalone 'users' table has been deprecated.
+     * In the current architecture, the Auth User ID is the Employee ID.
+     */
     constructor(private db: DrizzleD1Database<typeof schema>) { }
 
     async getUserById(id: string) {
@@ -23,23 +28,9 @@ export class UserService {
         return user || null
     }
 
-    async getUserEmployeeId(userId: string): Promise<string | null> {
-        const user = await this.getUserById(userId)
-        if (!user?.email) return null
 
-        const employee = await this.db.select({ id: employees.id })
-            .from(employees)
-            .where(and(
-                eq(employees.personalEmail, user.email), // 使用个人邮箱进行查找
-                eq(employees.active, 1)
-            ))
-            .get()
-
-        return employee?.id || null
-    }
 
     async getUserPosition(userId: string) {
-        // 首先获取员工信息以找到其职位 ID
         const employee = await this.db.select({
             positionId: employees.positionId
         })
@@ -52,7 +43,6 @@ export class UserService {
 
         if (!employee?.positionId) return null
 
-        // 然后获取职位详情
         const result = await this.db.select({
             id: positions.id,
             code: positions.code,
@@ -90,7 +80,7 @@ export class UserService {
     }
 
     async isHQUser(userId: string): Promise<boolean> {
-        // 检查 user_departments 表
+        // Check user_departments table
         const result = await this.db.select({ isHq: departments.name })
             .from(userDepartments)
             .innerJoin(departments, eq(departments.id, userDepartments.departmentId))
@@ -100,38 +90,13 @@ export class UserService {
             ))
             .get()
 
-        if (result) return true
-
-        // 回退机制：为了向后兼容（检查 user 表上的 department_id 字段）
-        const user = await this.getUserById(userId)
-        if (user?.departmentId) {
-            const dept = await this.db.select({ name: departments.name })
-                .from(departments)
-                .where(eq(departments.id, user.departmentId))
-                .get()
-
-            return dept?.name === '总部'
-        }
-
-        return false
+        return !!result
     }
 
     async getUserGroupId(userId: string): Promise<string | null> {
-        const user = await this.getUserById(userId)
-        if (!user?.email) return null
-
-        // 获取员工的组织部门
-        const employee = await this.db.select({ orgDepartmentId: employees.orgDepartmentId })
-            .from(employees)
-            .where(and(
-                eq(employees.personalEmail, user.email), // 使用个人邮箱进行查找
-                eq(employees.active, 1)
-            ))
-            .get()
-
+        const employee = await this.getUserById(userId)
         if (!employee?.orgDepartmentId) return null
 
-        // 检查该部门是否是某个组的子部门（parent_id不为NULL）
         const group = await this.db.select({ id: orgDepartments.id })
             .from(orgDepartments)
             .where(and(
@@ -144,44 +109,18 @@ export class UserService {
     }
 
     async getUserOrgDepartmentId(userId: string): Promise<string | null> {
-        const user = await this.getUserById(userId)
-        if (!user || !user.email) return null
-
-        // 必须从员工记录获取org_department_id（员工记录是唯一权威来源）
-        const employee = await this.db.select({ orgDepartmentId: employees.orgDepartmentId })
-            .from(employees)
-            .where(and(
-                eq(employees.personalEmail, user.email), // 使用个人邮箱进行查找
-                eq(employees.active, 1)
-            ))
-            .get()
-
+        const employee = await this.getUserById(userId)
         return employee?.orgDepartmentId || null
     }
 
     async getUserDepartmentIds(userId: string): Promise<string[]> {
-        try {
-            // 首先检查新的多项目关联表
-            const userDepts = await this.db.select({ departmentId: userDepartments.departmentId })
-                .from(userDepartments)
-                .where(eq(userDepartments.userId, userId))
-                .all()
+        // Only check new user_departments mapping table
+        const userDepts = await this.db.select({ departmentId: userDepartments.departmentId })
+            .from(userDepartments)
+            .where(eq(userDepartments.userId, userId))
+            .all()
 
-            if (userDepts && userDepts.length > 0) {
-                return userDepts.map(r => r.departmentId)
-            }
-        } catch (err: any) {
-            // 如果表不存在，忽略错误，继续向后兼容逻辑
-            console.warn('user_departments table may not exist:', err.message)
-        }
-
-        // 向后兼容：如果没有多项目关联，检查旧的department_id字段
-        const user = await this.getUserById(userId)
-        if (user?.departmentId) {
-            return [user.departmentId]
-        }
-
-        return []
+        return userDepts.map(r => r.departmentId)
     }
 
     async getUserDepartmentId(userId: string): Promise<string | null> {

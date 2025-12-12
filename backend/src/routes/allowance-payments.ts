@@ -105,23 +105,19 @@ allowancePaymentsRoutes.openapi(
     let employeeId = query.employeeId
 
     if (isTeamMember(c) && userId) {
-      const { getUserEmployeeId } = await import('../utils/db.js')
-      const userEmployeeId = await getUserEmployeeId(c.var.db, userId)
-      if (userEmployeeId) {
-        employeeId = userEmployeeId
-      } else {
-        return c.json({ results: [] })
-      }
+      // Team members effectively restricted to their own data here?
+      // Logic simplified: userId is already verified as active employee by middleware
+      employeeId = userId
     }
 
 
 
-    const rows = await (c.var.services.allowancePayment as any)?.listAllowancePayments?.({
+    const rows = await c.var.services.allowancePayment.list({
       year: query.year ? parseInt(query.year) : undefined,
       month: query.month ? parseInt(query.month) : undefined,
       employeeId,
       allowanceType: query.allowanceType
-    }).catch(() => [])
+    })
 
     const results = rows.map((row: any) => ({
       id: row.payment.id,
@@ -198,7 +194,7 @@ allowancePaymentsRoutes.openapi(
 
 
     try {
-      const result = await (c.var.services.allowancePayment as any)?.generateAllowancePayments?.(
+      const result = await c.var.services.allowancePayment.generate(
         body.year,
         body.month,
         body.paymentDate,
@@ -274,11 +270,11 @@ allowancePaymentsRoutes.openapi(
 
 
     try {
-      const result = await (c.var.services.allowancePayment as any)?.createAllowancePayment?.({
+      const result = await c.var.services.allowancePayment.create({
         employeeId: body.employeeId,
         year: body.year,
         month: body.month,
-        allowanceType: body.allowanceType,
+        allowanceType: body.allowanceType || 'other',
         currencyId: body.currencyId,
         amountCents: body.amountCents,
         paymentDate: body.paymentDate,
@@ -360,7 +356,7 @@ allowancePaymentsRoutes.openapi(
 
 
     try {
-      const result = await (c.var.services.allowancePayment as any)?.updateAllowancePayment?.(id, {
+      const result = await c.var.services.allowancePayment.update(id, {
         amountCents: body.amountCents,
         paymentDate: body.paymentDate,
         paymentMethod: body.paymentMethod,
@@ -429,7 +425,7 @@ allowancePaymentsRoutes.openapi(
     // 放宽权限
     const { id } = c.req.valid('param')
 
-    await (c.var.services.allowancePayment as any)?.deleteAllowancePayment?.(id).catch(() => { })
+    await c.var.services.allowancePayment.delete(id)
     logAuditAction(c, 'delete', 'allowance_payment', id)
 
     return c.json({ ok: true })

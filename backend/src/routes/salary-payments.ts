@@ -42,7 +42,7 @@ salaryPaymentsRoutes.openapi(
     // But service needs to know if it should filter. 
     // Let's pass userId and isTeamMember to service.list
 
-    const results = await c.get('services').salaryPayment.list(query, userId, isMember)
+    const results = await c.var.services.salaryPayment.list(query, userId, isMember)
     return c.json(results)
   }
 )
@@ -80,7 +80,7 @@ salaryPaymentsRoutes.openapi(
     const body = c.req.valid('json')
     const userId = getUserId(c) || 'system'
 
-    const result = await c.get('services').salaryPayment.generate(body.year, body.month, userId)
+    const result = await c.var.services.salaryPayment.generate(body.year, body.month, userId)
       .catch(() => undefined) ?? { created: 0, ids: [] }
     return c.json(result)
   }
@@ -108,7 +108,7 @@ salaryPaymentsRoutes.openapi(
   }),
   async (c) => {
     const id = c.req.valid('param').id
-    const result = await c.get('services').salaryPayment.get(id).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.get(id).catch(() => undefined)
       ?? { id, employeeId: 'emp', status: 'pending' }
 
     // Permission check
@@ -166,7 +166,7 @@ salaryPaymentsRoutes.openapi(
     const id = c.req.valid('param').id
     const body = c.req.valid('json')
     const userId = getUserId(c) || 'system'
-    const service = c.get('services').salaryPayment
+    const service = c.var.services.salaryPayment
 
     let result
     switch (body.status) {
@@ -218,7 +218,7 @@ salaryPaymentsRoutes.openapi(
   async (c) => {
     const id = c.req.valid('param').id
     const userId = getUserId(c) || 'system'
-    const result = await c.get('services').salaryPayment.employeeConfirm(id, userId).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.employeeConfirm(id, userId).catch(() => undefined)
     return c.json(result ?? { id, status: 'pending_finance_approval' })
   }
 )
@@ -249,7 +249,7 @@ salaryPaymentsRoutes.openapi(
   async (c) => {
     const id = c.req.valid('param').id
     const userId = getUserId(c) || 'system'
-    const result = await c.get('services').salaryPayment.financeApprove(id, userId).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.financeApprove(id, userId).catch(() => undefined)
     return c.json(result ?? { id, status: 'pending_payment' })
   }
 )
@@ -282,7 +282,7 @@ salaryPaymentsRoutes.openapi(
     const body = c.req.valid('json') ?? {}
     const userId = getUserId(c) || 'system'
     if (!body.accountId) throw Errors.VALIDATION_ERROR('Missing accountId')
-    const result = await c.get('services').salaryPayment.paymentTransfer(id, body.accountId, userId).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.paymentTransfer(id, body.accountId, userId).catch(() => undefined)
     return c.json(result ?? { id, status: 'pending_payment_confirmation' })
   }
 )
@@ -315,7 +315,7 @@ salaryPaymentsRoutes.openapi(
     const body = c.req.valid('json') ?? {}
     const userId = getUserId(c) || 'system'
     if (!body.payment_voucher_path) throw Errors.VALIDATION_ERROR('Missing payment_voucher_path')
-    const result = await c.get('services').salaryPayment.paymentConfirm(id, body.payment_voucher_path, userId).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.paymentConfirm(id, body.payment_voucher_path, userId).catch(() => undefined)
     return c.json(result ?? { id, status: 'completed' })
   }
 )
@@ -351,7 +351,7 @@ salaryPaymentsRoutes.openapi(
     const id = c.req.valid('param').id
     const body = c.req.valid('json')
     const userId = getUserId(c) || 'system'
-    const result = await c.get('services').salaryPayment.requestAllocation(id, body.allocations, userId).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.requestAllocation(id, body.allocations, userId).catch(() => undefined)
     return c.json(result ?? { id, allocationStatus: 'requested', allocations: body.allocations })
   }
 )
@@ -392,7 +392,7 @@ salaryPaymentsRoutes.openapi(
     const id = c.req.valid('param').id
     const body = c.req.valid('json')
     const userId = getUserId(c) || 'system'
-    const service = c.get('services').salaryPayment
+    const service = c.var.services.salaryPayment
 
     let result
     if (body.status === 'approved') {
@@ -434,7 +434,7 @@ salaryPaymentsRoutes.openapi(
     const id = c.req.valid('param').id
     const body = c.req.valid('json') ?? {}
     const userId = getUserId(c) || 'system'
-    const result = await c.get('services').salaryPayment.approveAllocation(id, body.allocation_ids, body.approve_all || false, userId).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.approveAllocation(id, body.allocation_ids, body.approve_all || false, userId).catch(() => undefined)
     return c.json(result ?? { id, allocationStatus: 'approved' })
   }
 )
@@ -468,7 +468,7 @@ salaryPaymentsRoutes.openapi(
     const id = c.req.valid('param').id
     const body = c.req.valid('json') ?? {}
     const userId = getUserId(c) || 'system'
-    const result = await c.get('services').salaryPayment.rejectAllocation(id, body.allocation_ids || [], userId).catch(() => undefined)
+    const result = await c.var.services.salaryPayment.rejectAllocation(id, body.allocation_ids || [], userId).catch(() => undefined)
     return c.json(result ?? { id, allocationStatus: 'rejected' })
   }
 )
@@ -495,7 +495,7 @@ salaryPaymentsRoutes.openapi(
   }),
   async (c) => {
     const id = c.req.valid('param').id
-    await c.get('services').salaryPayment.delete(id).catch(() => undefined)
+    await c.var.services.salaryPayment.delete(id).catch(() => undefined)
     return c.json({ ok: true })
   }
 )

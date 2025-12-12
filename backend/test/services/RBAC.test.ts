@@ -1,11 +1,17 @@
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { 
-    getDataAccessFilter, 
-    canViewEmployee, 
+import {
+    getDataAccessFilter,
+    // canViewEmployee, // Removed as per instruction
     hasPermission,
     Position,
     Employee
 } from '../../src/utils/permissions'
+import { PermissionService } from '../../src/services/PermissionService';
+import { createDb } from '../../src/utils/db';
+import * as schema from '../../src/db/schema';
+import { employees } from '../../src/db/schema';
+import { drizzle } from 'drizzle-orm/d1';
 
 // Mock Hono Context
 const createMockContext = (position: Partial<Position>, employee: Partial<Employee>, departmentModules: string[] = ['*'], dbMock: any = null) => {
@@ -31,7 +37,7 @@ const createMockContext = (position: Partial<Position>, employee: Partial<Employ
 }
 
 describe('RBAC (Role-Based Access Control)', () => {
-    
+
     describe('getDataAccessFilter', () => {
         it('Level 1 (HQ): should return global access', () => {
             const ctx = createMockContext({ level: 1 } as Position, { id: 'u1' } as unknown as Employee)
@@ -42,7 +48,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
         it('Level 2 (Project): should filter by departmentId', () => {
             const ctx = createMockContext(
-                { level: 2 } as Position, 
+                { level: 2 } as Position,
                 { id: 'u2', departmentId: 'dept-a' } as unknown as Employee
             )
             const filter = getDataAccessFilter(ctx, 't')
@@ -52,7 +58,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
         it('Level 3 (Team Leader): should filter by orgDepartmentId', () => {
             const ctx = createMockContext(
-                { level: 3, code: 'team_leader' } as Position, 
+                { level: 3, code: 'team_leader' } as Position,
                 { id: 'u3', orgDepartmentId: 'org-1' } as unknown as Employee
             )
             const filter = getDataAccessFilter(ctx, 't')
@@ -62,7 +68,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
         it('Level 3 (Engineer): should filter by own id', () => {
             const ctx = createMockContext(
-                { level: 3, code: 'team_engineer' } as Position, 
+                { level: 3, code: 'team_engineer' } as Position,
                 { id: 'emp-1' } as unknown as Employee
             )
             const filter = getDataAccessFilter(ctx, 't')
@@ -77,80 +83,105 @@ describe('RBAC (Role-Based Access Control)', () => {
         })
     })
 
-    describe('canViewEmployee', () => {
-        // Mock DB helper
-        const mockDbReturn = (value: any) => ({
-            prepare: vi.fn(() => ({
-                bind: vi.fn(() => ({
-                    first: vi.fn().mockResolvedValue(value)
-                }))
-            }))
-        })
+    // Removed old canViewEmployee tests as per instruction
+
+    describe('RBAC (PermissionService)', () => {
+        let service: PermissionService
+        let mockDb: any
+
+        beforeEach(() => {
+            // Mock Drizzle query builder
+            mockDb = {
+                select: vi.fn(),
+                from: vi.fn(),
+                where: vi.fn(),
+                get: vi.fn()
+            }
+            // Setup chainable mocks
+            mockDb.select.mockReturnThis()
+            mockDb.from.mockReturnThis()
+            mockDb.where.mockReturnThis()
+
+            service = new PermissionService(mockDb as any);
+        });
 
         it('Level 1 (HQ): can view anyone', async () => {
-            const ctx = createMockContext({ level: 1 } as Position, { id: 'hq' } as unknown as Employee)
-            const result = await canViewEmployee(ctx, 'target-id')
-            expect(result).toBe(true)
-        })
+            const actor = { id: 'hq', departmentId: 'dept-a', orgDepartmentId: 'org-a' };
+            const position = { level: 1, code: 'hq_admin' } as { level: number, code: string }; // Loose type for test
+            const targetEmployeeId = 'target-id';
+
+            const result = await service.canViewEmployee(actor, position, targetEmployeeId);
+            expect(result).toBe(true);
+        });
 
         it('Level 2 (Project): can view employee in same project', async () => {
-            const db = mockDbReturn({ departmentId: 'dept-a' })
-            const ctx = createMockContext(
-                { level: 2 } as Position, 
-                { id: 'pm', departmentId: 'dept-a' } as unknown as Employee,
-                ['*'], db
-            )
-            
-            const result = await canViewEmployee(ctx, 'target-id')
-            expect(result).toBe(true)
-        })
+            const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' };
+            const position = { level: 2, code: 'project_manager' } as { level: number, code: string };
+            const targetEmployeeId = 'target-id';
+
+            // Mock DB to return employee in the same department
+            mockDb.get.mockResolvedValue({ id: targetEmployeeId, departmentId: 'dept-a' })
+
+            const result = await service.canViewEmployee(actor, position, targetEmployeeId);
+            expect(result).toBe(true);
+        });
 
         it('Level 2 (Project): cannot view employee in other project', async () => {
-            const db = mockDbReturn({ departmentId: 'dept-b' }) // Target is in dept-b
-            const ctx = createMockContext(
-                { level: 2 } as Position, 
-                { id: 'pm', departmentId: 'dept-a' } as unknown as Employee, // PM is in dept-a
-                ['*'], db
-            )
-            
-            const result = await canViewEmployee(ctx, 'target-id')
-            expect(result).toBe(false)
-        })
+            const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' };
+            const position = { level: 2, code: 'project_manager' } as { level: number, code: string };
+            const targetEmployeeId = 'target-id';
 
-        it('Team Leader: can view employee in same team', async () => {
-            const db = mockDbReturn({ orgDepartmentId: 'team-1' })
-            const ctx = createMockContext(
-                { level: 3, code: 'team_leader' } as Position, 
-                { id: 'tl', orgDepartmentId: 'team-1' } as unknown as Employee,
-                ['*'], db
-            )
-            
-            const result = await canViewEmployee(ctx, 'target-id')
-            expect(result).toBe(true)
-        })
+            // Mock DB to return employee in a different department
+            mockDb.get.mockResolvedValue({ id: targetEmployeeId, departmentId: 'dept-b' })
 
-        it('Team Leader: cannot view employee in other team', async () => {
-            const db = mockDbReturn({ orgDepartmentId: 'team-2' })
-            const ctx = createMockContext(
-                { level: 3, code: 'team_leader' } as Position, 
-                { id: 'tl', orgDepartmentId: 'team-1' } as unknown as Employee,
-                ['*'], db
-            )
-            
-            const result = await canViewEmployee(ctx, 'target-id')
-            expect(result).toBe(false)
-        })
+            const result = await service.canViewEmployee(actor, position, targetEmployeeId);
+            expect(result).toBe(false);
+        });
 
-        it('Engineer: can only view self', async () => {
-            const ctx = createMockContext(
-                { level: 3, code: 'team_engineer' } as Position, 
-                { id: 'emp-1' } as unknown as Employee
-            )
-            
-            expect(await canViewEmployee(ctx, 'emp-1')).toBe(true)
-            expect(await canViewEmployee(ctx, 'other-emp')).toBe(false)
-        })
-    })
+        it('Level 3 (Team Leader): can view employee in same team', async () => {
+            const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' };
+            const position = { level: 3, code: 'team_leader' } as { level: number, code: string };
+            const targetEmployeeId = 'target-id';
+
+            // Mock DB to return employee
+            mockDb.get.mockResolvedValue({ id: targetEmployeeId, orgDepartmentId: 'team-1' })
+
+            const result = await service.canViewEmployee(actor, position, targetEmployeeId);
+            expect(result).toBe(true);
+        });
+
+        it('Level 3 (Team Leader): cannot view employee in other team', async () => {
+            const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' };
+            const position = { level: 3, code: 'team_leader' } as { level: number, code: string };
+            const targetEmployeeId = 'target-id';
+
+            // Mock DB to return employee
+            mockDb.get.mockResolvedValue({ id: targetEmployeeId, orgDepartmentId: 'team-2' })
+
+            const result = await service.canViewEmployee(actor, position, targetEmployeeId);
+            expect(result).toBe(false);
+        });
+
+        it('Level 3 (Engineer): can only view self', async () => {
+            const actor = { id: 'emp-1', departmentId: 'dept-a', orgDepartmentId: 'team-1' };
+            const position = { level: 3, code: 'team_engineer' } as { level: number, code: string };
+
+            expect(await service.canViewEmployee(actor, position, 'emp-1')).toBe(true);
+            expect(await service.canViewEmployee(actor, position, 'other-emp')).toBe(false);
+        });
+
+        it('should return false if target employee not found', async () => {
+            const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' };
+            const position = { level: 2, code: 'project_manager' } as { level: number, code: string };
+            const targetEmployeeId = 'non-existent-id';
+
+            // Mock DB to return null
+            mockDb.get.mockResolvedValue(null)
+
+            const result = await service.canViewEmployee(actor, position, targetEmployeeId);
+            expect(result).toBe(false);
+        });
+    });
 
     describe('hasPermission', () => {
         const permissions = {

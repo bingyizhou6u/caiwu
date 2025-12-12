@@ -81,7 +81,7 @@ accountTransfersRoutes.openapi(
 
     const whereClause = conditions.length ? and(...conditions) : undefined
 
-    const rows = await c.var.services.finance.listAccountTransfers(limit, whereClause)
+    const rows = await c.var.services.accountTransfer.list(limit, whereClause)
 
     const results = rows.map(row => {
       const t = row.transfer
@@ -140,7 +140,7 @@ accountTransfersRoutes.openapi(
     if (!hasPermission(c, 'finance', 'transfer', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.var.services.finance.createAccountTransfer({
+    const result = await c.var.services.accountTransfer.create({
       transferDate: body.transferDate,
       fromAccountId: body.fromAccountId,
       toAccountId: body.toAccountId,
@@ -187,7 +187,7 @@ accountTransfersRoutes.openapi(
     if (!hasPermission(c, 'finance', 'transfer', 'view')) throw Errors.FORBIDDEN()
     const { id } = c.req.valid('param')
 
-    const row = await c.var.services.finance.getAccountTransfer(id)
+    const row = await c.var.services.accountTransfer.getById(id)
     if (!row) {
       throw Errors.NOT_FOUND()
     }

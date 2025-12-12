@@ -4,12 +4,17 @@ import * as schema from '../db/schema.js';
 import { Errors } from '../utils/errors.js';
 import { EmployeeService } from './EmployeeService.js';
 
+import { PermissionService } from './PermissionService.js';
+
 export class ApprovalService {
-    constructor(private db: DrizzleD1Database<typeof schema>) { }
+    constructor(
+        private db: DrizzleD1Database<typeof schema>,
+        private permissionService: PermissionService,
+        private employeeService: EmployeeService
+    ) { }
 
     async getPendingApprovals(userId: string) {
-        const employeeService = new EmployeeService(this.db);
-        const subordinateIds = await employeeService.getSubordinateEmployeeIds(userId);
+        const subordinateIds = await this.employeeService.getSubordinateEmployeeIds(userId);
 
         if (subordinateIds.length === 0) {
             return {
@@ -155,121 +160,134 @@ export class ApprovalService {
     }
 
     async approveLeave(id: string, userId: string, memo?: string) {
-        const leave = await this.db.select().from(schema.employeeLeaves).where(eq(schema.employeeLeaves.id, id)).get();
-        if (!leave) throw Errors.NOT_FOUND('请假记录');
-        if (leave.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+        await this.db.transaction(async (tx) => {
+            const leave = await tx.select().from(schema.employeeLeaves).where(eq(schema.employeeLeaves.id, id)).get();
+            if (!leave) throw Errors.NOT_FOUND('请假记录');
+            if (leave.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
-        await this.checkApprovalPermission(userId, leave.employeeId);
+            const canApprove = await this.permissionService.canApprove(userId, leave.employeeId);
+            if (!canApprove) throw Errors.FORBIDDEN('无权审批');
 
-        const now = Date.now();
-        await this.db.update(schema.employeeLeaves).set({
-            status: 'approved',
-            approvedBy: userId,
-            approvedAt: now,
-            memo: memo || leave.memo,
-            updatedAt: now
-        }).where(eq(schema.employeeLeaves.id, id)).execute();
+            const now = Date.now();
+            await tx.update(schema.employeeLeaves).set({
+                status: 'approved',
+                approvedBy: userId,
+                approvedAt: now,
+                memo: memo || leave.memo,
+                updatedAt: now
+            }).where(eq(schema.employeeLeaves.id, id)).execute();
+        })
     }
 
     async rejectLeave(id: string, userId: string, memo?: string) {
-        const leave = await this.db.select().from(schema.employeeLeaves).where(eq(schema.employeeLeaves.id, id)).get();
-        if (!leave) throw Errors.NOT_FOUND('请假记录');
-        if (leave.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+        await this.db.transaction(async (tx) => {
+            const leave = await tx.select().from(schema.employeeLeaves).where(eq(schema.employeeLeaves.id, id)).get();
+            if (!leave) throw Errors.NOT_FOUND('请假记录');
+            if (leave.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
-        await this.checkApprovalPermission(userId, leave.employeeId);
+            const canApprove = await this.permissionService.canApprove(userId, leave.employeeId);
+            if (!canApprove) throw Errors.FORBIDDEN('无权审批');
 
-        const now = Date.now();
-        await this.db.update(schema.employeeLeaves).set({
-            status: 'rejected',
-            approvedBy: userId,
-            approvedAt: now,
-            memo: memo || leave.memo,
-            updatedAt: now
-        }).where(eq(schema.employeeLeaves.id, id)).execute();
+            const now = Date.now();
+            await tx.update(schema.employeeLeaves).set({
+                status: 'rejected',
+                approvedBy: userId,
+                approvedAt: now,
+                memo: memo || leave.memo,
+                updatedAt: now
+            }).where(eq(schema.employeeLeaves.id, id)).execute();
+        })
     }
 
     async approveReimbursement(id: string, userId: string, memo?: string) {
-        const reimbursement = await this.db.select().from(schema.expenseReimbursements).where(eq(schema.expenseReimbursements.id, id)).get();
-        if (!reimbursement) throw Errors.NOT_FOUND('报销记录');
-        if (reimbursement.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+        await this.db.transaction(async (tx) => {
+            const reimbursement = await tx.select().from(schema.expenseReimbursements).where(eq(schema.expenseReimbursements.id, id)).get();
+            if (!reimbursement) throw Errors.NOT_FOUND('报销记录');
+            if (reimbursement.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
-        await this.checkApprovalPermission(userId, reimbursement.employeeId);
+            const canApprove = await this.permissionService.canApprove(userId, reimbursement.employeeId);
+            if (!canApprove) throw Errors.FORBIDDEN('无权审批');
 
-        const now = Date.now();
-        await this.db.update(schema.expenseReimbursements).set({
-            status: 'approved',
-            approvedBy: userId,
-            approvedAt: now,
-            memo: memo || reimbursement.memo,
-            updatedAt: now
-        }).where(eq(schema.expenseReimbursements.id, id)).execute();
+            const now = Date.now();
+            await tx.update(schema.expenseReimbursements).set({
+                status: 'approved',
+                approvedBy: userId,
+                approvedAt: now,
+                memo: memo || reimbursement.memo,
+                updatedAt: now
+            }).where(eq(schema.expenseReimbursements.id, id)).execute();
+        })
     }
 
     async rejectReimbursement(id: string, userId: string, memo?: string) {
-        const reimbursement = await this.db.select().from(schema.expenseReimbursements).where(eq(schema.expenseReimbursements.id, id)).get();
-        if (!reimbursement) throw Errors.NOT_FOUND('报销记录');
-        if (reimbursement.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+        await this.db.transaction(async (tx) => {
+            const reimbursement = await tx.select().from(schema.expenseReimbursements).where(eq(schema.expenseReimbursements.id, id)).get();
+            if (!reimbursement) throw Errors.NOT_FOUND('报销记录');
+            if (reimbursement.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
-        await this.checkApprovalPermission(userId, reimbursement.employeeId);
+            const canApprove = await this.permissionService.canApprove(userId, reimbursement.employeeId);
+            if (!canApprove) throw Errors.FORBIDDEN('无权审批');
 
-        const now = Date.now();
-        await this.db.update(schema.expenseReimbursements).set({
-            status: 'rejected',
-            approvedBy: userId,
-            approvedAt: now,
-            memo: memo || reimbursement.memo,
-            updatedAt: now
-        }).where(eq(schema.expenseReimbursements.id, id)).execute();
+            const now = Date.now();
+            await tx.update(schema.expenseReimbursements).set({
+                status: 'rejected',
+                approvedBy: userId,
+                approvedAt: now,
+                memo: memo || reimbursement.memo,
+                updatedAt: now
+            }).where(eq(schema.expenseReimbursements.id, id)).execute();
+        })
     }
 
     async approveBorrowing(id: string, userId: string, memo?: string) {
-        const borrowing = await this.db.select().from(schema.borrowings).where(eq(schema.borrowings.id, id)).get();
-        if (!borrowing) throw Errors.NOT_FOUND('借支记录');
-        if (borrowing.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+        await this.db.transaction(async (tx) => {
+            const borrowing = await tx.select().from(schema.borrowings).where(eq(schema.borrowings.id, id)).get();
+            if (!borrowing) throw Errors.NOT_FOUND('借支记录');
+            if (borrowing.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
-        const borrowerEmployeeId = await this.getBorrowerEmployeeId(borrowing.userId);
-        await this.checkApprovalPermission(userId, borrowerEmployeeId);
+            const borrowerEmployeeId = await this.getBorrowerEmployeeId(borrowing.userId, tx);
+            const canApprove = await this.permissionService.canApprove(userId, borrowerEmployeeId);
+            if (!canApprove) throw Errors.FORBIDDEN('无权审批');
 
-        const now = Date.now();
-        await this.db.update(schema.borrowings).set({
-            status: 'approved',
-            approvedBy: userId,
-            approvedAt: now,
-            updatedAt: now
-        }).where(eq(schema.borrowings.id, id)).execute();
+            const now = Date.now();
+            await tx.update(schema.borrowings).set({
+                status: 'approved',
+                approvedBy: userId,
+                approvedAt: now,
+                updatedAt: now
+            }).where(eq(schema.borrowings.id, id)).execute();
+        })
     }
 
     async rejectBorrowing(id: string, userId: string, memo?: string) {
-        const borrowing = await this.db.select().from(schema.borrowings).where(eq(schema.borrowings.id, id)).get();
-        if (!borrowing) throw Errors.NOT_FOUND('借支记录');
-        if (borrowing.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
+        await this.db.transaction(async (tx) => {
+            const borrowing = await tx.select().from(schema.borrowings).where(eq(schema.borrowings.id, id)).get();
+            if (!borrowing) throw Errors.NOT_FOUND('借支记录');
+            if (borrowing.status !== 'pending') throw Errors.BUSINESS_ERROR('该记录已处理');
 
-        const borrowerEmployeeId = await this.getBorrowerEmployeeId(borrowing.userId);
-        await this.checkApprovalPermission(userId, borrowerEmployeeId);
+            const borrowerEmployeeId = await this.getBorrowerEmployeeId(borrowing.userId, tx);
+            const canApprove = await this.permissionService.canApprove(userId, borrowerEmployeeId);
+            if (!canApprove) throw Errors.FORBIDDEN('无权审批');
 
-        const now = Date.now();
-        await this.db.update(schema.borrowings).set({
-            status: 'rejected',
-            approvedBy: userId,
-            approvedAt: now,
-            updatedAt: now
-        }).where(eq(schema.borrowings.id, id)).execute();
+            const now = Date.now();
+            await tx.update(schema.borrowings).set({
+                status: 'rejected',
+                approvedBy: userId,
+                approvedAt: now,
+                updatedAt: now
+            }).where(eq(schema.borrowings.id, id)).execute();
+        })
     }
 
     // 辅助方法
-    private async checkApprovalPermission(managerUserId: string, targetEmployeeId: string) {
-        const employeeService = new EmployeeService(this.db);
-        const subordinateIds = await employeeService.getSubordinateEmployeeIds(managerUserId);
-        if (!subordinateIds.includes(targetEmployeeId)) {
-            throw Errors.FORBIDDEN('无权审批');
-        }
-    }
+    // checkApprovalPermission removed
 
-    private async getBorrowerEmployeeId(borrowerUserId: string): Promise<string> {
-        const borrowerUser = await this.db.select({ email: schema.employees.email }).from(schema.employees).where(eq(schema.employees.id, borrowerUserId)).get();
+    private async getBorrowerEmployeeId(borrowerUserId: string, tx?: any): Promise<string> {
+        const db = tx || this.db
+        const borrowerUser = await db.select({ email: schema.employees.email }).from(schema.employees).where(eq(schema.employees.id, borrowerUserId)).get();
         if (!borrowerUser) throw Errors.FORBIDDEN('无法找到申请人信息');
 
-        const borrowerEmployee = await this.db.select({ id: schema.employees.id }).from(schema.employees).where(eq(schema.employees.email, borrowerUser.email)).get();
+        const borrowerEmployee = await db.select({ id: schema.employees.id }).from(schema.employees).where(eq(schema.employees.email, borrowerUser.email)).get();
         if (!borrowerEmployee) throw Errors.FORBIDDEN('无法找到申请人员工信息');
 
         return borrowerEmployee.id;

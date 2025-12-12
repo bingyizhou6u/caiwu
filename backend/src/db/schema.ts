@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const systemConfig = sqliteTable('system_config', {
     key: text('key').primaryKey(),
@@ -227,7 +227,9 @@ export const allowancePayments = sqliteTable('allowance_payments', {
     createdBy: text('created_by'),
     createdAt: integer('created_at'),
     updatedAt: integer('updated_at'),
-});
+}, (t) => ({
+    unq: uniqueIndex('idx_unq_allowance_payments_emp_period_type').on(t.employeeId, t.year, t.month, t.allowanceType)
+}));
 
 export const employeeLeaves = sqliteTable('employee_leaves', {
     id: text('id').primaryKey(),
@@ -265,7 +267,9 @@ export const salaryPayments = sqliteTable('salary_payments', {
     paymentConfirmedAt: integer('payment_confirmed_at'),
     createdAt: integer('created_at'),
     updatedAt: integer('updated_at'),
-});
+}, (t) => ({
+    unq: uniqueIndex('idx_unq_salary_payments_emp_period').on(t.employeeId, t.year, t.month)
+}));
 
 export const salaryPaymentAllocations = sqliteTable('salary_payment_allocations', {
     id: text('id').primaryKey(),
@@ -404,7 +408,7 @@ export const accountTransfers = sqliteTable('account_transfers', {
     toCurrency: text('to_currency').notNull(),
     fromAmountCents: integer('from_amount_cents').notNull(),
     toAmountCents: integer('to_amount_cents').notNull(),
-    exchangeRate: integer('exchange_rate'), // Store as float? No, integer usually. But code uses float. Let's check.
+    exchangeRate: real('exchange_rate'), // Updated to real to store float precision
     // In routes/account-transfers.ts: exchangeRate = body.exchange_rate (number).
     // SQLite stores numbers as REAL or INTEGER. Drizzle 'integer' maps to INTEGER. 'real' maps to REAL.
     // If exchange rate is float, we should use 'real' or store as scaled integer.

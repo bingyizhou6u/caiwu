@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid'
 import { getCookie } from 'hono/cookie'
 import { getSession, createDb } from './db.js'
-import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { auditLogs } from '../db/schema.js'
+// import { DrizzleD1Database } from 'drizzle-orm/d1' // Unused
+// import { auditLogs } from '../db/schema.js' // Unused
 import * as schema from '../db/schema.js'
 
 // 从Cloudflare请求头获取IP和IP归属地信息
@@ -33,44 +33,23 @@ function getIPInfo(c: any): { ip: string | null, ipLocation: string | null } {
   }
 }
 
-export async function logAudit(
-  db: DrizzleD1Database<typeof schema>,
-  actorId: string,
-  action: string,
-  entity: string,
-  entityId?: string,
-  detail?: string,
-  ip?: string | null,
-  ipLocation?: string | null
-) {
-  const id = uuid()
-  await db.insert(auditLogs).values({
-    id,
-    actorId,
-    action,
-    entity,
-    entityId: entityId ?? null,
-    at: Date.now(),
-    detail: detail ?? null,
-    ip: ip ?? null,
-    ipLocation: ipLocation ?? null
-  }).execute()
-}
 
 
 export function logAuditAction(c: any, action: string, entity: string, entityId?: string, detail?: string) {
   const userId = c.get('userId') as string | undefined
+  const auditService = c.get('services')?.audit
 
   // 获取IP和IP归属地信息
   const { ip, ipLocation } = getIPInfo(c)
 
   if (!userId) {
     // 如果userId不存在，尝试从session中获取
+    // 注意：AuditService 需要 actorId。如果 session 也拿不到，就无法记录（或者记录为 system?）
     const sid = getCookie(c, 'sid')
-    if (sid) {
+    if (sid && auditService) {
       getSession(createDb(c.env.DB), sid).then(s => {
         if (s) {
-          logAudit(createDb(c.env.DB), s.userId, action, entity, entityId, detail, ip, ipLocation).catch((err) => {
+          auditService.log(s.userId, action, entity, entityId, detail, ip, ipLocation).catch((err: any) => {
             console.error('Audit log error:', err)
           })
         }
@@ -78,8 +57,14 @@ export function logAuditAction(c: any, action: string, entity: string, entityId?
     }
     return
   }
+
+  if (!auditService) {
+    console.error('AuditService not found in context')
+    return
+  }
+
   // 使用await确保日志记录完成，但使用catch避免阻塞主流程
-  const promise = logAudit(createDb(c.env.DB), userId, action, entity, entityId, detail, ip, ipLocation).catch((err) => {
+  const promise = auditService.log(userId, action, entity, entityId, detail, ip, ipLocation).catch((err: any) => {
     console.error('Audit log error:', err, { action, entity, entityId, userId })
   })
   try {

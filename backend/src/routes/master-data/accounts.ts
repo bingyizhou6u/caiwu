@@ -4,6 +4,7 @@ import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { createAccountSchema, updateAccountSchema, accountSchema, accountTransactionSchema } from '../../schemas/master-data.schema.js'
+import { paginationSchema } from '../../schemas/common.schema.js'
 
 export const accountsRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -36,7 +37,7 @@ const listAccountsRoute = createRoute({
 accountsRoutes.openapi(listAccountsRoute, async (c) => {
     if (!hasPermission(c, 'system', 'account', 'view')) throw Errors.FORBIDDEN()
     const { activeOnly, accountType, currency, search } = c.req.valid('query')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     let results = await service.getAccounts(search)
 
     // 后端过滤
@@ -73,16 +74,14 @@ const listAccountTransactionsRoute = createRoute({
         params: z.object({
             id: z.string()
         }),
-        query: z.object({
-            limit: z.string().optional().default('100'),
-            offset: z.string().optional().default('0')
-        })
+        query: paginationSchema
     },
     responses: {
         200: {
             content: {
                 'application/json': {
                     schema: z.object({
+                        total: z.number(),
                         results: z.array(accountTransactionSchema)
                     })
                 }
@@ -95,13 +94,12 @@ const listAccountTransactionsRoute = createRoute({
 accountsRoutes.openapi(listAccountTransactionsRoute, async (c) => {
     if (!hasPermission(c, 'system', 'account', 'view')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
-    const limit = parseInt(c.req.query('limit') || '100')
-    const offset = parseInt(c.req.query('offset') || '0')
+    const { page = 1, pageSize = 20 } = c.req.valid('query')
 
-    const service = c.get('services').masterData
-    const results = await service.getAccountTransactions(id, limit, offset)
+    const service = c.var.services.masterData
+    const { total, list } = await service.getAccountTransactions(id, page, pageSize)
 
-    const mappedResults = results.map(r => ({
+    const mappedResults = list.map(r => ({
         id: r.id,
         transactionDate: r.transactionDate,
         transactionType: r.transactionType,
@@ -116,7 +114,7 @@ accountsRoutes.openapi(listAccountTransactionsRoute, async (c) => {
         categoryName: r.categoryName
     }))
 
-    return c.json({ results: mappedResults })
+    return c.json({ total, results: mappedResults })
 })
 
 const createAccountRoute = createRoute({
@@ -147,7 +145,7 @@ const createAccountRoute = createRoute({
 accountsRoutes.openapi(createAccountRoute, async (c) => {
     if (!hasPermission(c, 'system', 'account', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.createAccount({
         name: body.name,
@@ -204,7 +202,7 @@ accountsRoutes.openapi(updateAccountRoute, async (c) => {
     if (!hasPermission(c, 'system', 'account', 'update')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     await service.updateAccount(id, {
         name: body.name,
@@ -243,7 +241,7 @@ const deleteAccountRoute = createRoute({
 accountsRoutes.openapi(deleteAccountRoute, async (c) => {
     if (!hasPermission(c, 'system', 'account', 'delete')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.deleteAccount(id)
 

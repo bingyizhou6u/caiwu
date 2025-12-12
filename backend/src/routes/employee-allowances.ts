@@ -65,10 +65,10 @@ employeeAllowancesRoutes.openapi(
     const { employeeId, allowanceType } = c.req.valid('query')
 
 
-    const rows = await (c.var.services.allowance as any)?.listAllowances?.({
-      employeeId,
+    const rows = await c.var.services.allowance.list(
+      employeeId || '',
       allowanceType
-    }).catch(() => [])
+    )
 
     const results = rows.map((row: any) => ({
       id: row.allowance.id,
@@ -121,9 +121,9 @@ employeeAllowancesRoutes.openapi(
 
 
     try {
-      const result = await (c.var.services.allowance as any)?.createAllowance?.({
+      const result = await c.var.services.allowance.create({
         employeeId: body.employeeId,
-        allowanceType: body.allowanceType,
+        allowanceType: body.allowanceType || 'other',
         currencyId: body.currencyId,
         amountCents: body.amountCents
       })
@@ -176,7 +176,7 @@ employeeAllowancesRoutes.openapi(
     const body = c.req.valid('json')
 
     try {
-      const rows = await (c.var.services.allowance as any)?.batchUpdateAllowances?.(
+      const rows = await c.var.services.allowance.batchUpdate(
         body.employeeId,
         body.allowanceType ?? (body as any).allowance_type,
         (body.allowances || []).map((s: any) => ({
@@ -230,7 +230,7 @@ employeeAllowancesRoutes.openapi(
   async (c) => {
     const { id } = c.req.valid('param')
 
-    await (c.var.services.allowance as any)?.deleteAllowance?.(id).catch(() => undefined)
+    await c.var.services.allowance.delete(id)
     logAuditAction(c, 'delete', 'employee_allowance', id)
     return c.json({ ok: true })
   }

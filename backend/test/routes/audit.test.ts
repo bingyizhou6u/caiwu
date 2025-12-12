@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { auditRoutes } from '../../src/routes/audit.js'
 import { Errors } from '../../src/utils/errors.js'
+import { logAuditAction } from '../../src/utils/audit.js'
 
 // Mock audit utils
 vi.mock('../../src/utils/audit.js', () => ({
@@ -94,6 +95,32 @@ describe('Audit Routes', () => {
         expect(res.headers.get('Content-Type')).toContain('text/csv')
         const text = await res.text()
         expect(text).toContain('Test User')
+        expect(text).toContain('Test User')
         expect(text).toContain('create')
+    })
+
+    it('should create audit log', async () => {
+        const payload = {
+            action: 'view_sensitive',
+            entity: 'employee',
+            entityId: 'e1',
+            detail: 'Viewed salary'
+        }
+
+        const res = await app.request('/audit-logs', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: { 'Content-Type': 'application/json' }
+        })
+
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ ok: true })
+        expect(logAuditAction).toHaveBeenCalledWith(
+            expect.anything(),
+            'view_sensitive',
+            'employee',
+            'e1',
+            'Viewed salary'
+        )
     })
 })

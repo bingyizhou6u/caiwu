@@ -68,7 +68,7 @@ ipWhitelistRoutes.openapi(
   }),
   async (c) => {
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-    const items = await c.get('services').ipWhitelist.getIPList()
+    const items = await c.var.services.ipWhitelist.getIPList()
     return c.json(items)
   }
 )
@@ -104,7 +104,7 @@ ipWhitelistRoutes.openapi(
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.get('services').ipWhitelist.addIP(body.ipAddress, body.description)
+    const result = await c.var.services.ipWhitelist.addIP(body.ipAddress, body.description)
 
     logAuditAction(c, 'create', 'ip_whitelist', result.id, JSON.stringify({ ipAddress: body.ipAddress }))
 
@@ -143,7 +143,7 @@ ipWhitelistRoutes.openapi(
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.get('services').ipWhitelist.batchAddIPs(body.ips)
+    const result = await c.var.services.ipWhitelist.batchAddIPs(body.ips)
 
     logAuditAction(c, 'batch_create', 'ip_whitelist', '', JSON.stringify({
       count: body.ips.length,
@@ -186,7 +186,7 @@ ipWhitelistRoutes.openapi(
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.get('services').ipWhitelist.batchDeleteIPs(body.ids)
+    const result = await c.var.services.ipWhitelist.batchDeleteIPs(body.ids)
 
     logAuditAction(c, 'batch_delete', 'ip_whitelist', '', JSON.stringify({
       count: body.ids.length,
@@ -223,7 +223,7 @@ ipWhitelistRoutes.openapi(
   async (c) => {
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
 
-    const items = await c.get('services').ipWhitelist.getIPList()
+    const items = await c.var.services.ipWhitelist.getIPList()
 
     logAuditAction(c, 'sync', 'ip_whitelist', '', JSON.stringify({ count: items.length }))
     return c.json({ message: 'sync completed', synced: items.length })
@@ -257,7 +257,7 @@ ipWhitelistRoutes.openapi(
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
 
-    await c.get('services').ipWhitelist.deleteIP(id)
+    await c.var.services.ipWhitelist.deleteIP(id)
 
     logAuditAction(c, 'delete', 'ip_whitelist', id)
     return c.json({ ok: true })
@@ -284,7 +284,7 @@ ipWhitelistRoutes.openapi(
   }),
   async (c) => {
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
-    const status = await c.get('services').ipWhitelist.getRuleStatus()
+    const status = await c.var.services.ipWhitelist.getRuleStatus()
     return c.json(status)
   }
 )
@@ -320,9 +320,35 @@ ipWhitelistRoutes.openapi(
     if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.get('services').ipWhitelist.toggleRule(body.enabled)
+    const result = await c.var.services.ipWhitelist.toggleRule(body.enabled)
 
     logAuditAction(c, 'update', 'ip_whitelist_rule', '', JSON.stringify({ enabled: body.enabled }))
+    return c.json(result)
+  }
+)
+
+// 创建规则
+ipWhitelistRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/ip-whitelist/rule/create',
+    tags: ['IP Whitelist'],
+    summary: 'Create whitelist rule',
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean(), ruleId: z.string().optional(), rulesetId: z.string().optional() }),
+          },
+        },
+        description: 'Create result',
+      },
+    },
+  }),
+  async (c) => {
+    if (!hasPermission(c, 'system', 'config', 'update')) throw Errors.FORBIDDEN()
+    const result = await c.var.services.ipWhitelist.createRule()
+    logAuditAction(c, 'create', 'ip_whitelist_rule', result.ruleId || '')
     return c.json(result)
   }
 )

@@ -7,7 +7,11 @@
  */
 export function formatAmount(cents: number | null | undefined): string {
   if (cents == null) return '-'
-  return `${(cents / 100).toFixed(2)}`
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'CNY',
+    minimumFractionDigits: 2
+  }).format(cents / 100)
 }
 
 /**

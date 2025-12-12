@@ -246,7 +246,7 @@ myRoutes.openapi(
   async (c) => {
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
-    const data = await c.get('services').my.getDashboardData(userId, c.env.DB)
+    const data = await c.var.services.my.getDashboardData(userId)
     return c.json(data)
   }
 )
@@ -283,7 +283,7 @@ myRoutes.openapi(
     if (!userId) throw Errors.UNAUTHORIZED()
     const status = c.req.query('status')
     const year = c.req.query('year') || new Date().getFullYear().toString()
-    const data = await c.get('services').my.getLeaves(userId, year, status)
+    const data = await c.var.services.my.getLeaves(userId, year, status)
     return c.json(data)
   }
 )
@@ -325,7 +325,7 @@ myRoutes.openapi(
       ...raw,
       leave_type: (raw as any).leave_type ?? (raw as any).leaveType
     }
-    const result = await c.get('services').my.createLeave(userId, body).catch(() => undefined)
+    const result = await c.var.services.my.createLeave(userId, body).catch(() => undefined)
     if (result?.id) {
       logAuditAction(c, 'create', 'employee_leave', result.id, JSON.stringify(body))
     }
@@ -363,7 +363,7 @@ myRoutes.openapi(
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
     const status = c.req.query('status')
-    const data = await c.get('services').my.getReimbursements(userId, status)
+    const data = await c.var.services.my.getReimbursements(userId, status)
     return c.json(data)
   }
 )
@@ -401,7 +401,7 @@ myRoutes.openapi(
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
     const body = c.req.valid('json')
-    const result = await c.get('services').my.createReimbursement(userId, body)
+    const result = await c.var.services.my.createReimbursement(userId, body)
     logAuditAction(c, 'create', 'expense_reimbursement', result.id, JSON.stringify(body))
     return c.json(result)
   }
@@ -431,7 +431,7 @@ myRoutes.openapi(
   async (c) => {
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
-    const data = await c.get('services').my.getBorrowings(userId)
+    const data = await c.var.services.my.getBorrowings(userId)
     return c.json(data)
   }
 )
@@ -469,7 +469,7 @@ myRoutes.openapi(
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
     const body = c.req.valid('json')
-    const result = await c.get('services').my.createBorrowing(userId, body)
+    const result = await c.var.services.my.createBorrowing(userId, body)
     logAuditAction(c, 'create', 'borrowing', result.id, JSON.stringify(body))
     return c.json(result)
   }
@@ -505,7 +505,7 @@ myRoutes.openapi(
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
     const year = c.req.query('year') || new Date().getFullYear().toString()
-    const data = await c.get('services').my.getAllowances(userId, year)
+    const data = await c.var.services.my.getAllowances(userId, year)
     return c.json(data)
   }
 )
@@ -534,7 +534,7 @@ myRoutes.openapi(
   async (c) => {
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
-    const data = await c.get('services').my.getAssets(userId)
+    const data = await c.var.services.my.getAssets(userId)
     return c.json(data)
   }
 )
@@ -560,7 +560,7 @@ myRoutes.openapi(
   async (c) => {
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
-    const data = await c.get('services').my.getProfile(userId)
+    const data = await c.var.services.my.getProfile(userId)
     return c.json(data)
   }
 )
@@ -598,7 +598,7 @@ myRoutes.openapi(
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
     const body = c.req.valid('json')
-    const result = await c.get('services').my.updateProfile(userId, body)
+    const result = await c.var.services.my.updateProfile(userId, body)
     logAuditAction(c, 'update', 'my_profile', userId, JSON.stringify(body))
     return c.json(result)
   }
@@ -625,7 +625,7 @@ myRoutes.openapi(
   async (c) => {
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
-    const data = await c.get('services').my.getAttendanceToday(userId)
+    const data = await c.var.services.my.getAttendanceToday(userId)
     return c.json(data)
   }
 )
@@ -660,7 +660,7 @@ myRoutes.openapi(
     if (!userId) throw Errors.UNAUTHORIZED()
     const year = c.req.query('year') || new Date().getFullYear().toString()
     const month = c.req.query('month') || (new Date().getMonth() + 1).toString().padStart(2, '0')
-    const data = await c.get('services').my.getAttendanceList(userId, year, month)
+    const data = await c.var.services.my.getAttendanceList(userId, year, month)
     return c.json(data)
   }
 )
@@ -701,7 +701,7 @@ myRoutes.openapi(
   async (c) => {
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
-    const result = await c.get('services').my.clockIn(userId)
+    const result = await c.var.services.my.clockIn(userId)
 
     if (result.error) {
       return c.json({
@@ -756,7 +756,7 @@ myRoutes.openapi(
   async (c) => {
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
-    const result = await c.get('services').my.clockOut(userId)
+    const result = await c.var.services.my.clockOut(userId)
 
     if (result.error) {
       return c.json({

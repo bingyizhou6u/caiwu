@@ -1,11 +1,11 @@
 
 import { env } from 'cloudflare:test'
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { AuthService } from '../../src/services/AuthService.js'
 import { EmployeeService } from '../../src/services/EmployeeService.js'
 import { SystemConfigService } from '../../src/services/SystemConfigService.js'
-import {  employees, departments, orgDepartments, positions } from '../../src/db/schema.js'
+import { employees, departments, orgDepartments, positions } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
@@ -26,8 +26,19 @@ describe('Password Reset Flow', () => {
         db.transaction = async (cb) => cb(db)
 
         const systemConfigService = new SystemConfigService(db)
-        employeeService = new EmployeeService(db)
-        authService = new AuthService(db, env.SESSIONS_KV, systemConfigService)
+        const mockEmailService = {
+            sendActivationEmail: vi.fn(),
+            sendLoginNotificationEmail: vi.fn(),
+            sendPasswordResetLinkEmail: vi.fn(),
+            sendPasswordChangedNotificationEmail: vi.fn(),
+            sendTotpResetEmail: vi.fn(),
+            sendEmail: vi.fn()
+        } as any
+
+        employeeService = new EmployeeService(db, mockEmailService)
+        const mockSystemConfigService = { get: async () => ({ value: 'false' }) } as any
+        const mockAuditService = { log: async () => { } } as any
+        authService = new AuthService(db, env.SESSIONS_KV, mockSystemConfigService, mockAuditService, mockEmailService)
     })
 
     beforeEach(async () => {
@@ -93,7 +104,8 @@ describe('Password Reset Flow', () => {
         // 2. Verify Token
         const verifyResult = await authService.verifyResetToken(user!.resetToken!)
         expect(verifyResult.valid).toBe(true)
-        expect(verifyResult.email).toBe('reset@example.com')
+        // verifyResult returns user.email which is company email
+        expect(verifyResult.email).toContain('@cloudflarets.com')
 
         // 3. Reset Password
         const newPassword = 'newPassword456'

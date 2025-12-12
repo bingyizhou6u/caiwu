@@ -53,17 +53,6 @@ export function useIPRuleStatus() {
     )
 }
 
-export function useCreateIPRule() {
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: async () => {
-            await apiClient.post(api.ipWhitelistRuleCreate, {})
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['ipWhitelistRule'] })
-        }
-    })
-}
 
 export function useToggleIPRule() {
     const queryClient = useQueryClient()
@@ -85,6 +74,18 @@ export function useAddIP() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['ipWhitelist'] })
+        }
+    })
+}
+
+export function useCreateIPRule() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async () => {
+            await apiClient.post(api.ipWhitelistRuleCreate, {})
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['ipWhitelistRule'] })
         }
     })
 }

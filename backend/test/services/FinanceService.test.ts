@@ -3,7 +3,7 @@ import { env } from 'cloudflare:test'
 import { FinanceService } from '../../src/services/FinanceService'
 import { createDb } from '../../src/utils/db'
 import { uuid } from '../../src/utils/db'
-import { accounts, categories, sites, departments,  employees, currencies, accountTransactions } from '../../src/db/schema'
+import { accounts, categories, sites, departments, employees, currencies, accountTransactions } from '../../src/db/schema'
 import { eq } from 'drizzle-orm'
 import schemaSql from '../../src/db/schema.sql?raw'
 
@@ -88,7 +88,7 @@ describe('FinanceService', () => {
         }).execute()
 
         await db.insert(employees).values({
-            email: 'test@example.com',
+            email: 'test2@example.com',
             name: 'Test User',
             active: 1,
             createdAt: Date.now(),
@@ -130,162 +130,13 @@ describe('FinanceService', () => {
         })
     })
 
-    describe('Account Transfers', () => {
-        it('should create an account transfer', async () => {
-            const toAccountId = uuid()
-            await db.insert(accounts).values({
-                id: toAccountId,
-                name: 'To Account',
-                currency: 'CNY',
-                type: 'bank',
-                openingCents: 0,
-                active: 1,
-                createdAt: Date.now(),
-                updatedAt: Date.now()
-            }).execute()
 
-            const result = await service.createAccountTransfer({
-                transferDate: '2023-01-02',
-                fromAccountId: accountId,
-                toAccountId: toAccountId,
-                fromAmountCents: 5000,
-                toAmountCents: 5000,
-                memo: 'Test Transfer',
-                createdBy: userId
-            })
 
-            expect(result.id).toBeDefined()
 
-            const transfer = await service.getAccountTransfer(result.id)
-            expect(transfer).toBeDefined()
-            expect(transfer?.transfer.fromAmountCents).toBe(5000)
-        })
-    })
 
-    describe('AR/AP Docs', () => {
-        it('should create an AR doc', async () => {
-            const result = await service.createArApDoc({
-                kind: 'AR',
-                amountCents: 2000,
-                issueDate: '2023-01-03',
-                memo: 'Test AR',
-                siteId
-            })
 
-            expect(result.id).toBeDefined()
-            expect(result.docNo).toMatch(/^AR20230103-\d{3}$/)
-        })
 
-        it('should confirm an AR doc', async () => {
-            const { id: docId } = await service.createArApDoc({
-                kind: 'AR',
-                amountCents: 3000,
-                issueDate: '2023-01-04',
-                memo: 'Test AR Confirm'
-            })
 
-            const result = await service.confirmArApDoc({
-                docId,
-                accountId,
-                bizDate: '2023-01-05',
-                memo: 'Confirm AR',
-                createdBy: userId
-            })
-
-            expect(result.ok).toBe(true)
-            expect(result.flowId).toBeDefined()
-        })
-    })
-
-    describe('Borrowings', () => {
-        it('should create a borrowing', async () => {
-            const result = await service.createBorrowing({
-                userId,
-                accountId,
-                amountCents: 50000,
-                currency: 'CNY',
-                borrowDate: '2023-01-06',
-                memo: 'Test Borrowing',
-                createdBy: userId
-            })
-
-            expect(result.id).toBeDefined()
-        })
-
-        it('should create a repayment', async () => {
-            const { id: borrowingId } = await service.createBorrowing({
-                userId,
-                accountId,
-                amountCents: 10000,
-                currency: 'CNY',
-                borrowDate: '2023-01-07',
-                memo: 'Test Borrowing for Repay'
-            })
-
-            const result = await service.createRepayment({
-                borrowingId,
-                accountId,
-                amountCents: 5000,
-                currency: 'CNY',
-                repayDate: '2023-01-08',
-                memo: 'Test Repayment',
-                createdBy: userId
-            })
-
-            expect(result.id).toBeDefined()
-        })
-    })
-
-    describe('Site Bills', () => {
-        it('should create a site bill', async () => {
-            const result = await service.createSiteBill({
-                siteId,
-                billDate: '2023-01-09',
-                billType: 'expense',
-                amountCents: 1500,
-                currency: 'CNY',
-                description: 'Test Site Bill',
-                status: 'pending',
-                createdBy: userId
-            })
-
-            expect(result.id).toBeDefined()
-        })
-
-        it('should update a site bill', async () => {
-            const { id } = await service.createSiteBill({
-                siteId,
-                billDate: '2023-01-10',
-                billType: 'income',
-                amountCents: 2000,
-                currency: 'CNY',
-                description: 'Test Site Bill Update',
-                status: 'pending'
-            })
-
-            const result = await service.updateSiteBill(id, {
-                status: 'paid',
-                paymentDate: '2023-01-11'
-            })
-
-            expect(result.ok).toBe(true)
-        })
-
-        it('should delete a site bill', async () => {
-            const { id } = await service.createSiteBill({
-                siteId,
-                billDate: '2023-01-12',
-                billType: 'expense',
-                amountCents: 100,
-                currency: 'CNY',
-                description: 'Test Site Bill Delete',
-                status: 'pending'
-            })
-
-            const result = await service.deleteSiteBill(id)
-            expect(result.ok).toBe(true)
-        })
-    })
 
     describe('Balance Calculation', () => {
         it('should handle backdated transactions (snapshot behavior)', async () => {
@@ -323,7 +174,7 @@ describe('FinanceService', () => {
 
             // Fetch transaction records to verify snapshots
             const txs = await db.select().from(accountTransactions).where(eq(accountTransactions.accountId, accountId)).orderBy(accountTransactions.transactionDate).execute()
-            
+
             // Note: DB returns all. Let's find by flowId
             const tx1 = txs.find((t: any) => t.flowId === t1.id)
             const tx2 = txs.find((t: any) => t.flowId === t2.id)

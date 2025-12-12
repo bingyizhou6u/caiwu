@@ -5,78 +5,155 @@ import { lazy, Suspense } from 'react'
 import { Spin } from 'antd'
 
 // Lazy Load Components
+// Lazy Load Components
+const loaders: Record<string, () => Promise<any>> = {
+    // System
+    'system/departments': () => import('../features/system/pages/DepartmentManagement').then(m => ({ default: m.DepartmentManagement })),
+    'system/categories': () => import('../features/system/pages/CategoryManagement').then(m => ({ default: m.CategoryManagement })),
+    'system/accounts': () => import('../features/system/pages/AccountManagement').then(m => ({ default: m.AccountManagement })),
+    'system/currencies': () => import('../features/system/pages/CurrencyManagement').then(m => ({ default: m.CurrencyManagement })),
+    'system/vendors': () => import('../features/system/pages/VendorManagement').then(m => ({ default: m.VendorManagement })),
+    'system/permissions': () => import('../features/system/pages/PositionPermissionsManagement').then(m => ({ default: m.PositionPermissionsManagement })),
+    'system/email': () => import('../features/system/pages/EmailNotificationSettings').then(m => ({ default: m.EmailNotificationSettings })),
+    'system/ip-whitelist': () => import('../features/system/pages/IPWhitelistManagement'),
+    'system/audit': () => import('../features/system/pages/AuditLogs').then(m => ({ default: m.AuditLogs })),
+
+    // Finance
+    'finance/flows': () => import('../features/finance/pages/Flows').then(m => ({ default: m.Flows })),
+    'finance/transfer': () => import('../features/finance/pages/AccountTransfer').then(m => ({ default: m.AccountTransfer })),
+    'finance/transactions': () => import('../features/finance/pages/AccountTransactions').then(m => ({ default: m.AccountTransactions })),
+    'finance/import': () => import('../features/finance/pages/ImportCenter').then(m => ({ default: m.ImportCenter })),
+    'finance/borrowings': () => import('../features/finance/pages/BorrowingManagement').then(m => ({ default: m.BorrowingManagement })),
+    'finance/repayments': () => import('../features/finance/pages/RepaymentManagement').then(m => ({ default: m.RepaymentManagement })),
+    'finance/ar': () => import('../features/finance/pages/AR').then(m => ({ default: m.AR })),
+    'finance/ap': () => import('../features/finance/pages/AP').then(m => ({ default: m.AP })),
+
+    // Sites
+    'sites/list': () => import('../features/sites/pages/SiteManagement').then(m => ({ default: m.SiteManagement })),
+    'sites/bills': () => import('../features/sites/pages/SiteBills').then(m => ({ default: m.SiteBills })),
+
+    // Assets
+    'assets/list': () => import('../features/assets/pages/FixedAssetsManagement').then(m => ({ default: m.FixedAssetsManagement })),
+    'assets/rental': () => import('../features/assets/pages/RentalManagement').then(m => ({ default: m.RentalManagement })),
+
+    // HR
+    'hr/employees': () => import('../features/hr/pages/EmployeeManagement').then(m => ({ default: m.EmployeeManagement })),
+    'hr/employees/create': () => import('../features/hr/pages/CreateEmployee').then(m => ({ default: m.CreateEmployee })),
+    'hr/salary-report': () => import('../features/reports/pages/ReportEmployeeSalary').then(m => ({ default: m.ReportEmployeeSalary })),
+    'hr/salary-payments': () => import('../features/hr/pages/SalaryPayments').then(m => ({ default: m.SalaryPayments })),
+    'hr/allowance-payments': () => import('../features/hr/pages/AllowancePayments').then(m => ({ default: m.AllowancePayments })),
+    'hr/leaves': () => import('../features/hr/pages/LeaveManagement').then(m => ({ default: m.LeaveManagement })),
+    'hr/reimbursements': () => import('../features/hr/pages/ExpenseReimbursement').then(m => ({ default: m.ExpenseReimbursement })),
+
+    // Reports
+    'reports/dept-cash': () => import('../features/reports/pages/ReportDepartmentCash').then(m => ({ default: m.ReportDepartmentCash })),
+    'reports/site-growth': () => import('../features/reports/pages/ReportSiteGrowth').then(m => ({ default: m.ReportSiteGrowth })),
+    'reports/ar-summary': () => import('../features/reports/pages/ReportARSummary').then(m => ({ default: m.ReportARSummary })),
+    'reports/ar-detail': () => import('../features/reports/pages/ReportARDetail').then(m => ({ default: m.ReportARDetail })),
+    'reports/ap-summary': () => import('../features/reports/pages/ReportAPSummary').then(m => ({ default: m.ReportAPSummary })),
+    'reports/ap-detail': () => import('../features/reports/pages/ReportAPDetail').then(m => ({ default: m.ReportAPDetail })),
+    'reports/expense-summary': () => import('../features/reports/pages/ReportExpenseSummary').then(m => ({ default: m.ReportExpenseSummary })),
+    'reports/expense-detail': () => import('../features/reports/pages/ReportExpenseDetail').then(m => ({ default: m.ReportExpenseDetail })),
+    'reports/account-balance': () => import('../features/reports/pages/ReportAccountBalance').then(m => ({ default: m.ReportAccountBalance })),
+    'reports/borrowing': () => import('../features/reports/pages/ReportBorrowing').then(m => ({ default: m.ReportBorrowing })),
+
+    // My
+    'my/center': () => import('../features/my/pages/MyCenter').then(m => ({ default: m.MyCenter })),
+    'my/leaves': () => import('../features/my/pages/MyLeaves').then(m => ({ default: m.MyLeaves })),
+    'my/reimbursements': () => import('../features/my/pages/MyReimbursements').then(m => ({ default: m.MyReimbursements })),
+    'my/borrowings': () => import('../features/my/pages/MyBorrowings').then(m => ({ default: m.MyBorrowings })),
+    'my/assets': () => import('../features/my/pages/MyAssets').then(m => ({ default: m.MyAssets })),
+    'my/policies': () => import('../features/my/pages/CompanyPolicies').then(m => ({ default: m.CompanyPolicies })),
+    'my/approvals': () => import('../features/my/pages/MyApprovals').then(m => ({ default: m.MyApprovals })),
+
+    // Dashboard & Auth
+    'dashboard': () => import('../features/dashboard/pages/Dashboard').then(m => ({ default: m.Dashboard })),
+    'change-password': () => import('../features/auth/pages/ChangePassword').then(m => ({ default: m.ChangePassword })),
+    'auth/activate': () => import('../features/auth/pages/ActivateAccount').then(m => ({ default: m.ActivateAccount })),
+    'auth/reset-password': () => import('../features/auth/pages/ResetPassword').then(m => ({ default: m.ResetPassword })),
+    'auth/request-totp-reset': () => import('../features/auth/pages/RequestTotpReset').then(m => ({ default: m.RequestTotpReset })),
+    'auth/reset-totp': () => import('../features/auth/pages/ResetTotpConfirm').then(m => ({ default: m.ResetTotpConfirm })),
+}
+
 // System
-const DepartmentManagement = lazy(() => import('../features/system/pages/DepartmentManagement').then(m => ({ default: m.DepartmentManagement })))
-const CategoryManagement = lazy(() => import('../features/system/pages/CategoryManagement').then(m => ({ default: m.CategoryManagement })))
-const AccountManagement = lazy(() => import('../features/system/pages/AccountManagement').then(m => ({ default: m.AccountManagement })))
-const CurrencyManagement = lazy(() => import('../features/system/pages/CurrencyManagement').then(m => ({ default: m.CurrencyManagement })))
-const VendorManagement = lazy(() => import('../features/system/pages/VendorManagement').then(m => ({ default: m.VendorManagement })))
-const PositionPermissionsManagement = lazy(() => import('../features/system/pages/PositionPermissionsManagement').then(m => ({ default: m.PositionPermissionsManagement })))
-const EmailNotificationSettings = lazy(() => import('../features/system/pages/EmailNotificationSettings').then(m => ({ default: m.EmailNotificationSettings })))
-const IPWhitelistManagement = lazy(() => import('../features/system/pages/IPWhitelistManagement'))
-const AuditLogs = lazy(() => import('../features/system/pages/AuditLogs').then(m => ({ default: m.AuditLogs })))
+const DepartmentManagement = lazy(loaders['system/departments'])
+const CategoryManagement = lazy(loaders['system/categories'])
+const AccountManagement = lazy(loaders['system/accounts'])
+const CurrencyManagement = lazy(loaders['system/currencies'])
+const VendorManagement = lazy(loaders['system/vendors'])
+const PositionPermissionsManagement = lazy(loaders['system/permissions'])
+const EmailNotificationSettings = lazy(loaders['system/email'])
+const IPWhitelistManagement = lazy(loaders['system/ip-whitelist'])
+const AuditLogs = lazy(loaders['system/audit'])
 
 // Finance
-const Flows = lazy(() => import('../features/finance/pages/Flows').then(m => ({ default: m.Flows })))
-const AccountTransfer = lazy(() => import('../features/finance/pages/AccountTransfer').then(m => ({ default: m.AccountTransfer })))
-const AccountTransactions = lazy(() => import('../features/finance/pages/AccountTransactions').then(m => ({ default: m.AccountTransactions })))
-const ImportCenter = lazy(() => import('../features/finance/pages/ImportCenter').then(m => ({ default: m.ImportCenter })))
-const BorrowingManagement = lazy(() => import('../features/finance/pages/BorrowingManagement').then(m => ({ default: m.BorrowingManagement })))
-const RepaymentManagement = lazy(() => import('../features/finance/pages/RepaymentManagement').then(m => ({ default: m.RepaymentManagement })))
-const AR = lazy(() => import('../features/finance/pages/AR').then(m => ({ default: m.AR })))
-const AP = lazy(() => import('../features/finance/pages/AP').then(m => ({ default: m.AP })))
+const Flows = lazy(loaders['finance/flows'])
+const AccountTransfer = lazy(loaders['finance/transfer'])
+const AccountTransactions = lazy(loaders['finance/transactions'])
+const ImportCenter = lazy(loaders['finance/import'])
+const BorrowingManagement = lazy(loaders['finance/borrowings'])
+const RepaymentManagement = lazy(loaders['finance/repayments'])
+const AR = lazy(loaders['finance/ar'])
+const AP = lazy(loaders['finance/ap'])
 
 // Sites
-const SiteManagement = lazy(() => import('../features/sites/pages/SiteManagement').then(m => ({ default: m.SiteManagement })))
-const SiteBills = lazy(() => import('../features/sites/pages/SiteBills').then(m => ({ default: m.SiteBills })))
+const SiteManagement = lazy(loaders['sites/list'])
+const SiteBills = lazy(loaders['sites/bills'])
 
 // Assets
-const FixedAssetsManagement = lazy(() => import('../features/assets/pages/FixedAssetsManagement').then(m => ({ default: m.FixedAssetsManagement })))
-const RentalManagement = lazy(() => import('../features/assets/pages/RentalManagement').then(m => ({ default: m.RentalManagement })))
+const FixedAssetsManagement = lazy(loaders['assets/list'])
+const RentalManagement = lazy(loaders['assets/rental'])
 
 // HR
-const EmployeeManagement = lazy(() => import('../features/hr/pages/EmployeeManagement').then(m => ({ default: m.EmployeeManagement })))
-const CreateEmployee = lazy(() => import('../features/hr/pages/CreateEmployee').then(m => ({ default: m.CreateEmployee })))
-const ReportEmployeeSalary = lazy(() => import('../features/reports/pages/ReportEmployeeSalary').then(m => ({ default: m.ReportEmployeeSalary })))
-const SalaryPayments = lazy(() => import('../features/hr/pages/SalaryPayments').then(m => ({ default: m.SalaryPayments })))
-const AllowancePayments = lazy(() => import('../features/hr/pages/AllowancePayments').then(m => ({ default: m.AllowancePayments })))
-const LeaveManagement = lazy(() => import('../features/hr/pages/LeaveManagement').then(m => ({ default: m.LeaveManagement })))
-const ExpenseReimbursement = lazy(() => import('../features/hr/pages/ExpenseReimbursement').then(m => ({ default: m.ExpenseReimbursement })))
+const EmployeeManagement = lazy(loaders['hr/employees'])
+const CreateEmployee = lazy(loaders['hr/employees/create'])
+const ReportEmployeeSalary = lazy(loaders['hr/salary-report'])
+const SalaryPayments = lazy(loaders['hr/salary-payments'])
+const AllowancePayments = lazy(loaders['hr/allowance-payments'])
+const LeaveManagement = lazy(loaders['hr/leaves'])
+const ExpenseReimbursement = lazy(loaders['hr/reimbursements'])
 
 // Reports
-const ReportDepartmentCash = lazy(() => import('../features/reports/pages/ReportDepartmentCash').then(m => ({ default: m.ReportDepartmentCash })))
-const ReportSiteGrowth = lazy(() => import('../features/reports/pages/ReportSiteGrowth').then(m => ({ default: m.ReportSiteGrowth })))
-const ReportARSummary = lazy(() => import('../features/reports/pages/ReportARSummary').then(m => ({ default: m.ReportARSummary })))
-const ReportARDetail = lazy(() => import('../features/reports/pages/ReportARDetail').then(m => ({ default: m.ReportARDetail })))
-const ReportAPSummary = lazy(() => import('../features/reports/pages/ReportAPSummary').then(m => ({ default: m.ReportAPSummary })))
-const ReportAPDetail = lazy(() => import('../features/reports/pages/ReportAPDetail').then(m => ({ default: m.ReportAPDetail })))
-const ReportExpenseSummary = lazy(() => import('../features/reports/pages/ReportExpenseSummary').then(m => ({ default: m.ReportExpenseSummary })))
-const ReportExpenseDetail = lazy(() => import('../features/reports/pages/ReportExpenseDetail').then(m => ({ default: m.ReportExpenseDetail })))
-const ReportAccountBalance = lazy(() => import('../features/reports/pages/ReportAccountBalance').then(m => ({ default: m.ReportAccountBalance })))
-const ReportBorrowing = lazy(() => import('../features/reports/pages/ReportBorrowing').then(m => ({ default: m.ReportBorrowing })))
+const ReportDepartmentCash = lazy(loaders['reports/dept-cash'])
+const ReportSiteGrowth = lazy(loaders['reports/site-growth'])
+const ReportARSummary = lazy(loaders['reports/ar-summary'])
+const ReportARDetail = lazy(loaders['reports/ar-detail'])
+const ReportAPSummary = lazy(loaders['reports/ap-summary'])
+const ReportAPDetail = lazy(loaders['reports/ap-detail'])
+const ReportExpenseSummary = lazy(loaders['reports/expense-summary'])
+const ReportExpenseDetail = lazy(loaders['reports/expense-detail'])
+const ReportAccountBalance = lazy(loaders['reports/account-balance'])
+const ReportBorrowing = lazy(loaders['reports/borrowing'])
 
 // My
-const MyCenter = lazy(() => import('../features/my/pages/MyCenter').then(m => ({ default: m.MyCenter })))
-const MyLeaves = lazy(() => import('../features/my/pages/MyLeaves').then(m => ({ default: m.MyLeaves })))
-const MyReimbursements = lazy(() => import('../features/my/pages/MyReimbursements').then(m => ({ default: m.MyReimbursements })))
-const MyBorrowings = lazy(() => import('../features/my/pages/MyBorrowings').then(m => ({ default: m.MyBorrowings })))
-const MyAssets = lazy(() => import('../features/my/pages/MyAssets').then(m => ({ default: m.MyAssets })))
+const MyCenter = lazy(loaders['my/center'])
+const MyLeaves = lazy(loaders['my/leaves'])
+const MyReimbursements = lazy(loaders['my/reimbursements'])
+const MyBorrowings = lazy(loaders['my/borrowings'])
+const MyAssets = lazy(loaders['my/assets'])
+const CompanyPolicies = lazy(loaders['my/policies'])
+const MyApprovals = lazy(loaders['my/approvals'])
+const Dashboard = lazy(loaders['dashboard'])
+const ChangePassword = lazy(loaders['change-password'])
+const ActivateAccount = lazy(loaders['auth/activate'])
+const ResetPassword = lazy(loaders['auth/reset-password'])
+const RequestTotpReset = lazy(loaders['auth/request-totp-reset'])
+const ResetTotpConfirm = lazy(loaders['auth/reset-totp'])
 
-const CompanyPolicies = lazy(() => import('../features/my/pages/CompanyPolicies').then(m => ({ default: m.CompanyPolicies })))
-const MyApprovals = lazy(() => import('../features/my/pages/MyApprovals').then(m => ({ default: m.MyApprovals })))
-const Dashboard = lazy(() => import('../features/dashboard/pages/Dashboard').then(m => ({ default: m.Dashboard })))
-const ChangePassword = lazy(() => import('../features/auth/pages/ChangePassword').then(m => ({ default: m.ChangePassword })))
-const ActivateAccount = lazy(() => import('../features/auth/pages/ActivateAccount').then(m => ({ default: m.ActivateAccount })))
+/**
+ * 预加载路由组件
+ * @param path 路由路径 (config/menu.ts key)
+ */
+export const preloadRoute = (path: string) => {
+    const loader = loaders[path]
+    if (loader) {
+        loader()
+    }
+}
 
-const ResetPassword = lazy(() => import('../features/auth/pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
-const RequestTotpReset = lazy(() => import('../features/auth/pages/RequestTotpReset').then(m => ({ default: m.RequestTotpReset })))
-const ResetTotpConfirm = lazy(() => import('../features/auth/pages/ResetTotpConfirm').then(m => ({ default: m.ResetTotpConfirm })))
+import { SkeletonLoading } from '../components/SkeletonLoading'
 
-const Loading = () => (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 400 }}>
-        <Spin size="large" />
-    </div>
-)
+const Loading = () => <SkeletonLoading />
 
 import { PrivateRoute } from './PrivateRoute'
 

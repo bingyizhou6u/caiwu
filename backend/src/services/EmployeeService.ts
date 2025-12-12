@@ -5,9 +5,13 @@ import * as schema from '../db/schema.js';
 import { v4 as uuid } from 'uuid';
 import { Errors } from '../utils/errors.js';
 import { EmailRoutingService } from './EmailRoutingService.js';
+import { EmailService } from './EmailService.js';
 
 export class EmployeeService {
-    constructor(private db: DrizzleD1Database<typeof schema>) { }
+    constructor(
+        private db: DrizzleD1Database<typeof schema>,
+        private emailService: EmailService
+    ) { }
 
     /**
      * 创建员工（包含用户账号创建、邮箱路由创建和欢迎邮件发送）
@@ -39,9 +43,6 @@ export class EmployeeService {
         email_routing_created: boolean;
         password?: string;
     }> {
-        // 延迟导入邮件工具以避免循环依赖
-        const { sendActivationEmail } = await import('../utils/email.js');
-
         // 注意：D1 不支持传统事务 (BEGIN/COMMIT/ROLLBACK)
         // 我们改用顺序查询。对于原子性，D1 提供 batch() API，但在复杂逻辑中较难应用。
 
@@ -178,10 +179,9 @@ export class EmployeeService {
 
             // 9. 发送激活邮件到个人邮箱
             let emailSent = false;
-            if (userAccountCreated && env?.EMAIL_SERVICE) {
+            if (userAccountCreated) {
                 try {
-                    const result = await sendActivationEmail(
-                        env,
+                    const result = await this.emailService.sendActivationEmail(
                         data.personalEmail,
                         data.name,
                         activationToken
@@ -231,8 +231,6 @@ export class EmployeeService {
     }
 
     async resendActivationEmail(id: string, env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {
-        // 延迟导入邮件工具
-        const { sendActivationEmail } = await import('../utils/email.js');
 
         const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get();
         if (!employee) throw Errors.NOT_FOUND('员工');
@@ -257,8 +255,7 @@ export class EmployeeService {
         const emailTarget = employee.personalEmail || employee.email || '';
 
         try {
-            const result = await sendActivationEmail(
-                env,
+            const result = await this.emailService.sendActivationEmail(
                 emailTarget,
                 employee.name || '',
                 activationToken

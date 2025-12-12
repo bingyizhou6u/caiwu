@@ -3,7 +3,7 @@ import QRCode from 'qrcode-svg'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
 import { generateTotpSecret, verifyTotp } from '../utils/auth.js'
-import { logAudit } from '../utils/audit.js'
+// import { logAudit } from '../utils/audit.js' // Removed
 import { UserService } from './UserService.js'
 import { SystemConfigService } from './SystemConfigService.js'
 import { TrustedDeviceService } from './TrustedDeviceService.js'
@@ -12,6 +12,8 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
 import { eq, and, or } from 'drizzle-orm'
 import { employees, sessions } from '../db/schema.js'
+import { AuditService } from './AuditService.js'
+import { EmailService } from './EmailService.js'
 
 export class AuthService {
     private userService: UserService
@@ -20,7 +22,9 @@ export class AuthService {
     constructor(
         private db: DrizzleD1Database<typeof schema>,
         private kv: KVNamespace,
-        private systemConfigService: SystemConfigService
+        private systemConfigService: SystemConfigService,
+        private auditService: AuditService,
+        private emailService: EmailService
     ) {
         this.userService = new UserService(db)
         this.trustedDeviceService = new TrustedDeviceService(db)
@@ -98,7 +102,7 @@ export class AuthService {
 
         // 审计日志
         if (context) {
-            await logAudit(this.db, user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }), deviceInfo?.ip, undefined)
+            await this.auditService.log(user.id, 'login', 'user', user.id, JSON.stringify({ email: user.email }), deviceInfo?.ip, undefined)
         }
 
         return {
@@ -179,7 +183,7 @@ export class AuthService {
     async logout(sessionId: string) {
         const session = await this.getSession(sessionId)
         if (session) {
-            await logAudit(this.db, session.user_id, 'logout', 'user', session.user_id)
+            await this.auditService.log(session.user_id, 'logout', 'user', session.user_id)
         }
         await this.kv.delete(`session:${sessionId}`)
         await this.db.delete(sessions).where(eq(sessions.id, sessionId)).run()
@@ -209,11 +213,11 @@ export class AuthService {
             .run()
 
         if (env.EMAIL_SERVICE) {
-            const { sendPasswordResetLinkEmail } = await import('../utils/email.js')
-            await sendPasswordResetLinkEmail(env, email, employee.name || '', resetToken)
+            await this.emailService.sendPasswordResetLinkEmail(email, employee.name || '', resetToken)
         }
 
-        await logAudit(this.db, user.id, 'request_password_reset', 'user', user.id)
+
+        await this.auditService.log(user.id, 'request_password_reset', 'user', user.id)
         return { status: 'success' }
     }
 
@@ -258,13 +262,15 @@ export class AuthService {
                 passwordChanged: 1,
                 mustChangePassword: 0
             })
+            // @ts-ignore - Drizzle type definition issue
             .where(eq(employees.id, user.id))
             .run()
 
-        await logAudit(this.db, user.id, 'reset_password', 'user', user.id, undefined, deviceInfo?.ip)
+        await this.auditService.log(user.id, 'reset_password', 'user', user.id, undefined, deviceInfo?.ip)
 
+        if (!user.personalEmail) throw Errors.BUSINESS_ERROR('用户未绑定个人邮箱')
         // 自动登录
-        return this.login(user.email, password, undefined, undefined, deviceInfo)
+        return this.login(user.personalEmail, password, undefined, undefined, deviceInfo)
     }
 
     // 生成用于激活的 TOTP（不需要密码，因为用户尚未自设密码）
@@ -347,13 +353,15 @@ export class AuthService {
                 mustChangePassword: 0,
                 totpSecret: is2FaEnabled ? totpSecret : null
             })
+            // @ts-ignore - Drizzle type definition issue
             .where(eq(employees.id, user.id))
             .run()
 
-        await logAudit(this.db, user.id, 'activate_account', 'user', user.id, undefined, deviceInfo?.ip)
+        await this.auditService.log(user.id, 'activate_account', 'user', user.id, undefined, deviceInfo?.ip)
 
+        if (!user.personalEmail) throw Errors.BUSINESS_ERROR('用户未绑定个人邮箱')
         // 自动登录 - 传递刚刚验证过的 TOTP 码
-        return this.login(user.email, password, totpCode, undefined, deviceInfo)
+        return this.login(user.personalEmail, password, totpCode, undefined, deviceInfo)
     }
     async requestTotpReset(email: string, env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {
         const user = await this.userService.getUserByEmail(email)
@@ -373,13 +381,12 @@ export class AuthService {
         await this.kv.put(`totp_reset:${token}`, employee.id, { expirationTtl: 1800 })
 
         if (env.EMAIL_SERVICE) {
-            const { sendTotpResetEmail } = await import('../utils/email.js')
             // 优先使用个人邮箱，否则使用公司邮箱
             const targetEmail = employee.personalEmail || email
-            await sendTotpResetEmail(env, targetEmail, employee.name || '', token)
+            await this.emailService.sendTotpResetEmail(targetEmail, employee.name || '', token)
         }
 
-        await logAudit(this.db, employee.id, 'request_totp_reset', 'user', employee.id)
+        await this.auditService.log(employee.id, 'request_totp_reset', 'user', employee.id)
         return { status: 'success' }
     }
 
@@ -405,7 +412,7 @@ export class AuthService {
         // 删除 Token
         await this.kv.delete(`totp_reset:${token}`)
 
-        await logAudit(this.db, userId, 'reset_totp_by_token', 'user', userId)
+        await this.auditService.log(userId, 'reset_totp_by_token', 'user', userId)
         return { success: true }
     }
 }

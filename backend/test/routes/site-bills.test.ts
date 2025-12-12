@@ -17,11 +17,12 @@ vi.mock('../../src/utils/permissions.js', () => ({
     getDataAccessFilter: vi.fn(() => undefined),
 }))
 
-const mockFinanceService = {
-    listSiteBills: vi.fn(),
-    createSiteBill: vi.fn(),
-    updateSiteBill: vi.fn(),
-    deleteSiteBill: vi.fn(),
+const mockSiteBillService = {
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    getById: vi.fn(), // Needed for get details
 }
 
 // Mock DB
@@ -47,7 +48,7 @@ describe('Site Bills Routes', () => {
         app.use('*', async (c, next) => {
             c.set('userId', 'user123')
             c.set('services', {
-                finance: mockFinanceService
+                siteBill: mockSiteBillService
             } as any)
             c.env = {
                 DB: mockDB
@@ -85,7 +86,7 @@ describe('Site Bills Routes', () => {
             currencyName: 'RMB',
             creatorName: 'Admin'
         }
-        mockFinanceService.listSiteBills.mockResolvedValue([mockRow])
+        mockSiteBillService.list.mockResolvedValue([mockRow])
 
         const res = await app.request('/site-bills?siteId=' + validSiteId, {
             method: 'GET',
@@ -122,7 +123,22 @@ describe('Site Bills Routes', () => {
     it('should create site bill', async () => {
         const mockCreatedId = validId
         const mockResult = { id: mockCreatedId }
-        mockFinanceService.createSiteBill.mockResolvedValue(mockResult)
+        mockSiteBillService.create.mockResolvedValue(mockResult)
+
+        // Mock getById for the return
+        mockSiteBillService.getById.mockResolvedValue({
+            bill: {
+                id: validId,
+                siteId: validSiteId,
+                billDate: '2023-01-01',
+                billType: 'expense',
+                amountCents: 1000,
+                currency: 'CNY',
+                status: 'pending',
+            },
+            siteName: 'Test Site',
+            currencyName: 'RMB'
+        })
 
         // Mock DB fetch after create
         const mockDBRecord = {
@@ -173,7 +189,7 @@ describe('Site Bills Routes', () => {
 
         expect(res.status).toBe(200)
         expect(await res.json()).toEqual(expectedResponse)
-        expect(mockFinanceService.createSiteBill).toHaveBeenCalled()
+        expect(mockSiteBillService.create).toHaveBeenCalled()
     })
 
     it('should update site bill', async () => {
@@ -187,6 +203,12 @@ describe('Site Bills Routes', () => {
             status: 'paid',
             siteName: 'Test Site'
         }
+
+        // Mock getById for the return
+        mockSiteBillService.getById.mockResolvedValue({
+            bill: mockDBRecord,
+            siteName: 'Test Site'
+        })
 
         const mockBind = {
             first: vi.fn().mockResolvedValue(mockDBRecord)
@@ -210,11 +232,16 @@ describe('Site Bills Routes', () => {
 
         expect(res.status).toBe(200)
         expect(await res.json()).toEqual(mockDBRecord)
-        expect(mockFinanceService.updateSiteBill).toHaveBeenCalled()
+        expect(mockSiteBillService.update).toHaveBeenCalled()
     })
 
     it('should delete site bill', async () => {
         // Mock DB check existing
+        // getById is called first to check existence
+        mockSiteBillService.getById.mockResolvedValue({
+            bill: { id: validId, siteId: validSiteId, billDate: '2023-01-01' }
+        })
+
         const mockRecord = { id: validId, siteId: validSiteId }
         const mockBind = {
             first: vi.fn().mockResolvedValue(mockRecord)
@@ -230,7 +257,7 @@ describe('Site Bills Routes', () => {
 
         expect(res.status).toBe(200)
         expect(await res.json()).toEqual({ ok: true })
-        expect(mockFinanceService.deleteSiteBill).toHaveBeenCalledWith(validId)
+        expect(mockSiteBillService.delete).toHaveBeenCalledWith(validId)
     })
 
     it('should get site bill details', async () => {
@@ -244,6 +271,11 @@ describe('Site Bills Routes', () => {
             status: 'pending',
             siteName: 'Test Site'
         }
+
+        mockSiteBillService.getById.mockResolvedValue({
+            bill: mockDBRecord,
+            siteName: 'Test Site'
+        })
 
         const mockBind = {
             first: vi.fn().mockResolvedValue(mockDBRecord)

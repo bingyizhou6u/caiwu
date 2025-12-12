@@ -15,11 +15,12 @@ vi.mock('../../src/utils/permissions.js', () => ({
 }))
 
 const mockAllowanceService = {
-    listAllowances: vi.fn(),
-    createAllowance: vi.fn(),
-    updateAllowance: vi.fn(),
-    batchUpdateAllowances: vi.fn(),
-    deleteAllowance: vi.fn(),
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    batchUpdate: vi.fn(),
+    delete: vi.fn(),
+    get: vi.fn()
 }
 
 describe('Employee Allowances Routes', () => {
@@ -49,19 +50,19 @@ describe('Employee Allowances Routes', () => {
         app.route('/', employeeAllowancesRoutes)
 
         // 默认 mock 返回，避免未设置时抛错
-        mockAllowanceService.listAllowances.mockResolvedValue([])
-        mockAllowanceService.createAllowance.mockResolvedValue({
+        mockAllowanceService.list.mockResolvedValue([])
+        mockAllowanceService.create.mockResolvedValue({
             allowance: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 0 },
             currencyName: 'RMB',
             employeeName: 'John'
         })
-        mockAllowanceService.updateAllowance.mockResolvedValue({
+        mockAllowanceService.update.mockResolvedValue({
             allowance: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 0 },
             currencyName: 'RMB',
             employeeName: 'John'
         })
-        mockAllowanceService.batchUpdateAllowances.mockResolvedValue([])
-        mockAllowanceService.deleteAllowance.mockResolvedValue({ id: validId })
+        mockAllowanceService.batchUpdate.mockResolvedValue([])
+        mockAllowanceService.delete.mockResolvedValue({ id: validId })
     })
 
     it('should list allowances', async () => {
@@ -70,7 +71,7 @@ describe('Employee Allowances Routes', () => {
             currencyName: 'RMB',
             employeeName: 'John'
         }]
-        mockAllowanceService.listAllowances.mockResolvedValue(mockResult)
+        mockAllowanceService.list.mockResolvedValue(mockResult)
 
         const res = await app.request(`/employee-allowances?employeeId=${validEmpId}`, {
             method: 'GET',
@@ -99,8 +100,8 @@ describe('Employee Allowances Routes', () => {
         }
 
         // Mock listAllowances to return empty (no duplicate)
-        mockAllowanceService.listAllowances.mockResolvedValue([])
-        mockAllowanceService.createAllowance.mockResolvedValue(mockResult)
+        mockAllowanceService.list.mockResolvedValue([])
+        mockAllowanceService.create.mockResolvedValue(mockResult)
 
         const res = await app.request('/employee-allowances', {
             method: 'POST',
@@ -131,7 +132,7 @@ describe('Employee Allowances Routes', () => {
             currencyName: 'RMB',
             employeeName: 'John'
         }]
-        mockAllowanceService.batchUpdateAllowances.mockResolvedValue(mockResult)
+        mockAllowanceService.batchUpdate.mockResolvedValue(mockResult)
 
         const res = await app.request('/employee-allowances/batch', {
             method: 'PUT',
@@ -158,7 +159,7 @@ describe('Employee Allowances Routes', () => {
     })
 
     it('should delete allowance', async () => {
-        mockAllowanceService.deleteAllowance.mockResolvedValue({ id: validId })
+        mockAllowanceService.delete.mockResolvedValue({ id: validId })
 
         const res = await app.request(`/employee-allowances/${validId}`, {
             method: 'DELETE',

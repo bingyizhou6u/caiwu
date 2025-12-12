@@ -10,9 +10,11 @@ import type { Env, AppVariables } from './types.js'
 import { createAuthMiddleware } from './middleware.js'
 import { createIPWhitelistMiddleware } from './middleware/ipWhitelist.js'
 import { di } from './middleware/di.js'
+import { createRequestIdMiddleware } from './middleware/requestId.js'
 
 // Utility imports
 import { errorHandler } from './utils/errors.js'
+import { Logger } from './utils/logger.js'
 
 // Route imports
 import { authRoutes } from './routes/auth.js'
@@ -66,20 +68,51 @@ app.get('/', (c) => c.json({ ok: true, name: 'caiwu-backend' }))
 
 // 健康检查和版本信息（不需要认证）
 app.get('/api/health', async (c) => {
+  const checks = {
+    db: false,
+    kv: false,
+    r2: false
+  }
+
+  // 1. Check DB
   try {
-    // 优化：使用最简单最快的查询，添加超时控制
     const r = await Promise.race([
       c.env.DB.prepare('select 1 as ok').first<{ ok: number }>(),
-      new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 2000)
-      )
+      new Promise<null>((_, reject) => setTimeout(() => reject(new Error('db timeout')), 2000))
     ]).catch(() => null)
-
-    return c.json({ db: r ? r.ok === 1 : false })
-  } catch (error: any) {
-    // 如果查询失败，返回数据库不可用
-    return c.json({ db: false })
+    checks.db = r ? r.ok === 1 : false
+  } catch (error) {
+    console.error('Health check DB error:', error)
   }
+
+  // 2. Check KV (Sessions)
+  try {
+    await Promise.race([
+      c.env.SESSIONS_KV.list({ limit: 1 }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('kv timeout')), 2000))
+    ])
+    checks.kv = true
+  } catch (error) {
+    console.error('Health check KV error:', error)
+  }
+
+  // 3. Check R2 (Vouchers)
+  try {
+    await Promise.race([
+      c.env.VOUCHERS.list({ limit: 1 }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('r2 timeout')), 2000))
+    ])
+    checks.r2 = true
+  } catch (error) {
+    console.error('Health check R2 error:', error)
+  }
+
+  const healthy = checks.db && checks.kv && checks.r2
+  return c.json({
+    status: healthy ? 'healthy' : 'degraded',
+    checks,
+    timestamp: new Date().toISOString()
+  }, healthy ? 200 : 503)
 })
 
 app.get('/api/version', (c) => c.json({ version: 'currencies-v1' }))
@@ -87,9 +120,23 @@ app.get('/api/version', (c) => c.json({ version: 'currencies-v1' }))
 
 // 注册中间件
 // 注册中间件
+app.use('*', createRequestIdMiddleware())
 app.use('/api/*', createIPWhitelistMiddleware())
 app.use('/api/*', createAuthMiddleware())
 app.use('/api/*', di)
+
+// Log request start
+app.use('*', async (c, next) => {
+  const start = Date.now()
+  await next()
+  const ms = Date.now() - start
+  Logger.info(`Request completed`, {
+    method: c.req.method,
+    url: c.req.url,
+    status: c.res.status,
+    durationMs: ms
+  }, c)
+})
 
 
 

@@ -4,9 +4,12 @@ import { describe, it, expect } from 'vitest'
 describe('formatters', () => {
     describe('formatAmount', () => {
         it('should format cents to amount string', () => {
-            expect(formatAmount(100)).toBe('1.00')
-            expect(formatAmount(1234)).toBe('12.34')
-            expect(formatAmount(0)).toBe('0.00')
+            // Updated to match Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }) output which includes symbol
+            // Note: The specific space character might vary between environments (non-breaking space vs space), 
+            // but usually it is just the symbol.
+            expect(formatAmount(100)).toMatch(/¥\s?1\.00/)
+            expect(formatAmount(1234)).toMatch(/¥\s?12\.34/)
+            expect(formatAmount(0)).toMatch(/¥\s?0\.00/)
         })
 
         it('should handle null or undefined', () => {

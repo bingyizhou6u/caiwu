@@ -3,7 +3,7 @@ import { authenticator } from 'otplib'
 // TOTP辅助函数
 export function generateTotpSecret(email: string) {
   const secret = authenticator.generateSecret()
-  const otpauthUrl = authenticator.keyuri(email, '财务系统', secret)
+  const otpauthUrl = authenticator.keyuri(email, 'AR公司管理系统', secret)
   return { secret, otpauthUrl }
 }
 

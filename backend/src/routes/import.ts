@@ -56,7 +56,7 @@ importRoutes.openapi(importCsvRoute, async (c) => {
   const userId = c.get('userId') as string
 
   if (kind === 'flows') {
-    const result = await c.get('services').import.importFlows(csvContent, userId)
+    const result = await c.var.services.import.importFlows(csvContent, userId)
     return c.json(result)
   }
 

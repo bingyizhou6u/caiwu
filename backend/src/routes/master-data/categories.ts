@@ -26,7 +26,7 @@ const listCategoriesRoute = createRoute({
 })
 
 categoriesRoutes.openapi(listCategoriesRoute, async (c) => {
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     const results = await service.getCategories()
     return c.json({ results })
 })
@@ -59,7 +59,7 @@ const createCategoryRoute = createRoute({
 categoriesRoutes.openapi(createCategoryRoute, async (c) => {
     if (!hasPermission(c, 'system', 'category', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.createCategory({
         name: body.name,
@@ -110,7 +110,7 @@ categoriesRoutes.openapi(updateCategoryRoute, async (c) => {
     if (!hasPermission(c, 'system', 'category', 'update')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     await service.updateCategory(id, {
         name: body.name,
@@ -145,7 +145,7 @@ const deleteCategoryRoute = createRoute({
 categoriesRoutes.openapi(deleteCategoryRoute, async (c) => {
     if (!hasPermission(c, 'system', 'category', 'delete')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.deleteCategory(id)
 

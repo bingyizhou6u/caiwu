@@ -52,7 +52,7 @@ rentalRoutes.openapi(listPropertiesRoute, async (c) => {
   // 放宽权限
   const query = c.req.valid('query')
   const service = c.get('services').rental
-  const results = await (service as any).listProperties?.(query).catch(() => [])
+  const results = await service.listProperties(query)
   return c.json({ results })
 })
 
@@ -98,11 +98,11 @@ rentalRoutes.openapi(listAllocationsRoute, async (c) => {
 
   const returned = query.returned === 'true' ? true : (query.returned === 'false' ? false : undefined)
 
-  const results = await (service as any).listAllocations?.({
+  const results = await service.listAllocations({
     propertyId: query.propertyId,
     employeeId: query.employeeId,
     returned
-  }).catch(() => [])
+  })
   return c.json({ results })
 })
 
@@ -148,7 +148,7 @@ rentalRoutes.openapi(allocateDormitoryRoute, async (c) => {
   const service = c.get('services').rental
 
   try {
-    const result = await (service as any).allocateDormitory?.({
+    const result = await service.allocateDormitory({
       propertyId: id,
       employeeId: body.employeeId,
       roomNumber: body.roomNumber || undefined,
@@ -209,7 +209,7 @@ rentalRoutes.openapi(returnDormitoryRoute, async (c) => {
   const service = c.get('services').rental
 
   try {
-    await (service as any).returnDormitory?.(id, {
+    await service.returnDormitory(id, {
       returnDate: body.returnDate,
       memo: body.memo
     })
@@ -243,7 +243,7 @@ rentalRoutes.openapi(getPropertyRoute, async (c) => {
   // 放宽权限
   const id = c.req.param('id')
   const service = c.get('services').rental
-  const result = await (service as any).getProperty?.(id).catch(() => undefined)
+  const result = await service.getProperty(id)
   return c.json(result ?? { id, name: 'property-stub' })
 })
 
@@ -304,7 +304,7 @@ rentalRoutes.openapi(createPropertyRoute, async (c) => {
   const service = c.get('services').rental
 
   try {
-    const result = await (service as any).createProperty?.({
+    const result = await service.createProperty({
       ...body,
       createdBy: userId
     })
@@ -379,10 +379,10 @@ rentalRoutes.openapi(updatePropertyRoute, async (c) => {
   const userId = c.get('userId')
   const service = c.get('services').rental
 
-  await (service as any).updateProperty?.(id, {
+  await service.updateProperty(id, {
     ...body,
-    updatedBy: userId
-  }).catch(() => undefined)
+    createdBy: userId
+  })
 
   logAuditAction(c, 'update', 'rental_property', id, JSON.stringify(body))
   return c.json({ ok: true })
@@ -412,7 +412,7 @@ rentalRoutes.openapi(deletePropertyRoute, async (c) => {
   const id = c.req.param('id')
   const service = c.get('services').rental
 
-  const property = await (service as any).deleteProperty?.(id).catch(() => ({ propertyCode: 'stub', name: 'stub' }))
+  const property = await service.deleteProperty(id)
 
   logAuditAction(c, 'delete', 'rental_property', id, JSON.stringify({ propertyCode: property.propertyCode, name: property.name }))
   return c.json({ ok: true })
@@ -457,11 +457,11 @@ rentalRoutes.openapi(listPaymentsRoute, async (c) => {
   // 放宽权限
   const query = c.req.valid('query')
   const service = c.get('services').rental
-  const results = await (service as any).listPayments?.({
+  const results = await service.listPayments({
     propertyId: query.propertyId,
     year: query.year,
     month: query.month
-  }).catch(() => [])
+  })
   return c.json({ results })
 })
 
@@ -497,7 +497,7 @@ rentalRoutes.openapi(createPaymentRoute, async (c) => {
   const service = c.get('services').rental
 
   try {
-    const result = await (service as any).createPayment?.({
+    const result = await service.createPayment({
       propertyId: body.propertyId,
       paymentDate: body.paymentDate,
       year: body.year,

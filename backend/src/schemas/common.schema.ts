@@ -60,6 +60,9 @@ export const docIdQuerySchema = z.object({
 export const dateRangeQuerySchema = z.object({
   start: dateSchema,
   end: dateSchema,
+}).refine(data => data.start <= data.end, {
+  message: '开始日期不能晚于结束日期',
+  path: ['end']
 })
 
 /**

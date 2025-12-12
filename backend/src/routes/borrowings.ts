@@ -1,12 +1,12 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import { and, eq, desc } from 'drizzle-orm'
-import { borrowings } from '../db/schema.js'
+import { and, eq, desc, sql } from 'drizzle-orm'
+import { borrowings, repayments } from '../db/schema.js'
 import type { Env, AppVariables } from '../types.js'
 import { hasPermission, getUserPosition, getDataAccessFilter, isTeamMember, getUserId } from '../utils/permissions.js'
 import { logAuditAction } from '../utils/audit.js'
 import { Errors } from '../utils/errors.js'
 import { createBorrowingSchema, createRepaymentSchema } from '../schemas/business.schema.js'
-import { borrowingQuerySchema, repaymentQuerySchema, uuidSchema } from '../schemas/common.schema.js'
+import { borrowingQuerySchema, repaymentQuerySchema, uuidSchema, paginationSchema } from '../schemas/common.schema.js'
 
 export const borrowingsRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -28,6 +28,7 @@ const borrowingResponseSchema = z.object({
 })
 
 const listBorrowingsResponseSchema = z.object({
+  total: z.number(),
   results: z.array(borrowingResponseSchema)
 })
 
@@ -74,7 +75,7 @@ borrowingsRoutes.openapi(
     path: '/borrowings',
     summary: 'List borrowings',
     request: {
-      query: borrowingQuerySchema
+      query: borrowingQuerySchema.merge(paginationSchema)
     },
     responses: {
       200: {
@@ -105,29 +106,28 @@ borrowingsRoutes.openapi(
     }
 
     const whereClause = conditions.length ? and(...conditions) : undefined
+    const { page = 1, pageSize = 20 } = query
 
-    const rows = await c.var.services.finance.listBorrowings(200, whereClause)
+    const { total, list } = await c.var.services.borrowing.listBorrowings(page, pageSize, whereClause)
 
-    const results = rows.map(row => {
-      const b = row.borrowing
-      return {
-        id: b.id,
-        userId: b.userId,
-        borrower_id: b.userId, // Assuming borrower_id is same as userId
-        accountId: b.accountId,
-        amountCents: b.amountCents,
-        currency: b.currency,
-        borrowDate: b.borrowDate,
-        memo: b.memo,
-        createdAt: b.createdAt,
+    return c.json({
+      total,
+      results: list.map(row => ({
+        id: row.borrowing.id,
+        userId: row.borrowing.userId,
+        borrower_id: row.borrowing.userId,
+        accountId: row.borrowing.accountId,
+        amountCents: row.borrowing.amountCents,
+        currency: row.borrowing.currency,
+        borrowDate: row.borrowing.borrowDate,
+        memo: row.borrowing.memo,
+        createdAt: row.borrowing.createdAt,
         borrower_name: row.borrowerName,
         borrower_email: row.borrowerEmail,
         accountName: row.accountName,
         account_currency: row.accountCurrency
-      }
-    })
-
-    return c.json({ results } as any)
+      }))
+    } as any)
   }
 )
 
@@ -161,7 +161,7 @@ borrowingsRoutes.openapi(
     if (!hasPermission(c, 'finance', 'borrowing', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.var.services.finance.createBorrowing({
+    const result = await c.var.services.borrowing.createBorrowing({
       userId: body.userId,
       accountId: body.accountId,
       amountCents: Math.round(body.amount * 100),
@@ -173,17 +173,7 @@ borrowingsRoutes.openapi(
 
     logAuditAction(c, 'create', 'borrowing', result.id, JSON.stringify({ userId: body.userId, accountId: body.accountId, amountCents: Math.round(body.amount * 100) }))
 
-    // 获取完整详情以返回
-    const created = await c.env.DB.prepare(`
-      select b.*, 
-        e.name as borrower_name, e.personal_email as borrower_email,
-        a.name as accountName, a.currency as account_currency
-      from borrowings b
-      left join employees e on e.id=b.user_id
-      
-      left join accounts a on a.id=b.account_id
-      where b.id=?
-    `).bind(result.id).first()
+    const created = await c.var.services.borrowing.getBorrowingById(result.id)
 
     return c.json(created as any)
   }
@@ -215,38 +205,36 @@ borrowingsRoutes.openapi(
     const borrowingId = query.borrowingId
 
     // TODO: 将复杂查询移至 FinanceService
-    let sql = `
-      select r.*, b.user_id as userId, e.name as borrower_name, e.personal_email as borrower_email,
-        a.name as accountName, a.currency as account_currency,
-        creator.name as creator_name
-      from repayments r
-      left join borrowings b on b.id=r.borrowing_id
-      left join employees e on e.id=b.user_id
-      
-      left join accounts a on a.id=r.account_id
-      left join employees creator on creator.id=r.created_by
-      
-    `
-    const binds: any[] = []
-
-    // 组员只能查看自己的还款记录（通过borrowing关联）
+    // Build where clause using Drizzle
+    const conditions = []
     if (isTeamMember(c)) {
       const currentUserId = getUserId(c)
       if (currentUserId) {
-        sql += ' where b.user_id = ?'
-        binds.push(currentUserId)
+        // Filter by borrowing's userId
+        conditions.push(eq(borrowings.userId, currentUserId))
       } else {
         return c.json({ results: [] } as any)
       }
     } else if (borrowingId) {
-      sql += ' where r.borrowing_id=?'
-      binds.push(borrowingId)
+      conditions.push(eq(repayments.borrowingId, borrowingId))
     }
 
-    sql += ' order by r.repay_date desc, r.created_at desc'
+    const whereClause = conditions.length ? and(...conditions) : undefined
 
-    const rows = await c.env.DB.prepare(sql).bind(...binds).all()
-    return c.json({ results: rows.results ?? [] } as any)
+    const results = await c.var.services.borrowing.listRepayments(200, whereClause)
+
+    // Convert to response format
+    return c.json({
+      results: results.map(row => ({
+        ...row.repayment,
+        userId: row.userId,
+        borrower_name: row.borrowerName,
+        borrower_email: row.borrowerEmail,
+        accountName: row.accountName,
+        account_currency: row.accountCurrency,
+        creator_name: row.creatorName
+      }))
+    } as any)
   }
 )
 
@@ -280,7 +268,7 @@ borrowingsRoutes.openapi(
     if (!hasPermission(c, 'finance', 'borrowing', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.var.services.finance.createRepayment({
+    const result = await c.var.services.borrowing.createRepayment({
       borrowingId: body.borrowingId,
       accountId: body.accountId,
       amountCents: Math.round(body.amount * 100),
@@ -292,19 +280,7 @@ borrowingsRoutes.openapi(
 
     logAuditAction(c, 'create', 'repayment', result.id, JSON.stringify({ borrowingId: body.borrowingId, accountId: body.accountId, amountCents: Math.round(body.amount * 100) }))
 
-    const created = await c.env.DB.prepare(`
-      select r.*, b.user_id as userId, e.name as borrower_name, e.personal_email as borrower_email,
-        a.name as accountName, a.currency as account_currency,
-        creator.name as creator_name
-      from repayments r
-      left join borrowings b on b.id=r.borrowing_id
-      left join employees e on e.id=b.user_id
-      
-      left join accounts a on a.id=r.account_id
-      left join employees creator on creator.id=r.created_by
-      
-      where r.id=?
-    `).bind(result.id).first()
+    const created = await c.var.services.borrowing.getRepaymentById(result.id)
 
     return c.json(created as any)
   }
@@ -331,111 +307,20 @@ borrowingsRoutes.openapi(
     if (!getUserPosition(c)) throw Errors.FORBIDDEN()
 
     // 使用 userId 计算每个用户的借款余额
-    let sql = `
-      select 
-        e.id as userId, 
-        e.name as borrower_name, 
-        e.personal_email as borrower_email,
-        b.currency,
-        coalesce(sum(b.amount_cents), 0) as total_borrowed_cents,
-        coalesce((
-          select sum(r.amount_cents)
-          from repayments r
-          where r.borrowing_id in (
-            select id from borrowings b2 
-            where b2.user_id = b.user_id and b2.currency = b.currency
-          )
-        ), 0) as total_repaid_cents,
-        (coalesce(sum(b.amount_cents), 0) - coalesce((
-          select sum(r.amount_cents)
-          from repayments r
-          where r.borrowing_id in (
-            select id from borrowings b2 
-            where b2.user_id = b.user_id and b2.currency = b.currency
-          )
-        ), 0)) as balance_cents
-      from employees e
-      inner join borrowings b on b.user_id = e.id
-      where e.active = 1
-      group by e.id, e.name, e.personal_email, b.currency
-      having balance_cents != 0
-      order by e.name, b.currency
-    `
-
-    // 应用数据权限过滤
+    // Apply data permission
     const { where, binds: scopeBinds } = getDataAccessFilter(c, 'e')
+
+    // Construct SQL object for filter
+    let whereClause = undefined
     if (where !== '1=1') {
-      // SQL 中已有 where 子句，使用 AND 追加条件
-      const finalSql = sql.replace('where e.active = 1', `where e.active = 1 and ${where}`)
-      const rows = await c.env.DB.prepare(finalSql).bind(...scopeBinds).all()
-      return c.json({ results: rows.results ?? [] } as any)
+      // Safe hack to build templated SQL from dynamic strings + binds
+      whereClause = sql(Object.assign([where], { raw: [where] }) as any, ...scopeBinds)
     }
-    const rows = await c.env.DB.prepare(sql).all()
-    return c.json({ results: rows.results ?? [] } as any)
+
+    const rows = await c.var.services.borrowing.getBorrowingBalances(whereClause)
+
+    return c.json({ results: rows } as any)
   }
 )
 
 
-// IP 白名单管理 - 列表
-
-// 更新借款状态（批准/拒绝）
-borrowingsRoutes.openapi(
-  createRoute({
-    method: 'put',
-    path: '/borrowings/{id}/status',
-    summary: 'Update borrowing status',
-    request: {
-      params: z.object({ id: uuidSchema }),
-      body: {
-        content: {
-          'application/json': {
-            schema: z.object({
-              status: z.enum(['approved', 'rejected']),
-              memo: z.string().optional()
-            })
-          }
-        }
-      }
-    },
-    responses: {
-      200: {
-        description: 'Updated status',
-        content: {
-          'application/json': {
-            schema: z.object({ ok: z.boolean() })
-          }
-        }
-      }
-    }
-  }),
-  async (c) => {
-    const id = c.req.valid('param').id
-    const body = c.req.valid('json')
-    const userId = getUserId(c) || 'system'
-    const service = c.get('services').approval
-
-    // 权限检查是在 service 还是在这里？
-    // Service 检查用户是否是下属。
-    // 我们是否应该检查用户是否有财务审批权限？
-    // ApprovalService.approveBorrowing 似乎只检查下属？
-    // 等等，ApprovalService 检查：if (!subordinateIds.includes(leave.employeeId)) throw Errors.FORBIDDEN('无权审批');
-    // 但是对于借款，它只检查状态。
-    // 让我们再次查看 ApprovalService.approveBorrowing。
-    // 它不对借款检查下属！
-    // 所以我们必须在这里检查权限。
-
-    if (!hasPermission(c, 'finance', 'borrowing', 'approve')) {
-      throw Errors.FORBIDDEN('没有审批借支的权限')
-    }
-
-    if (body.status === 'approved') {
-      await service.approveBorrowing(id, userId, body.memo)
-      logAuditAction(c, 'approve', 'borrowing', id, JSON.stringify({ action: 'approve' }))
-    } else {
-      await service.rejectBorrowing(id, userId, body.memo)
-      logAuditAction(c, 'reject', 'borrowing', id, JSON.stringify({ action: 'reject', memo: body.memo }))
-    }
-
-    return c.json({ ok: true })
-  }
-)

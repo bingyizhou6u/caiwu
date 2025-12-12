@@ -19,11 +19,14 @@ export function BorrowingManagement() {
   const { hasPermission } = usePermissions()
   const canEdit = hasPermission('finance', 'borrowing', 'create')
 
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
   // 数据 Hook
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
   const { data: employees = [] } = useEmployees(true)
-  const { data: borrowings = [], isLoading: loading, refetch: load } = useBorrowings()
+  const { data: borrowings = { total: 0, list: [] }, isLoading: loading, refetch: load } = useBorrowings(page, pageSize)
   const { mutateAsync: createBorrowing, isPending: isCreating } = useCreateBorrowing()
 
   // 筛选用户
@@ -73,7 +76,7 @@ export function BorrowingManagement() {
           className="table-striped"
           rowKey="id"
           loading={loading}
-          dataSource={borrowings}
+          dataSource={borrowings.list}
           columns={[
             { title: '借款人', dataIndex: 'borrowerName', render: (v: string, r: Borrowing) => v || r.borrowerEmail || '-' },
             { title: '邮箱', dataIndex: 'borrower_email', render: (v: string) => v || '-' },
@@ -86,7 +89,17 @@ export function BorrowingManagement() {
             { title: '备注', dataIndex: 'memo', render: (v: string) => v || '-' },
             { title: '创建人', dataIndex: 'creator_name' },
           ]}
-          pagination={{ pageSize: 20 }}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: borrowings.total,
+            onChange: (p, ps) => {
+              setPage(p)
+              setPageSize(ps)
+            },
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`
+          }}
         />
 
         <Modal

@@ -12,13 +12,13 @@ export const theme: ThemeConfig = {
         fontSize: 14,
 
         borderRadius: 8,
-        borderRadiusLG: 12,
+        borderRadiusLG: 16, // Increased for modern card look
         borderRadiusSM: 6,
 
         wireframe: false,
 
         // Add some depth
-        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
     },
     components: {
         Layout: {
@@ -30,18 +30,21 @@ export const theme: ThemeConfig = {
             darkItemBg: 'transparent',
             darkSubMenuItemBg: 'transparent',
             darkItemSelectedBg: '#6366f1', // Indigo 500
-            itemBorderRadius: 8,
+            itemBorderRadius: 12, // Match sidebar item styling
             itemMarginInline: 8,
         },
         Table: {
-            headerBg: '#f8fafc', // Slate 50
-            headerColor: '#475569', // Slate 600
-            rowHoverBg: '#f1f5f9', // Slate 100
+            headerBg: 'transparent', // Cleaner look
+            headerColor: '#64748b', // Slate 500
+            rowHoverBg: '#f8fafc', // Slate 50
             headerBorderRadius: 8,
+            borderColor: '#f1f5f9', // Lighter border
+            headerSplitColor: 'transparent', // Remove vertical separators
         },
         Card: {
-            boxShadowTertiary: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', // Shadow MD
+            boxShadowTertiary: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', // Premium Shadow
             headerFontSize: 16,
+            actionsBg: 'transparent',
         },
         Button: {
             borderRadius: 8,
@@ -58,15 +61,21 @@ export const theme: ThemeConfig = {
             controlHeightSM: 28,
             borderRadius: 8,
             activeShadow: '0 0 0 2px rgba(99, 102, 241, 0.2)',
+            hoverBorderColor: '#6366f1',
         },
         Select: {
             controlHeight: 36,
             controlHeightLG: 44,
             controlHeightSM: 28,
             borderRadius: 8,
+            hoverBorderColor: '#6366f1',
         },
         Typography: {
             fontFamilyCode: 'Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+        },
+        Modal: {
+            borderRadiusLG: 16,
+            headerBg: 'transparent',
         }
     }
 }

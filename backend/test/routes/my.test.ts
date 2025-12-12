@@ -67,7 +67,7 @@ describe('My Routes', () => {
             expect(res.status).toBe(200)
             const data = await res.json()
             expect(data).toEqual(mockData)
-            expect(mockMyService.getDashboardData).toHaveBeenCalledWith('user123', expect.anything())
+            expect(mockMyService.getDashboardData).toHaveBeenCalledWith('user123')
         })
     })
 

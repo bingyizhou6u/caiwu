@@ -71,4 +71,45 @@ test('employee management - navigate to create employee page', async ({ page }) 
     // Verify form elements are present
     await expect(page.locator('input#name')).toBeVisible();
     await expect(page.locator('button').filter({ hasText: '保存' })).toBeVisible();
+
+    // 5. Fill out the form
+    await page.fill('input#name', 'Test Employee');
+    await page.fill('input#personalEmail', 'test.employee@example.com');
+    await page.fill('input#phone', '13800000000');
+
+    // Select dropdowns (using Ant Design specific selectors or labels)
+    // Position
+    await page.click('#positionId'); // Click the select trigger
+    await page.click('.ant-select-item-option-content:has-text("Sales Engineer")'); // Click option
+
+    // Department (if required)
+    // await page.click('#orgDepartmentId');
+    // await page.click('.ant-select-item-option-content:has-text("Sales Team A")');
+
+    // Dates
+    await page.fill('input#joinDate', '2023-01-01');
+    await page.keyboard.press('Enter');
+
+    // 6. Mock Create API
+    await page.route('**/api/employees', async route => {
+        if (route.request().method() === 'POST') {
+            await route.fulfill({
+                json: {
+                    id: 'new-emp-123',
+                    name: 'Test Employee',
+                    email: 'test.employee@company.com'
+                }
+            });
+        } else {
+            // GET fallback
+            await route.fulfill({ json: { results: [], total: 0 } });
+        }
+    });
+
+    // 7. Submit
+    await page.click('button:has-text("保存")');
+
+    // 8. Verify Success (Toast or redirection)
+    // Usually redirects to list or shows success message
+    await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
 });

@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { DrizzleD1Database } from 'drizzle-orm/d1';
 import { employees } from '../db/schema.js';
 import * as schema from '../db/schema.js';
@@ -135,5 +135,16 @@ export class SalaryService {
             console.error('batchUpdate salaries error:', e);
             throw e;
         }
+    }
+
+    async getEmployeeTotalSalary(employeeId: string) {
+        return await this.db.select({
+            totalCents: sql<number>`SUM(${schema.employeeSalaries.amountCents})`,
+            currencyId: schema.employeeSalaries.currencyId
+        })
+            .from(schema.employeeSalaries)
+            .where(eq(schema.employeeSalaries.employeeId, employeeId))
+            .groupBy(schema.employeeSalaries.currencyId)
+            .execute();
     }
 }

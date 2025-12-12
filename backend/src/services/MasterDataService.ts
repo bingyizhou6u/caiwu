@@ -184,8 +184,18 @@ export class MasterDataService {
         return query.all()
     }
 
-    async getAccountTransactions(accountId: string, limit: number = 100, offset: number = 0) {
-        return this.db.select({
+    async getAccountTransactions(accountId: string, page: number = 1, pageSize: number = 20) {
+        const offset = (page - 1) * pageSize
+
+        const countResult = await this.db
+            .select({ count: sql<number>`count(1)` })
+            .from(accountTransactions)
+            .where(eq(accountTransactions.accountId, accountId))
+            .get()
+
+        const total = countResult?.count ?? 0
+
+        const list = await this.db.select({
             id: accountTransactions.id,
             transactionDate: accountTransactions.transactionDate,
             transactionType: accountTransactions.transactionType,
@@ -204,9 +214,11 @@ export class MasterDataService {
             .leftJoin(categories, eq(categories.id, cashFlows.categoryId))
             .where(eq(accountTransactions.accountId, accountId))
             .orderBy(desc(accountTransactions.transactionDate), desc(accountTransactions.createdAt))
-            .limit(limit)
+            .limit(pageSize)
             .offset(offset)
             .all()
+
+        return { total, list }
     }
 
     async createAccount(data: { name: string; type: string; currency?: string; alias?: string; accountNumber?: string; openingCents?: number }) {

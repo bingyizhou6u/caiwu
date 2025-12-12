@@ -33,7 +33,7 @@ const listCurrenciesRoute = createRoute({
 
 currenciesRoutes.openapi(listCurrenciesRoute, async (c) => {
     const { activeOnly, search } = c.req.valid('query')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     let results = await service.getCurrencies(search)
 
     // 后端过滤
@@ -72,7 +72,7 @@ const createCurrencyRoute = createRoute({
 currenciesRoutes.openapi(createCurrencyRoute, async (c) => {
     if (!hasPermission(c, 'system', 'currency', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.createCurrency({
         code: body.code,
@@ -120,7 +120,7 @@ currenciesRoutes.openapi(updateCurrencyRoute, async (c) => {
     if (!hasPermission(c, 'system', 'currency', 'update')) throw Errors.FORBIDDEN()
     const code = c.req.param('code')
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     await service.updateCurrency(code, {
         name: body.name,
@@ -155,7 +155,7 @@ const deleteCurrencyRoute = createRoute({
 currenciesRoutes.openapi(deleteCurrencyRoute, async (c) => {
     if (!hasPermission(c, 'system', 'currency', 'delete')) throw Errors.FORBIDDEN()
     const code = c.req.param('code')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.deleteCurrency(code)
 

@@ -89,7 +89,7 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
       },
       body: JSON.stringify({
         name: 'caiwu_whitelist',
-        description: '财务系统 IP 白名单',
+        description: '公司管理系统 IP 白名单',
         kind: 'ip',
       }),
     })

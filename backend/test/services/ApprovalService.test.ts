@@ -1,11 +1,12 @@
 import { env } from 'cloudflare:test'
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { ApprovalService } from '../../src/services/ApprovalService.js'
+import { PermissionService } from '../../src/services/PermissionService.js'
 import { EmployeeService } from '../../src/services/EmployeeService.js'
-import { 
-    employees, departments, orgDepartments, positions, 
-    employeeLeaves, expenseReimbursements, borrowings, currencies 
+import {
+    employees, departments, orgDepartments, positions,
+    employeeLeaves, expenseReimbursements, borrowings, currencies
 } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -22,12 +23,15 @@ describe('ApprovalService', () => {
     let otherUserId: string
     let subordinateEmployeeId: string
     let otherEmployeeId: string
-    
+
     // Position/Dept IDs
-    let deptId: string
-    let otherDeptId: string
+
     let managerPosId: string
     let engineerPosId: string
+    let deptId: string
+    let otherDeptId: string
+    let orgDeptId: string
+    let otherOrgDeptId: string
 
     beforeAll(async () => {
         // Apply schema
@@ -38,7 +42,14 @@ describe('ApprovalService', () => {
         db = drizzle(env.DB, { schema })
         // @ts-ignore
         db.transaction = async (cb) => cb(db)
-        service = new ApprovalService(db)
+        const permissionService = new PermissionService(db);
+        // Use real EmployeeService with mock EmailService
+        const mockEmailService = {
+            sendActivationEmail: vi.fn(),
+            sendLoginNotificationEmail: vi.fn()
+        } as any
+        const employeeService = new EmployeeService(db, mockEmailService)
+        service = new ApprovalService(db, permissionService, employeeService)
 
         // Seed Currencies
         await db.insert(currencies).values({ code: 'CNY', name: 'RMB', active: 1 }).execute()
@@ -47,10 +58,10 @@ describe('ApprovalService', () => {
         managerPosId = uuid()
         await db.insert(positions).values({
             id: managerPosId,
-            code: 'project_manager',
-            name: 'Project Manager',
-            level: 2,
-            functionRole: 'director',
+            level: 3,
+            code: 'team_leader', // Added to satisfy EmployeeService.getSubordinateEmployeeIds
+            functionRole: 'manager',
+            name: 'Manager',
             canManageSubordinates: 1,
             active: 1
         }).execute()
@@ -69,9 +80,13 @@ describe('ApprovalService', () => {
         // Seed Departments
         deptId = uuid()
         await db.insert(departments).values({ id: deptId, name: 'Dept A', active: 1 }).execute()
-        
+        orgDeptId = uuid()
+        await db.insert(orgDepartments).values({ id: orgDeptId, name: 'Org Dept A', projectId: deptId, active: 1 }).execute()
+
         otherDeptId = uuid()
         await db.insert(departments).values({ id: otherDeptId, name: 'Dept B', active: 1 }).execute()
+        otherOrgDeptId = uuid()
+        await db.insert(orgDepartments).values({ id: otherOrgDeptId, name: 'Org Dept B', projectId: otherDeptId, active: 1 }).execute()
     })
 
     beforeEach(async () => {
@@ -82,8 +97,8 @@ describe('ApprovalService', () => {
         await db.delete(employees).execute()
 
         // Seed Users & Employees
-        
-        // 1. Manager (Dept A)
+
+        // 1. Manager (Dept A, Org Dept A)
         managerUserId = uuid()
         const managerEmail = 'manager@example.com'
         await db.insert(employees).values({
@@ -92,13 +107,13 @@ describe('ApprovalService', () => {
             name: 'Manager',
             positionId: managerPosId,
             departmentId: deptId,
-            orgDepartmentId: null,
+            orgDepartmentId: orgDeptId,
             active: 1
         }).execute()
 
-        // 2. Subordinate (Dept A)
+        // 2. Subordinate (Dept A, Org Dept A)
         subordinateUserId = uuid()
-        subordinateEmployeeId = uuid()
+        subordinateEmployeeId = subordinateUserId // Fix: Use same ID
         const subEmail = 'sub@example.com'
         await db.insert(employees).values({
             id: subordinateUserId,
@@ -106,13 +121,13 @@ describe('ApprovalService', () => {
             name: 'Subordinate',
             positionId: engineerPosId,
             departmentId: deptId,
-            orgDepartmentId: null,
+            orgDepartmentId: orgDeptId,
             active: 1
         }).execute()
 
-        // 3. Other (Dept B)
+        // 3. Other (Dept B, Org Dept B)
         otherUserId = uuid()
-        otherEmployeeId = uuid()
+        otherEmployeeId = otherUserId // Fix: Use same ID
         const otherEmail = 'other@example.com'
         await db.insert(employees).values({
             id: otherUserId,
@@ -120,7 +135,7 @@ describe('ApprovalService', () => {
             name: 'Other',
             positionId: engineerPosId,
             departmentId: otherDeptId,
-            orgDepartmentId: null,
+            orgDepartmentId: otherOrgDeptId,
             active: 1
         }).execute()
     })
@@ -163,7 +178,7 @@ describe('ApprovalService', () => {
             }).execute()
 
             const result = await service.getPendingApprovals(managerUserId)
-            
+
             expect(result.counts.leaves).toBe(1)
             expect(result.counts.reimbursements).toBe(1)
             expect(result.counts.borrowings).toBe(1)
@@ -273,7 +288,7 @@ describe('ApprovalService', () => {
             // This might be a BUG or intended design (controller handles it).
             // But `approveLeave` checks it. `approveReimbursement` logic is inconsistent.
             // Let's verify this behavior in test.
-            
+
             // If I call it as manager for subordinate, it should work.
             await service.approveReimbursement(id, managerUserId)
             const updated = await db.select().from(expenseReimbursements).where(eq(expenseReimbursements.id, id)).get()
@@ -300,7 +315,7 @@ describe('ApprovalService', () => {
     })
 
     describe('approveBorrowing', () => {
-         it('should approve borrowing', async () => {
+        it('should approve borrowing', async () => {
             const id = uuid()
             await db.insert(borrowings).values({
                 id,
@@ -316,9 +331,9 @@ describe('ApprovalService', () => {
             await service.approveBorrowing(id, managerUserId)
             const updated = await db.select().from(borrowings).where(eq(borrowings.id, id)).get()
             expect(updated?.status).toBe('approved')
-         })
+        })
 
-         it('should throw FORBIDDEN for non-subordinate borrowing', async () => {
+        it('should throw FORBIDDEN for non-subordinate borrowing', async () => {
             const id = uuid()
             await db.insert(borrowings).values({
                 id,
@@ -333,7 +348,7 @@ describe('ApprovalService', () => {
 
             await expect(service.approveBorrowing(id, managerUserId))
                 .rejects.toThrow('无权审批')
-         })
+        })
     })
 })
 

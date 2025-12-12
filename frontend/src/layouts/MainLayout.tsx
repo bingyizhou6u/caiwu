@@ -1,11 +1,13 @@
-import { Layout, Menu, Dropdown, Avatar, Button, theme } from 'antd'
+import { Layout, Menu, Dropdown, Avatar, Button, theme, MenuProps } from 'antd'
 import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled } from '@ant-design/icons'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH } from '../config/menu'
 import { MultiTabs } from '../components/MultiTabs'
 import { GlobalSearch } from '../components/GlobalSearch'
+import { preloadRoute } from '../router'
 import './MainLayout.css'
 
 const { Header, Sider, Content } = Layout
@@ -27,9 +29,9 @@ export function MainLayout() {
     const [openKeys, setOpenKeys] = useState<string[]>([])
     const [selectedKey, setSelectedKey] = useState<string>('')
 
-
-
+    // NProgress & Route Highlighting
     useEffect(() => {
+        NProgress.done()
         const path = location.pathname.split('/').pop()
         if (path) setSelectedKey(path)
     }, [location])
@@ -68,7 +70,10 @@ export function MainLayout() {
     // Handle Menu Click
     const onMenuClick = ({ key }: { key: string }) => {
         const path = KEY_TO_PATH[key] || `/${key}`
-        navigate(path)
+        if (location.pathname !== path) {
+            NProgress.start()
+            navigate(path)
+        }
     }
 
     // Handle Menu Open Change (Accordion)
@@ -89,6 +94,49 @@ export function MainLayout() {
         }
     }
 
+    // 递归包装菜单项以添加 Suspense 预加载
+    const wrapMenuItemsWithPreload = (items: MenuProps['items']): MenuProps['items'] => {
+        return items?.map((item: any) => {
+            if (item && item.children) {
+                return {
+                    ...item,
+                    children: wrapMenuItemsWithPreload(item.children)
+                }
+            }
+            if (item && item.key) {
+                return {
+                    ...item,
+                    label: (
+                        <div
+                            onMouseEnter={() => {
+                                // 尝试通过 key 预加载，如果 key 本身就是路径片段（如 'finance/ar'）
+                                // 或者需要查 KEY_TO_PATH
+                                // 目前 router 配置使用的是路径作为 key，而 menu 配置也是尽量对应
+                                // 简单尝试直接使用 key，或者查找 mapping
+                                let routeKey = item.key;
+                                // 处理一些已知的 key 映射
+                                if (KEY_TO_PATH[item.key]) {
+                                    // KEY_TO_PATH 值是完整路径 '/finance/ar'，去掉开头的 '/'
+                                    routeKey = KEY_TO_PATH[item.key].substring(1);
+                                }
+                                preloadRoute(routeKey);
+                            }}
+                            style={{ width: '100%', height: '100%', display: 'inline-block' }}
+                        >
+                            {item.label}
+                        </div>
+                    )
+                }
+            }
+            return item
+        })
+    }
+
+    const menuItems = useMemo(() => {
+        const items = buildMenuItems(userInfo)
+        return wrapMenuItemsWithPreload(items)
+    }, [userInfo])
+
     return (
         <Layout className="main-layout">
             <Sider
@@ -102,7 +150,7 @@ export function MainLayout() {
             >
                 <div className={`logo-container ${collapsed ? 'collapsed' : ''}`}>
                     <ThunderboltFilled className="logo-icon" />
-                    {!collapsed && <span className="logo-text">AR系统</span>}
+                    {!collapsed && <span className="logo-text">AR管理系统</span>}
                 </div>
                 <Menu
                     theme="dark"
@@ -110,7 +158,7 @@ export function MainLayout() {
                     selectedKeys={[selectedKey]}
                     openKeys={openKeys}
                     onOpenChange={onOpenChange}
-                    items={buildMenuItems(userInfo)}
+                    items={menuItems}
                     onClick={onMenuClick}
                 />
             </Sider>
@@ -135,7 +183,7 @@ export function MainLayout() {
                 </Header>
                 <Content className="main-content">
                     <MultiTabs />
-                    <div className="content-wrapper">
+                    <div className="content-wrapper" key={location.pathname}>
                         <Outlet />
                     </div>
                 </Content>

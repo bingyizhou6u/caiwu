@@ -15,11 +15,12 @@ vi.mock('../../src/utils/permissions.js', () => ({
 }))
 
 const mockSalaryService = {
-    listSalaries: vi.fn(),
-    createSalary: vi.fn(),
-    updateSalary: vi.fn(),
-    batchUpdateSalaries: vi.fn(),
-    deleteSalary: vi.fn(),
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    batchUpdate: vi.fn(),
+    delete: vi.fn(),
+    get: vi.fn() // Add get if needed
 }
 
 describe('Employee Salaries Routes', () => {
@@ -49,19 +50,19 @@ describe('Employee Salaries Routes', () => {
         app.route('/', employeeSalariesRoutes)
 
         // 默认 mock 返回，避免未设置时抛错
-        mockSalaryService.listSalaries.mockResolvedValue([])
-        mockSalaryService.createSalary.mockResolvedValue({
+        mockSalaryService.list.mockResolvedValue([])
+        mockSalaryService.create.mockResolvedValue({
             salary: { id: validId, employeeId: validEmpId, salaryType: 'regular', currencyId: 'CNY', amountCents: 0 },
             currencyName: 'RMB',
             employeeName: 'John'
         })
-        mockSalaryService.updateSalary.mockResolvedValue({
+        mockSalaryService.update.mockResolvedValue({
             salary: { id: validId, employeeId: validEmpId, salaryType: 'regular', currencyId: 'CNY', amountCents: 0 },
             currencyName: 'RMB',
             employeeName: 'John'
         })
-        mockSalaryService.batchUpdateSalaries.mockResolvedValue([])
-        mockSalaryService.deleteSalary.mockResolvedValue({ id: validId })
+        mockSalaryService.batchUpdate.mockResolvedValue([])
+        mockSalaryService.delete.mockResolvedValue({ id: validId })
     })
 
     it('should list salaries', async () => {
@@ -70,7 +71,7 @@ describe('Employee Salaries Routes', () => {
             currencyName: 'RMB',
             employeeName: 'John'
         }]
-        mockSalaryService.listSalaries.mockResolvedValue(mockResult)
+        mockSalaryService.list.mockResolvedValue(mockResult)
 
         const res = await app.request(`/employee-salaries?employeeId=${validEmpId}`, {
             method: 'GET',
@@ -99,8 +100,8 @@ describe('Employee Salaries Routes', () => {
         }
 
         // Mock listSalaries to return empty (no duplicate)
-        mockSalaryService.listSalaries.mockResolvedValue([])
-        mockSalaryService.createSalary.mockResolvedValue(mockResult)
+        mockSalaryService.list.mockResolvedValue([])
+        mockSalaryService.create.mockResolvedValue(mockResult)
 
         const res = await app.request('/employee-salaries', {
             method: 'POST',
@@ -131,7 +132,7 @@ describe('Employee Salaries Routes', () => {
             currencyName: 'RMB',
             employeeName: 'John'
         }]
-        mockSalaryService.batchUpdateSalaries.mockResolvedValue(mockResult)
+        mockSalaryService.batchUpdate.mockResolvedValue(mockResult)
 
         const res = await app.request('/employee-salaries/batch', {
             method: 'PUT',
@@ -158,7 +159,7 @@ describe('Employee Salaries Routes', () => {
     })
 
     it('should delete salary', async () => {
-        mockSalaryService.deleteSalary.mockResolvedValue({ id: validId })
+        mockSalaryService.delete.mockResolvedValue({ id: validId })
 
         const res = await app.request(`/employee-salaries/${validId}`, {
             method: 'DELETE',

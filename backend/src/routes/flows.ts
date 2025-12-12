@@ -5,7 +5,7 @@ import { hasPermission, getUserPosition, getUserEmployee, getDataAccessFilter } 
 import { logAuditAction } from '../utils/audit.js'
 import { Errors } from '../utils/errors.js'
 import { createCashFlowSchema } from '../schemas/business.schema.js'
-import { dateQuerySchema } from '../schemas/common.schema.js'
+import { dateQuerySchema, paginationSchema } from '../schemas/common.schema.js'
 import type { R2Bucket } from '@cloudflare/workers-types'
 
 export const flowsRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
@@ -33,6 +33,7 @@ const cashFlowResponseSchema = z.object({
 })
 
 const listCashFlowsResponseSchema = z.object({
+  total: z.number(),
   results: z.array(cashFlowResponseSchema)
 })
 
@@ -85,6 +86,9 @@ flowsRoutes.openapi(
     method: 'get',
     path: '/flows',
     summary: 'List cash flows',
+    request: {
+      query: paginationSchema
+    },
     responses: {
       200: {
         content: {
@@ -98,6 +102,7 @@ flowsRoutes.openapi(
   }),
   async (c) => {
     if (!getUserPosition(c)) throw Errors.FORBIDDEN()
+    const { page = 1, pageSize = 20 } = c.req.valid('query')
 
     // 注意：目前 service 仅实现了基础列表。
     // 原始路由中的复杂过滤逻辑 (getDataAccessFilter) 需要保留或移至 service。
@@ -146,9 +151,9 @@ flowsRoutes.openapi(
       })
     }
 
-    const rows = await c.var.services.finance.listCashFlows(200, whereClause)
+    const { total, list } = await c.var.services.finance.listCashFlows(page, pageSize, whereClause)
 
-    const results = rows.map(row => {
+    const results = list.map(row => {
       const f = row.flow
       let voucherUrls: string[] = []
       if (f.voucherUrl) {
@@ -186,7 +191,7 @@ flowsRoutes.openapi(
       }
     })
 
-    return c.json({ results } as any)
+    return c.json({ total, results } as any)
   }
 )
 

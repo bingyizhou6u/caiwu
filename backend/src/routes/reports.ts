@@ -1,6 +1,6 @@
 import type { Context } from 'hono'
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import { getAnnualLeaveStats } from '../services/AnnualLeaveService.js'
+
 import {
   dateRangeQuerySchema,
   singleDateQuerySchema,
@@ -94,7 +94,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view') && !getUserPosition(c)) throw Errors.FORBIDDEN()
     const { departmentId } = c.req.valid('query')
     const startId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const stats = await reportService.getDashboardStats(startId)
     return c.json(stats as any)
   }
@@ -108,8 +108,10 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get department cash flow',
     request: {
-      query: dateRangeQuerySchema.extend({
-        departmentIds: z.string().optional() // Comma separated
+      query: z.object({
+        start: z.string().date(),
+        end: z.string().date(),
+        departmentIds: z.string().optional()
       })
     },
     responses: {
@@ -148,7 +150,7 @@ app.openapi(
       }
     }
 
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getDepartmentCashFlow(start, end, finalIds && finalIds.length > 0 ? finalIds : undefined)
     return c.json(data)
   }
@@ -162,7 +164,9 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get site growth report',
     request: {
-      query: dateRangeQuerySchema.extend({
+      query: z.object({
+        start: z.string().date(),
+        end: z.string().date(),
         departmentId: z.string().optional()
       })
     },
@@ -187,7 +191,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { start, end, departmentId } = c.req.valid('query')
     const validId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getSiteGrowth(start, end, validId)
     return c.json(data)
   }
@@ -201,7 +205,9 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get AR/AP summary',
     request: {
-      query: dateRangeQuerySchema.extend({
+      query: z.object({
+        start: z.string().date(),
+        end: z.string().date(),
         kind: z.enum(['AR', 'AP']),
         departmentId: z.string().optional()
       })
@@ -226,7 +232,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { kind, start, end, departmentId } = c.req.valid('query')
     const validId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getArApSummary(kind, start, end, validId)
     return c.json(data)
   }
@@ -240,7 +246,9 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get AR/AP detail',
     request: {
-      query: dateRangeQuerySchema.extend({
+      query: z.object({
+        start: z.string().date(),
+        end: z.string().date(),
         kind: z.enum(['AR', 'AP']),
         departmentId: z.string().optional()
       })
@@ -260,7 +268,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { kind, start, end, departmentId } = c.req.valid('query')
     const validId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getArApDetail(kind, start, end, validId)
     return c.json(data as any)
   }
@@ -274,7 +282,9 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get expense summary',
     request: {
-      query: dateRangeQuerySchema.extend({
+      query: z.object({
+        start: z.string().date(),
+        end: z.string().date(),
         departmentId: z.string().optional()
       })
     },
@@ -293,7 +303,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { start, end, departmentId } = c.req.valid('query')
     const validId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getExpenseSummary(start, end, validId)
     return c.json(data as any)
   }
@@ -307,7 +317,9 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get expense detail',
     request: {
-      query: dateRangeQuerySchema.extend({
+      query: z.object({
+        start: z.string().date(),
+        end: z.string().date(),
         category_id: z.string().optional(),
         departmentId: z.string().optional()
       })
@@ -327,7 +339,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { start, end, category_id, departmentId } = c.req.valid('query')
     const validId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getExpenseDetail(start, end, category_id, validId)
     return c.json(data as any)
   }
@@ -360,7 +372,7 @@ app.openapi(
   async (c) => {
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { asOf } = c.req.valid('query')
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getAccountBalance(asOf)
     return c.json(data)
   }
@@ -374,9 +386,12 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get borrowing summary',
     request: {
-      query: borrowingQuerySchema.extend({
+      query: z.object({
         start: z.string().optional(),
-        end: z.string().optional()
+        end: z.string().optional(),
+        userId: z.string().optional(),
+        currency: z.string().optional(),
+        status: z.string().optional()
       })
     },
     responses: {
@@ -393,7 +408,7 @@ app.openapi(
   async (c) => {
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { start, end, userId } = c.req.valid('query')
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getBorrowingSummary(start, end, userId)
     return c.json(data as any)
   }
@@ -428,7 +443,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { id } = c.req.valid('param')
     const { start, end } = c.req.valid('query')
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getBorrowingDetail(id, start, end)
     return c.json(data as any)
   }
@@ -442,7 +457,9 @@ app.openapi(
     tags: ['Reports'],
     summary: 'Get new site revenue',
     request: {
-      query: dateRangeQuerySchema.extend({
+      query: z.object({
+        start: z.string().date(),
+        end: z.string().date(),
         days: z.coerce.number().optional(),
         departmentId: z.string().optional()
       })
@@ -462,7 +479,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'finance', 'view')) throw Errors.FORBIDDEN()
     const { start, end, days, departmentId } = c.req.valid('query')
     const validId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const data = await reportService.getNewSiteRevenue(start, end, days, validId)
     return c.json(data as any)
   }
@@ -497,7 +514,7 @@ app.openapi(
     if (!hasPermission(c, 'report', 'salary', 'view')) throw Errors.FORBIDDEN()
     const { year, month, departmentId } = c.req.valid('query')
     const validId = validateScope(c, departmentId)
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     // 未提供年份则默认为当年
     const y = year || new Date().getFullYear()
     const data = await reportService.getEmployeeSalaryReport(y, month, validId)
@@ -552,7 +569,7 @@ app.openapi(
       }
     }
 
-    const reportService = c.get('services').report
+    const reportService = c.var.services.report
     const results = await reportService.getAnnualLeaveReport(validDeptId, validOrgDeptId)
     return c.json(results as any)
   }

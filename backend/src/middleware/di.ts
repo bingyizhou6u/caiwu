@@ -19,7 +19,17 @@ import { PositionService } from '../services/PositionService.js'
 import { SalaryService } from '../services/SalaryService.js'
 import { AllowanceService } from '../services/AllowanceService.js'
 import { AllowancePaymentService } from '../services/AllowancePaymentService.js'
-
+import { EmployeeLeaveService } from '../services/EmployeeLeaveService.js'
+import { ExpenseReimbursementService } from '../services/ExpenseReimbursementService.js'
+import { AttendanceService } from '../services/AttendanceService.js'
+import { AnnualLeaveService } from '../services/AnnualLeaveService.js'
+import { PermissionService } from '../services/PermissionService.js'
+import { EmailService } from '../services/EmailService.js'
+import { BorrowingService } from '../services/BorrowingService.js'
+import { SiteBillService } from '../services/SiteBillService.js'
+import { ArApService } from '../services/ArApService.js'
+import { AccountTransferService } from '../services/AccountTransferService.js'
+import { RateLimitService } from '../services/RateLimitService.js'
 import type { Env, AppVariables } from '../types.js'
 
 export const di = async (c: Context<{ Bindings: Env, Variables: AppVariables }>, next: Next) => {
@@ -27,25 +37,52 @@ export const di = async (c: Context<{ Bindings: Env, Variables: AppVariables }>,
 
     // Initialize services
     const systemConfigService = new SystemConfigService(db)
+    const annualLeaveService = new AnnualLeaveService(db)
+
+    const permissionService = new PermissionService(db)
+    const emailService = new EmailService(c.env as any)
 
     const userService = new UserService(db) // Updated to use Drizzle db
-    const employeeService = new EmployeeService(db)
+    const employeeService = new EmployeeService(db, emailService)
     const financeService = new FinanceService(db)
+    const siteBillService = new SiteBillService(db)
+    const arApService = new ArApService(db, financeService)
+    const accountTransferService = new AccountTransferService(db, financeService)
     const importService = new ImportService(db)
     const salaryPaymentService = new SalaryPaymentService(db)
-    const reportService = new ReportService(db)
-    const authService = new AuthService(db, c.env.SESSIONS_KV, systemConfigService) // Updated to use Drizzle db
+    const auditService = new AuditService(db) // Move up
+    const reportService = new ReportService(db, annualLeaveService, c.env.SESSIONS_KV)
+    const authService = new AuthService(db, c.env.SESSIONS_KV, systemConfigService, auditService, emailService) // Updated
     const masterDataService = new MasterDataService(db) // Updated to use Drizzle db
     const fixedAssetService = new FixedAssetService(db)
     const rentalService = new RentalService(db)
-    const approvalService = new ApprovalService(db)
-    const myService = new MyService(db)
-    const auditService = new AuditService(db)
+    const approvalService = new ApprovalService(db, permissionService, employeeService)
+    const borrowingService = new BorrowingService(db)
+    const allowancePaymentService = new AllowancePaymentService(db)
+    // const auditService = new AuditService(db) // Moved up
     const ipWhitelistService = new IPWhitelistService(c.env)
+    const rateLimitService = new RateLimitService(c.env.SESSIONS_KV)
     const positionService = new PositionService(db, c.env.SESSIONS_KV)
     const salaryService = new SalaryService(db)
     const allowanceService = new AllowanceService(db)
-    const allowancePaymentService = new AllowancePaymentService(db)
+
+    const employeeLeaveService = new EmployeeLeaveService(db)
+    const expenseReimbursementService = new ExpenseReimbursementService(db)
+    const attendanceService = new AttendanceService(db)
+
+    const myService = new MyService(
+        db,
+        employeeLeaveService,
+        expenseReimbursementService,
+        attendanceService,
+        financeService,
+        allowancePaymentService,
+        fixedAssetService,
+        employeeService,
+        annualLeaveService,
+        salaryService,
+        borrowingService
+    )
 
     // Inject into context
     c.set('db', db)
@@ -68,7 +105,18 @@ export const di = async (c: Context<{ Bindings: Env, Variables: AppVariables }>,
         position: positionService,
         salary: salaryService,
         allowance: allowanceService,
-        allowancePayment: allowancePaymentService
+        allowancePayment: allowancePaymentService,
+        employeeLeave: employeeLeaveService,
+        expenseReimbursement: expenseReimbursementService,
+        attendance: attendanceService,
+        annualLeave: annualLeaveService,
+        permission: permissionService,
+        email: emailService,
+        borrowing: borrowingService,
+        arAp: arApService,
+        accountTransfer: accountTransferService,
+        siteBill: siteBillService,
+        rateLimit: rateLimitService
     })
 
     await next()

@@ -16,8 +16,10 @@ describe('UserService', () => {
         }
     });
 
-    beforeEach(() => {
+    beforeEach(async () => {
         const db = createDb(env.DB);
+        await db.delete(schema.employees).run();
+        await db.delete(schema.userDepartments).run();
         userService = new UserService(db);
     });
 
@@ -46,6 +48,7 @@ describe('UserService', () => {
         const userId = uuid();
         const deptId = uuid();
         const email = 'dept@example.com';
+        const email2 = 'dept2@example.com';
         const db = createDb(env.DB);
 
         // Setup: Create user and employee record linked to department
@@ -58,7 +61,7 @@ describe('UserService', () => {
 
         await db.insert(schema.employees).values({
             id: uuid(),
-            email,
+            email: email2,
             departmentId: deptId,
             name: 'Dept Employee',
             active: 1

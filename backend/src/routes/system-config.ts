@@ -48,7 +48,7 @@ systemConfigRoutes.openapi(
     }
   }),
   async (c) => {
-    const service = c.get('services')?.systemConfig
+    const service = c.var.services.systemConfig
     if (!service) throw Errors.INTERNAL_ERROR('Service not initialized')
 
     const config = await service.get('email_notification_enabled')
@@ -85,7 +85,7 @@ systemConfigRoutes.openapi(
   async (c) => {
     if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
 
-    const service = c.get('services').systemConfig
+    const service = c.var.services.systemConfig
     const results = await service.getAll()
 
     const config: Record<string, any> = {}
@@ -141,7 +141,7 @@ systemConfigRoutes.openapi(
 
     const userId = c.get('userId') as string | undefined
 
-    const service = c.get('services').systemConfig
+    const service = c.var.services.systemConfig
 
     await service.set(key, body.value, body.description ?? null, userId ?? 'system')
 
@@ -184,7 +184,7 @@ systemConfigRoutes.openapi(
     if (!hasPermission(c, 'system', 'config', 'view')) throw Errors.FORBIDDEN()
 
     const key = c.req.param('key')
-    const service = c.get('services').systemConfig
+    const service = c.var.services.systemConfig
     const config = await service.get(key)
 
     if (!config) {

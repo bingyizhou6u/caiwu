@@ -28,8 +28,8 @@ const listHeadquartersRoute = createRoute({
 })
 
 headquartersRoutes.openapi(listHeadquartersRoute, async (c) => {
-  const service = c.get('services').masterData
-  const results = await service.getHeadquarters()
+  const masterDataService = c.var.services.masterData
+  const results = await masterDataService.getHeadquarters()
   return c.json(results)
 })
 

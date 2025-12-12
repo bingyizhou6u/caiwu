@@ -67,10 +67,7 @@ employeeSalariesRoutes.openapi(
     const { employeeId, salaryType } = c.req.valid('query')
 
 
-    const rows = await (c.var.services.salary as any)?.listSalaries?.({
-      employeeId,
-      salaryType
-    }).catch(() => [])
+    const rows = await c.var.services.salary.list(employeeId, salaryType)
 
     const results = rows.map((row: any) => ({
       id: row.salary.id,
@@ -123,9 +120,9 @@ employeeSalariesRoutes.openapi(
 
 
     try {
-      const result = await (c.var.services.salary as any)?.createSalary?.({
+      const result = await c.var.services.salary.create({
         employeeId: body.employeeId,
-        salaryType: body.salaryType,
+        salaryType: body.salaryType || 'regular', // Default to regular if missing, though schema might enforce optional
         currencyId: body.currencyId,
         amountCents: body.amountCents
       })
@@ -178,9 +175,9 @@ employeeSalariesRoutes.openapi(
     const body = c.req.valid('json')
 
     try {
-      const rows = await (c.var.services.salary as any)?.batchUpdateSalaries?.(
+      const rows = await c.var.services.salary.batchUpdate(
         body.employeeId,
-        body.salaryType,
+        body.salaryType || 'regular',
         (body.salaries || []).map((s: any) => ({
           currencyId: s.currencyId,
           amountCents: s.amountCents
@@ -232,7 +229,7 @@ employeeSalariesRoutes.openapi(
   async (c) => {
     const { id } = c.req.valid('param')
 
-    await (c.var.services.salary as any)?.deleteSalary?.(id).catch(() => undefined)
+    await c.var.services.salary.delete(id).catch(() => undefined)
     logAuditAction(c, 'delete', 'employee_salary', id)
     return c.json({ ok: true })
   }

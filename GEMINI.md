@@ -7,7 +7,7 @@
 ## 项目概述
 
 **项目名称**: caiwu-main  
-**类型**: 企业财务管理系统  
+**类型**: AR公司企业管理系统 (Company Management System)  
 **技术栈**: React + TypeScript + Vite (前端) | Hono + Cloudflare Workers + D1 (后端)  
 **语言**: 代码用英文，注释和文档用中文  
 **开发阶段**: **测试阶段** (开发过程中不考虑兼容性问题，优先使用最新特性)
@@ -45,8 +45,13 @@
    - 审批流程层: ApprovalService
 3. **用户模型**: 已删除 `users` 表，用户信息合并到 `employees` 表
 4. **前端状态**: 使用 React Query 管理服务端状态，不用 Redux
-5. **UI组件库**: Ant Design
-6. **部署平台**: Cloudflare Workers + Pages
+   - **持久化**: 使用 `PersistQueryClientProvider` + `localStorage` 实现离线缓存
+5. **性能优化**:
+   - **图片缓存**: Service Worker 拦截 `/api/vouchers/` 实现 Cache First 策略
+   - **路由预加载**: 鼠标悬停菜单自动预加载 JS Chunk
+   - **交互反馈**: 集成 NProgress 加载条
+6. **UI组件库**: Ant Design (定制主题: 圆角16px/弥散阴影/无边框Table)
+7. **部署平台**: Cloudflare Workers + Pages
 
 ### 编码规范
 
@@ -54,6 +59,9 @@
 - 后端路由命名: `xxx.ts` (小写复数)
 - 前端页面命名: `XxxPage.tsx`
 - API 路径: `/api/xxx`
+- **前端工具**: 
+  - 公共渲染器: `src/utils/renderers.tsx` (统一金额/日期/状态显示)
+  - 交互Hook: `src/hooks/useDeleteConfirm.tsx` (统一删除确认)
 
 ---
 

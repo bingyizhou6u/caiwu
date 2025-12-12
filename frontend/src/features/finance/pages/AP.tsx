@@ -21,6 +21,11 @@ export function AP() {
   const [confirmingDoc, setConfirmingDoc] = useState<ARAP | null>(null)
 
   // 表单
+  // 分页状态
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  // 表单
   const createForm = useZodForm(createAPSchema)
   const confirmForm = useZodForm(confirmAPSchema)
 
@@ -32,7 +37,7 @@ export function AP() {
   // 数据 Hook
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useExpenseCategories()
-  const { data: docs = [], isLoading: loading, refetch: load } = useAPDocs()
+  const { data: docs = { total: 0, list: [] }, isLoading: loading, refetch: load } = useAPDocs(page, pageSize)
   const { mutateAsync: createAP, isPending: isCreating } = useCreateAP()
   const { mutateAsync: confirmAP, isPending: isConfirming } = useConfirmAP()
 
@@ -133,7 +138,18 @@ export function AP() {
           className="table-striped"
           rowKey="id"
           loading={loading}
-          dataSource={docs}
+          dataSource={docs.list}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: docs.total,
+            onChange: (p, ps) => {
+              setPage(p)
+              setPageSize(ps)
+            },
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`
+          }}
           columns={[
             { title: '单号', dataIndex: 'docNo' },
             { title: '开立日期', dataIndex: 'issueDate' },

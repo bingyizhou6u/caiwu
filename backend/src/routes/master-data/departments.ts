@@ -32,8 +32,8 @@ const listDepartmentsRoute = createRoute({
 })
 
 departmentsRoutes.openapi(listDepartmentsRoute, async (c) => {
-  const service = c.get('services').masterData
-  const results = await service.getDepartments()
+  const masterDataService = c.var.services.masterData
+  const results = await masterDataService.getDepartments()
   return c.json({ results })
 })
 

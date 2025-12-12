@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { DrizzleD1Database } from 'drizzle-orm/d1';
 import { employees } from '../db/schema.js';
 import * as schema from '../db/schema.js';
@@ -189,5 +189,31 @@ export class AllowancePaymentService {
         }
 
         return { created: createdIds.length, ids: createdIds };
+    }
+    async getEmployeeYearlyStats(employeeId: string, year: number) {
+        const allowances = await this.db.select()
+            .from(schema.allowancePayments)
+            .where(and(
+                eq(schema.allowancePayments.employeeId, employeeId),
+                eq(schema.allowancePayments.year, year)
+            ))
+            .orderBy(desc(schema.allowancePayments.year), desc(schema.allowancePayments.month), desc(schema.allowancePayments.allowanceType))
+            .execute()
+
+        const monthlyStats = await this.db.select({
+            year: schema.allowancePayments.year,
+            month: schema.allowancePayments.month,
+            totalCents: sql<number>`COALESCE(SUM(${schema.allowancePayments.amountCents}), 0)`
+        })
+            .from(schema.allowancePayments)
+            .where(and(
+                eq(schema.allowancePayments.employeeId, employeeId),
+                eq(schema.allowancePayments.year, year)
+            ))
+            .groupBy(schema.allowancePayments.year, schema.allowancePayments.month)
+            .orderBy(desc(schema.allowancePayments.month))
+            .execute()
+
+        return { allowances, monthlyStats }
     }
 }

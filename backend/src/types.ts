@@ -18,6 +18,7 @@ export type Env = {
 }
 
 export type AppVariables = {
+  requestId: string
   userId?: string
   sessionId?: string
   userPosition?: {
@@ -57,6 +58,17 @@ export type AppVariables = {
     salary: SalaryService
     allowance: AllowanceService
     allowancePayment: AllowancePaymentService
+    employeeLeave: EmployeeLeaveService
+    expenseReimbursement: ExpenseReimbursementService
+    attendance: AttendanceService
+    annualLeave: AnnualLeaveService
+    permission: PermissionService;
+    email: EmailService;
+    borrowing: BorrowingService;
+    siteBill: SiteBillService;
+    arAp: ArApService;
+    accountTransfer: AccountTransferService;
+    rateLimit: RateLimitService;
   }
 }
 
@@ -81,6 +93,17 @@ import type { PositionService } from './services/PositionService.js'
 import type { SalaryService } from './services/SalaryService.js'
 import type { AllowanceService } from './services/AllowanceService.js'
 import type { AllowancePaymentService } from './services/AllowancePaymentService.js'
+import type { EmployeeLeaveService } from './services/EmployeeLeaveService.js'
+import type { ExpenseReimbursementService } from './services/ExpenseReimbursementService.js'
+import type { AttendanceService } from './services/AttendanceService.js'
+import { AnnualLeaveService } from './services/AnnualLeaveService.js';
+import { PermissionService } from './services/PermissionService.js';
+import { EmailService } from './services/EmailService.js';
+import { BorrowingService } from './services/BorrowingService.js';
+import { SiteBillService } from './services/SiteBillService.js';
+import { ArApService } from './services/ArApService.js';
+import { AccountTransferService } from './services/AccountTransferService.js';
+import { RateLimitService } from './services/RateLimitService.js';
 
 
 // 已移除固定超级管理员

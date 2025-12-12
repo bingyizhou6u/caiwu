@@ -26,7 +26,7 @@ const listPositionsRoute = createRoute({
 
 positionsRoutes.openapi(listPositionsRoute, async (c) => {
     if (!getUserPosition(c)) throw Errors.FORBIDDEN()
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     const results = await service.getPositions()
     return c.json({ results })
 })
@@ -57,7 +57,7 @@ positionsRoutes.openapi(getAvailablePositionsRoute, async (c) => {
     const orgDepartmentId = c.req.query('orgDepartmentId')
     if (!orgDepartmentId) throw Errors.VALIDATION_ERROR('orgDepartmentId参数必填')
 
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     const result = await service.getAvailablePositions(orgDepartmentId)
 
     return c.json(result)

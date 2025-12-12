@@ -67,38 +67,7 @@ employeesLeavesRoutes.openapi(
     async (c) => {
         if (!getUserPosition(c)) throw Errors.FORBIDDEN()
         const { employeeId, status } = c.req.valid('query')
-        const db = c.get('db')
-
-        let query = db.select({
-            id: employeeLeaves.id,
-            employeeId: employeeLeaves.employeeId,
-            employeeName: employees.name,
-            leaveType: employeeLeaves.leaveType,
-            startDate: employeeLeaves.startDate,
-            endDate: employeeLeaves.endDate,
-            days: employeeLeaves.days,
-            status: employeeLeaves.status,
-            reason: employeeLeaves.reason,
-            memo: employeeLeaves.memo,
-            approvedBy: employeeLeaves.approvedBy,
-            approvedAt: employeeLeaves.approvedAt,
-            createdAt: employeeLeaves.createdAt,
-            updatedAt: employeeLeaves.updatedAt,
-        })
-            .from(employeeLeaves)
-            .leftJoin(employees, eq(employeeLeaves.employeeId, employees.id))
-            .$dynamic()
-
-        const filters = []
-        if (employeeId) filters.push(eq(employeeLeaves.employeeId, employeeId))
-        if (status) filters.push(eq(employeeLeaves.status, status))
-
-        if (filters.length > 0) {
-            query = query.where(and(...filters))
-        }
-
-        const results = await query.orderBy(desc(employeeLeaves.createdAt))
-
+        const results = await c.var.services.employeeLeave.listLeaves({ employeeId, status })
         return c.json(results)
     }
 )
@@ -133,18 +102,7 @@ employeesLeavesRoutes.openapi(
     async (c) => {
         if (!hasPermission(c, 'hr', 'leave', 'create')) throw Errors.FORBIDDEN()
         const body = c.req.valid('json')
-        const db = c.get('db')
-
-        const newLeave = {
-            id: nanoid(),
-            ...body,
-            status: 'pending',
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-        }
-
-        await db.insert(employeeLeaves).values(newLeave)
-
+        const newLeave = await c.var.services.employeeLeave.createLeave(body)
         return c.json(newLeave)
     }
 )
@@ -183,26 +141,12 @@ employeesLeavesRoutes.openapi(
         if (!hasPermission(c, 'hr', 'leave', 'approve')) throw Errors.FORBIDDEN()
         const { id } = c.req.valid('param')
         const { status, memo } = c.req.valid('json')
-        const db = c.get('db')
         const userId = c.get('userId')
 
-        const updateData: any = {
-            status,
-            updatedAt: Date.now(),
-        }
-
-        if (status === 'approved' || status === 'rejected') {
-            updateData.approvedBy = userId
-            updateData.approvedAt = Date.now()
-        }
-
-        if (memo) {
-            updateData.memo = memo
-        }
-
-        await db.update(employeeLeaves)
-            .set(updateData)
-            .where(eq(employeeLeaves.id, id))
+        await c.var.services.employeeLeave.updateLeaveStatus(id, status, {
+            approvedBy: userId || undefined,
+            memo: memo || undefined
+        })
 
         return c.json({ success: true })
     }

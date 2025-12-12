@@ -5,11 +5,26 @@ import {
     cashFlows, accounts, arApDocs, borrowings, repayments,
     departments, sites, categories, employees, employeeLeaves
 } from '../db/schema.js'
+import { AnnualLeaveService } from './AnnualLeaveService.js'
 
 export class ReportService {
-    constructor(private db: DrizzleD1Database<typeof schema>) { }
+    constructor(
+        private db: DrizzleD1Database<typeof schema>,
+        private annualLeaveService: AnnualLeaveService,
+        private kv: KVNamespace
+    ) { }
 
     async getDashboardStats(departmentId?: string) {
+        const cacheKey = `report:dashboard:${new Date().toISOString().slice(0, 10)}:${departmentId || 'all'}`
+
+        // Try Cache
+        try {
+            const cached = await this.kv.get(cacheKey, 'json')
+            if (cached) return cached
+        } catch (e) {
+            console.warn('Cache read failed', e)
+        }
+
         const today = new Date().toISOString().slice(0, 10)
         const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
         const thisMonthEnd = today
@@ -79,7 +94,7 @@ export class ReportService {
             .limit(10)
             .all()
 
-        return {
+        const result = {
             today: {
                 incomeCents: todayStats?.income_cents || 0,
                 expenseCents: todayStats?.expense_cents || 0,
@@ -115,9 +130,27 @@ export class ReportService {
                 departmentName: r.departmentName
             }))
         }
+
+        // Cache for 5 minutes
+        try {
+            await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 300 })
+        } catch (e) {
+            console.warn('Cache write failed', e)
+        }
+
+        return result
     }
 
     async getDepartmentCashFlow(start: string, end: string, departmentIds?: string[]) {
+        const cacheKey = `report:dept_flow:${start}:${end}:${departmentIds ? departmentIds.sort().join(',') : 'all'}`
+
+        try {
+            const cached = await this.kv.get(cacheKey, 'json')
+            if (cached) return cached
+        } catch (e) {
+            console.warn('Cache read failed', e)
+        }
+
         const conditions = [
             gte(cashFlows.bizDate, start),
             lte(cashFlows.bizDate, end)
@@ -149,7 +182,7 @@ export class ReportService {
 
         const rows = await deptQuery.groupBy(departments.id, departments.name).orderBy(departments.name).all()
 
-        return rows.map(r => ({
+        const result = rows.map(r => ({
             departmentId: r.id,
             departmentName: r.name,
             incomeCents: r.income_cents,
@@ -158,6 +191,14 @@ export class ReportService {
             expenseCount: r.expense_count,
             netCents: r.income_cents - r.expense_cents
         }))
+
+        try {
+            await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 300 })
+        } catch (e) {
+            console.warn('Cache write failed', e)
+        }
+
+        return result
     }
 
     async getSiteGrowth(start: string, end: string, departmentId?: string) {
@@ -351,7 +392,17 @@ export class ReportService {
         }
     }
 
-    async getAccountBalance(asOf: string) {
+    async getAccountBalance(asOf: string): Promise<{ rows: any[], asOf: string }> {
+        const cacheKey = `report:balance:${asOf}`
+
+        // 尝试从缓存获取
+        try {
+            const cached = await this.kv.get<{ rows: any[], asOf: string }>(cacheKey, 'json')
+            if (cached) return cached
+        } catch (e) {
+            console.warn('Cache read failed', e)
+        }
+
         const activeAccounts = await this.db.select({
             id: accounts.id,
             name: accounts.name,
@@ -424,7 +475,16 @@ export class ReportService {
             }
         })
 
-        return { rows, asOf: asOf }
+        const result = { rows, asOf: asOf }
+
+        // 缓存 1 分钟（账户余额变动较频繁）
+        try {
+            await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 })
+        } catch (e) {
+            console.warn('Cache write failed', e)
+        }
+
+        return result
     }
 
     async getBorrowingSummary(start?: string, end?: string, userId?: string) {
@@ -702,12 +762,11 @@ export class ReportService {
             .where(and(...conditions))
             .all()
 
-        const { getAnnualLeaveStats } = await import('./AnnualLeaveService.js')
-
         const results = []
         for (const emp of emps) {
             if (!emp.joinDate) continue
-            const stats = await getAnnualLeaveStats(this.db, emp.id, emp.joinDate)
+            // Removed db argument as service now holds it
+            const stats = await this.annualLeaveService.getAnnualLeaveStats(emp.id, emp.joinDate)
             results.push({
                 employeeId: emp.id,
                 employeeName: emp.name,

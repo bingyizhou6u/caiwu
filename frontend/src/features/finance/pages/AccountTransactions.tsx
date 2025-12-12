@@ -22,9 +22,12 @@ export function AccountTransactions() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
 
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
   // 数据 Hook
   const { data: accounts = [] } = useAccounts()
-  const { data: rows = [], isLoading: loading, refetch: query } = useAccountTransactions(accountId)
+  const { data: rows = { total: 0, list: [] }, isLoading: loading, refetch: query } = useAccountTransactions(accountId, page, pageSize)
 
   const handleQuery = withErrorHandler(
     async () => {
@@ -55,22 +58,32 @@ export function AccountTransactions() {
             </Space>
           </Form.Item>
         </Form>
-        <VirtualTable
+        <Table
           style={{ marginTop: 16 }}
           rowKey="id"
-          dataSource={rows}
+          dataSource={rows.list || []}
           loading={loading}
-          scroll={{ y: 600, x: 1200 }}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: rows.total || 0,
+            onChange: (p, ps) => {
+              setPage(p)
+              setPageSize(ps)
+            },
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`
+          }}
           columns={[
-            { title: '日期', dataIndex: 'transaction_date', width: 110 },
-            { title: '凭证号', dataIndex: 'voucher_no', width: 120 },
-            { title: '类型', dataIndex: 'transaction_type', width: 80, render: (v: string) => TYPE_LABELS[v] || v },
+            { title: '日期', dataIndex: 'transactionDate', width: 110 },
+            { title: '凭证号', dataIndex: 'voucherNo', width: 120 },
+            { title: '类型', dataIndex: 'transactionType', width: 80, render: (v: string) => TYPE_LABELS[v] || v },
             { title: '类别', dataIndex: 'categoryName', width: 120 },
-            { title: '摘要', dataIndex: 'memo' }, // VirtualTable 会自动计算宽度
+            { title: '摘要', dataIndex: 'memo' },
             { title: '交易对手', dataIndex: 'counterparty', width: 120 },
             {
               title: '账变前金额',
-              dataIndex: 'balance_before_cents',
+              dataIndex: 'balanceBeforeCents',
               width: 130,
               align: 'right',
               render: (v: number) => (v / 100).toFixed(2)
@@ -82,9 +95,9 @@ export function AccountTransactions() {
               align: 'right',
               render: (v: number, r: any) => {
                 const amount = (v / 100).toFixed(2)
-                if (r.transaction_type === 'income') {
+                if (r.transactionType === 'income') {
                   return <span style={{ color: '#52c41a' }}>+{amount}</span>
-                } else if (r.transaction_type === 'expense') {
+                } else if (r.transactionType === 'expense') {
                   return <span style={{ color: '#ff4d4f' }}>-{amount}</span>
                 }
                 return amount
@@ -92,7 +105,7 @@ export function AccountTransactions() {
             },
             {
               title: '账变后金额',
-              dataIndex: 'balance_after_cents',
+              dataIndex: 'balanceAfterCents',
               width: 130,
               align: 'right',
               render: (v: number) => <strong>{(v / 100).toFixed(2)}</strong>

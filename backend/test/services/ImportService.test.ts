@@ -32,7 +32,7 @@ describe('ImportService', () => {
             active: 1
         }).run()
 
-        const csv = `biz_date,type,accountId,amount,voucher_no,method,memo
+        const csv = `biz_date,type,account_id,amount,voucher_no,method,memo
 2023-01-01,income,${accountId},100.00,V001,cash,Test Income
 2023-01-02,expense,${accountId},50.00,V002,card,Test Expense`
 

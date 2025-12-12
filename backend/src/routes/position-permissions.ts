@@ -49,7 +49,7 @@ positionPermissionsRoutes.openapi(
   }),
   async (c) => {
     if (!hasPermission(c, 'system', 'position', 'view')) throw Errors.FORBIDDEN()
-    const results = await c.get('services').position.getPositions()
+    const results = await c.var.services.position.getPositions()
     return c.json({ results })
   }
 )
@@ -80,7 +80,7 @@ positionPermissionsRoutes.openapi(
   async (c) => {
     if (!hasPermission(c, 'system', 'position', 'view')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
-    const result = await c.get('services').position.getPosition(id)
+    const result = await c.var.services.position.getPosition(id)
     return c.json(result)
   }
 )
@@ -123,7 +123,7 @@ positionPermissionsRoutes.openapi(
       permissions: body.permissions ?? {}
     }
 
-    const result = await c.get('services').position.createPosition(mapped).catch(() => undefined)
+    const result = await c.var.services.position.createPosition(mapped).catch(() => undefined)
 
     if (result?.id) {
       logAuditAction(c, 'create', 'position', result.id, JSON.stringify(body))
@@ -168,7 +168,7 @@ positionPermissionsRoutes.openapi(
     const id = c.req.param('id')
     const body = c.req.valid('json')
 
-    const result = await c.get('services').position.updatePosition(id, body)
+    const result = await c.var.services.position.updatePosition(id, body)
 
     logAuditAction(c, 'update', 'position', id, JSON.stringify(body))
 
@@ -203,7 +203,7 @@ positionPermissionsRoutes.openapi(
     if (!hasPermission(c, 'system', 'position', 'delete')) throw Errors.FORBIDDEN()
     const id = c.req.param('id')
 
-    await c.get('services').position.deletePosition(id)
+    await c.var.services.position.deletePosition(id)
 
     logAuditAction(c, 'delete', 'position', id)
 

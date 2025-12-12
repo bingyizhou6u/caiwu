@@ -1,6 +1,7 @@
+
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../types.js'
-import { getUserPosition, hasPermission, getUserId, isTeamMember, canViewEmployee } from '../utils/permissions.js'
+import { hasPermission, getUserPosition, getUserEmployee } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 import { logAuditAction } from '../utils/audit.js'
 import { EmployeeListSchema, EmployeeQuerySchema, MigrateUserSchema, EmployeeSchema, UpdateEmployeeSchema, RegularizeEmployeeSchema, EmployeeLeaveSchema, EmployeeRejoinSchema, CreateEmployeeSchema, CreateEmployeeResponseSchema } from '../schemas/employee.schema.js'
@@ -34,7 +35,7 @@ employeesRoutes.openapi(listEmployeesRoute, async (c) => {
   if (!position) throw Errors.FORBIDDEN()
 
   const query = c.req.valid('query')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
 
   const filters: any = { ...query }
   const employee = c.get('userEmployee')
@@ -80,23 +81,22 @@ const getEmployeeRoute = createRoute({
 })
 
 employeesRoutes.openapi(getEmployeeRoute, async (c) => {
+  const { id } = c.req.valid('param')
+
+  // Check permission using service
   const position = getUserPosition(c)
-  if (!position) throw Errors.FORBIDDEN()
+  const employee = getUserEmployee(c)
+  if (!position || !employee) throw Errors.UNAUTHORIZED()
 
-  const id = c.req.param('id')
-  const service = c.get('services').employee
+  const canView = await c.var.services.permission.canViewEmployee(employee, position, id)
 
-  // 权限检查
-  if (!await canViewEmployee(c, id)) {
-    throw Errors.FORBIDDEN()
-  }
+  if (!canView) throw Errors.FORBIDDEN('无权查看该员工信息')
 
-  // 直接获取指定员工
-  const employee = await service.getById(id)
+  const result = await c.var.services.employee.getById(id)
 
-  if (!employee) throw Errors.NOT_FOUND('员工')
+  if (!result) throw Errors.NOT_FOUND('员工')
 
-  return c.json(employee, 200)
+  return c.json(result, 200)
 })
 // 创建员工（自动创建用户账号并发送欢迎邮件）
 const createEmployeeRoute = createRoute({
@@ -128,7 +128,7 @@ employeesRoutes.openapi(createEmployeeRoute, async (c) => {
   if (!hasPermission(c, 'hr', 'employee', 'create')) throw Errors.FORBIDDEN()
 
   const body = c.req.valid('json')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
 
   const result = await service.create({
     name: body.name,
@@ -195,7 +195,7 @@ const resendActivationEmailRoute = createRoute({
 employeesRoutes.openapi(resendActivationEmailRoute, async (c) => {
   if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
   const result = await service.resendActivationEmail(id, c.env)
 
   logAuditAction(c, 'resend_activation', 'employee', id, JSON.stringify({ result }))
@@ -229,7 +229,7 @@ const resetTotpRoute = createRoute({
 employeesRoutes.openapi(resetTotpRoute, async (c) => {
   if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
   const result = await service.resetTotp(id)
 
   logAuditAction(c, 'reset_totp', 'employee', id, JSON.stringify({ result }))
@@ -276,7 +276,7 @@ employeesRoutes.openapi(migrateUserRoute, async (c) => {
     probationSalaryCents: raw.probation_salary_cents,
     regularSalaryCents: raw.regular_salary_cents
   }
-  const service = c.get('services').employee
+  const service = c.var.services.employee
 
   const result = await service.migrateFromUser(body.userId, {
     orgDepartmentId: body.orgDepartmentId,
@@ -321,7 +321,7 @@ employeesRoutes.openapi(updateEmployeeRoute, async (c) => {
 
   const id = c.req.param('id')
   const body = c.req.valid('json')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
 
   const result = await service.update(id, {
     name: body.name,
@@ -379,7 +379,7 @@ employeesRoutes.openapi(regularizeEmployeeRoute, async (c) => {
   if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = c.req.valid('json')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
   const result = await service.regularize(id, body.regularDate)
   return c.json(result, 200)
 })
@@ -414,7 +414,7 @@ employeesRoutes.openapi(leaveEmployeeRoute, async (c) => {
   if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = c.req.valid('json')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
   const result = await service.leave(id, body.leaveDate, body.reason)
   return c.json(result, 200)
 })
@@ -449,7 +449,7 @@ employeesRoutes.openapi(rejoinEmployeeRoute, async (c) => {
   if (!hasPermission(c, 'hr', 'employee', 'update')) throw Errors.FORBIDDEN()
   const id = c.req.param('id')
   const body = c.req.valid('json')
-  const service = c.get('services').employee
+  const service = c.var.services.employee
   const result = await service.rejoin(id, body.joinDate)
   return c.json(result, 200)
 })
@@ -482,7 +482,7 @@ employeesRoutes.openapi(resetEmployeePasswordRoute, async (c) => {
 
   const id = c.req.param('id')
   const db = c.get('db')
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
 
   const employee = await db.select({
     id: employees.id,

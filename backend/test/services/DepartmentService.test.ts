@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { DepartmentService } from '../../src/services/DepartmentService';
+import { AuditService } from '../../src/services/AuditService';
 import schemaSql from '../../src/db/schema.sql?raw';
 import * as schema from '../../src/db/schema';
 import { createDb } from '../../src/utils/db';
@@ -17,7 +18,8 @@ describe('DepartmentService', () => {
 
     it('should create default org departments', async () => {
         const db = createDb(env.DB);
-        const service = new DepartmentService(db);
+        const auditService = new AuditService(db);
+        const service = new DepartmentService(db, auditService);
         const projectId = 'test-project-id'
 
         const createdIds = await service.createDefaultOrgDepartments(projectId)
@@ -48,7 +50,8 @@ describe('DepartmentService', () => {
 
     it('should not duplicate departments if they already exist', async () => {
         const db = createDb(env.DB);
-        const service = new DepartmentService(db);
+        const auditService = new AuditService(db);
+        const service = new DepartmentService(db, auditService);
         const projectId = 'test-project-id'
 
         await service.createDefaultOrgDepartments(projectId)

@@ -17,6 +17,7 @@ import { createFlowSchema } from '../../../validations/flow.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import type { Flow } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
+import { renderCurrency, renderDate, renderText } from '../../../utils/renderers'
 
 const TYPE_LABELS: Record<string, string> = {
   income: '收入',
@@ -36,7 +37,13 @@ export function Flows() {
   const { data: accounts = [] } = useAccounts()
   const { data: allCategories = [] } = useAllCategories()
   const { data: sites = [] } = useSites()
-  const { data: flows = [], isLoading: loading, refetch: load } = useFlows()
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  const { data: flowsData, isLoading: loading, refetch: load } = useFlows(page, pageSize)
+  const flows = flowsData?.list || []
+  const total = flowsData?.total || 0
+
   const { mutateAsync: createFlow, isPending: isCreating } = useCreateFlow()
   const { mutateAsync: updateVoucher, isPending: isUpdatingVoucher } = useUpdateFlowVoucher()
   const { mutateAsync: batchDeleteFlow } = useBatchDeleteFlow()
@@ -202,50 +209,67 @@ export function Flows() {
             </Popconfirm>
           </Button>
         </Space>
-        <Table className="table-striped" rowKey="id" loading={loading} dataSource={flows} pagination={{ pageSize: 20 }} rowSelection={rowSelection} columns={[
-          { title: '凭证号', dataIndex: 'voucherNo' },
-          { title: '日期', dataIndex: 'bizDate' },
-          { title: '类型', dataIndex: 'type', render: (v: string) => TYPE_LABELS[v] || v },
-          { title: '金额', dataIndex: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-          { title: '归属', render: (_: any, r: any) => r.departmentId ? '项目' : '总部' },
-          { title: '账户', dataIndex: 'accountName' },
-          { title: '类别', dataIndex: 'categoryName' },
-          { title: '对方', dataIndex: 'counterparty' },
-          { title: '备注', dataIndex: 'memo' },
-          {
-            title: '凭证',
-            dataIndex: 'voucherUrls',
-            render: (urls: string[] | undefined, record: Flow) => {
-              const voucherUrls = urls || (record.voucherUrl ? [record.voucherUrl] : [])
-              return (
-                <Space>
-                  {voucherUrls.length > 0 ? (
+        <Table
+          className="table-striped"
+          rowKey="id"
+          loading={loading}
+          dataSource={flows}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: total,
+            onChange: (p, ps) => {
+              setPage(p)
+              setPageSize(ps)
+            },
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`
+          }}
+          rowSelection={rowSelection}
+          columns={[
+            { title: '凭证号', dataIndex: 'voucherNo' },
+            { title: '日期', dataIndex: 'bizDate', render: (v) => renderDate(v) },
+            { title: '类型', dataIndex: 'type', render: (v: string) => TYPE_LABELS[v] || v },
+            { title: '金额', dataIndex: 'amountCents', render: (v) => renderCurrency(v) },
+            { title: '归属', render: (_: any, r: any) => r.departmentId ? '项目' : '总部' },
+            { title: '账户', dataIndex: 'accountName' },
+            { title: '类别', dataIndex: 'categoryName' },
+            { title: '对方', dataIndex: 'counterparty', render: (v) => renderText(v) },
+            { title: '备注', dataIndex: 'memo', render: (v) => renderText(v) },
+            {
+              title: '凭证',
+              dataIndex: 'voucherUrls',
+              render: (urls: string[] | undefined, record: Flow) => {
+                const voucherUrls = urls || (record.voucherUrl ? [record.voucherUrl] : [])
+                return (
+                  <Space>
+                    {voucherUrls.length > 0 ? (
+                      <Button
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={() => showPreview(voucherUrls, 0)}
+                      >
+                        查看 ({voucherUrls.length})
+                      </Button>
+                    ) : (
+                      <span style={{ color: '#999' }}>-</span>
+                    )}
                     <Button
                       size="small"
-                      icon={<EyeOutlined />}
-                      onClick={() => showPreview(voucherUrls, 0)}
+                      type={voucherUrls.length > 0 ? 'default' : 'primary'}
+                      onClick={() => {
+                        setVoucherUploadUrls(voucherUrls)
+                        setVoucherUploadFileList([])
+                        modals.open('voucherUpload', record)
+                      }}
                     >
-                      查看 ({voucherUrls.length})
+                      {voucherUrls.length > 0 ? '重新上传' : '补充凭证'}
                     </Button>
-                  ) : (
-                    <span style={{ color: '#999' }}>-</span>
-                  )}
-                  <Button
-                    size="small"
-                    type={voucherUrls.length > 0 ? 'default' : 'primary'}
-                    onClick={() => {
-                      setVoucherUploadUrls(voucherUrls)
-                      setVoucherUploadFileList([])
-                      modals.open('voucherUpload', record)
-                    }}
-                  >
-                    {voucherUrls.length > 0 ? '重新上传' : '补充凭证'}
-                  </Button>
-                </Space>
-              )
-            }
-          },
-        ]} />
+                  </Space>
+                )
+              }
+            },
+          ]} />
 
         <Modal title="新建记账" open={modals.isOpen('create')} onOk={onCreate} confirmLoading={isCreating} onCancel={() => {
           modals.close('create')

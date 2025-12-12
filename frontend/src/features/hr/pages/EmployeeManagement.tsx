@@ -16,11 +16,10 @@ import { AllowanceConfigModal } from '../../../features/employees/components/mod
 import { ResetUserPasswordModal } from '../../../features/employees/components/modals/ResetUserPasswordModal'
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { useDeleteEmployee, useBatchDeleteEmployee } from '../../../hooks/business/useEmployees'
-import { useTableActions } from '../../../hooks/forms/useTableActions'
-import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
+import { useApiMutation } from '../../../utils/useApiQuery'
 import { DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageContainer } from '../../../components/PageContainer'
+import { renderStatus, renderText } from '../../../utils/renderers'
 
 import { useNavigate } from 'react-router-dom'
 
@@ -53,24 +52,9 @@ export function EmployeeManagement() {
     status: statusFilter !== 'all' && statusFilter !== 'active' ? statusFilter : undefined,
     activeOnly: statusFilter === 'active'
   })
-  const { mutateAsync: deleteEmployee } = useDeleteEmployee()
-  const { mutateAsync: batchDeleteEmployee } = useBatchDeleteEmployee()
-  const { mutateAsync: toggleUserActive } = useToggleUserActive()
+  const { mutateAsync: updateEmployee } = useApiMutation()
 
-  const tableActions = useTableActions<Employee>()
-  const { selectedRowKeys, rowSelection } = tableActions
 
-  const { handleBatch: handleBatchDelete, loading: batchDeleting } = useBatchOperation(
-    batchDeleteEmployee,
-    tableActions,
-    {
-      onSuccess: () => {
-        refetchEmployees()
-        message.success('批量删除成功')
-      },
-      errorMessage: '批量删除失败'
-    }
-  )
 
   const handleRegularize = (employee: Employee) => {
     setCurrentEmployee(employee)
@@ -111,17 +95,14 @@ export function EmployeeManagement() {
     }
   }
 
-  const handleDelete = withErrorHandler(
-    async (id: string) => {
-      await deleteEmployee(id)
-    },
-    { successMessage: '删除成功' }
-  )
-
   const handleToggleActive = withErrorHandler(
     async (record: Employee) => {
-      if (!record.userId) return
-      await toggleUserActive({ userId: record.userId, active: record.userActive === 1 ? 0 : 1 })
+      await updateEmployee({
+        url: api.employeesById(record.id),
+        method: 'PUT',
+        body: { active: record.userActive === 1 ? 0 : 1 }
+      })
+      refetchEmployees()
     },
     { successMessage: '操作成功' }
   )
@@ -167,6 +148,24 @@ export function EmployeeManagement() {
           </span>
         )
       },
+    },
+    {
+      title: '职位',
+      dataIndex: 'positionId',
+      key: 'positionId',
+      width: 120,
+      render: (text) => renderText(text) // Simplification if positions map is not directly used here or needs lookup
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (text: string) => renderStatus(text, {
+        active: { text: '在职', color: 'success' },
+        probation: { text: '试用期', color: 'processing' },
+        resigned: { text: '离职', color: 'default' }
+      })
     },
     {
       title: '手机号',
@@ -360,167 +359,118 @@ export function EmployeeManagement() {
               )}
             </>
           )}
-          {isManager && (
-            <Popconfirm
-              title={`确定要删除员工"${record.name}"吗？`}
-              description="删除后无法恢复，请谨慎操作。"
-              onConfirm={() => handleDelete(record.id)}
-              okText="确定"
-              cancelText="取消"
-            >
-              <Button size="small" danger>
-                删除
-              </Button>
-            </Popconfirm>
-          )}
         </Space>
       ),
     },
-  ], [canEdit, isManager, statusFilter, handleDelete, handleToggleActive, modal])
-
+  ],
+    [canEdit, isManager, statusFilter, handleToggleActive, modal])
   return (
-    <PageContainer
-      title="人员管理"
-      breadcrumb={[
-        { title: '首页', path: '/' },
-        { title: '人事管理' },
-        { title: '人员管理' }
-      ]}
-      extra={
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => refetchEmployees()} loading={isLoading}>
-            刷新
-          </Button>
-          {canDelete && (
-            <Button
-              danger
-              disabled={selectedRowKeys.length === 0}
-              icon={<DeleteOutlined />}
-              loading={batchDeleting}
-            >
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedRowKeys.length} 名员工吗？`}
-                onConfirm={handleBatchDelete}
-                okText="确定"
-                cancelText="取消"
-                disabled={selectedRowKeys.length === 0}
-              >
-                <span>批量删除 ({selectedRowKeys.length})</span>
-              </Popconfirm>
-            </Button>
-          )}
-        </Space>
-      }
-    >
-      <Card bordered={false} className="page-card">
-        <div style={{ marginBottom: 24 }}>
-          <Table
-            className="table-striped"
-            columns={columns}
-            dataSource={employees}
-            rowKey="id"
-            loading={isLoading}
-            pagination={{
-              total: employees.length,
-              pageSize: 20,
-              showSizeChanger: true,
-              showQuickJumper: true,
-            }}
-            scroll={{ x: 1500 }}
-            rowSelection={canDelete ? rowSelection : undefined}
-            onChange={(pagination, filters, sorter, extra) => {
-              if (filters.status && filters.status.length > 0) {
-                setStatusFilter(filters.status[0] as string)
-              } else {
-                setStatusFilter('all')
-              }
-            }}
-            expandable={{
-              expandedRowRender: (record) => (
-                <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
-                  <Descriptions.Item label="试用期工资">
-                    <SensitiveField value={((record.probationSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="转正工资">
-                    <SensitiveField value={((record.regularSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="转正日期">{record.regularDate || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="生活补贴">
-                    <SensitiveField value={((record.livingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="住房补贴">
-                    <SensitiveField value={((record.housingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="交通补贴">
-                    <SensitiveField value={((record.transportationAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="伙食补贴">
-                    <SensitiveField value={((record.mealAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="补贴合计">
-                    <SensitiveField value={(((record.livingAllowanceCents || 0) + (record.housingAllowanceCents || 0) + (record.transportationAllowanceCents || 0) + (record.mealAllowanceCents || 0)) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  {record.status === 'resigned' && (
-                    <>
-                      <Descriptions.Item label="离职日期">{record.leaveDate || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="离职类型">
-                        {record.leave_type === 'resigned' ? '主动离职' :
-                          record.leave_type === 'terminated' ? '被动离职' :
-                            record.leave_type === 'expired' ? '合同到期' :
-                              record.leave_type === 'retired' ? '退休' :
-                                record.leave_type === 'other' ? '其他' : '-'}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="离职原因">{record.leave_reason || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="离职备注">{record.leave_memo || '-'}</Descriptions.Item>
-                    </>
-                  )}
-                  <Descriptions.Item label="USDT地址">
-                    <SensitiveField value={record.usdtAddress || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="紧急联系人">
-                    <SensitiveField value={record.emergencyContact || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="紧急联系人电话">
-                    {record.emergencyPhone ? (
-                      <SensitiveField value={record.emergencyPhone} type="phone" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                    ) : '-'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="地址" span={2}>
-                    <SensitiveField value={record.address || '-'} type="address" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                  </Descriptions.Item>
-                  <Descriptions.Item label="生日">{record.birthday || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="备注" span={2}>{record.memo || '-'}</Descriptions.Item>
-                  {record.userId && (
-                    <>
-                      <Descriptions.Item label="账号状态">
-                        {record.userActive === 1 ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>}
-                      </Descriptions.Item>
-                      {record.positionName && (
-                        <>
-                          <Descriptions.Item label="职位名称">
-                            {record.positionName}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="职位代码">
-                            {record.positionCode || '-'}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="职位层级">
-                            {record.positionLevel === 1 ? '总部' :
-                              record.positionLevel === 2 ? '项目' :
-                                record.positionLevel === 3 ? '组' :
-                                  record.positionLevel || '-'}
-                          </Descriptions.Item>
-                        </>
-                      )}
-                      <Descriptions.Item label="最近登录">
-                        {record.userLastLoginAt ? new Date(record.userLastLoginAt).toLocaleString() : '从未登录'}
-                      </Descriptions.Item>
-                    </>
-                  )}
-                </Descriptions>
-              ),
-            }}
-          />
-        </div>
+    <PageContainer>
+      <Card
+        extra={
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={() => refetchEmployees()}>刷新</Button>
+            <Button type="primary" onClick={() => modal.openCreate()}>新建员工</Button>
+          </Space>
+        }
+      >
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={employees}
+          loading={isLoading}
+          onChange={(_pagination, filters) => {
+            if (filters.status && filters.status.length > 0) {
+              setStatusFilter(filters.status[0] as string)
+            } else {
+              setStatusFilter('all')
+            }
+          }}
+          expandable={{
+            expandedRowRender: (record) => (
+              <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
+                <Descriptions.Item label="试用期工资">
+                  <SensitiveField value={((record.probationSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="转正工资">
+                  <SensitiveField value={((record.regularSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="转正日期">{record.regularDate || '-'}</Descriptions.Item>
+                <Descriptions.Item label="生活补贴">
+                  <SensitiveField value={((record.livingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="住房补贴">
+                  <SensitiveField value={((record.housingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="交通补贴">
+                  <SensitiveField value={((record.transportationAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="伙食补贴">
+                  <SensitiveField value={((record.mealAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="补贴合计">
+                  <SensitiveField value={(((record.livingAllowanceCents || 0) + (record.housingAllowanceCents || 0) + (record.transportationAllowanceCents || 0) + (record.mealAllowanceCents || 0)) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                {record.status === 'resigned' && (
+                  <>
+                    <Descriptions.Item label="离职日期">{record.leaveDate || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="离职类型">
+                      {record.leave_type === 'resigned' ? '主动离职' :
+                        record.leave_type === 'terminated' ? '被动离职' :
+                          record.leave_type === 'expired' ? '合同到期' :
+                            record.leave_type === 'retired' ? '退休' :
+                              record.leave_type === 'other' ? '其他' : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="离职原因">{record.leave_reason || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="离职备注">{record.leave_memo || '-'}</Descriptions.Item>
+                  </>
+                )}
+                <Descriptions.Item label="USDT地址">
+                  <SensitiveField value={record.usdtAddress || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="紧急联系人">
+                  <SensitiveField value={record.emergencyContact || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="紧急联系人电话">
+                  {record.emergencyPhone ? (
+                    <SensitiveField value={record.emergencyPhone} type="phone" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                  ) : '-'}
+                </Descriptions.Item>
+                <Descriptions.Item label="地址" span={2}>
+                  <SensitiveField value={record.address || '-'} type="address" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                </Descriptions.Item>
+                <Descriptions.Item label="生日">{record.birthday || '-'}</Descriptions.Item>
+                <Descriptions.Item label="备注" span={2}>{record.memo || '-'}</Descriptions.Item>
+                {record.userId && (
+                  <>
+                    <Descriptions.Item label="账号状态">
+                      {record.userActive === 1 ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>}
+                    </Descriptions.Item>
+                    {record.positionName && (
+                      <>
+                        <Descriptions.Item label="职位名称">
+                          {record.positionName}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="职位代码">
+                          {record.positionCode || '-'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="职位层级">
+                          {record.positionLevel === 1 ? '总部' :
+                            record.positionLevel === 2 ? '项目' :
+                              record.positionLevel === 3 ? '组' :
+                                record.positionLevel || '-'}
+                        </Descriptions.Item>
+                      </>
+                    )}
+                    <Descriptions.Item label="最近登录">
+                      {record.userLastLoginAt ? new Date(record.userLastLoginAt).toLocaleString() : '从未登录'}
+                    </Descriptions.Item>
+                  </>
+                )}
+              </Descriptions>
+            ),
+          }}
+        />
       </Card>
 
       <EditEmployeeModal
@@ -623,6 +573,6 @@ export function EmployeeManagement() {
           setCurrentEmployee(null)
         }}
       />
-    </PageContainer>
+    </PageContainer >
   )
 }

@@ -5,13 +5,19 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ARAP } from '../../types/business'
 import type { CreateARDocDTO, ConfirmARDocDTO, SettleARDocDTO } from '../../types'
 
-export function useARDocs() {
-    return useApiQuery<ARAP[]>(
-        ['ar-docs'],
-        `${api.ar.docs}?kind=AR`,
+import { keepPreviousData } from '@tanstack/react-query'
+
+export function useARDocs(page: number = 1, pageSize: number = 20) {
+    return useApiQuery<{ total: number, list: ARAP[] }>(
+        ['ar-docs', page, pageSize],
+        `${api.ar.docs}?kind=AR&page=${page}&pageSize=${pageSize}`,
         {
-            select: (data: any) => data.results ?? [],
+            select: (data: any) => ({
+                total: data.total ?? 0,
+                list: data.results ?? []
+            }),
             staleTime: 5 * 60 * 1000,
+            placeholderData: keepPreviousData
         }
     )
 }

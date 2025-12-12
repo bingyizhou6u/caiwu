@@ -105,7 +105,7 @@ siteBillsRoutes.openapi(
 
       const whereClause = conditions.length ? and(...conditions) : undefined
 
-      const rows = await c.var.services.finance.listSiteBills(200, whereClause)
+      const rows = await c.var.services.siteBill.list(200, whereClause)
 
       const results = rows.map(row => {
         const sb = row.bill
@@ -195,7 +195,7 @@ siteBillsRoutes.openapi(
     try {
       const body = await c.req.json()
 
-      const result = await c.var.services.finance.createSiteBill({
+      const result = await c.var.services.siteBill.create({
         siteId: body.siteId,
         billDate: body.billDate,
         billType: body.billType,
@@ -218,49 +218,33 @@ siteBillsRoutes.openapi(
         currency: body.currency
       }))
 
-      const created = await c.env.DB.prepare(`
-        select 
-          sb.*,
-          s.name as site_name,
-          s.site_code,
-          a.name as account_name,
-          c.name as category_name,
-          cur.name as currency_name,
-          e_creator.name as creator_name
-        from site_bills sb
-        left join sites s on s.id = sb.site_id
-        left join accounts a on a.id = sb.account_id
-        left join categories c on c.id = sb.category_id
-        left join currencies cur on cur.code = sb.currency
-        left join employees e_creator on e_creator.id = sb.created_by
-        
-        where sb.id=?
-      `).bind(result.id).first<any>()
+      const created = await c.var.services.siteBill.getById(result.id)
 
       if (!created) throw new Error('Failed to fetch created record')
 
+      const sb = created.bill
       return c.json({
-        id: created.id,
-        siteId: created.site_id,
-        billDate: created.bill_date,
-        billType: created.bill_type,
-        amountCents: created.amount_cents,
-        currency: created.currency,
-        description: created.description,
-        accountId: created.account_id,
-        categoryId: created.category_id,
-        status: created.status,
-        paymentDate: created.payment_date,
-        memo: created.memo,
-        createdBy: created.created_by,
-        createdAt: created.created_at,
-        updatedAt: created.updated_at,
-        siteName: created.site_name,
-        siteCode: created.site_code,
-        accountName: created.account_name,
-        categoryName: created.category_name,
-        currencyName: created.currency_name,
-        creatorName: created.creator_name
+        id: sb.id,
+        siteId: sb.siteId,
+        billDate: sb.billDate,
+        billType: sb.billType,
+        amountCents: sb.amountCents,
+        currency: sb.currency,
+        description: sb.description,
+        accountId: sb.accountId,
+        categoryId: sb.categoryId,
+        status: sb.status || 'pending',
+        paymentDate: sb.paymentDate,
+        memo: sb.memo,
+        createdBy: sb.createdBy,
+        createdAt: sb.createdAt,
+        updatedAt: sb.updatedAt,
+        siteName: created.siteName,
+        siteCode: created.siteCode,
+        accountName: created.accountName,
+        categoryName: created.categoryName,
+        currencyName: created.currencyName,
+        creatorName: created.creatorName
       })
     } catch {
       return c.json({
@@ -323,7 +307,7 @@ siteBillsRoutes.openapi(
     const id = params.id
     const body = c.req.valid('json')
 
-    await c.var.services.finance.updateSiteBill(id, {
+    await c.var.services.siteBill.update(id, {
       billDate: body.billDate,
       billType: body.billType,
       amountCents: body.amountCents,
@@ -338,26 +322,33 @@ siteBillsRoutes.openapi(
 
     logAuditAction(c, 'update', 'site_bill', id, JSON.stringify(body))
 
-    const updated = await c.env.DB.prepare(`
-      select 
-        sb.*,
-        s.name as site_name,
-        s.site_code,
-        a.name as account_name,
-        c.name as category_name,
-        cur.name as currency_name,
-        e_creator.name as creator_name
-      from site_bills sb
-      left join sites s on s.id = sb.site_id
-      left join accounts a on a.id = sb.account_id
-      left join categories c on c.id = sb.category_id
-      left join currencies cur on cur.code = sb.currency
-      left join employees e_creator on e_creator.id = sb.created_by
-      
-      where sb.id=?
-    `).bind(id).first()
+    const updated = await c.var.services.siteBill.getById(id)
+    if (!updated) throw new Error('Failed to fetch updated record')
 
-    return c.json(updated as any)
+    const sb = updated.bill
+    return c.json({
+      id: sb.id,
+      siteId: sb.siteId,
+      billDate: sb.billDate,
+      billType: sb.billType,
+      amountCents: sb.amountCents,
+      currency: sb.currency,
+      description: sb.description,
+      accountId: sb.accountId,
+      categoryId: sb.categoryId,
+      status: sb.status || 'pending',
+      paymentDate: sb.paymentDate,
+      memo: sb.memo,
+      createdBy: sb.createdBy,
+      createdAt: sb.createdAt,
+      updatedAt: sb.updatedAt,
+      siteName: updated.siteName,
+      siteCode: updated.siteCode,
+      accountName: updated.accountName,
+      categoryName: updated.categoryName,
+      currencyName: updated.currencyName,
+      creatorName: updated.creatorName
+    } as any)
   }
 )
 
@@ -386,14 +377,14 @@ siteBillsRoutes.openapi(
     const params = c.req.valid('param')
     const id = params.id
 
-    const record = await c.env.DB.prepare('select * from site_bills where id=?').bind(id).first<any>()
+    const record = await c.var.services.siteBill.getById(id)
     if (!record) throw Errors.NOT_FOUND()
 
-    await c.var.services.finance.deleteSiteBill(id)
+    await c.var.services.siteBill.delete(id)
 
     logAuditAction(c, 'delete', 'site_bill', id, JSON.stringify({
-      siteId: record.site_id,
-      billDate: record.bill_date
+      siteId: record.bill.siteId,
+      billDate: record.bill.billDate
     }))
 
     return c.json({ ok: true })
@@ -424,27 +415,33 @@ siteBillsRoutes.openapi(
     const params = c.req.valid('param')
     const id = params.id
 
-    const record = await c.env.DB.prepare(`
-      select 
-        sb.*,
-        s.name as site_name,
-        s.site_code,
-        a.name as account_name,
-        c.name as category_name,
-        cur.name as currency_name,
-        e_creator.name as creator_name
-      from site_bills sb
-      left join sites s on s.id = sb.site_id
-      left join accounts a on a.id = sb.account_id
-      left join categories c on c.id = sb.category_id
-      left join currencies cur on cur.code = sb.currency
-      left join employees e_creator on e_creator.id = sb.created_by
-      
-      where sb.id=?
-    `).bind(id).first()
+    const record = await c.var.services.siteBill.getById(id)
 
     if (!record) throw Errors.NOT_FOUND()
 
-    return c.json(record as any)
+    const sb = record.bill
+    return c.json({
+      id: sb.id,
+      siteId: sb.siteId,
+      billDate: sb.billDate,
+      billType: sb.billType,
+      amountCents: sb.amountCents,
+      currency: sb.currency,
+      description: sb.description,
+      accountId: sb.accountId,
+      categoryId: sb.categoryId,
+      status: sb.status || 'pending',
+      paymentDate: sb.paymentDate,
+      memo: sb.memo,
+      createdBy: sb.createdBy,
+      createdAt: sb.createdAt,
+      updatedAt: sb.updatedAt,
+      siteName: record.siteName,
+      siteCode: record.siteCode,
+      accountName: record.accountName,
+      categoryName: record.categoryName,
+      currencyName: record.currencyName,
+      creatorName: record.creatorName
+    } as any)
   }
 )

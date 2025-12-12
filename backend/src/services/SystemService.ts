@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid'
 import { DepartmentService } from './DepartmentService'
+import { AuditService } from './AuditService'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
 import { headquarters, currencies } from '../db/schema.js'
@@ -17,7 +18,8 @@ export class SystemService {
 
         if (hq?.id) {
             // 确保总部有默认部门（如果还没有）
-            const deptService = new DepartmentService(this.db)
+            const auditService = new AuditService(this.db)
+            const deptService = new DepartmentService(this.db, auditService)
             await deptService.createDefaultOrgDepartments(null, undefined)
             return hq
         }
@@ -30,7 +32,8 @@ export class SystemService {
         }).execute()
 
         // 为总部创建默认部门
-        const deptService = new DepartmentService(this.db)
+        const auditService = new AuditService(this.db)
+        const deptService = new DepartmentService(this.db, auditService)
         await deptService.createDefaultOrgDepartments(null, undefined)
         return { id, name: '总部' }
     }

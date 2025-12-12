@@ -1,6 +1,6 @@
 # Caiwu App Frontend
 
-财务管理系统前端项目，基于 React + TypeScript + Vite 构建。
+企业管理系统前端项目，基于 React + TypeScript + Vite 构建。
 
 ## 🛠 技术栈
 

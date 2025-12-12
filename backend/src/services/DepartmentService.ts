@@ -1,9 +1,10 @@
 import { v4 as uuid } from 'uuid'
-import { logAudit } from '../utils/audit'
+// import { logAudit } from '../utils/audit' // Removed
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, isNull } from 'drizzle-orm'
 import { orgDepartments } from '../db/schema.js'
 import * as schema from '../db/schema.js'
+import { AuditService } from './AuditService.js'
 
 // 项目部门配置
 const PROJECT_DEPARTMENTS = [
@@ -74,7 +75,10 @@ const DEV_GROUPS = [
 ]
 
 export class DepartmentService {
-    constructor(private db: DrizzleD1Database<typeof schema>) { }
+    constructor(
+        private db: DrizzleD1Database<typeof schema>,
+        private auditService: AuditService
+    ) { }
 
     // 为新项目创建默认组织部门
     async createDefaultOrgDepartments(projectId: string | null, userId?: string) {
@@ -137,7 +141,7 @@ export class DepartmentService {
 
                 // 记录审计日志
                 if (userId) {
-                    await logAudit(this.db, userId, 'create', 'org_department', id, JSON.stringify({
+                    await this.auditService.log(userId, 'create', 'org_department', id, JSON.stringify({
                         project_id: projectId,
                         name: dept.name,
                         code: dept.code

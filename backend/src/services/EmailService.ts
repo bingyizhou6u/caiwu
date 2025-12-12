@@ -1,8 +1,5 @@
+import { Fetcher } from '@cloudflare/workers-types'
 
-// import { EmailMessage } from "cloudflare:email"
-// class EmailMessage {
-//   constructor(from: string, to: string, body: string) { }
-// }
 // 邮件样式模板
 const emailTemplate = (content: string) => `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -95,63 +92,64 @@ const primaryButton = (text: string, url: string) => `
   ${text}
 </a>`
 
-/**
- * 发送邮件通知（仅通过 EMAIL_SERVICE）
- */
-export async function sendEmail(
-  env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string },
-  to: string,
-  subject: string,
-  htmlBody: string,
-  textBody?: string
-): Promise<{ success: boolean; error?: string }> {
-  if (!env.EMAIL_SERVICE) {
-    const errorMsg = 'EMAIL_SERVICE not configured'
-    console.error('[Email] ' + errorMsg)
-    return { success: false, error: errorMsg }
-  }
+export class EmailService {
+    constructor(private env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) { }
 
-  try {
-    const res = await env.EMAIL_SERVICE.fetch('https://email-worker/send', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...(env.EMAIL_TOKEN ? { 'x-email-token': env.EMAIL_TOKEN } : {})
-      },
-      body: JSON.stringify({
-        to,
-        subject,
-        html: htmlBody,
-        text: textBody
-      })
-    })
+    /**
+     * 发送邮件通知（仅通过 EMAIL_SERVICE）
+     */
+    async sendEmail(
+        to: string,
+        subject: string,
+        htmlBody: string,
+        textBody?: string
+    ): Promise<{ success: boolean; error?: string }> {
+        if (!this.env.EMAIL_SERVICE) {
+            const errorMsg = 'EMAIL_SERVICE not configured'
+            console.error('[EmailService] ' + errorMsg)
+            return { success: false, error: errorMsg }
+        }
 
-    const data: any = await res.json().catch(() => ({}))
-    if (res.ok && data?.success) return { success: true }
+        try {
+            const res = await this.env.EMAIL_SERVICE.fetch('https://email-worker/send', {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    ...(this.env.EMAIL_TOKEN ? { 'x-email-token': this.env.EMAIL_TOKEN } : {})
+                },
+                body: JSON.stringify({
+                    to,
+                    subject,
+                    html: htmlBody,
+                    text: textBody
+                })
+            })
 
-    const errorMsg = data?.error || `Email worker failed with status ${res.status}`
-    console.error('[Email] Service send failed:', errorMsg)
-    return { success: false, error: errorMsg }
-  } catch (error: any) {
-    const errorMsg = error?.message || 'Failed to send via email worker'
-    console.error('[Email] Service send error:', errorMsg)
-    return { success: false, error: errorMsg }
-  }
-}
+            const data: any = await res.json().catch(() => ({}))
+            if (res.ok && data?.success) return { success: true }
 
-/**
- * 发送登录提醒邮件
- */
-export async function sendLoginNotificationEmail(
-  env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string },
-  userEmail: string,
-  userName: string,
-  loginTime: string,
-  ipAddress?: string
-): Promise<{ success: boolean; error?: string }> {
-  const subject = '🔐 登录提醒 - AR公司管理系统'
+            const errorMsg = data?.error || `Email worker failed with status ${res.status}`
+            console.error('[EmailService] Service send failed:', errorMsg)
+            return { success: false, error: errorMsg }
+        } catch (error: any) {
+            const errorMsg = error?.message || 'Failed to send via email worker'
+            console.error('[EmailService] Service send error:', errorMsg)
+            return { success: false, error: errorMsg }
+        }
+    }
 
-  const content = `
+    /**
+     * 发送登录提醒邮件
+     */
+    async sendLoginNotificationEmail(
+        userEmail: string,
+        userName: string,
+        loginTime: string,
+        ipAddress?: string
+    ): Promise<{ success: boolean; error?: string }> {
+        const subject = '🔐 登录提醒 - AR公司管理系统'
+
+        const content = `
     <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">登录提醒</h2>
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
       您好，<strong>${userName}</strong>：
@@ -160,52 +158,46 @@ export async function sendLoginNotificationEmail(
       您的账号刚刚成功登录了管理系统。
     </p>
     ${infoCard([
-    { label: '登录邮箱', value: userEmail },
-    { label: '登录时间', value: loginTime },
-    ...(ipAddress ? [{ label: '登录IP', value: ipAddress }] : [])
-  ])}
+            { label: '登录邮箱', value: userEmail },
+            { label: '登录时间', value: loginTime },
+            ...(ipAddress ? [{ label: '登录IP', value: ipAddress }] : [])
+        ])}
     ${warningCard('如果这不是您的操作，请立即修改密码并联系系统管理员。')}
   `
 
-  const textBody = `登录提醒
+        const textBody = `登录提醒
+    
+    您好，${userName}：
+    
+    您的账号刚刚成功登录了管理系统。
+    
+    登录信息：
+    - 登录邮箱：${userEmail}
+    - 登录时间：${loginTime}
+    ${ipAddress ? `- 登录IP：${ipAddress}` : ''}
+    
+    ⚠️ 安全提示：
+    如果这不是您的操作，请立即修改密码并联系系统管理员。
+    
+    此邮件由系统自动发送，请勿回复。
+    AR公司管理系统`
 
-您好，${userName}：
+        return await this.sendEmail(userEmail, subject, emailTemplate(content), textBody)
+    }
 
-您的账号刚刚成功登录了管理系统。
+    /**
+     * 发送账号激活邮件
+     */
+    async sendActivationEmail(
+        email: string,
+        name: string,
+        activationToken: string,
+        frontendUrl: string = 'https://caiwu.cloudflarets.com'
+    ): Promise<{ success: boolean; error?: string }> {
+        const subject = '🚀 激活您的账号 - AR公司管理系统'
+        const activationUrl = `${frontendUrl}/auth/activate?token=${activationToken}`
 
-登录信息：
-- 登录邮箱：${userEmail}
-- 登录时间：${loginTime}
-${ipAddress ? `- 登录IP：${ipAddress}` : ''}
-
-⚠️ 安全提示：
-如果这不是您的操作，请立即修改密码并联系系统管理员。
-
-此邮件由系统自动发送，请勿回复。
-AR公司管理系统`
-
-  return await sendEmail(env, userEmail, subject, emailTemplate(content), textBody)
-}
-
-
-
-/**
- * 发送新员工账号信息邮件
- */
-/**
- * 发送账号激活邮件
- */
-export async function sendActivationEmail(
-  env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string },
-  email: string,
-  name: string,
-  activationToken: string,
-  frontendUrl: string = 'https://caiwu.cloudflarets.com'
-): Promise<{ success: boolean; error?: string }> {
-  const subject = '🚀 激活您的账号 - AR公司管理系统'
-  const activationUrl = `${frontendUrl}/auth/activate?token=${activationToken}`
-
-  const content = `
+        const content = `
     <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">欢迎加入团队！</h2>
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
       您好，<strong>${name}</strong>：
@@ -215,9 +207,9 @@ export async function sendActivationEmail(
     </p>
     
     ${infoCard([
-    { label: '登录账号', value: email },
-    { label: '说明', value: '请使用接收此邮件的【个人邮箱】作为登录账号' }
-  ])}
+            { label: '登录账号', value: email },
+            { label: '说明', value: '请使用接收此邮件的【个人邮箱】作为登录账号' }
+        ])}
 
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 14px; line-height: 1.6;">
       激活链接在 24 小时内有效。
@@ -230,41 +222,37 @@ export async function sendActivationEmail(
     </div>
   `
 
-  const textBody = `欢迎加入AR公司！
+        const textBody = `欢迎加入AR公司！
+    
+    您好，${name}：
+    
+    您的登录账号为：${email}
+    (请使用此个人邮箱登录)
+    
+    请点击下方链接激活您的账号并设置密码：
+    ${activationUrl}
+    
+    (链接24小时内有效)
+    
+    此邮件由系统自动发送，请勿回复。
+    AR公司管理系统`
 
-您好，${name}：
+        return await this.sendEmail(email, subject, emailTemplate(content), textBody)
+    }
 
-您的登录账号为：${email}
-(请使用此个人邮箱登录)
+    /**
+     * 发送密码重置链接邮件
+     */
+    async sendPasswordResetLinkEmail(
+        email: string,
+        name: string,
+        resetToken: string,
+        frontendUrl: string = 'https://caiwu.cloudflarets.com'
+    ): Promise<{ success: boolean; error?: string }> {
+        const subject = '🔒 重置您的密码 - AR公司管理系统'
+        const resetUrl = `${frontendUrl}/auth/reset-password?token=${resetToken}`
 
-请点击下方链接激活您的账号并设置密码：
-${activationUrl}
-
-(链接24小时内有效)
-
-此邮件由系统自动发送，请勿回复。
-AR公司管理系统`
-
-  return await sendEmail(env, email, subject, emailTemplate(content), textBody)
-}
-
-
-
-
-/**
- * 发送密码重置链接邮件 (New)
- */
-export async function sendPasswordResetLinkEmail(
-  env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string },
-  email: string,
-  name: string,
-  resetToken: string,
-  frontendUrl: string = 'https://caiwu.cloudflarets.com'
-): Promise<{ success: boolean; error?: string }> {
-  const subject = '🔒 重置您的密码 - AR公司管理系统'
-  const resetUrl = `${frontendUrl}/auth/reset-password?token=${resetToken}`
-
-  const content = `
+        const content = `
       <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">重置密码请求</h2>
       <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
         您好，<strong>${name}</strong>：
@@ -283,81 +271,74 @@ export async function sendPasswordResetLinkEmail(
       </div>
     `
 
-  const textBody = `重置密码请求
-  
-  您好，${name}：
-  
-  请点击下方链接重置您的密码：
-  ${resetUrl}
-  
-  (链接1小时内有效)
-  
-  此邮件由系统自动发送，请勿回复。
-  AR公司管理系统`
+        const textBody = `重置密码请求
+    
+    您好，${name}：
+    
+    请点击下方链接重置您的密码：
+    ${resetUrl}
+    
+    (链接1小时内有效)
+    
+    此邮件由系统自动发送，请勿回复。
+    AR公司管理系统`
 
-  return await sendEmail(env, email, subject, emailTemplate(content), textBody)
-}
+        return await this.sendEmail(email, subject, emailTemplate(content), textBody)
+    }
 
-/**
- * 发送密码重置通知邮件 (Existing, renamed/kept for admin reset if strictly needed, but new flow uses link)
- * Actually, we can deprecate sendPasswordResetEmail (which sent plaintext pwd)
- */
+    /**
+     * 发送密码修改成功通知邮件
+     */
+    async sendPasswordChangedNotificationEmail(
+        userEmail: string,
+        userName: string,
+        changeTime: string,
+        ipAddress?: string
+    ): Promise<{ success: boolean; error?: string }> {
+        const subject = '✅ 密码修改成功 - AR公司管理系统'
 
-/**
- * 发送密码修改成功通知邮件
- */
-export async function sendPasswordChangedNotificationEmail(
-  env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string },
-  userEmail: string,
-  userName: string,
-  changeTime: string,
-  ipAddress?: string
-): Promise<{ success: boolean; error?: string }> {
-  const subject = '✅ 密码修改成功 - AR公司管理系统'
-
-  const content = `
+        const content = `
     <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">密码修改成功</h2>
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
       您好，<strong>${userName}</strong>：
     </p>
     ${successCard('操作成功', '您的账号密码已成功修改。')}
     ${infoCard([
-    { label: '修改时间', value: changeTime },
-    ...(ipAddress ? [{ label: '操作IP', value: ipAddress }] : [])
-  ])}
+            { label: '修改时间', value: changeTime },
+            ...(ipAddress ? [{ label: '操作IP', value: ipAddress }] : [])
+        ])}
     ${warningCard('如果这不是您本人的操作，请立即联系系统管理员！')}
   `
 
-  const textBody = `密码修改成功
+        const textBody = `密码修改成功
+    
+    您好，${userName}：
+    
+    您的账号密码已于 ${changeTime} 成功修改。
+    ${ipAddress ? `操作IP：${ipAddress}` : ''}
+    
+    ⚠️ 安全提示：
+    如果这不是您本人的操作，请立即联系系统管理员！
+    
+    此邮件由系统自动发送，请勿回复。
+    AR公司管理系统`
 
-您好，${userName}：
+        return await this.sendEmail(userEmail, subject, emailTemplate(content), textBody)
+    }
 
-您的账号密码已于 ${changeTime} 成功修改。
-${ipAddress ? `操作IP：${ipAddress}` : ''}
+    /**
+     * Send TOTP Reset Email
+     */
+    async sendTotpResetEmail(
+        email: string,
+        name: string,
+        token: string,
+        frontendUrl: string = 'https://caiwu.cloudflarets.com'
+    ): Promise<{ success: boolean; error?: string }> {
+        const subject = '🔐 重置 2FA 验证 - AR公司管理系统'
+        const resetUrl = `${frontendUrl}/auth/reset-totp?token=${token}`
 
-⚠️ 安全提示：
-如果这不是您本人的操作，请立即联系系统管理员！
-
-此邮件由系统自动发送，请勿回复。
-AR公司管理系统`
-
-  return await sendEmail(env, userEmail, subject, emailTemplate(content), textBody)
-}
-
-/**
- * Send TOTP Reset Email
- */
-export async function sendTotpResetEmail(
-  env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string },
-  email: string,
-  name: string,
-  token: string,
-  frontendUrl: string = 'https://caiwu.cloudflarets.com'
-): Promise<{ success: boolean; error?: string }> {
-  const subject = '🔐 重置 2FA 验证 - AR公司管理系统'
-  const resetUrl = `${frontendUrl}/auth/reset-totp?token=${token}`
-
-  const content = `
+        const content = `
       <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">2FA 重置请求</h2>
       <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
         您好，<strong>${name}</strong>：
@@ -379,17 +360,18 @@ export async function sendTotpResetEmail(
       </div>
     `
 
-  const textBody = `2FA 重置请求
+        const textBody = `2FA 重置请求
+    
+    您好，${name}：
+    
+    请点击下方链接重置您的 2FA：
+    ${resetUrl}
+    
+    (链接30分钟内有效)
+    
+    此邮件由系统自动发送，请勿回复。
+    AR公司管理系统`
 
-  您好，${name}：
-
-  请点击下方链接重置您的 2FA：
-  ${resetUrl}
-
-  (链接30分钟内有效)
-
-  此邮件由系统自动发送，请勿回复。
-  AR公司管理系统`
-
-  return await sendEmail(env, email, subject, emailTemplate(content), textBody)
+        return await this.sendEmail(email, subject, emailTemplate(content), textBody)
+    }
 }

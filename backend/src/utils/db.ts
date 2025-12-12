@@ -11,20 +11,7 @@ export function createDb(d1: D1Database) {
 }
 
 // getUserByEmail now queries employees table by personalEmail
-export async function getUserByEmail(db: DrizzleD1Database<typeof schema>, email: string) {
-  return await db.select()
-    .from(employees)
-    .where(eq(employees.personalEmail, email))
-    .get()
-}
 
-// getUserById now queries employees table
-export async function getUserById(db: DrizzleD1Database<typeof schema>, id: string) {
-  return await db.select()
-    .from(employees)
-    .where(eq(employees.id, id))
-    .get()
-}
 
 export async function createSession(db: DrizzleD1Database<typeof schema>, user_id: string) {
   const id = uuid()
@@ -52,64 +39,10 @@ export async function getSession(db: DrizzleD1Database<typeof schema>, id: strin
 }
 
 // getUserEmployeeId - since users and employees are merged, just return the id
-export async function getUserEmployeeId(db: DrizzleD1Database<typeof schema>, userId: string): Promise<string | null> {
-  const employee = await db.select({ id: employees.id })
-    .from(employees)
-    .where(and(
-      eq(employees.id, userId),
-      eq(employees.active, 1)
-    ))
-    .get()
 
-  return employee?.id || null
-}
 
 // 获取用户的职位信息（从员工记录获取）
-export async function getUserPosition(db: DrizzleD1Database<typeof schema>, userId: string): Promise<{
-  id: string
-  code: string
-  name: string
-  level: number
-  canManageSubordinates: number
-  permissions: any
-} | null> {
-  const result = await db.select({
-    id: positions.id,
-    code: positions.code,
-    name: positions.name,
-    level: positions.level,
-    can_manage_subordinates: positions.canManageSubordinates,
-    permissions: positions.permissions
-  })
-    .from(employees)
-    .innerJoin(positions, and(
-      eq(positions.id, employees.positionId),
-      eq(positions.active, 1)
-    ))
-    .where(and(
-      eq(employees.id, userId),
-      eq(employees.active, 1)
-    ))
-    .get()
 
-  if (!result) return null
-
-  let permissions = {}
-  try {
-    permissions = JSON.parse(result.permissions || '{}')
-  } catch (err) {
-    console.error('Failed to parse permissions JSON:', err)
-  }
-
-  return {
-    id: result.id,
-    code: result.code,
-    name: result.name,
-    level: result.level,
-    canManageSubordinates: result.can_manage_subordinates ?? 0,
-    permissions
-  }
-}
 
 // 优化版本：一次性获取session、user、position、employee和部门模块信息
 export async function getSessionWithUserAndPosition(d1: D1Database, sessionId: string): Promise<{

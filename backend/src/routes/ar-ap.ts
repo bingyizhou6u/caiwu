@@ -5,7 +5,7 @@ import { hasPermission, getUserPosition, getDataAccessFilter } from '../utils/pe
 import { logAuditAction } from '../utils/audit.js'
 import { Errors } from '../utils/errors.js'
 import { createArApDocSchema, createSettlementSchema, confirmArApDocSchema, idQuerySchema } from '../schemas/business.schema.js'
-import { docIdQuerySchema } from '../schemas/common.schema.js'
+import { docIdQuerySchema, paginationSchema } from '../schemas/common.schema.js'
 
 export const ar_apRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -26,6 +26,7 @@ const arApDocResponseSchema = z.object({
 })
 
 const listArApDocsResponseSchema = z.object({
+  total: z.number(),
   results: z.array(arApDocResponseSchema.extend({
     settledCents: z.number(),
     siteName: z.string().nullable()
@@ -64,7 +65,7 @@ ar_apRoutes.openapi(
       query: z.object({
         kind: z.enum(['AR', 'AP']).optional(),
         status: z.string().optional()
-      })
+      }).merge(paginationSchema)
     },
     responses: {
       200: {
@@ -110,9 +111,11 @@ ar_apRoutes.openapi(
       whereClause = sql`1=1`
     }
 
-    const rows = await c.var.services.finance.listArApDocs(200, whereClause)
+    const { page = 1, pageSize = 20 } = c.req.valid('query')
 
-    const results = rows.map(row => {
+    const { total, list } = await c.var.services.arAp.list(page, pageSize, whereClause)
+
+    const results = list.map(row => {
       const d = row.doc
       return {
         id: d.id,
@@ -132,7 +135,7 @@ ar_apRoutes.openapi(
       }
     })
 
-    return c.json({ results } as any)
+    return c.json({ total, results } as any)
   }
 )
 
@@ -166,7 +169,7 @@ ar_apRoutes.openapi(
     if (!hasPermission(c, 'finance', 'ar', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.var.services.finance.createArApDoc({
+    const result = await c.var.services.arAp.create({
       kind: body.kind,
       amountCents: body.amountCents,
       issueDate: body.issueDate,
@@ -207,8 +210,8 @@ ar_apRoutes.openapi(
     if (!getUserPosition(c)) throw Errors.FORBIDDEN()
     const { docId } = c.req.valid('query')
 
-    const service = c.get('services').finance
-    const rows = await service.getSettlementsByDocId(docId)
+    const service = c.var.services.arAp
+    const rows = await service.getSettlements(docId)
     return c.json({ results: rows } as any)
   }
 )
@@ -243,7 +246,7 @@ ar_apRoutes.openapi(
     if (!hasPermission(c, 'finance', 'ar', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.var.services.finance.settleArApDoc({
+    const result = await c.var.services.arAp.settle({
       docId: body.docId,
       flowId: body.flowId,
       amountCents: body.settleAmountCents,
@@ -280,11 +283,11 @@ ar_apRoutes.openapi(
     const { docId } = c.req.valid('query')
 
     // 优化：并行查询文档和settlements
-    const service = c.get('services').finance
+    const service = c.var.services.arAp
 
     const [doc, settlements] = await Promise.all([
-      c.env.DB.prepare('select * from ar_ap_docs where id = ?').bind(docId).first() as any,
-      service.getSettlementsByDocId(docId)
+      service.getById(docId),
+      service.getSettlements(docId)
     ])
 
     if (!doc) throw Errors.NOT_FOUND('Document')
@@ -331,7 +334,7 @@ ar_apRoutes.openapi(
     if (!hasPermission(c, 'finance', 'ar', 'create')) throw Errors.FORBIDDEN()
     const body = c.req.valid('json')
 
-    const result = await c.var.services.finance.confirmArApDoc({
+    const result = await c.var.services.arAp.confirm({
       docId: body.docId,
       accountId: body.accountId,
       bizDate: body.bizDate,

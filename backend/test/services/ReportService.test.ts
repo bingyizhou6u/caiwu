@@ -7,11 +7,19 @@ import {
     cashFlows, accounts, categories, departments, sites,
     arApDocs, borrowings, repayments, employees, employeeLeaves
 } from '../../src/db/schema.js'
+import { AnnualLeaveService } from '../../src/services/AnnualLeaveService.js'
 import { uuid } from '../../src/utils/db.js'
 
 describe('ReportService', () => {
     const db = createDb(env.DB)
-    const service = new ReportService(db)
+    const annualLeaveService = new AnnualLeaveService(db)
+    const mockKv = {
+        get: vi.fn(),
+        put: vi.fn(),
+        delete: vi.fn(),
+        list: vi.fn()
+    } as unknown as KVNamespace
+    const service = new ReportService(db, annualLeaveService, mockKv)
 
     beforeEach(async () => {
         await applySchema(env.DB)
@@ -30,7 +38,7 @@ describe('ReportService', () => {
             { id: uuid(), bizDate: today, type: 'expense', amountCents: 500, departmentId: deptId, accountId: uuid() }
         ]).run()
 
-        const stats = await service.getDashboardStats(deptId)
+        const stats = await service.getDashboardStats(deptId) as any
         expect(stats.today.incomeCents).toBe(1000)
         expect(stats.today.expenseCents).toBe(500)
         expect(stats.today.count).toBe(2)
@@ -45,7 +53,7 @@ describe('ReportService', () => {
             { id: uuid(), bizDate: today, type: 'income', amountCents: 2000, departmentId: deptId, accountId: uuid() }
         ]).run()
 
-        const res = await service.getDepartmentCashFlow(today, today, [deptId])
+        const res = await service.getDepartmentCashFlow(today, today, [deptId]) as any
         expect(res).toHaveLength(1)
         expect(res[0].incomeCents).toBe(2000)
         expect(res[0].netCents).toBe(2000)
@@ -98,7 +106,7 @@ describe('ReportService', () => {
         const userId = uuid()
         const email = 'test@example.com'
         await db.insert(employees).values({ id: userId, email, name: 'Test User' }).run()
-        await db.insert(employees).values({ id: uuid(), email, name: 'Test User', status: 'regular' }).run()
+        await db.insert(employees).values({ id: uuid(), email: 'test2@example.com', name: 'Test User', status: 'regular' }).run()
 
         await db.insert(borrowings).values([
             { id: uuid(), userId, amountCents: 1000, currency: 'CNY', borrowDate: '2023-01-01', createdAt: Date.now(), accountId: uuid() }

@@ -16,6 +16,7 @@ export function useApiQuery<T = any>(
     staleTime?: number
     refetchInterval?: number
     select?: (data: any) => any
+    placeholderData?: (previousData: any) => any
   }
 ) {
   return useQuery({
@@ -28,6 +29,7 @@ export function useApiQuery<T = any>(
     staleTime: options?.staleTime,
     refetchInterval: options?.refetchInterval,
     select: options?.select,
+    placeholderData: options?.placeholderData,
   })
 }
 

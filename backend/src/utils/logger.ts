@@ -1,83 +1,111 @@
-/**
- * 统一日志系统
- * 支持结构化日志输出，区分日志级别
- */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+import { Context } from 'hono'
 
-interface LogContext {
-  requestId?: string
+type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG'
+
+interface LogEntry {
+  timestamp: string
+  level: LogLevel
+  requestId: string
   userId?: string
-  action?: string
-  [key: string]: unknown
+  ip?: string
+  message: string
+  data?: any
 }
 
-const LOG_LEVELS: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3
-}
+export class Logger {
+  // List of keys to mask
+  private static readonly SENSITIVE_KEYS = new Set([
+    'password',
+    'password_confirmation',
+    'token',
+    'access_token',
+    'refresh_token',
+    'secret',
+    'api_key',
+    'authorization',
+    'cookie',
+    'totp',
+    'totpSecret',
+    'totpCode'
+  ])
 
-// 生产环境默认 info 级别，开发环境 debug 级别
-const MIN_LOG_LEVEL: LogLevel = 'info'
+  private static sanitize(data: any): any {
+    if (!data) return data
+    if (typeof data === 'string') return data
+    if (typeof data !== 'object') return data
 
-function shouldLog(level: LogLevel): boolean {
-  return LOG_LEVELS[level] >= LOG_LEVELS[MIN_LOG_LEVEL]
-}
-
-function formatMessage(level: LogLevel, message: string, context?: LogContext): string {
-  const timestamp = new Date().toISOString()
-  const contextStr = context ? ` ${JSON.stringify(context)}` : ''
-  return `[${timestamp}] [${level.toUpperCase()}] ${message}${contextStr}`
-}
-
-export const logger = {
-  debug(message: string, context?: LogContext): void {
-    if (shouldLog('debug')) {
-      console.log(formatMessage('debug', message, context))
+    if (Array.isArray(data)) {
+      return data.map(item => this.sanitize(item))
     }
-  },
 
-  info(message: string, context?: LogContext): void {
-    if (shouldLog('info')) {
-      console.log(formatMessage('info', message, context))
-    }
-  },
-
-  warn(message: string, context?: LogContext): void {
-    if (shouldLog('warn')) {
-      console.warn(formatMessage('warn', message, context))
-    }
-  },
-
-  error(message: string, error?: Error | unknown, context?: LogContext): void {
-    if (shouldLog('error')) {
-      const errorContext = {
-        ...context,
-        ...(error instanceof Error ? { 
-          errorMessage: error.message,
-          errorStack: error.stack 
-        } : { errorDetail: String(error) })
+    const sanitized: any = {}
+    for (const key of Object.keys(data)) {
+      if (this.SENSITIVE_KEYS.has(key) || this.SENSITIVE_KEYS.has(key.toLowerCase())) {
+        sanitized[key] = '******'
+      } else if (typeof data[key] === 'object' && data[key] !== null) {
+        sanitized[key] = this.sanitize(data[key])
+      } else {
+        sanitized[key] = data[key]
       }
-      console.error(formatMessage('error', message, errorContext))
     }
-  },
+    return sanitized
+  }
 
-  // 请求日志快捷方法
-  request(method: string, path: string, context?: LogContext): void {
-    this.info(`${method} ${path}`, { ...context, action: 'request' })
-  },
+  static getContext(c?: Context): Partial<LogEntry> {
+    if (!c) return {}
+    return {
+      requestId: c.get('requestId') || 'unknown',
+      userId: c.get('userId'),
+      ip: c.req.header('cf-connecting-ip') || c.req.header('x-real-ip')
+    }
+  }
 
-  // 数据库操作日志
-  db(operation: string, table: string, context?: LogContext): void {
-    this.debug(`DB ${operation} on ${table}`, { ...context, action: 'database' })
-  },
+  static log(level: LogLevel, message: string, data?: any, c?: Context) {
+    const context = this.getContext(c)
 
-  // 认证日志
-  auth(action: string, context?: LogContext): void {
-    this.info(`Auth: ${action}`, { ...context, action: 'auth' })
+    // In Workers environment, we print JSON line
+    // This allows Cloudflare or external loggers to parse it easily
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      requestId: context.requestId ?? 'system',
+      userId: context.userId,
+      ip: context.ip,
+      message,
+      data: this.sanitize(data)
+    }
+
+    const output = JSON.stringify(entry)
+
+    switch (level) {
+      case 'ERROR':
+        console.error(output)
+        break
+      case 'WARN':
+        console.warn(output)
+        break
+      case 'INFO':
+      case 'DEBUG':
+      default:
+        console.log(output)
+        break
+    }
+  }
+
+  static info(message: string, data?: any, c?: Context) {
+    this.log('INFO', message, data, c)
+  }
+
+  static warn(message: string, data?: any, c?: Context) {
+    this.log('WARN', message, data, c)
+  }
+
+  static error(message: string, data?: any, c?: Context) {
+    this.log('ERROR', message, data, c)
+  }
+
+  static debug(message: string, data?: any, c?: Context) {
+    this.log('DEBUG', message, data, c)
   }
 }
-
-export default logger

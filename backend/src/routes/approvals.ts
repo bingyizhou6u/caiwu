@@ -114,7 +114,7 @@ approvalsRoutes.openapi(
     const userId = c.get('userId')
     if (!userId) throw Errors.UNAUTHORIZED()
 
-    const service = c.get('services').approval
+    const service = c.var.services.approval
     const result = await service.getPendingApprovals(userId)
     return c.json(result)
   }
@@ -147,7 +147,7 @@ approvalsRoutes.openapi(
     if (!userId) throw Errors.UNAUTHORIZED()
 
     const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : 50
-    const service = c.get('services').approval
+    const service = c.var.services.approval
     const result = await service.getApprovalHistory(userId, limit)
     return c.json(result)
   }
@@ -182,7 +182,7 @@ approvalsRoutes.openapi(
 
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').approval
+    const service = c.var.services.approval
 
     await service.approveLeave(id, userId, body.memo)
     logAuditAction(c, 'approve', 'employee_leave', id, JSON.stringify({ action: 'approve' }))
@@ -219,7 +219,7 @@ approvalsRoutes.openapi(
 
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').approval
+    const service = c.var.services.approval
 
     await service.rejectLeave(id, userId, body.memo)
     logAuditAction(c, 'reject', 'employee_leave', id, JSON.stringify({ action: 'reject', memo: body.memo }))
@@ -260,7 +260,7 @@ approvalsRoutes.openapi(
 
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').approval
+    const service = c.var.services.approval
 
     await service.approveReimbursement(id, userId, body.memo)
     logAuditAction(c, 'approve', 'expense_reimbursement', id, JSON.stringify({ action: 'approve' }))
@@ -301,7 +301,7 @@ approvalsRoutes.openapi(
 
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').approval
+    const service = c.var.services.approval
 
     await service.rejectReimbursement(id, userId, body.memo)
     logAuditAction(c, 'reject', 'expense_reimbursement', id, JSON.stringify({ action: 'reject', memo: body.memo }))
@@ -342,7 +342,7 @@ approvalsRoutes.openapi(
 
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').approval
+    const service = c.var.services.approval
 
     await service.approveBorrowing(id, userId, body.memo)
     logAuditAction(c, 'approve', 'borrowing', id, JSON.stringify({ action: 'approve' }))
@@ -383,7 +383,7 @@ approvalsRoutes.openapi(
 
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').approval
+    const service = c.var.services.approval
 
     await service.rejectBorrowing(id, userId, body.memo)
     logAuditAction(c, 'reject', 'borrowing', id, JSON.stringify({ action: 'reject', memo: body.memo }))

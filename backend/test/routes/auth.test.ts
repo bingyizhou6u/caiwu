@@ -2,7 +2,7 @@ import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../../src/db/schema.js'
-import {  employees, sessions, positions } from '../../src/db/schema.js'
+import { employees, sessions, positions } from '../../src/db/schema.js'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
 import bcrypt from 'bcryptjs'
@@ -58,8 +58,9 @@ describe('Auth API', () => {
             AUTH_JWT_SECRET: 'test-secret-key-min-32-chars-for-security-reasons'
         }
 
+        const tasks: Promise<any>[] = []
         const executionCtx = {
-            waitUntil: (promise: Promise<any>) => { return promise },
+            waitUntil: (promise: Promise<any>) => { tasks.push(promise) },
             passThroughOnException: () => { }
         }
 
@@ -68,6 +69,8 @@ describe('Auth API', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, totp: '123456' })
         }, testEnv, executionCtx as any)
+
+        await Promise.all(tasks)
 
         expect(res.status).toBe(200)
         const body = await res.json() as any
@@ -101,8 +104,9 @@ describe('Auth API', () => {
             AUTH_JWT_SECRET: 'test-secret-key-min-32-chars-for-security-reasons'
         }
 
+        const tasks: Promise<any>[] = []
         const executionCtx = {
-            waitUntil: (promise: Promise<any>) => { return promise },
+            waitUntil: (promise: Promise<any>) => { tasks.push(promise) },
             passThroughOnException: () => { }
         }
 
@@ -112,14 +116,24 @@ describe('Auth API', () => {
             body: JSON.stringify({ email, password, totp: '123456' })
         }, testEnv, executionCtx as any)
 
+        await Promise.all(tasks)
+
         const loginBody = await loginRes.json() as any
         const token = loginBody.token
 
         // Then call /me
+        const tasks2: Promise<any>[] = []
+        const executionCtx2 = {
+            waitUntil: (promise: Promise<any>) => { tasks2.push(promise) },
+            passThroughOnException: () => { }
+        }
+
         const res = await app.request('/api/auth/me', {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
-        }, testEnv, executionCtx as any)
+        }, testEnv, executionCtx2 as any)
+
+        await Promise.all(tasks2)
 
         expect(res.status).toBe(200)
         const body = await res.json() as any

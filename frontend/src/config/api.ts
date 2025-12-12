@@ -180,7 +180,7 @@ export const api = {
     leaveReject: (id: string) => `${API_BASE}/api/approvals/leave/${id}/reject`,
     reimbursementApprove: (id: string) => `${API_BASE}/api/approvals/reimbursement/${id}/approve`,
     reimbursementReject: (id: string) => `${API_BASE}/api/approvals/reimbursement/${id}/reject`,
-    borrowingApprove: (id: string) => `${API_BASE}/api/borrowings/${id}/status`,
-    borrowingReject: (id: string) => `${API_BASE}/api/borrowings/${id}/status`,
+    borrowingApprove: (id: string) => `${API_BASE}/api/approvals/borrowing/${id}/approve`,
+    borrowingReject: (id: string) => `${API_BASE}/api/approvals/borrowing/${id}/reject`,
   },
 }

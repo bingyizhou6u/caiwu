@@ -64,7 +64,7 @@ auditRoutes.openapi(
     if (!hasPermission(c, 'system', 'audit', 'view')) throw Errors.FORBIDDEN()
 
     const query = c.req.valid('query')
-    const result = await c.get('services').audit.getAuditLogs(query)
+    const result = await c.var.services.audit.getAuditLogs(query)
     return c.json(result)
   }
 )
@@ -90,7 +90,7 @@ auditRoutes.openapi(
   async (c) => {
     if (!hasPermission(c, 'system', 'audit', 'view')) throw Errors.FORBIDDEN()
 
-    const result = await c.get('services').audit.getAuditLogOptions()
+    const result = await c.var.services.audit.getAuditLogOptions()
     return c.json(result)
   }
 )
@@ -117,7 +117,7 @@ auditRoutes.openapi(
     const query = c.req.valid('query')
     // 最多导出 10000 条记录
     const exportQuery = { ...query, limit: 10000, offset: 0 }
-    const { results } = await c.get('services').audit.getAuditLogs(exportQuery)
+    const { results } = await c.var.services.audit.getAuditLogs(exportQuery)
 
     // 生成 CSV
     const headers = ['时间', '操作人', '邮箱', '操作', '实体类型', '实体ID', 'IP地址', 'IP归属地', '详情']
@@ -156,5 +156,51 @@ auditRoutes.openapi(
         'Content-Disposition': `attachment; filename="audit-logs-${new Date().toISOString().slice(0, 10)}.csv"`
       }
     })
+  }
+)
+
+// 创建审计日志 (用于前端记录敏感操作)
+const createAuditLogSchema = z.object({
+  action: z.string(),
+  entity: z.string(),
+  entityId: z.string().optional(),
+  detail: z.string().optional()
+})
+
+auditRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/audit-logs',
+    tags: ['Audit'],
+    summary: 'Create audit log',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: createAuditLogSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.object({ ok: z.boolean() })
+          }
+        },
+        description: 'Audit log created'
+      }
+    }
+  }),
+  async (c) => {
+    // 任何登录用户都可以记录审计日志 (例如查看敏感数据)
+    if (!c.get('userId')) throw Errors.UNAUTHORIZED()
+
+    const body = c.req.valid('json')
+
+    logAuditAction(c, body.action, body.entity, body.entityId, body.detail)
+
+    return c.json({ ok: true })
   }
 )

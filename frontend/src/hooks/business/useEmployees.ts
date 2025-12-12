@@ -109,10 +109,7 @@ export function useBatchDeleteEmployee() {
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async (ids: string[]) => {
-            await apiClient.post(api.employeesBatch, {
-                action: 'delete',
-                ids
-            })
+            await apiClient.post(api.employeesBatch, { ids })
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['employees'] })
@@ -123,8 +120,8 @@ export function useBatchDeleteEmployee() {
 export function useResetUserPassword() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async (employeeId: string) => {
-            return await apiClient.post(api.employeesResetPassword(employeeId))
+        mutationFn: async (id: string) => {
+            await apiClient.post(api.employeesResetPassword(id), {})
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['employees'] })
@@ -135,12 +132,13 @@ export function useResetUserPassword() {
 export function useToggleUserActive() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async ({ userId, active }: { userId: string, active: number }) => {
-            const baseUrl = api.auth.login.replace('/login', '')
-            await apiClient.post(`${baseUrl}/users/${userId}/toggle-active`, { active })
+        mutationFn: async ({ id, active }: { id: string, active: boolean }) => {
+            await apiClient.put(api.employeesById(id), { active: active ? 1 : 0 })
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['employees'] })
         }
     })
 }
+
+

@@ -27,6 +27,11 @@ export function AR() {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
 
   // 表单
+  // 分页状态
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  // 表单
   const createForm = useZodForm(createARSchema)
   const confirmForm = useZodForm(confirmARSchema)
   const settleForm = useZodForm(settleARSchema)
@@ -40,7 +45,7 @@ export function AR() {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useIncomeCategories()
   const { data: sites = [] } = useSites()
-  const { data: docs = [], isLoading: loading, refetch: load } = useARDocs()
+  const { data: docs = { total: 0, list: [] }, isLoading: loading, refetch: load } = useARDocs(page, pageSize)
   const { data: flows = [] } = useSettlementFlowOptions()
   const { data: detail } = useARStatement(detailDocId)
 
@@ -164,7 +169,18 @@ export function AR() {
           className="table-striped"
           rowKey="id"
           loading={loading}
-          dataSource={docs}
+          dataSource={docs.list}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: docs.total,
+            onChange: (p, ps) => {
+              setPage(p)
+              setPageSize(ps)
+            },
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`
+          }}
           columns={[
             { title: '单号', dataIndex: 'docNo' },
             { title: '客户（站点）', dataIndex: 'siteName', render: (v: string) => v || '-' },

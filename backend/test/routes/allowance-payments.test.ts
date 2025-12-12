@@ -18,11 +18,12 @@ vi.mock('../../src/utils/permissions.js', () => ({
 }))
 
 const mockAllowancePaymentService = {
-    listAllowancePayments: vi.fn(),
-    createAllowancePayment: vi.fn(),
-    updateAllowancePayment: vi.fn(),
-    deleteAllowancePayment: vi.fn(),
-    generateAllowancePayments: vi.fn(),
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    generate: vi.fn(),
+    get: vi.fn()
 }
 
 describe('Allowance Payments Routes', () => {
@@ -52,19 +53,20 @@ describe('Allowance Payments Routes', () => {
         app.route('/', allowancePaymentsRoutes)
 
         // 默认 mock 返回，避免未设置时抛错
-        mockAllowancePaymentService.listAllowancePayments.mockResolvedValue([])
-        mockAllowancePaymentService.createAllowancePayment.mockResolvedValue({
+        // 默认 mock 返回，避免未设置时抛错
+        mockAllowancePaymentService.list.mockResolvedValue([])
+        mockAllowancePaymentService.create.mockResolvedValue({
             payment: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 0, year: 2023, month: 1 },
             currencyName: 'RMB',
             employeeName: 'John'
         })
-        mockAllowancePaymentService.updateAllowancePayment.mockResolvedValue({
+        mockAllowancePaymentService.update.mockResolvedValue({
             payment: { id: validId, employeeId: validEmpId, allowanceType: 'meal', currencyId: 'CNY', amountCents: 0, year: 2023, month: 1 },
             currencyName: 'RMB',
             employeeName: 'John'
         })
-        mockAllowancePaymentService.deleteAllowancePayment.mockResolvedValue({ id: validId })
-        mockAllowancePaymentService.generateAllowancePayments.mockResolvedValue({ created: 0, ids: [] })
+        mockAllowancePaymentService.delete.mockResolvedValue({ id: validId })
+        mockAllowancePaymentService.generate.mockResolvedValue({ created: 0, ids: [] })
     })
 
     it('should list allowance payments', async () => {
@@ -73,7 +75,7 @@ describe('Allowance Payments Routes', () => {
             currencyName: 'RMB',
             employeeName: 'John'
         }]
-        mockAllowancePaymentService.listAllowancePayments.mockResolvedValue(mockResult)
+        mockAllowancePaymentService.list.mockResolvedValue(mockResult)
 
         const res = await app.request(`/allowance-payments?year=2023&month=1`, {
             method: 'GET',
@@ -102,7 +104,7 @@ describe('Allowance Payments Routes', () => {
             currencyName: 'RMB',
             employeeName: 'John'
         }
-        mockAllowancePaymentService.createAllowancePayment.mockResolvedValue(mockResult)
+        mockAllowancePaymentService.create.mockResolvedValue(mockResult)
 
         const res = await app.request('/allowance-payments', {
             method: 'POST',
@@ -138,7 +140,7 @@ describe('Allowance Payments Routes', () => {
             currencyName: 'RMB',
             employeeName: 'John'
         }
-        mockAllowancePaymentService.updateAllowancePayment.mockResolvedValue(mockResult)
+        mockAllowancePaymentService.update.mockResolvedValue(mockResult)
 
         const res = await app.request(`/allowance-payments/${validId}`, {
             method: 'PUT',
@@ -163,7 +165,7 @@ describe('Allowance Payments Routes', () => {
     })
 
     it('should delete allowance payment', async () => {
-        mockAllowancePaymentService.deleteAllowancePayment.mockResolvedValue({ id: validId })
+        mockAllowancePaymentService.delete.mockResolvedValue({ id: validId })
 
         const res = await app.request(`/allowance-payments/${validId}`, {
             method: 'DELETE',
@@ -175,7 +177,7 @@ describe('Allowance Payments Routes', () => {
 
     it('should generate allowance payments', async () => {
         const mockResult = { created: 1, ids: [validId] }
-        mockAllowancePaymentService.generateAllowancePayments.mockResolvedValue(mockResult)
+        mockAllowancePaymentService.generate.mockResolvedValue(mockResult)
 
         const res = await app.request('/allowance-payments/generate', {
             method: 'POST',

@@ -70,40 +70,7 @@ expenseReimbursementsRoutes.openapi(
     async (c) => {
         if (!getUserPosition(c)) throw Errors.FORBIDDEN()
         const { employeeId, status } = c.req.valid('query')
-        const db = c.get('db')
-
-        let query = db.select({
-            id: expenseReimbursements.id,
-            employeeId: expenseReimbursements.employeeId,
-            employeeName: employees.name,
-            expenseType: expenseReimbursements.expenseType,
-            amountCents: expenseReimbursements.amountCents,
-            currencyId: expenseReimbursements.currencyId,
-            expenseDate: expenseReimbursements.expenseDate,
-            description: expenseReimbursements.description,
-            voucherUrl: expenseReimbursements.voucherUrl,
-            status: expenseReimbursements.status,
-            approvedBy: expenseReimbursements.approvedBy,
-            approvedAt: expenseReimbursements.approvedAt,
-            memo: expenseReimbursements.memo,
-            createdBy: expenseReimbursements.createdBy,
-            createdAt: expenseReimbursements.createdAt,
-            updatedAt: expenseReimbursements.updatedAt,
-        })
-            .from(expenseReimbursements)
-            .leftJoin(employees, eq(expenseReimbursements.employeeId, employees.id))
-            .$dynamic()
-
-        const filters = []
-        if (employeeId) filters.push(eq(expenseReimbursements.employeeId, employeeId))
-        if (status) filters.push(eq(expenseReimbursements.status, status))
-
-        if (filters.length > 0) {
-            query = query.where(and(...filters))
-        }
-
-        const results = await query.orderBy(desc(expenseReimbursements.createdAt))
-
+        const results = await c.var.services.expenseReimbursement.listReimbursements({ employeeId, status })
         return c.json(results)
     }
 )
@@ -138,19 +105,12 @@ expenseReimbursementsRoutes.openapi(
     async (c) => {
         if (!hasPermission(c, 'finance', 'reimbursement', 'create')) throw Errors.FORBIDDEN()
         const body = c.req.valid('json')
-        const db = c.get('db')
         const userId = c.get('userId')
 
-        const newReimbursement = {
-            id: nanoid(),
+        const newReimbursement = await c.var.services.expenseReimbursement.createReimbursement({
             ...body,
-            status: 'pending',
-            createdBy: userId,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-        }
-
-        await db.insert(expenseReimbursements).values(newReimbursement)
+            createdBy: userId
+        })
 
         return c.json(newReimbursement)
     }
@@ -190,26 +150,12 @@ expenseReimbursementsRoutes.openapi(
         if (!hasPermission(c, 'finance', 'reimbursement', 'approve')) throw Errors.FORBIDDEN()
         const { id } = c.req.valid('param')
         const { status, memo } = c.req.valid('json')
-        const db = c.get('db')
         const userId = c.get('userId')
 
-        const updateData: any = {
-            status,
-            updatedAt: Date.now(),
-        }
-
-        if (status === 'approved' || status === 'rejected') {
-            updateData.approvedBy = userId
-            updateData.approvedAt = Date.now()
-        }
-
-        if (memo) {
-            updateData.memo = memo
-        }
-
-        await db.update(expenseReimbursements)
-            .set(updateData)
-            .where(eq(expenseReimbursements.id, id))
+        await c.var.services.expenseReimbursement.updateStatus(id, status, {
+            approvedBy: userId || undefined,
+            memo: memo || undefined
+        })
 
         return c.json({ success: true })
     }
@@ -241,21 +187,8 @@ expenseReimbursementsRoutes.openapi(
     async (c) => {
         if (!hasPermission(c, 'finance', 'reimbursement', 'pay')) throw Errors.FORBIDDEN()
         const { id } = c.req.valid('param')
-        const db = c.get('db')
-        // const userId = c.get('userId') // Not used yet but might be for audit
 
-        const reimbursement = await db.select().from(expenseReimbursements).where(eq(expenseReimbursements.id, id)).get()
-        if (!reimbursement) throw Errors.NOT_FOUND('报销单')
-
-        // 检查是否已支付或未批准？通常必须先批准。
-        if (reimbursement.status !== 'approved') throw Errors.BUSINESS_ERROR('报销单未审批通过或已支付')
-
-        await db.update(expenseReimbursements)
-            .set({
-                status: 'paid',
-                updatedAt: Date.now(),
-            })
-            .where(eq(expenseReimbursements.id, id))
+        await c.var.services.expenseReimbursement.payReimbursement(id)
 
         return c.json({ success: true })
     }

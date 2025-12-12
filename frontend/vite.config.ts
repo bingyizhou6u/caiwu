@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 import viteCompression from 'vite-plugin-compression'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   plugins: [
@@ -14,6 +15,11 @@ export default defineConfig({
     viteCompression({
       algorithm: 'brotliCompress',
       ext: '.br',
+    }),
+    visualizer({
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
     })
   ],
   server: {
@@ -28,6 +34,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    exclude: ['tests/**', 'node_modules/**'],
   },
   build: {
     outDir: 'dist',
@@ -37,7 +45,7 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'antd': ['antd'],
           'antd-icons': ['@ant-design/icons'],
-          'vendor': ['@tanstack/react-query', 'dayjs', 'zustand', 'qrcode.react'],
+          'libs': ['@tanstack/react-query', 'dayjs', 'zustand', 'qrcode.react'],
         },
       },
     },

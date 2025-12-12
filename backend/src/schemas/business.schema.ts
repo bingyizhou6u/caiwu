@@ -109,6 +109,17 @@ export const createRentalPropertySchema = z.object({
     message: '年租模式需要yearlyRentCents参数，月租模式需要monthlyRentCents参数',
     path: ['rentType'],
   }
+).refine(
+  (data) => {
+    if (data.leaseStartDate && data.leaseEndDate) {
+      return data.leaseStartDate <= data.leaseEndDate
+    }
+    return true
+  },
+  {
+    message: '租赁开始日期不能晚于结束日期',
+    path: ['leaseEndDate'],
+  }
 )
 
 /**
@@ -798,6 +809,9 @@ export const createEmployeeLeaveSchema = z.object({
   days: z.number().int().positive('days必须为正数'),
   reason: z.string().optional(),
   memo: z.string().optional(),
+}).refine(data => data.startDate <= data.endDate, {
+  message: '开始日期不能晚于结束日期',
+  path: ['endDate']
 }).refine(
   (data) => {
     const start = new Date(data.startDate + 'T00:00:00Z')

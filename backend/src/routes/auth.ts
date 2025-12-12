@@ -4,10 +4,11 @@ import type { Env, AppVariables } from '../types.js'
 import { loginSchema } from '../schemas/business.schema.js'
 import { Errors } from '../utils/errors.js'
 import { AUTH_COOKIE_NAME, AUTH_TOKEN_TTL, extractBearerToken, signAuthToken, verifyAuthToken, ALT_AUTH_HEADER } from '../utils/jwt.js'
-import { sendLoginNotificationEmail } from '../utils/email.js'
 import { Context } from 'hono'
 import { employees } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
+import { loginRateLimit, passwordResetRateLimit, totpResetRateLimit, resetRateLimit } from '../middleware/rateLimit.js'
+import { RATE_LIMITS } from '../services/RateLimitService.js'
 
 const authRoutes = new OpenAPIHono<{ Bindings: Env, Variables: AppVariables }>()
 
@@ -59,7 +60,7 @@ async function buildAuthSuccessPayload(c: Context<{ Bindings: Env, Variables: Ap
 async function handleLogin(c: Context<{ Bindings: Env, Variables: AppVariables }>) {
   try {
     const body = await c.req.json() as { email: string; password: string; totp?: string }
-    const authService = c.get('services').auth
+    const authService = c.var.services.auth
 
     // 获取设备信息
     const deviceInfo = {
@@ -84,8 +85,8 @@ async function handleLogin(c: Context<{ Bindings: Env, Variables: AppVariables }
 
               if (configRow?.value === 'true') {
                 const loginTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
-                await sendLoginNotificationEmail(
-                  c.env,
+                const emailService = c.var.services.email
+                await emailService.sendLoginNotificationEmail(
                   result.user.email,
                   result.user.name || '',
                   loginTime,
@@ -155,9 +156,12 @@ const loginRoute = createRoute({
   }
 })
 
+// 应用限流中间件到登录路由
+authRoutes.use('/auth/login', loginRateLimit)
 authRoutes.openapi(loginRoute, handleLogin)
 
 // 账号密码登录的别名（使用标准 Hono 路由以便共享处理器）
+authRoutes.use('/auth/login-password', loginRateLimit)
 // @ts-ignore
 authRoutes.post('/auth/login-password', async (c) => {
   // 手动验证请求体，因为它不经过 openapi 验证器
@@ -484,6 +488,8 @@ const resetPasswordRoute = createRoute({
   }
 })
 
+// 应用限流中间件到密码重置路由
+authRoutes.use('/auth/reset-password', passwordResetRateLimit)
 authRoutes.openapi(resetPasswordRoute, async (c) => {
   const body = c.req.valid('json')
   const authService = c.get('services').auth
@@ -575,6 +581,8 @@ const requestTotpResetRoute = createRoute({
   }
 })
 
+// 应用限流中间件到 TOTP 重置路由
+authRoutes.use('/auth/mobile/request-totp-reset', totpResetRateLimit)
 authRoutes.openapi(requestTotpResetRoute, async (c) => {
   const body = c.req.valid('json')
   const authService = c.get('services').auth
