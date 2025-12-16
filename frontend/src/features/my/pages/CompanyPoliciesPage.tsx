@@ -40,7 +40,7 @@ export function CompanyPolicies() {
       title="公司制度说明"
       breadcrumb={[{ title: '个人中心' }, { title: '公司制度说明' }]}
     >
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <Card bordered className="page-card page-card-outer">
         <Paragraph type="secondary" style={{ marginBottom: 24 }}>
           以下是公司各项制度的详细说明，请仔细阅读。如有疑问，请联系人力资源部门。
         </Paragraph>
@@ -51,7 +51,7 @@ export function CompanyPolicies() {
             header={<Space><CalendarOutlined /> <Text strong>年假制度</Text></Space>}
             key="1"
           >
-            <Card size="small" bordered={false} className="page-card">
+            <div>
               <Title level={5}>年假规则</Title>
               <Paragraph>
                 <ol>
@@ -80,7 +80,7 @@ export function CompanyPolicies() {
                   <li>每周期年假天数：15天</li>
                 </ul>
               </Paragraph>
-            </Card>
+            </div>
           </Panel>
 
           {/* 考勤制度 */}
@@ -88,7 +88,7 @@ export function CompanyPolicies() {
             header={<Space><ClockCircleOutlined /> <Text strong>考勤制度</Text></Space>}
             key="2"
           >
-            <Card size="small" bordered={false} className="page-card">
+            <div>
               <Title level={5}>工作时间</Title>
               <Paragraph>
                 <ul>
@@ -104,7 +104,7 @@ export function CompanyPolicies() {
               <DataTable<LeaveType>
                 columns={leaveTypeColumns}
                 data={leaveTypes}
-                tableProps={{ className: 'table-striped', pagination: false, size: 'small' }}
+                tableProps={{ className: 'table-striped', size: 'small' }}
               />
 
               <Divider />
@@ -118,7 +118,7 @@ export function CompanyPolicies() {
                   <li>年假申请会自动校验剩余天数，超额无法提交</li>
                 </ol>
               </Paragraph>
-            </Card>
+            </div>
           </Panel>
 
           {/* 报销制度 */}
@@ -126,7 +126,7 @@ export function CompanyPolicies() {
             header={<Space><DollarOutlined /> <Text strong>报销制度</Text></Space>}
             key="3"
           >
-            <Card size="small" bordered={false} className="page-card">
+            <div>
               <Title level={5}>报销流程</Title>
               <Paragraph>
                 <ol>
@@ -149,7 +149,7 @@ export function CompanyPolicies() {
                   <li>差旅费用需提前申请审批</li>
                 </ul>
               </Paragraph>
-            </Card>
+            </div>
           </Panel>
 
           {/* 借支制度 */}
@@ -157,7 +157,7 @@ export function CompanyPolicies() {
             header={<Space><SafetyCertificateOutlined /> <Text strong>借支制度</Text></Space>}
             key="4"
           >
-            <Card size="small" bordered={false} className="page-card">
+            <div>
               <Title level={5}>借支规则</Title>
               <Paragraph>
                 <ul>
@@ -178,7 +178,7 @@ export function CompanyPolicies() {
                   <li>离职时需一次性结清</li>
                 </ul>
               </Paragraph>
-            </Card>
+            </div>
           </Panel>
 
           {/* 薪资福利 */}
@@ -186,7 +186,7 @@ export function CompanyPolicies() {
             header={<Space><TeamOutlined /> <Text strong>薪资福利</Text></Space>}
             key="5"
           >
-            <Card size="small" bordered={false} className="page-card">
+            <div>
               <Title level={5}>薪资构成</Title>
               <Paragraph>
                 <ul>
@@ -208,10 +208,10 @@ export function CompanyPolicies() {
               <Paragraph>
                 每月固定日期发放上月薪资，具体日期以公司通知为准。
               </Paragraph>
-            </Card>
+            </div>
           </Panel>
         </Collapse>
-      </div>
+      </Card>
     </PageContainer>
   )
 }

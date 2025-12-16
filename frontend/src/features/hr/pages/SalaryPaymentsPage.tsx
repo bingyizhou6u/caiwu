@@ -406,7 +406,7 @@ export function SalaryPayments() {
               placeholder: '请选择状态',
               options: [
                 { label: '全部', value: '' },
-                ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
+                ...Object.entries(SALARY_PAYMENT_STATUS).map(([value, config]) => ({ value, label: config.text })),
               ],
             },
           ]}

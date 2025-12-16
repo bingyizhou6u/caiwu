@@ -198,7 +198,7 @@ export function MainLayout() {
                 </Header>
                 <Content className="main-content">
                     <MultiTabs />
-                    <div className="content-wrapper" key={location.pathname}>
+                    <div className="content-wrapper">
                         <Outlet />
                     </div>
                 </Content>

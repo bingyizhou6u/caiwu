@@ -353,8 +353,13 @@ export function EmployeeManagement() {
     )
   }, [canEdit, isManager, handleToggleActive, modal, handleSalaryConfig, handleAllowanceConfig, handleRegularize, handleLeave, handleRejoin, handleResendActivation, handleResetTotp])
   return (
-    <PageContainer>
+    <PageContainer
+      title="人员管理"
+      breadcrumb={[{ title: '人力资源' }, { title: '人员管理' }]}
+    >
       <Card
+        bordered={false}
+        className="page-card"
         extra={
           <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}>刷新</Button>
         }

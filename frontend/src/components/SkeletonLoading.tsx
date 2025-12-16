@@ -1,46 +1,26 @@
-import { Layout, Skeleton, Space } from 'antd'
+import { Skeleton, Space } from 'antd'
 import React from 'react'
 
-const { Header, Sider, Content } = Layout
-
+/**
+ * 内容区域骨架屏
+ * 注意：此组件用于 MainLayout 内部的 Suspense fallback
+ * 不应包含 Sider/Header，因为它们由 MainLayout 渲染
+ */
 export const SkeletonLoading: React.FC = () => {
     return (
-        <Layout style={{ minHeight: '100vh' }}>
-            {/* Sidebar Skeleton */}
-            <Sider width={240} style={{ background: '#001529' }}>
-                <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Skeleton.Avatar active size="large" shape="square" style={{ opacity: 0.3 }} />
-                </div>
-                <div style={{ padding: '20px' }}>
-                    <Skeleton active paragraph={{ rows: 8, width: '100%' }} title={false} />
-                </div>
-            </Sider>
+        <div style={{ padding: '24px', width: '100%' }}>
+            {/* 页面标题骨架 */}
+            <Skeleton.Input active size="large" style={{ width: 200, marginBottom: 24 }} />
 
-            <Layout>
-                {/* Header Skeleton */}
-                <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Skeleton.Button active size="small" shape="square" />
-                    <Space>
-                        <Skeleton.Input active size="small" style={{ width: 200 }} />
-                        <Skeleton.Avatar active size="default" />
-                    </Space>
-                </Header>
+            {/* 操作按钮区骨架 */}
+            <Space style={{ marginBottom: 24 }}>
+                <Skeleton.Button active size="default" />
+                <Skeleton.Button active size="default" />
+                <Skeleton.Button active size="default" />
+            </Space>
 
-                {/* Content Skeleton */}
-                <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
-                    <div style={{ marginBottom: 24 }}>
-                        <Skeleton.Input active size="large" style={{ width: 300, marginBottom: 16 }} />
-                    </div>
-
-                    <Space style={{ marginBottom: 24 }}>
-                        <Skeleton.Button active size="default" />
-                        <Skeleton.Button active size="default" />
-                        <Skeleton.Button active size="default" />
-                    </Space>
-
-                    <Skeleton active paragraph={{ rows: 10 }} />
-                </Content>
-            </Layout>
-        </Layout>
+            {/* 表格/内容区骨架 */}
+            <Skeleton active paragraph={{ rows: 12 }} />
+        </div>
     )
 }
