@@ -14,6 +14,7 @@ import { createRequestIdMiddleware } from './middleware/requestId.js'
 import { securityHeaders } from './middleware/security.js'
 import { apiRateLimitByIP } from './middleware/rateLimit.js'
 import { performanceMonitor } from './middleware/performance.js'
+import { createVersionMiddleware } from './middleware/version.js'
 
 // Utility imports
 import { errorHandlerV2 } from './utils/errors.js'
@@ -284,7 +285,12 @@ const v2 = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 v2.onError(errorHandlerV2)
 
 // Middleware for API routes
-const apiMiddleware = [createIPWhitelistMiddleware(), createAuthMiddleware(), di]
+const apiMiddleware = [
+  createVersionMiddleware(), // 版本检测（最先执行）
+  createIPWhitelistMiddleware(),
+  createAuthMiddleware(),
+  di,
+]
 
 v2.use('*', ...apiMiddleware)
 
