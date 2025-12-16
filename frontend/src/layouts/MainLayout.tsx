@@ -246,20 +246,22 @@ export function MainLayout() {
                     onMouseEnter={handleSiderMouseEnter}
                     onMouseLeave={handleSiderMouseLeave}
                 >
-                    <div className="logo-container">
-                        <ThunderboltFilled className="logo-icon" />
-                        <span className="logo-text">AR管理系统</span>
+                    <div className="sider-hover-overlay-content">
+                        <div className="logo-container">
+                            <ThunderboltFilled className="logo-icon" />
+                            <span className="logo-text">AR管理系统</span>
+                        </div>
+                        <Menu
+                            theme="dark"
+                            mode="inline"
+                            selectedKeys={[selectedKey]}
+                            // overlay 使用非受控 openKeys，避免每次展开触发 React 状态更新导致卡顿
+                            items={baseMenuItems}
+                            onClick={onMenuClick}
+                            inlineCollapsed={false}
+                            getPopupContainer={(node) => node.parentElement || document.body}
+                        />
                     </div>
-                    <Menu
-                        theme="dark"
-                        mode="inline"
-                        selectedKeys={[selectedKey]}
-                        // overlay 使用非受控 openKeys，避免每次展开触发 React 状态更新导致卡顿
-                        items={baseMenuItems}
-                        onClick={onMenuClick}
-                        inlineCollapsed={false}
-                        getPopupContainer={(node) => node.parentElement || document.body}
-                    />
                 </div>
             )}
             <Layout className="main-content-layout" style={{ marginLeft: collapsed ? 80 : 240 }}>

@@ -81,14 +81,22 @@
     transform: none !important;
 }
 
-.sider-hover-overlay .ant-layout-sider-children {
+.sider-hover-overlay-content {
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .sider-hover-overlay .logo-container {
     margin: 20px 16px 28px 16px;
+    flex-shrink: 0;
+}
+
+.sider-hover-overlay .ant-menu {
+    flex: 1;
+    min-height: 0;
 }
 
 /* 内部滚动容器 */
