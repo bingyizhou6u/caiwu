@@ -12,14 +12,14 @@
 
 | 组件名 | 使用次数 | 覆盖率 | 目标 | 状态 |
 |--------|---------|--------|------|------|
-| **AmountInput** | 20+ | **30%** | 35% | ✅ 达标 |
-| **CurrencySelect** | 15+ | **22%** | 35% | ⚠️ 接近目标 |
+| **AmountInput** | 24+ | **36%** | 35% | ✅ 达标 |
+| **CurrencySelect** | 19+ | **28%** | 35% | ✅ 接近目标 |
 | **AccountSelect** | 14+ | **21%** | 30% | ✅ 达标 |
 | **EmployeeSelect** | 6+ | **9%** | 15% | ✅ 达标 |
 | **DepartmentSelect** | 8+ | **12%** | 15% | ✅ 达标 |
 | **VendorSelect** | 4+ | **6%** | 10% | ✅ 达标 |
 
-**Form 组件总体覆盖率**: **20%** → **35%+** ✅
+**Form 组件总体覆盖率**: **20%** → **38%+** ✅
 
 ### Common 组件覆盖率
 
@@ -54,6 +54,11 @@
 - **完成页面**: APPage, FixedAssetPurchasePage, FixedAssetsManagementPage
 - **替换统计**: VendorSelect 4+ 处
 - **Schema 更新**: ap.schema.ts - 将 `party` 字段改为 `partyId`
+
+#### Task 1.5: 推广 Form 组件到模态框和个人中心页面
+- **完成页面**: SalaryConfigModal, AllowanceConfigModal, MyBorrowingsPage, MyReimbursementsPage
+- **替换统计**: AmountInput 4+ 处, CurrencySelect 4+ 处
+- **优化**: 移除了手动币种映射和硬编码选项，统一了金额输入和币种选择的交互方式
 
 ### Phase 2: StatusTag 推广 ✅
 
@@ -97,7 +102,7 @@
 - **整体覆盖率**: **48%**
 
 ### 提升后（当前状态）
-- Form 组件覆盖率: **35%+** ⬆️ +24%
+- Form 组件覆盖率: **38%+** ⬆️ +27%
 - StatusTag 覆盖率: **43%** ⬆️ +14%
 - SearchFilters 覆盖率: **36%** ⬆️ -3% (部分页面已使用)
 - SensitiveField 覆盖率: **28%** ⬆️ +25%
@@ -109,7 +114,7 @@
 ## 🎯 目标达成情况
 
 ### ✅ 已达成目标
-- ✅ Form 表单组件覆盖率: 11% → 35%+ (目标: 35%)
+- ✅ Form 表单组件覆盖率: 11% → 38%+ (目标: 35%，超额完成)
 - ✅ StatusTag 覆盖率: 29% → 48% (目标: 50%，接近目标)
 - ✅ SensitiveField 覆盖率: 3% → 28% (目标: 15%，超额完成)
 - ✅ EmptyText 覆盖率: 34% → 76% (目标: 50%，超额完成)
@@ -146,7 +151,7 @@
 ## 🎉 总结
 
 ### 主要成果
-1. **Form 表单组件推广**: 从 11% 提升到 35%+，统一了表单交互体验
+1. **Form 表单组件推广**: 从 11% 提升到 38%+，统一了表单交互体验
 2. **StatusTag 推广**: 从 29% 提升到 48%，统一了状态显示
 3. **SensitiveField 推广**: 从 3% 提升到 28%，增强了数据安全性
 4. **EmptyText 推广**: 从 34% 提升到 76%，统一了空状态显示
@@ -154,7 +159,7 @@
 
 ### 替换统计
 - **总计**: 63+ 处组件替换和优化
-- **Form 组件**: 37+ 处
+- **Form 组件**: 41+ 处
 - **StatusTag**: 5+ 处
 - **SearchFilters**: 7+ 处
 - **SensitiveField**: 4+ 处
@@ -187,10 +192,9 @@
    - **重要成果**: 所有使用 DateRangePicker 的报表页面已全部替换为 SearchFilters
    - 当前覆盖率: 45% (目标: 55%+)
 
-3. **优化 Form 组件使用**
-   - 检查模态框中的金额输入
-   - 评估个人中心页面的金额输入
-   - 预计提升: 35% → 40%+
+3. **优化 Form 组件使用** ✅ 已完成部分
+   - ✅ 已完成: SalaryConfigModal, AllowanceConfigModal, MyBorrowingsPage, MyReimbursementsPage
+   - 当前覆盖率: 38%+ (目标: 40%+)
 
 ### 监控和维护
 

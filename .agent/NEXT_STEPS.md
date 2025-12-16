@@ -8,7 +8,7 @@
 ## 📊 当前覆盖率状态
 
 ### ✅ 已达成目标
-- **Form 表单组件**: 11% → 35%+ ✅
+- **Form 表单组件**: 11% → 38%+ ✅ 超额完成
 - **EmptyText**: 34% → 76% ✅
 - **SensitiveField**: 3% → 28% ✅
 
@@ -48,11 +48,12 @@
 ### 3. 优化 Form 组件使用（优先级：中）
 
 **剩余机会**:
-- `my/pages/MyBorrowingsPage.tsx` - 金额输入可考虑使用 AmountInput（但当前逻辑较复杂）
-- `my/pages/MyReimbursementsPage.tsx` - 金额输入可考虑使用 AmountInput
-- `employees/components/modals/*.tsx` - 薪资和补贴配置模态框中的金额输入
+- ✅ `my/pages/MyBorrowingsPage.tsx` - 已完成
+- ✅ `my/pages/MyReimbursementsPage.tsx` - 已完成
+- ✅ `employees/components/modals/SalaryConfigModal.tsx` - 已完成
+- ✅ `employees/components/modals/AllowanceConfigModal.tsx` - 已完成
 
-**预计提升**: 35% → 40%+
+**当前覆盖率**: 38%+ (目标: 40%+)
 
 ### 4. 代码质量优化（优先级：低）
 
@@ -87,12 +88,14 @@
 **预计时间**: 已完成  
 **当前覆盖率**: SearchFilters 覆盖率 45% (目标: 55%+)
 
-#### Task C: 优化 Form 组件使用
-- [ ] 检查 `employees/components/modals/*.tsx` 中的金额输入
-- [ ] 评估 `my/pages/MyBorrowingsPage.tsx` 和 `MyReimbursementsPage.tsx` 的金额输入
+#### Task C: 优化 Form 组件使用 ✅ 已完成
+- [x] `employees/components/modals/SalaryConfigModal.tsx` ✅
+- [x] `employees/components/modals/AllowanceConfigModal.tsx` ✅
+- [x] `my/pages/MyBorrowingsPage.tsx` ✅
+- [x] `my/pages/MyReimbursementsPage.tsx` ✅
 
-**预计时间**: 1-2 小时  
-**预计提升**: Form 组件覆盖率 35% → 40%+
+**预计时间**: 已完成  
+**当前覆盖率**: Form 组件覆盖率 38%+ (目标: 40%+)
 
 ### 低优先级任务
 

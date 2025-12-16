@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Card, Button, Tag, Space, Modal, Form, Select, DatePicker, InputNumber, Input, message, Statistic, Row, Col, Typography } from 'antd'
+import { Card, Button, Tag, Space, Modal, Form, Select, DatePicker, Input, message, Statistic, Row, Col, Typography } from 'antd'
+import { AmountInput, CurrencySelect } from '../../../components/form'
 import { PlusOutlined, FileTextOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useMyReimbursements, useCreateMyReimbursement } from '../../../hooks'
@@ -214,14 +215,10 @@ export function MyReimbursements() {
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="amount" label="金额（元）" rules={[{ required: true, message: '请输入金额' }]}>
-            <InputNumber min={0.01} step={0.01} style={{ width: '100%' }} precision={2} />
+            <AmountInput style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="currencyId" label="币种">
-            <Select>
-              <Select.Option value="CNY">人民币 (CNY)</Select.Option>
-              <Select.Option value="USD">美元 (USD)</Select.Option>
-              <Select.Option value="USDT">USDT</Select.Option>
-            </Select>
+            <CurrencySelect />
           </Form.Item>
           <Form.Item name="description" label="费用说明" rules={[{ required: true, message: '请输入说明' }]}>
             <TextArea rows={3} placeholder="请输入费用说明" />
