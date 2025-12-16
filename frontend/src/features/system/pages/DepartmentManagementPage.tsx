@@ -87,7 +87,7 @@ export function DepartmentManagement() {
       title: '状态',
       dataIndex: 'active',
       key: 'active',
-      render: (v: number) => v ? '启用' : '禁用',
+      render: (v: number) => <StatusTag status={v === 1 ? 'active' : 'inactive'} statusMap={COMMON_STATUS} />,
     },
   ]
 

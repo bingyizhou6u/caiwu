@@ -15,14 +15,9 @@ const BILL_TYPE_LABELS: Record<string, string> = {
   expense: '支出',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '待处理',
-  paid: '已支付',
-  cancelled: '已取消',
-}
-
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
+import { DataTable, AmountDisplay, EmptyText, PageToolbar, StatusTag } from '../../../components/common'
+import { SITE_BILL_STATUS } from '../../../utils/status'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 
@@ -283,7 +278,7 @@ export function SiteBills() {
             { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
             { title: '账户', dataIndex: 'accountName', key: 'accountName', width: 120 },
             { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
-            { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => STATUS_LABELS[v] || v },
+            { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => <StatusTag status={v} statusMap={SITE_BILL_STATUS} /> },
             { title: '支付日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120, render: (v: string) => <EmptyText value={v} /> },
             { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
             { title: '创建人', dataIndex: 'creator_name', key: 'creator_name', width: 100 },

@@ -268,6 +268,19 @@
 - **Schema 更新**:
   - ✅ `ap.schema.ts` - 将 `party` 字段改为 `partyId`
 
+### Phase 2: StatusTag 推广（Week 3-4）
+
+#### ✅ Task 2.1: 推广 StatusTag 到所有状态显示页面
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `SiteBillsPage.tsx` - 已替换状态显示为 StatusTag + SITE_BILL_STATUS
+  - ✅ `DepartmentManagementPage.tsx` - 已替换状态显示为 StatusTag + COMMON_STATUS
+  - ✅ `AccountManagementPage.tsx` - 已替换状态显示为 StatusTag + COMMON_STATUS
+- **替换统计**:
+  - StatusTag: 3+ 处
+- **说明**: 其他页面（如 FixedAssetsManagementPage、LeaveManagementPage、ExpenseReimbursementPage、MyBorrowingsPage、MyReimbursementsPage 等）已经使用了 StatusTag
+
 #### ✅ Task 1.4: 推广 VendorSelect
 - **完成时间**: 2024-12-19
 - **状态**: ✅ 已完成
