@@ -274,104 +274,114 @@ export function EmployeeManagement() {
   ],
     [canEdit, isManager, statusFilter, handleToggleActive, modal])
 
-  const renderActions = useCallback((record: Employee) => (
-    <Space size="small" wrap>
-      {canEdit && record.status !== 'resigned' && (
-        <>
-          <Button size="small" onClick={() => modal.openEdit(record)}>
-            编辑
-          </Button>
-          <Button size="small" onClick={() => handleSalaryConfig(record, 'probation')}>
-            试用期底薪
-          </Button>
-          <Button size="small" onClick={() => handleSalaryConfig(record, 'regular')}>
-            转正底薪
-          </Button>
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: 'living',
-                  label: '生活补贴',
-                  onClick: () => handleAllowanceConfig(record, 'living'),
-                },
-                {
-                  key: 'housing',
-                  label: '住房补贴',
-                  onClick: () => handleAllowanceConfig(record, 'housing'),
-                },
-                {
-                  key: 'transportation',
-                  label: '交通补贴',
-                  onClick: () => handleAllowanceConfig(record, 'transportation'),
-                },
-                {
-                  key: 'meal',
-                  label: '伙食补贴',
-                  onClick: () => handleAllowanceConfig(record, 'meal'),
-                },
-                {
-                  key: 'birthday',
-                  label: '生日补贴',
-                  onClick: () => handleAllowanceConfig(record, 'birthday'),
-                },
-              ],
-            }}
-            trigger={['click']}
-          >
-            <Button size="small" icon={<SettingOutlined />}>
-              补贴配置
+  const renderActions = useCallback((record: Employee) => {
+    // 薪资配置菜单项
+    const salaryMenuItems = [
+      {
+        key: 'probation',
+        label: '试用期底薪',
+        onClick: () => handleSalaryConfig(record, 'probation'),
+      },
+      {
+        key: 'regular',
+        label: '转正底薪',
+        onClick: () => handleSalaryConfig(record, 'regular'),
+      },
+    ]
+
+    // 补贴配置菜单项
+    const allowanceMenuItems = [
+      { key: 'living', label: '生活补贴', onClick: () => handleAllowanceConfig(record, 'living') },
+      { key: 'housing', label: '住房补贴', onClick: () => handleAllowanceConfig(record, 'housing') },
+      { key: 'transportation', label: '交通补贴', onClick: () => handleAllowanceConfig(record, 'transportation') },
+      { key: 'meal', label: '伙食补贴', onClick: () => handleAllowanceConfig(record, 'meal') },
+      { key: 'birthday', label: '生日补贴', onClick: () => handleAllowanceConfig(record, 'birthday') },
+    ]
+
+    // 状态操作菜单项
+    const statusMenuItems = []
+    if (record.status === 'probation') {
+      statusMenuItems.push({
+        key: 'regularize',
+        label: '转正',
+        onClick: () => handleRegularize(record),
+      })
+    }
+    if (record.status !== 'resigned') {
+      statusMenuItems.push({
+        key: 'leave',
+        label: '离职',
+        danger: true,
+        onClick: () => handleLeave(record),
+      })
+    }
+    if (record.status === 'resigned') {
+      statusMenuItems.push({
+        key: 'rejoin',
+        label: '重新入职',
+        onClick: () => handleRejoin(record),
+      })
+    }
+
+    // 账号管理菜单项
+    const accountMenuItems: any[] = []
+    if (record.userId) {
+      accountMenuItems.push({
+        key: 'resetPassword',
+        label: '重置密码',
+        onClick: () => { setCurrentEmployee(record); setResetUserOpen(true); },
+      })
+      accountMenuItems.push({
+        key: 'toggleActive',
+        label: record.userActive === 1 ? '停用账号' : '启用账号',
+        danger: record.userActive === 1,
+        onClick: () => handleToggleActive(record),
+      })
+      if (!record.isActivated && record.userActive === 1) {
+        accountMenuItems.push({
+          key: 'resendActivation',
+          label: '重发激活邮件',
+          onClick: () => handleResendActivation(record),
+        })
+      }
+      if (record.totpEnabled && record.userActive === 1) {
+        accountMenuItems.push({
+          key: 'resetTotp',
+          label: '重置2FA',
+          danger: true,
+          onClick: () => handleResetTotp(record),
+        })
+      }
+    }
+
+    return (
+      <Space size="small">
+        {canEdit && record.status !== 'resigned' && (
+          <>
+            <Button size="small" type="primary" onClick={() => modal.openEdit(record)}>
+              编辑
             </Button>
+            <Dropdown menu={{ items: salaryMenuItems }} trigger={['click']}>
+              <Button size="small">薪资</Button>
+            </Dropdown>
+            <Dropdown menu={{ items: allowanceMenuItems }} trigger={['click']}>
+              <Button size="small">补贴</Button>
+            </Dropdown>
+          </>
+        )}
+        {canEdit && statusMenuItems.length > 0 && (
+          <Dropdown menu={{ items: statusMenuItems }} trigger={['click']}>
+            <Button size="small">{record.status === 'resigned' ? '入职' : '状态'}</Button>
           </Dropdown>
-          {record.status === 'probation' && (
-            <Button size="small" type="primary" onClick={() => handleRegularize(record)}>
-              转正
-            </Button>
-          )}
-          <Button size="small" danger onClick={() => handleLeave(record)}>
-            离职
-          </Button>
-        </>
-      )}
-      {canEdit && record.status === 'resigned' && (
-        <Button size="small" type="primary" onClick={() => handleRejoin(record)}>
-          重新入职
-        </Button>
-      )}
-      {isManager && record.userId && (
-        <>
-          <Button size="small" onClick={() => { setCurrentEmployee(record); setResetUserOpen(true); }}>
-            重置密码
-          </Button>
-          <Button size="small" onClick={() => handleToggleActive(record)}>
-            {record.userActive === 1 ? '停用账号' : '启用账号'}
-          </Button>
-          {!record.isActivated && record.userActive === 1 && (
-            <Popconfirm
-              title="重新发送激活邮件？"
-              description="这将使之前的激活链接失效"
-              onConfirm={() => handleResendActivation(record)}
-              okText="发送"
-              cancelText="取消"
-            >
-              <Button size="small">重发激活</Button>
-            </Popconfirm>
-          )}
-          {record.totpEnabled && record.userActive === 1 && (
-            <Popconfirm
-              title="确定重置2FA？"
-              description="重置后员工将使用无2FA模式登录"
-              onConfirm={() => handleResetTotp(record)}
-              okText="确定"
-              cancelText="取消"
-            >
-              <Button size="small" danger>重置2FA</Button>
-            </Popconfirm>
-          )}
-        </>
-      )}
-    </Space>
-  ), [canEdit, isManager, handleToggleActive, modal, handleSalaryConfig, handleAllowanceConfig, handleRegularize, handleLeave, handleRejoin, handleResendActivation, handleResetTotp])
+        )}
+        {isManager && accountMenuItems.length > 0 && (
+          <Dropdown menu={{ items: accountMenuItems }} trigger={['click']}>
+            <Button size="small" icon={<SettingOutlined />}>账号</Button>
+          </Dropdown>
+        )}
+      </Space>
+    )
+  }, [canEdit, isManager, handleToggleActive, modal, handleSalaryConfig, handleAllowanceConfig, handleRegularize, handleLeave, handleRejoin, handleResendActivation, handleResetTotp])
   return (
     <PageContainer>
       <Card
