@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Card, Tag, Space, Collapse, Button, Checkbox, Form, message, Switch, Popconfirm } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, PageToolbar } from '../../../components/common'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 import { ActionColumn } from '../../../components/ActionColumn'
 import { FormModal } from '../../../components/FormModal'
@@ -403,9 +403,16 @@ export function PositionPermissionsManagement() {
       breadcrumb={[{ title: '系统设置' }, { title: '权限管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '刷新',
+              icon: <ReloadOutlined />,
+              onClick: () => refetch(),
+              loading: isLoading
+            }
+          ]}
+        />
         <DataTable<Position>
           columns={columns}
           data={positions}

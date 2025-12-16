@@ -4,7 +4,6 @@ import type { ColumnsType } from 'antd/es/table'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
-import { formatAmount } from '../../../utils/formatters'
 import { useCurrencies, useAccounts } from '../../../hooks/useBusinessData'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
@@ -15,7 +14,8 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import { salaryPaymentGenerateSchema, salaryPaymentTransferSchema, salaryPaymentAllocationSchema, salaryPaymentConfirmSchema } from '../../../validations/salary.schema'
 import { DataTable, StatusTag, AmountDisplay, PageToolbar, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
-import { SALARY_PAYMENT_STATUS } from '../../../utils/status'
+import { SALARY_PAYMENT_STATUS, SALARY_ALLOCATION_STATUS } from '../../../utils/status'
+import { formatAmountWithCurrency } from '../../../utils/amount'
 import type { SalaryPayment } from '../../../hooks/business/useSalaryPayments'
 import { PageContainer } from '../../../components/PageContainer'
 
@@ -151,7 +151,8 @@ export function SalaryPayments() {
       // 验证总额
       const total = allocations.reduce((sum: number, a: any) => sum + (a.amountCents || 0), 0)
       if (total > allocationRow.salary_cents) {
-        throw new Error(`分配总额不能超过薪资总额 ${formatAmount(allocationRow.salary_cents)}`)
+        const formattedAmount = formatAmountWithCurrency(allocationRow.salary_cents, 'USDT')
+        throw new Error(`分配总额不能超过薪资总额 ${formattedAmount}`)
       }
 
       await requestAllocation({ id: allocationRow.id, allocations })
@@ -299,12 +300,8 @@ export function SalaryPayments() {
       key: 'allocation_status',
       width: 120,
       render: (_: any, record: SalaryPayment) => {
-        if (!record.allocation_status || record.allocation_status === 'pending') return '-'
-        return (
-          <Tag color={record.allocation_status === 'approved' ? 'green' : 'orange'}>
-            {record.allocation_status === 'approved' ? '已批准' : '待审批'}
-          </Tag>
-        )
+        if (!record.allocation_status || record.allocation_status === 'pending') return <EmptyText value={null} />
+        return <StatusTag status={record.allocation_status} statusMap={SALARY_ALLOCATION_STATUS} />
       },
     },
     {
@@ -492,14 +489,14 @@ export function SalaryPayments() {
               <Input value={transferRow?.employeeName} disabled />
             </Form.Item>
             <Form.Item label="薪资">
-              <Input value={transferRow ? formatAmount(transferRow.salary_cents) : ''} disabled />
+              <Input value={transferRow ? formatAmountWithCurrency(transferRow.salary_cents, 'USDT') : ''} disabled />
             </Form.Item>
             {transferRow?.allocations && transferRow.allocations.length > 0 && transferRow.allocation_status === 'approved' && (
               <Form.Item label="币种分配">
                 <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                   {transferRow.allocations.map((alloc, idx) => (
                     <div key={idx} style={{ marginBottom: 8, padding: 8, background: '#f5f5f5', borderRadius: 4 }}>
-                      <div>{alloc.currencyName || currencies.find((c: any) => c.value === alloc.currencyId)?.label || alloc.currencyId}: {formatAmount(alloc.amountCents)}</div>
+                      <div>{alloc.currencyName || currencies.find((c: any) => c.value === alloc.currencyId)?.label || alloc.currencyId}: {formatAmountWithCurrency(alloc.amountCents, alloc.currencyId || 'CNY')}</div>
                       {alloc.accountName && <div style={{ fontSize: 12, color: '#666' }}>账户: {alloc.accountName}</div>}
                     </div>
                   ))}
@@ -541,7 +538,7 @@ export function SalaryPayments() {
               <Input value={allocationRow?.employeeName} disabled />
             </Form.Item>
             <Form.Item label="总薪资（USDT）">
-              <Input value={allocationRow ? formatAmount(allocationRow.salary_cents) : ''} disabled />
+              <Input value={allocationRow ? formatAmountWithCurrency(allocationRow.salary_cents, 'USDT') : ''} disabled />
             </Form.Item>
             <Form.Item
               name="allocations"
@@ -616,18 +613,14 @@ export function SalaryPayments() {
           {allocationApproveRow?.allocations && allocationApproveRow.allocations.length > 0 ? (
             <div>
               <p>员工: {allocationApproveRow.employeeName}</p>
-              <p>总薪资: {formatAmount(allocationApproveRow.salary_cents)}</p>
+              <p>总薪资: <AmountDisplay cents={allocationApproveRow.salary_cents} currency="USDT" /></p>
               <Table
                 columns={[
                   { title: '币种', dataIndex: 'currencyName', key: 'currencyName', render: (_: any, r: any) => r.currencyName || currencies.find((c: any) => c.value === r.currencyId)?.label || r.currencyId },
-                  { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (c: number) => formatAmount(c) },
-                  { title: '账户', dataIndex: 'accountName', key: 'accountName', render: (n: string) => n || '-' },
+                  { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (c: number, r: any) => <AmountDisplay cents={c} currency={r.currencyId || 'CNY'} /> },
+                  { title: '账户', dataIndex: 'accountName', key: 'accountName', render: (n: string) => <EmptyText value={n} /> },
                   {
-                    title: '状态', dataIndex: 'status', key: 'status', render: (s: string) => (
-                      <Tag color={s === 'approved' ? 'green' : s === 'rejected' ? 'red' : 'orange'}>
-                        {s === 'approved' ? '已批准' : s === 'rejected' ? '已拒绝' : '待审批'}
-                      </Tag>
-                    )
+                    title: '状态', dataIndex: 'status', key: 'status', render: (s: string) => <StatusTag status={s} statusMap={SALARY_ALLOCATION_STATUS} />
                   },
                 ]}
                 dataSource={allocationApproveRow.allocations}
@@ -660,7 +653,7 @@ export function SalaryPayments() {
               <Input value={confirmRow?.employeeName} disabled />
             </Form.Item>
             <Form.Item label="薪资">
-              <Input value={confirmRow ? formatAmount(confirmRow.salary_cents) : ''} disabled />
+              <Input value={confirmRow ? formatAmountWithCurrency(confirmRow.salary_cents, 'USDT') : ''} disabled />
             </Form.Item>
             <Form.Item
               name="payment_voucher_path"

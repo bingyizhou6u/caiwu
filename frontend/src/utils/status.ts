@@ -119,6 +119,11 @@ export const COMMON_STATUS: Record<string, StatusConfig> = {
   pending: { text: '待处理', color: 'processing' },
   approved: { text: '已批准', color: 'success' },
   rejected: { text: '已驳回', color: 'error' },
+  probation: { text: '试用', color: 'warning' },
+  normal: { text: '正常', color: 'success' },
+  late: { text: '迟到', color: 'warning' },
+  early: { text: '早退', color: 'warning' },
+  late_early: { text: '迟到且早退', color: 'error' },
 }
 
 /**

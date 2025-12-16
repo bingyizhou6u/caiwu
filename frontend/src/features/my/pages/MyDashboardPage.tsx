@@ -1,4 +1,4 @@
-import { Card, Row, Col, Statistic, List, Tag, Typography, Avatar, Space, Spin } from 'antd'
+import { Card, Row, Col, Statistic, List, Typography, Avatar, Space, Spin } from 'antd'
 import {
   DollarOutlined,
   CalendarOutlined,
@@ -10,22 +10,10 @@ import {
 import dayjs from 'dayjs'
 import { useMyDashboard } from '../../../hooks'
 import type { MyDashboard } from '../../../hooks/business/useMy'
+import { StatusTag, AmountDisplay } from '../../../components/common'
+import { REIMBURSEMENT_STATUS, LEAVE_STATUS } from '../../../utils/status'
 
 const { Title, Text } = Typography
-
-const statusColors: Record<string, string> = {
-  pending: 'processing',
-  approved: 'success',
-  rejected: 'error',
-  paid: 'default',
-}
-
-const statusLabels: Record<string, string> = {
-  pending: '待审批',
-  approved: '已通过',
-  rejected: '已驳回',
-  paid: '已支付',
-}
 
 const leaveTypeLabels: Record<string, string> = {
   annual: '年假',
@@ -155,9 +143,10 @@ export function MyDashboard() {
                         : `报销 - ${expenseTypeLabels[item.subType] || item.subType}`
                       }
                     </span>
-                    <Tag color={statusColors[item.status || '']}>
-                      {statusLabels[item.status || ''] || item.status || '-'}
-                    </Tag>
+                    <StatusTag 
+                      status={item.status || ''} 
+                      statusMap={item.type === 'leave' ? LEAVE_STATUS : REIMBURSEMENT_STATUS} 
+                    />
                   </Space>
                 }
                 description={
@@ -166,10 +155,11 @@ export function MyDashboard() {
                     {item.createdAt ? dayjs(item.createdAt).format('YYYY-MM-DD HH:mm') : '-'}
                     {item.amount && (
                       <span style={{ marginLeft: 16 }}>
-                        {item.type === 'leave'
-                          ? item.amount
-                          : `¥${(parseInt(item.amount) / 100).toFixed(2)}`
-                        }
+                        {item.type === 'leave' ? (
+                          item.amount
+                        ) : (
+                          <AmountDisplay cents={parseInt(item.amount)} currency="CNY" />
+                        )}
                       </span>
                     )}
                   </Space>

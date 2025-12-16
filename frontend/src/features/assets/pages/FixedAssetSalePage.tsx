@@ -9,7 +9,7 @@ import { useFixedAssets, useFixedAssetSale } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { SearchFilters, StatusTag } from '../../../components/common'
+import { SearchFilters, StatusTag, AmountDisplay } from '../../../components/common'
 import { FIXED_ASSET_STATUS } from '../../../utils/status'
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable } from '../../../components/common/DataTable'
@@ -153,19 +153,21 @@ export function FixedAssetSale() {
               title: '购买价格',
               key: 'purchasePrice',
               width: 120,
-              render: (_: unknown, r: FixedAsset) => {
-                const price = r.purchasePriceCents ? formatAmount(r.purchasePriceCents) : '0.00'
-                return `${price} ${r.currency || ''}`
-              }
+              render: (_: unknown, r: FixedAsset) => (
+                <span>
+                  <AmountDisplay cents={r.purchasePriceCents || 0} currency={r.currency || 'CNY'} /> {r.currency || ''}
+                </span>
+              )
             },
             {
               title: '当前净值',
               key: 'currentValue',
               width: 120,
-              render: (_: unknown, r: FixedAsset) => {
-                const value = r.currentValueCents ? formatAmount(r.currentValueCents) : '0.00'
-                return `${value} ${r.currency || ''}`
-              }
+              render: (_: unknown, r: FixedAsset) => (
+                <span>
+                  <AmountDisplay cents={r.currentValueCents || 0} currency={r.currency || 'CNY'} /> {r.currency || ''}
+                </span>
+              )
             },
             {
               title: '状态',
@@ -200,8 +202,8 @@ export function FixedAssetSale() {
               <div>
                 <p>资产编号：{currentAsset.assetCode}</p>
                 <p>资产名称：{currentAsset.name}</p>
-                <p>购买价格：{formatAmount(currentAsset.purchasePriceCents)} {currentAsset.currency}</p>
-                <p>当前净值：{formatAmount(currentAsset.currentValueCents)} {currentAsset.currency}</p>
+                <p>购买价格：<AmountDisplay cents={currentAsset.purchasePriceCents} currency={currentAsset.currency} /></p>
+                <p>当前净值：<AmountDisplay cents={currentAsset.currentValueCents} currency={currentAsset.currency} /></p>
               </div>
             </Form.Item>
             <Form.Item name="sale_date" label="卖出日期" rules={[{ required: true }]}>

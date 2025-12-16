@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, Button, Space, Statistic } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
+import { DataTable, AmountDisplay, PageToolbar, EmptyText } from '../../../components/common'
 import { useAPSummary } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
@@ -49,10 +49,10 @@ export function ReportAPSummary() {
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
         </PageToolbar>
         <Space style={{ marginBottom: 12 }}>
-          <Statistic title="期间总额" value={((stats.total || 0) / 100).toFixed(2)} />
-          <Statistic title="期间已结" value={((stats.settled || 0) / 100).toFixed(2)} />
+          <Statistic title="期间总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
+          <Statistic title="期间已结" value={<AmountDisplay cents={stats.settled || 0} currency="CNY" showSymbol={false} />} />
           {stats.byStatus && Object.entries(stats.byStatus).map(([status, cents]: [string, any]) => (
-            <Statistic key={status} title={`${status}状态`} value={((cents || 0) / 100).toFixed(2)} />
+            <Statistic key={status} title={`${status}状态`} value={<AmountDisplay cents={cents || 0} currency="CNY" showSymbol={false} />} />
           ))}
         </Space>
         <DataTable<any>

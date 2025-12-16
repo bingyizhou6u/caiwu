@@ -8,6 +8,7 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createRepaymentSchema } from '../../../validations/repayment.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
+import { formatAmountWithCurrency } from '../../../utils/amount'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
 import type { Repayment, Borrowing } from '../../../types/business'
@@ -30,10 +31,10 @@ export function RepaymentManagement() {
 
   // 借款选项
   const borrowingOptions = (borrowingsData.list || []).map((b: Borrowing) => {
-    const amount = (b.amountCents / 100).toFixed(2)
+    const amount = formatAmountWithCurrency(b.amountCents, b.currency)
     return {
       value: b.id,
-      label: `${b.borrowerName || b.borrowerEmail || '-'} - ${amount} ${b.currency} (${b.borrowDate})`,
+      label: `${b.borrowerName || b.borrowerEmail || '-'} - ${amount} (${b.borrowDate})`,
       currency: b.currency
     }
   })

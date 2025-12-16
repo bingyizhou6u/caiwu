@@ -5,6 +5,8 @@ import { useMyDashboard, useMyProfile } from '../../../hooks'
 // TODO: 考勤功能暂未实现
 // import { useAttendanceToday, useClockIn, useClockOut } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { StatusTag } from '../../../components/common'
+import { LEAVE_STATUS, REIMBURSEMENT_STATUS, COMMON_STATUS, getStatusConfig } from '../../../utils/status'
 
 interface WorkSchedule {
   days: number[]
@@ -41,9 +43,22 @@ interface ProfileData {
 }
 
 const dayNames: Record<number, string> = { 0: '周日', 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六' }
-const statusColorMap: Record<string, string> = { pending: 'orange', approved: 'green', rejected: 'red', normal: 'green', late: 'orange', early: 'orange', late_early: 'red' }
-const statusTextMap: Record<string, string> = { pending: '待审批', approved: '已通过', rejected: '已拒绝', normal: '正常', late: '迟到', early: '早退', late_early: '迟到且早退' }
 const typeTextMap: Record<string, string> = { leave: '请假', reimbursement: '报销', annual: '年假', sick: '病假', personal: '事假', other: '其他', travel: '差旅', office: '办公', meal: '餐饮', transport: '交通' }
+
+// 将 StatusConfig 的颜色转换为 Timeline 的颜色
+function getTimelineColor(status: string | null | undefined, statusMap: Record<string, any>): string {
+  const config = getStatusConfig(status, statusMap)
+  if (!config) return 'gray'
+  // 将 Tag 颜色映射到 Timeline 颜色
+  const colorMap: Record<string, string> = {
+    processing: 'orange',
+    success: 'green',
+    error: 'red',
+    warning: 'orange',
+    default: 'gray',
+  }
+  return colorMap[config.color || 'default'] || 'gray'
+}
 
 import { PageContainer } from '../../../components/PageContainer'
 
@@ -134,7 +149,11 @@ export function MyCenter() {
                       <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceData?.record?.clockInTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签到时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceData?.record?.clockInTime ? '#52c41a' : '#999' }}>{attendanceData?.record?.clockInTime ? formatTime(attendanceData.record.clockInTime) : '--:--:--'}</div></Card></Col>
                       <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceData?.record?.clockOutTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签退时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceData?.record?.clockOutTime ? '#52c41a' : '#999' }}>{attendanceData?.record?.clockOutTime ? formatTime(attendanceData.record.clockOutTime) : '--:--:--'}</div></Card></Col>
                     </Row>
-                    {attendanceData?.record?.status && <div style={{ textAlign: 'center', marginBottom: 16 }}><Tag color={statusColorMap[attendanceData.record.status] || 'default'}>{statusTextMap[attendanceData.record.status] || attendanceData.record.status}</Tag></div>}
+                    {attendanceData?.record?.status && (
+                      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                        <StatusTag status={attendanceData.record.status} statusMap={COMMON_STATUS} />
+                      </div>
+                    )}
                     <Row gutter={16}>
                       <Col span={12}><Button type="primary" icon={<LoginOutlined />} size="large" block disabled={!!attendanceData?.record?.clockInTime} loading={clockingIn} onClick={handleClockIn} style={{ height: 60 }}>{attendanceData?.record?.clockInTime ? '已签到' : '签到'}</Button></Col>
                       <Col span={12}><Button type="primary" danger icon={<LogoutOutlined />} size="large" block disabled={!attendanceData?.record?.clockInTime || !!attendanceData?.record?.clockOutTime} loading={clockingOut} onClick={handleClockOut} style={{ height: 60 }}>{attendanceData?.record?.clockOutTime ? '已签退' : '签退'}</Button></Col>
@@ -153,7 +172,7 @@ export function MyCenter() {
                 </Col>
                 <Col span={24}>
                   <Card title={<><FileTextOutlined /> 最近申请</>}>
-                    {dashboardData?.recentApplications && dashboardData.recentApplications.length > 0 ? <Timeline items={dashboardData.recentApplications.map(app => ({ color: statusColorMap[app.status || ''] || 'gray', children: <div><Tag>{typeTextMap[app.type] || app.type}</Tag><Tag color="blue">{typeTextMap[app.sub_type] || app.sub_type}</Tag><Tag color={statusColorMap[app.status || '']}>{statusTextMap[app.status || ''] || app.status}</Tag><span style={{ marginLeft: 8, color: '#999' }}>{app.createdAt ? new Date(app.createdAt).toLocaleDateString('zh-CN') : ''}</span></div> }))} /> : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无申请记录</div>}
+                    {dashboardData?.recentApplications && dashboardData.recentApplications.length > 0 ? <Timeline items={dashboardData.recentApplications.map(app => ({ color: getTimelineColor(app.status, app.type === 'leave' ? LEAVE_STATUS : REIMBURSEMENT_STATUS), children: <div><Tag>{typeTextMap[app.type] || app.type}</Tag><Tag color="blue">{typeTextMap[app.sub_type] || app.sub_type}</Tag><StatusTag status={app.status || ''} statusMap={app.type === 'leave' ? LEAVE_STATUS : REIMBURSEMENT_STATUS} /><span style={{ marginLeft: 8, color: '#999' }}>{app.createdAt ? new Date(app.createdAt).toLocaleDateString('zh-CN') : ''}</span></div> }))} /> : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无申请记录</div>}
                   </Card>
                 </Col>
               </Row>
@@ -173,7 +192,7 @@ export function MyCenter() {
                       <Descriptions.Item label="职位">{profileData?.position || '-'}</Descriptions.Item>
                       <Descriptions.Item label="入职日期">{profileData?.entryDate || '-'}</Descriptions.Item>
                       <Descriptions.Item label="合同到期">{profileData?.contractEndDate || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="状态"><Tag color={profileData?.status === 'active' ? 'green' : profileData?.status === 'probation' ? 'orange' : 'default'}>{profileData?.status === 'active' ? '正式' : profileData?.status === 'probation' ? '试用' : profileData?.status || '-'}</Tag></Descriptions.Item>
+                      <Descriptions.Item label="状态"><StatusTag status={profileData?.status || ''} statusMap={COMMON_STATUS} /></Descriptions.Item>
                     </Descriptions>
                   </Card>
                 </Col>

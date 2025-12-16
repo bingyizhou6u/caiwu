@@ -5,9 +5,10 @@ import { api } from '../../../config/api'
 import { useAccounts } from '../../../hooks/useBusinessData'
 import { useAccountTransactions } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { AccountTransaction } from '../../../types/business'
+import { PageContainer } from '../../../components/PageContainer'
 
 const TYPE_LABELS: Record<string, string> = {
   income: '收入',
@@ -15,8 +16,6 @@ const TYPE_LABELS: Record<string, string> = {
   transfer: '转账',
   adjust: '调整',
 }
-
-import { PageContainer } from '../../../components/PageContainer'
 
 export function AccountTransactions() {
   const [form] = Form.useForm()
@@ -161,10 +160,23 @@ export function AccountTransactions() {
           initialValues={{ accountId }}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button icon={<ReloadOutlined />} onClick={handleQuery} loading={loading}>刷新</Button>
-          <Button type="primary" onClick={handleQuery} loading={loading}>查询</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '刷新',
+              icon: <ReloadOutlined />,
+              onClick: handleQuery,
+              loading: loading
+            },
+            {
+              label: '查询',
+              type: 'primary',
+              onClick: handleQuery,
+              loading: loading
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<AccountTransaction>
           columns={columns}

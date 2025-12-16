@@ -48,7 +48,7 @@ export function ReportExpenseSummary() {
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
         </PageToolbar>
         <Space style={{ marginBottom: 12 }}>
-          <Statistic title="支出总额" value={((stats.total || 0) / 100).toFixed(2)} />
+          <Statistic title="支出总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
         </Space>
         <DataTable<{ categoryId: string; categoryName: string; totalCents: number; count: number }>
           columns={[
