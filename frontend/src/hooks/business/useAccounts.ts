@@ -2,6 +2,7 @@ import { useApiQuery } from '../../utils/useApiQuery'
 import { api } from '../../config/api'
 import { api as apiClient } from '../../api/http'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { CACHE_TIME } from '../../config/cache'
 import type { Account, SelectOption } from '../../types'
 
 /**
@@ -42,7 +43,7 @@ export function useAccounts(filters?: {
         url,
         {
             select: (data: any) => Array.isArray(data) ? data : data?.results || [],
-            staleTime: 60 * 1000, // 1分钟缓存
+            staleTime: CACHE_TIME.BUSINESS_DATA,
         }
     )
 }
@@ -71,9 +72,47 @@ export function useAccountOptions(currency?: string) {
                     currency: a.currency, // 额外信息，用于进一步过滤
                 }))
             },
-            staleTime: 60 * 1000,
+            staleTime: CACHE_TIME.BUSINESS_DATA,
         }
     )
+}
+
+export function useCreateAccount() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (data: Partial<Account>) => {
+            const result = await apiClient.post<Account>(api.accounts, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['accounts'] })
+        },
+    })
+}
+
+export function useUpdateAccount() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<Account> }) => {
+            const result = await apiClient.put<Account>(api.accountsById(id), data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['accounts'] })
+        },
+    })
+}
+
+export function useDeleteAccount() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (id: string) => {
+            await apiClient.delete(api.accountsById(id))
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['accounts'] })
+        },
+    })
 }
 
 export function useBatchDeleteAccount() {

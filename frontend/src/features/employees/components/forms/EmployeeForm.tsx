@@ -5,7 +5,14 @@ import { COUNTRY_CODES } from '../../../../shared/constants'
 import { useDepartments } from '../../../../hooks'
 import { useApiQuery } from '../../../../utils/useApiQuery'
 import { api } from '../../../../config/api'
+import type { Position } from '../../../../types'
 import './EmployeeForm.css'
+
+// 职位数据响应类型（可能包含 grouped 字段）
+interface PositionsResponse {
+  results?: Position[]
+  grouped?: Record<string, Position[]>
+}
 
 const { Option, OptGroup } = Select
 const { TabPane } = Tabs
@@ -35,24 +42,27 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
     }, [orgDepartmentId])
 
     // 查询组织部门
-    const { data: orgDepartments = [] } = useApiQuery(
+    const { data: orgDepartments = [] } = useApiQuery<unknown[]>(
         ['orgDepartments', selectedProjectId || ''],
         `${api.orgDepartments}?project_id=${selectedProjectId === 'hq' ? 'hq' : selectedProjectId}`,
         {
             enabled: !!selectedProjectId,
-            select: (data: any) => Array.isArray(data) ? data : data?.results || []
+            select: (data: unknown) => {
+                if (Array.isArray(data)) return data
+                return (data as { results?: unknown[] })?.results || []
+            }
         }
     )
 
     // 查询职位
-    const { data: positionsData } = useApiQuery(
+    const { data: positionsData } = useApiQuery<PositionsResponse | Position[]>(
         ['positionsAvailable', selectedOrgDepartmentId || ''],
         `${api.positionsAvailable}?orgDepartmentId=${selectedOrgDepartmentId}`,
         { enabled: !!selectedOrgDepartmentId }
     )
 
-    const positions = Array.isArray(positionsData) ? [] : (positionsData?.results || [])
-    const groupedPositions = (positionsData as any)?.grouped || {}
+    const positions = Array.isArray(positionsData) ? positionsData : (positionsData?.results || [])
+    const groupedPositions = Array.isArray(positionsData) ? {} : (positionsData?.grouped || {})
     const hasGroupedPositions = Object.keys(groupedPositions).length > 0
 
     return (
@@ -164,7 +174,7 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
                             {hasGroupedPositions ? (
                                 Object.entries(groupedPositions).map(([groupName, groupPositions]) => (
                                     <OptGroup key={groupName} label={groupName}>
-                                        {(groupPositions as any[]).map((pos) => (
+                                        {groupPositions.map((pos) => (
                                             <Option key={pos.id} value={pos.id} label={pos.name}>
                                                 {pos.name}
                                                 {pos.functionRole && <span className="position-role">({pos.functionRole === 'director' ? '主管' : pos.functionRole === 'hr' ? '人事' : pos.functionRole === 'finance' ? '财务' : pos.functionRole === 'admin' ? '行政' : pos.functionRole === 'developer' ? '开发' : pos.functionRole === 'support' ? '客服' : pos.functionRole === 'member' ? '组员' : pos.functionRole})</span>}

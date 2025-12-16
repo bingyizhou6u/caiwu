@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Layout, Card, Form, Input, Button, message, Result, Typography } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { ThunderboltFilled, MailOutlined, ArrowLeftOutlined } from '@ant-design/icons'
-import { api as apiClient } from '../../../api/http'
-import { api } from '../../../config/api'
+import { useRequestTotpReset } from '../../../hooks'
+import { withErrorHandler } from '../../../utils/errorHandler'
 import './Login.css'
 
 const { Header, Content } = Layout
@@ -11,26 +11,27 @@ const { Paragraph } = Typography
 
 export function RequestTotpReset() {
     const navigate = useNavigate()
-    const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
+    const { mutateAsync: requestReset, isPending: loading } = useRequestTotpReset()
 
-    const onFinish = async (values: { email: string }) => {
-        setLoading(true)
-        try {
-            await apiClient.post(api.auth.requestTotpReset, values)
+    const onFinish = withErrorHandler(
+        async (values: { email: string }) => {
+            await requestReset(values)
             setSuccess(true)
-        } catch (error: any) {
-            if (error.code === 'not_found') {
-                // 即使邮箱不存在也提示成功，防止枚举攻击
-                setSuccess(true)
-            } else {
-                const msg = error.message || '网络连接失败，请检查您的网络'
-                message.error(msg)
+        },
+        {
+            showSuccess: false, // 使用 Result 组件显示成功状态
+            onError: (error: unknown) => {
+                if (error && typeof error === 'object' && 'code' in error && error.code === 'not_found') {
+                    // 即使邮箱不存在也提示成功，防止枚举攻击
+                    setSuccess(true)
+                } else {
+                    const errorMessage = error instanceof Error ? error.message : '网络连接失败，请检查您的网络'
+                    message.error(errorMessage)
+                }
             }
-        } finally {
-            setLoading(false)
         }
-    }
+    )
 
     return (
         <Layout className="login-layout">

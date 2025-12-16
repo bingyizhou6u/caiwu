@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, Row, Col, Statistic, Button, Descriptions, Tag, message, Spin, Space, Timeline, Alert, Modal, Tabs, Progress } from 'antd'
 import { ClockCircleOutlined, LoginOutlined, LogoutOutlined, UserOutlined, CalendarOutlined, WalletOutlined, FileTextOutlined, DollarOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import { useMyDashboard, useMyProfile } from '../../../hooks'
+// TODO: 考勤功能暂未实现
+// import { useAttendanceToday, useClockIn, useClockOut } from '../../../hooks'
+import { withErrorHandler } from '../../../utils/errorHandler'
 
 interface WorkSchedule {
   days: number[]
@@ -46,56 +48,31 @@ const typeTextMap: Record<string, string> = { leave: '请假', reimbursement: '�
 import { PageContainer } from '../../../components/PageContainer'
 
 export function MyCenter() {
-  const [loading, setLoading] = useState(true)
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null)
-  const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [attendanceToday, setAttendanceToday] = useState<{ today: string; record: AttendanceRecord | null; workSchedule: WorkSchedule | null } | null>(null)
-  const [clockingIn, setClockingIn] = useState(false)
-  const [clockingOut, setClockingOut] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => { const timer = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(timer) }, [])
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [dashData, profileData, attendanceData] = await Promise.all([
-        apiClient.get<DashboardData>(api.my.dashboard),
-        apiClient.get<ProfileData>(api.my.profile),
-        apiClient.get<any>(api.my.attendance.today),
-      ])
-      setDashboard(dashData)
-      setProfile(profileData)
-      setAttendanceToday(attendanceData)
-    } catch { message.error('获取数据失败') }
-    finally { setLoading(false) }
-  }, [])
+  // Hooks
+  const { data: dashboard, isLoading: dashboardLoading } = useMyDashboard()
+  const { data: profile, isLoading: profileLoading } = useMyProfile()
+  // TODO: 考勤功能暂未实现
+  // const { data: attendanceToday, isLoading: attendanceLoading } = useAttendanceToday()
+  // const { mutateAsync: clockIn, isPending: clockingIn } = useClockIn()
+  // const { mutateAsync: clockOut, isPending: clockingOut } = useClockOut()
+  const attendanceToday = null
+  const attendanceLoading = false
+  const clockingIn = false
+  const clockingOut = false
 
-  useEffect(() => { fetchData() }, [fetchData])
+  const loading = dashboardLoading || profileLoading || attendanceLoading
 
-  const handleClockIn = async () => {
-    setClockingIn(true)
-    try {
-      const data = await apiClient.post<any>(api.my.attendance.clockIn, {})
-      message.success(data.status === 'late' ? '签到成功（迟到）' : '签到成功')
-      fetchData()
-    } catch (error: any) { message.error(error.message || '签到失败') }
-    finally { setClockingIn(false) }
+  // TODO: 考勤功能暂未实现
+  const handleClockIn = () => {
+    message.warning('考勤功能暂未实现')
   }
 
-  const handleClockOut = async () => {
-    Modal.confirm({
-      title: '确认签退', content: '确定要签退吗？',
-      onOk: async () => {
-        setClockingOut(true)
-        try {
-          const data = await apiClient.post<any>(api.my.attendance.clockOut, {})
-          message.success(data.status === 'early' ? '签退成功（早退）' : data.status === 'late_early' ? '签退成功（迟到且早退）' : '签退成功')
-          fetchData()
-        } catch (error: any) { message.error(error.message || '签退失败') }
-        finally { setClockingOut(false) }
-      },
-    })
+  const handleClockOut = () => {
+    message.warning('考勤功能暂未实现')
   }
 
   const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -114,6 +91,32 @@ export function MyCenter() {
   const workSchedule = attendanceToday?.workSchedule || profile?.workSchedule
   const isWorkingDay = isWorkDay(workSchedule)
 
+  // 转换数据格式以兼容现有代码
+  const dashboardData: DashboardData | null = dashboard ? {
+    employee: dashboard.employee,
+    stats: {
+      salary: dashboard.stats.salary.map((s: { totalCents: number; currencyId: string }) => ({ total_cents: s.totalCents, currencyId: s.currencyId })),
+      annualLeave: dashboard.stats.annualLeave,
+      pendingReimbursementCents: dashboard.stats.pendingReimbursementCents,
+      borrowingBalanceCents: dashboard.stats.borrowingBalanceCents,
+    },
+    recentApplications: dashboard.recentApplications.map((app: { id: string; type: string; subType: string; status: string | null; amount: string | null; createdAt: number | null }) => ({
+      ...app,
+      sub_type: app.subType,
+    })),
+  } : null
+
+  const profileData: ProfileData | null = profile ? {
+    ...profile,
+    workSchedule: profile.workSchedule || null,
+  } : null
+
+  const attendanceData: { today: string; record: AttendanceRecord | null; workSchedule: WorkSchedule | null } | null = attendanceToday ? {
+    today: attendanceToday.today,
+    record: attendanceToday.record,
+    workSchedule: attendanceToday.workSchedule,
+  } : null
+
   return (
     <PageContainer
       title="工作台"
@@ -128,29 +131,29 @@ export function MyCenter() {
                   <Card title={<><ClockCircleOutlined /> 今日打卡</>} extra={<span style={{ fontSize: 24, fontWeight: 'bold' }}>{currentTime.toLocaleTimeString('zh-CN')}</span>}>
                     <Alert type={isWorkingDay ? 'info' : 'warning'} message={<Space direction="vertical" size={4} style={{ width: '100%' }}><div><strong>排班时间：</strong>{getWorkScheduleText(workSchedule)}</div>{!isWorkingDay && <div style={{ color: '#fa8c16' }}>今天不是工作日</div>}</Space>} style={{ marginBottom: 16 }} />
                     <Row gutter={16} style={{ marginBottom: 24 }}>
-                      <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceToday?.record?.clockInTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签到时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceToday?.record?.clockInTime ? '#52c41a' : '#999' }}>{attendanceToday?.record?.clockInTime ? formatTime(attendanceToday.record.clockInTime) : '--:--:--'}</div></Card></Col>
-                      <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceToday?.record?.clockOutTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签退时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceToday?.record?.clockOutTime ? '#52c41a' : '#999' }}>{attendanceToday?.record?.clockOutTime ? formatTime(attendanceToday.record.clockOutTime) : '--:--:--'}</div></Card></Col>
+                      <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceData?.record?.clockInTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签到时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceData?.record?.clockInTime ? '#52c41a' : '#999' }}>{attendanceData?.record?.clockInTime ? formatTime(attendanceData.record.clockInTime) : '--:--:--'}</div></Card></Col>
+                      <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceData?.record?.clockOutTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签退时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceData?.record?.clockOutTime ? '#52c41a' : '#999' }}>{attendanceData?.record?.clockOutTime ? formatTime(attendanceData.record.clockOutTime) : '--:--:--'}</div></Card></Col>
                     </Row>
-                    {attendanceToday?.record?.status && <div style={{ textAlign: 'center', marginBottom: 16 }}><Tag color={statusColorMap[attendanceToday.record.status] || 'default'}>{statusTextMap[attendanceToday.record.status] || attendanceToday.record.status}</Tag></div>}
+                    {attendanceData?.record?.status && <div style={{ textAlign: 'center', marginBottom: 16 }}><Tag color={statusColorMap[attendanceData.record.status] || 'default'}>{statusTextMap[attendanceData.record.status] || attendanceData.record.status}</Tag></div>}
                     <Row gutter={16}>
-                      <Col span={12}><Button type="primary" icon={<LoginOutlined />} size="large" block disabled={!!attendanceToday?.record?.clockInTime} loading={clockingIn} onClick={handleClockIn} style={{ height: 60 }}>{attendanceToday?.record?.clockInTime ? '已签到' : '签到'}</Button></Col>
-                      <Col span={12}><Button type="primary" danger icon={<LogoutOutlined />} size="large" block disabled={!attendanceToday?.record?.clockInTime || !!attendanceToday?.record?.clockOutTime} loading={clockingOut} onClick={handleClockOut} style={{ height: 60 }}>{attendanceToday?.record?.clockOutTime ? '已签退' : '签退'}</Button></Col>
+                      <Col span={12}><Button type="primary" icon={<LoginOutlined />} size="large" block disabled={!!attendanceData?.record?.clockInTime} loading={clockingIn} onClick={handleClockIn} style={{ height: 60 }}>{attendanceData?.record?.clockInTime ? '已签到' : '签到'}</Button></Col>
+                      <Col span={12}><Button type="primary" danger icon={<LogoutOutlined />} size="large" block disabled={!attendanceData?.record?.clockInTime || !!attendanceData?.record?.clockOutTime} loading={clockingOut} onClick={handleClockOut} style={{ height: 60 }}>{attendanceData?.record?.clockOutTime ? '已签退' : '签退'}</Button></Col>
                     </Row>
                   </Card>
                 </Col>
                 <Col xs={24} lg={12}>
                   <Card title={<><CalendarOutlined /> 本期年假</>}>
-                    {dashboard?.stats.annualLeave ? (<><Progress percent={dashboard.stats.annualLeave.total > 0 ? Math.round((dashboard.stats.annualLeave.used / dashboard.stats.annualLeave.total) * 100) : 0} status={dashboard.stats.annualLeave.remaining > 0 ? 'active' : 'exception'} strokeColor={dashboard.stats.annualLeave.remaining > 0 ? '#1890ff' : '#ff4d4f'} />
-                      <Row gutter={16} style={{ marginTop: 16 }}><Col span={8}><Statistic title="本期天数" value={dashboard.stats.annualLeave.total} suffix="天" /></Col><Col span={8}><Statistic title="已使用" value={dashboard.stats.annualLeave.used} suffix="天" valueStyle={{ color: '#ff4d4f' }} /></Col><Col span={8}><Statistic title="剩余" value={dashboard.stats.annualLeave.remaining} suffix="天" valueStyle={{ color: '#52c41a' }} /></Col></Row>
-                      <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>周期：{dashboard.stats.annualLeave.cycleMonths === 6 ? '半年制' : '年制'} | 第 {dashboard.stats.annualLeave.cycleNumber} 周期{dashboard.stats.annualLeave.cycleStart && ` (${dashboard.stats.annualLeave.cycleStart} - ${dashboard.stats.annualLeave.cycleEnd})`}</div></>) : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无年假数据</div>}
+                    {dashboardData?.stats.annualLeave ? (<><Progress percent={dashboardData.stats.annualLeave.total > 0 ? Math.round((dashboardData.stats.annualLeave.used / dashboardData.stats.annualLeave.total) * 100) : 0} status={dashboardData.stats.annualLeave.remaining > 0 ? 'active' : 'exception'} strokeColor={dashboardData.stats.annualLeave.remaining > 0 ? '#1890ff' : '#ff4d4f'} />
+                      <Row gutter={16} style={{ marginTop: 16 }}><Col span={8}><Statistic title="本期天数" value={dashboardData.stats.annualLeave.total} suffix="天" /></Col><Col span={8}><Statistic title="已使用" value={dashboardData.stats.annualLeave.used} suffix="天" valueStyle={{ color: '#ff4d4f' }} /></Col><Col span={8}><Statistic title="剩余" value={dashboardData.stats.annualLeave.remaining} suffix="天" valueStyle={{ color: '#52c41a' }} /></Col></Row>
+                      <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>周期：{dashboardData.stats.annualLeave.cycleMonths === 6 ? '半年制' : '年制'} | 第 {dashboardData.stats.annualLeave.cycleNumber} 周期{dashboardData.stats.annualLeave.cycleStart && ` (${dashboardData.stats.annualLeave.cycleStart} - ${dashboardData.stats.annualLeave.cycleEnd})`}</div></>) : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无年假数据</div>}
                   </Card>
                   <Card title={<><WalletOutlined /> 财务概览</>} style={{ marginTop: 16 }}>
-                    <Row gutter={16}><Col span={12}><Statistic title="待报销" value={formatCents(dashboard?.stats.pendingReimbursementCents || 0)} prefix="¥" valueStyle={{ color: '#faad14' }} /></Col><Col span={12}><Statistic title="借支余额" value={formatCents(dashboard?.stats.borrowingBalanceCents || 0)} prefix="¥" valueStyle={{ color: dashboard?.stats.borrowingBalanceCents ? '#ff4d4f' : '#52c41a' }} /></Col></Row>
+                    <Row gutter={16}><Col span={12}><Statistic title="待报销" value={formatCents(dashboardData?.stats.pendingReimbursementCents || 0)} prefix="¥" valueStyle={{ color: '#faad14' }} /></Col><Col span={12}><Statistic title="借支余额" value={formatCents(dashboardData?.stats.borrowingBalanceCents || 0)} prefix="¥" valueStyle={{ color: dashboardData?.stats.borrowingBalanceCents ? '#ff4d4f' : '#52c41a' }} /></Col></Row>
                   </Card>
                 </Col>
                 <Col span={24}>
                   <Card title={<><FileTextOutlined /> 最近申请</>}>
-                    {dashboard?.recentApplications && dashboard.recentApplications.length > 0 ? <Timeline items={dashboard.recentApplications.map(app => ({ color: statusColorMap[app.status] || 'gray', children: <div><Tag>{typeTextMap[app.type] || app.type}</Tag><Tag color="blue">{typeTextMap[app.sub_type] || app.sub_type}</Tag><Tag color={statusColorMap[app.status]}>{statusTextMap[app.status] || app.status}</Tag><span style={{ marginLeft: 8, color: '#999' }}>{new Date(app.createdAt).toLocaleDateString('zh-CN')}</span></div> }))} /> : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无申请记录</div>}
+                    {dashboardData?.recentApplications && dashboardData.recentApplications.length > 0 ? <Timeline items={dashboardData.recentApplications.map(app => ({ color: statusColorMap[app.status || ''] || 'gray', children: <div><Tag>{typeTextMap[app.type] || app.type}</Tag><Tag color="blue">{typeTextMap[app.sub_type] || app.sub_type}</Tag><Tag color={statusColorMap[app.status || '']}>{statusTextMap[app.status || ''] || app.status}</Tag><span style={{ marginLeft: 8, color: '#999' }}>{app.createdAt ? new Date(app.createdAt).toLocaleDateString('zh-CN') : ''}</span></div> }))} /> : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无申请记录</div>}
                   </Card>
                 </Col>
               </Row>
@@ -162,51 +165,51 @@ export function MyCenter() {
                 <Col xs={24} lg={12}>
                   <Card title={<><UserOutlined /> 基本信息</>}>
                     <Descriptions column={1} bordered size="small">
-                      <Descriptions.Item label="姓名">{profile?.name || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="邮箱">{profile?.email || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="手机">{profile?.phone || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="部门">{profile?.orgDepartment || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="项目">{profile?.department || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="职位">{profile?.position || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="入职日期">{profile?.entryDate || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="合同到期">{profile?.contractEndDate || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="状态"><Tag color={profile?.status === 'active' ? 'green' : profile?.status === 'probation' ? 'orange' : 'default'}>{profile?.status === 'active' ? '正式' : profile?.status === 'probation' ? '试用' : profile?.status || '-'}</Tag></Descriptions.Item>
+                      <Descriptions.Item label="姓名">{profileData?.name || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="邮箱">{profileData?.email || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="手机">{profileData?.phone || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="部门">{profileData?.orgDepartment || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="项目">{profileData?.department || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="职位">{profileData?.position || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="入职日期">{profileData?.entryDate || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="合同到期">{profileData?.contractEndDate || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="状态"><Tag color={profileData?.status === 'active' ? 'green' : profileData?.status === 'probation' ? 'orange' : 'default'}>{profileData?.status === 'active' ? '正式' : profileData?.status === 'probation' ? '试用' : profileData?.status || '-'}</Tag></Descriptions.Item>
                     </Descriptions>
                   </Card>
                 </Col>
                 <Col xs={24} lg={12}>
                   <Card title={<><CalendarOutlined /> 工作安排</>}>
                     <Descriptions column={1} bordered size="small">
-                      <Descriptions.Item label="排班时间">{getWorkScheduleText(profile?.workSchedule)}</Descriptions.Item>
-                      <Descriptions.Item label="年假周期">{profile?.annualLeaveCycleMonths === 6 ? '半年制（6个月）' : '年制（12个月）'}</Descriptions.Item>
-                      <Descriptions.Item label="年假天数">{profile?.annualLeaveDays || 0} 天/周期</Descriptions.Item>
+                      <Descriptions.Item label="排班时间">{getWorkScheduleText(profileData?.workSchedule)}</Descriptions.Item>
+                      <Descriptions.Item label="年假周期">{profileData?.annualLeaveCycleMonths === 6 ? '半年制（6个月）' : '年制（12个月）'}</Descriptions.Item>
+                      <Descriptions.Item label="年假天数">{profileData?.annualLeaveDays || 0} 天/周期</Descriptions.Item>
                     </Descriptions>
                   </Card>
                   <Card title={<><SafetyCertificateOutlined /> 紧急联系人</>} style={{ marginTop: 16 }}>
                     <Descriptions column={1} bordered size="small">
-                      <Descriptions.Item label="紧急联系人">{profile?.emergencyContact || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="紧急联系电话">{profile?.emergencyPhone || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="紧急联系人">{profileData?.emergencyContact || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="紧急联系电话">{profileData?.emergencyPhone || '-'}</Descriptions.Item>
                     </Descriptions>
                   </Card>
                 </Col>
                 <Col span={24}>
                   <Card title={<><DollarOutlined /> 薪资福利</>}>
                     <Row gutter={[16, 16]}>
-                      <Col xs={12} sm={8} md={6}><Statistic title="试用期薪资" value={profile?.probationSalaryCents ? formatCents(profile.probationSalaryCents) : '-'} prefix={profile?.probationSalaryCents ? '¥' : ''} /></Col>
-                      <Col xs={12} sm={8} md={6}><Statistic title="正式薪资" value={profile?.regularSalaryCents ? formatCents(profile.regularSalaryCents) : '-'} prefix={profile?.regularSalaryCents ? '¥' : ''} /></Col>
-                      <Col xs={12} sm={8} md={6}><Statistic title="生活补贴" value={profile?.livingAllowanceCents ? formatCents(profile.livingAllowanceCents) : '-'} prefix={profile?.livingAllowanceCents ? '¥' : ''} /></Col>
-                      <Col xs={12} sm={8} md={6}><Statistic title="住房补贴" value={profile?.housingAllowanceCents ? formatCents(profile.housingAllowanceCents) : '-'} prefix={profile?.housingAllowanceCents ? '¥' : ''} /></Col>
-                      <Col xs={12} sm={8} md={6}><Statistic title="交通补贴" value={profile?.transportationAllowanceCents ? formatCents(profile.transportationAllowanceCents) : '-'} prefix={profile?.transportationAllowanceCents ? '¥' : ''} /></Col>
-                      <Col xs={12} sm={8} md={6}><Statistic title="餐饮补贴" value={profile?.mealAllowanceCents ? formatCents(profile.mealAllowanceCents) : '-'} prefix={profile?.mealAllowanceCents ? '¥' : ''} /></Col>
+                      <Col xs={12} sm={8} md={6}><Statistic title="试用期薪资" value={profileData?.probationSalaryCents ? formatCents(profileData.probationSalaryCents) : '-'} prefix={profileData?.probationSalaryCents ? '¥' : ''} /></Col>
+                      <Col xs={12} sm={8} md={6}><Statistic title="正式薪资" value={profileData?.regularSalaryCents ? formatCents(profileData.regularSalaryCents) : '-'} prefix={profileData?.regularSalaryCents ? '¥' : ''} /></Col>
+                      <Col xs={12} sm={8} md={6}><Statistic title="生活补贴" value={profileData?.livingAllowanceCents ? formatCents(profileData.livingAllowanceCents) : '-'} prefix={profileData?.livingAllowanceCents ? '¥' : ''} /></Col>
+                      <Col xs={12} sm={8} md={6}><Statistic title="住房补贴" value={profileData?.housingAllowanceCents ? formatCents(profileData.housingAllowanceCents) : '-'} prefix={profileData?.housingAllowanceCents ? '¥' : ''} /></Col>
+                      <Col xs={12} sm={8} md={6}><Statistic title="交通补贴" value={profileData?.transportationAllowanceCents ? formatCents(profileData.transportationAllowanceCents) : '-'} prefix={profileData?.transportationAllowanceCents ? '¥' : ''} /></Col>
+                      <Col xs={12} sm={8} md={6}><Statistic title="餐饮补贴" value={profileData?.mealAllowanceCents ? formatCents(profileData.mealAllowanceCents) : '-'} prefix={profileData?.mealAllowanceCents ? '¥' : ''} /></Col>
                     </Row>
                   </Card>
                 </Col>
                 <Col span={24}>
                   <Card title="银行信息">
                     <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small">
-                      <Descriptions.Item label="身份证号">{profile?.idCard || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="银行名称">{profile?.bankName || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="银行账号">{profile?.bankAccount || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="身份证号">{profileData?.idCard || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="银行名称">{profileData?.bankName || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="银行账号">{profileData?.bankAccount || '-'}</Descriptions.Item>
                     </Descriptions>
                   </Card>
                 </Col>

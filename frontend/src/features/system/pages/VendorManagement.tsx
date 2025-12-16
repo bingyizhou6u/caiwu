@@ -1,32 +1,35 @@
-import { useMemo, useCallback } from 'react'
-import { Card, Table, Button, Form, Input, Space, message, Popconfirm } from 'antd'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import { useMemo, useCallback, useState } from 'react'
+import { Card, Button, Form, Input, Space, message, Popconfirm } from 'antd'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { useVendors, useFormModal, useZodForm } from '../../../hooks'
-import { useBatchDeleteVendor } from '../../../hooks/business/useVendors'
+import { useVendors, useCreateVendor, useUpdateVendor, useDeleteVendor, useBatchDeleteVendor, useFormModal, useZodForm } from '../../../hooks'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 import { DeleteOutlined } from '@ant-design/icons'
 import { vendorSchema } from '../../../validations/vendor.schema'
 import { FormModal } from '../../../components/FormModal'
-import { ActionColumn } from '../../../components/ActionColumn'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import type { Vendor } from '../../../types'
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function VendorManagement() {
-  const { data: vendors = [], isLoading, refetch } = useVendors()
+  const { data: vendors = [], isLoading } = useVendors()
+  const { mutateAsync: createVendor } = useCreateVendor()
+  const { mutateAsync: updateVendor } = useUpdateVendor()
+  const { mutateAsync: deleteVendor } = useDeleteVendor()
+  const { mutateAsync: batchDeleteVendor } = useBatchDeleteVendor()
+  
   const modal = useFormModal<Vendor>()
   const { form, validateWithZod } = useZodForm(vendorSchema)
+  const [searchParams, setSearchParams] = useState<{ search?: string; activeOnly?: string }>({})
 
   const { hasPermission, isManager } = usePermissions()
   const canEdit = hasPermission('system', 'vendor', 'create')
   const canDelete = isManager()
 
-  const { mutateAsync: batchDeleteVendor } = useBatchDeleteVendor()
   const tableActions = useTableActions<Vendor>()
   const { selectedRowKeys, rowSelection } = tableActions
 
@@ -35,34 +38,46 @@ export function VendorManagement() {
     tableActions,
     {
       onSuccess: () => {
-        refetch()
         message.success('批量删除成功')
       },
       errorMessage: '批量删除失败'
     }
   )
 
+  // 过滤数据
+  const filteredVendors = useMemo(() => {
+    let result = vendors
+    if (searchParams.search) {
+      const search = searchParams.search.toLowerCase()
+      result = result.filter((v: Vendor) => v.name.toLowerCase().includes(search))
+    }
+    if (searchParams.activeOnly === 'true') {
+      result = result.filter((v: Vendor) => v.active === 1)
+    }
+    return result
+  }, [vendors, searchParams])
+
   const handleSubmit = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateWithZod()
       if (modal.isEdit && modal.data) {
-        await apiClient.put(`${api.vendors}/${modal.data.id}`, v)
+        await updateVendor({ id: modal.data.id, data: v })
       } else {
-        await apiClient.post(api.vendors, v)
+        await createVendor(v)
       }
       modal.close()
       form.resetFields()
-      refetch()
     },
     {
       successMessage: modal.isEdit ? '更新成功' : '创建成功',
-      onError: (error: any) => {
-        if (error.message !== '表单验证失败') {
+      onError: (error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : ''
+        if (errorMessage !== '表单验证失败') {
           handleConflictError(error, '供应商名称', form.getFieldValue('name'))
         }
       }
     }
-  ), [modal, form, validateWithZod, refetch])
+  ), [modal, form, validateWithZod, createVendor, updateVendor])
 
   const handleEdit = useCallback((record: Vendor) => {
     modal.openEdit(record)
@@ -72,20 +87,25 @@ export function VendorManagement() {
     })
   }, [modal, form])
 
-  const handleDelete = useCallback(async (id: string, name: string) => {
-    try {
-      await apiClient.delete(`${api.vendors}/${id}`)
-      message.success('删除成功')
-      refetch()
-    } catch (error: any) {
-      message.error(error.message || '删除失败')
+  const handleDelete = useMemo(() => withErrorHandler(
+    async (id: string) => {
+      await deleteVendor(id)
+    },
+    {
+      successMessage: '删除成功',
+      errorMessage: '删除失败'
     }
-  }, [refetch])
+  ), [deleteVendor])
 
   const handleCancel = useCallback(() => {
     modal.close()
     form.resetFields()
   }, [modal, form])
+
+  const columns: DataTableColumn<Vendor>[] = [
+    { title: '供应商名称', dataIndex: 'name', key: 'name' },
+    { title: '联系方式', dataIndex: 'contact', key: 'contact' },
+  ]
 
   return (
     <PageContainer
@@ -93,14 +113,33 @@ export function VendorManagement() {
       breadcrumb={[{ title: '系统设置' }, { title: '供应商管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
+        <SearchFilters
+          fields={[
+            { name: 'search', label: '供应商名称', type: 'input', placeholder: '请输入供应商名称' },
+            {
+              name: 'activeOnly',
+              label: '状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                { label: '启用', value: 'true' },
+                { label: '禁用', value: 'false' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
           {canEdit && (
             <Button type="primary" onClick={() => {
               modal.openCreate()
               form.resetFields()
             }}>新建供应商</Button>
           )}
-          <Button onClick={() => refetch()} loading={isLoading}>刷新</Button>
           {canDelete && (
             <Button
               danger
@@ -120,29 +159,16 @@ export function VendorManagement() {
             </Button>
           )}
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          dataSource={vendors}
+
+        <DataTable<Vendor>
+          columns={columns}
+          data={filteredVendors}
           loading={isLoading}
+          rowKey="id"
           rowSelection={canDelete ? rowSelection : undefined}
-          columns={[
-            { title: '供应商名称', dataIndex: 'name' },
-            { title: '联系方式', dataIndex: 'contact' },
-            {
-              title: '操作',
-              render: (_: unknown, r: Vendor) => (
-                <ActionColumn
-                  record={r}
-                  canEdit={canEdit}
-                  canDelete={isManager()}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  deleteDescription="删除后该供应商将被永久删除，如果有应付账款记录，将无法删除。"
-                />
-              )
-            },
-          ]}
+          onEdit={canEdit ? handleEdit : undefined}
+          onDelete={isManager() ? (record) => handleDelete(record.id) : undefined}
+          tableProps={{ className: 'table-striped' }}
         />
 
         <FormModal

@@ -43,6 +43,8 @@ export interface ErrorHandlerOptions<T> {
     onSuccess?: (data: T) => void
     /** 错误回调 */
     onError?: (error: Error) => void
+    /** 完成回调（无论成功或失败都会执行） */
+    onFinally?: () => void
     /** 是否显示成功提示，默认true */
     showSuccess?: boolean
     /** 是否显示错误提示，默认true */
@@ -103,6 +105,9 @@ export function withErrorHandler<T = any, A extends any[] = any[]>(
 
             // 不重新抛出错误，让调用者决定是否需要
             return undefined
+        } finally {
+            // 执行完成回调
+            options.onFinally?.()
         }
     }
 }

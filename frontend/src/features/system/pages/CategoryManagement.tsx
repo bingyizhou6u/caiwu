@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
-import { Card, Table, Button, Input, Select, Space, message, Form } from 'antd'
+import { useMemo, useState } from 'react'
+import { Card, Button, Input, Select, Space, message, Form } from 'antd'
 import { handleConflictError } from '../../../utils/api'
-import { ActionColumn } from '../../../components/ActionColumn'
 import { FormModal } from '../../../components/FormModal'
+import { DataTable } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../../hooks/business/useCategories'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
@@ -23,6 +24,7 @@ export function CategoryManagement() {
   const { mutateAsync: createCategory } = useCreateCategory()
   const { mutateAsync: updateCategory } = useUpdateCategory()
   const { mutateAsync: deleteCategoryMutation } = useDeleteCategory()
+  const [searchParams, setSearchParams] = useState<{ search?: string; kind?: string }>({})
 
   const { hasPermission } = usePermissions()
   const canManageCategory = hasPermission('finance', 'category', 'create')
@@ -35,6 +37,19 @@ export function CategoryManagement() {
     openEdit,
     close
   } = useFormModal<Category>()
+
+  // 过滤数据
+  const filteredCategories = useMemo(() => {
+    let result = data
+    if (searchParams.search) {
+      const search = searchParams.search.toLowerCase()
+      result = result.filter(c => c.name.toLowerCase().includes(search))
+    }
+    if (searchParams.kind) {
+      result = result.filter(c => c.kind === searchParams.kind)
+    }
+    return result
+  }, [data, searchParams])
 
   const handleSubmit = useMemo(() => withErrorHandler(
     async () => {
@@ -71,38 +86,53 @@ export function CategoryManagement() {
     }
   ), [deleteCategoryMutation])
 
+  const columns = [
+    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: '类型', dataIndex: 'kind', key: 'kind', render: (v: string) => KIND_LABELS[v] || v },
+  ]
+
   return (
     <PageContainer
       title="类别管理"
       breadcrumb={[{ title: '系统设置' }, { title: '类别管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
+        <SearchFilters
+          fields={[
+            { name: 'search', label: '类别名称', type: 'input', placeholder: '请输入类别名称' },
+            {
+              name: 'kind',
+              label: '类型',
+              type: 'select',
+              placeholder: '请选择类型',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'income', label: '收入' },
+                { value: 'expense', label: '支出' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
           <Button type="primary" onClick={() => { openCreate(); form.setFieldsValue({ kind: 'income' }) }}>新建类别</Button>
           <Button onClick={() => refetch()}>刷新</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
+
+        <DataTable<Category>
+          columns={columns}
+          data={filteredCategories}
           loading={isLoading}
-          dataSource={data}
-          columns={[
-            { title: '名称', dataIndex: 'name' },
-            { title: '类型', dataIndex: 'kind', render: (v: string) => KIND_LABELS[v] || v },
-            {
-              title: '操作',
-              render: (_: unknown, r: Category) => (
-                <ActionColumn
-                  record={r}
-                  canEdit={canManageCategory}
-                  canDelete={canManageCategory}
-                  onEdit={() => { openEdit(r); form.setFieldsValue({ name: r.name, kind: r.kind }) }}
-                  onDelete={(id) => deleteCategory(id)}
-                  deleteDescription="删除后该类别将被永久删除，如果有流水使用该类别，将无法删除。"
-                />
-              )
-            },
-          ]}
+          rowKey="id"
+          onEdit={canManageCategory ? (record) => {
+            openEdit(record)
+            form.setFieldsValue({ name: record.name, kind: record.kind })
+          } : undefined}
+          onDelete={canManageCategory ? (record) => deleteCategory(record.id) : undefined}
+          tableProps={{ className: 'table-striped' }}
         />
 
         <FormModal

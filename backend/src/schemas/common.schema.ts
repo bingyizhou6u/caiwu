@@ -24,7 +24,7 @@ export const emailSchema = z.string().email('邮箱格式不正确')
  */
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  pageSize: z.coerce.number().int().min(1).max(1000).optional(), // 增加到 1000 以支持大量数据查询
   limit: z.coerce.number().int().min(1).max(1000).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 })
@@ -57,13 +57,15 @@ export const docIdQuerySchema = z.object({
 /**
  * 日期范围查询Schema
  */
-export const dateRangeQuerySchema = z.object({
-  start: dateSchema,
-  end: dateSchema,
-}).refine(data => data.start <= data.end, {
-  message: '开始日期不能晚于结束日期',
-  path: ['end']
-})
+export const dateRangeQuerySchema = z
+  .object({
+    start: dateSchema,
+    end: dateSchema,
+  })
+  .refine(data => data.start <= data.end, {
+    message: '开始日期不能晚于结束日期',
+    path: ['end'],
+  })
 
 /**
  * 单个日期查询Schema
@@ -219,7 +221,6 @@ export const siteBillQuerySchema = z.object({
 export const idParamSchema = z.object({
   id: uuidSchema,
 })
-
 
 /**
  * 租赁应付账单查询Schema

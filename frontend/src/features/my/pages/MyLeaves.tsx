@@ -1,41 +1,26 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Button, Tag, Space, Modal, Form, Select, DatePicker, InputNumber, Input, message, Statistic, Row, Col, Typography, Alert } from 'antd'
+import { useState } from 'react'
+import { Card, Button, Tag, Space, Modal, Form, Select, DatePicker, InputNumber, Input, message, Statistic, Row, Col, Typography, Alert } from 'antd'
 import { PlusOutlined, CalendarOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
+import { useMyLeaves, useCreateMyLeave, type MyLeave } from '../../../hooks'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { z } from 'zod'
 
 const { RangePicker } = DatePicker
 const { TextArea } = Input
 const { Title } = Typography
 
-interface Leave {
-  id: string
-  leave_type: string
-  startDate: string
-  endDate: string
-  days: number
-  status: string
-  reason: string
-  approvedByName: string
-  createdAt: number
-}
+// Zod schema for leave creation
+const createLeaveSchema = z.object({
+  leave_type: z.string().min(1, '请选择请假类型'),
+  dateRange: z.array(z.any()).length(2, '请选择请假日期范围'),
+  days: z.number().min(0.5, '请假天数必须大于0'),
+  reason: z.string().optional(),
+})
 
-interface LeaveStats {
-  leave_type: string
-  used_days: number
-}
-
-interface AnnualLeaveInfo {
-  cycleMonths: number
-  cycleNumber: number
-  cycleStart: string
-  cycleEnd: string
-  isFirstCycle: boolean
-  entitledDays: number
-  usedDays: number
-  remainingDays: number
-}
+type CreateLeaveFormData = z.infer<typeof createLeaveSchema>
 
 const leaveTypeLabels: Record<string, string> = {
   annual: '年假',
@@ -57,80 +42,67 @@ const statusLabels: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 
 export function MyLeaves() {
-  const [loading, setLoading] = useState(true)
-  const [leaves, setLeaves] = useState<Leave[]>([])
-  const [stats, setStats] = useState<LeaveStats[]>([])
-  const [annualLeaveInfo, setAnnualLeaveInfo] = useState<AnnualLeaveInfo | null>(null)
-  const [modalVisible, setModalVisible] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [form] = Form.useForm()
+  const { data, isLoading: loading } = useMyLeaves()
+  const { mutateAsync: createLeave } = useCreateMyLeave()
+  const { form, validateWithZod: validateCreate } = useZodForm(createLeaveSchema)
+  
+  const {
+    isOpen: modalVisible,
+    openCreate,
+    close: closeModal,
+  } = useFormModal()
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  const leaves = data?.leaves || []
+  const stats = data?.stats || []
 
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const result = await apiClient.get<any>(api.my.leaves)
-      setLeaves(result.leaves || [])
-      setStats(result.stats || [])
-    } catch (error) {
-      console.error('Failed to load leaves:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields()
-      setSubmitting(true)
-
+  const handleSubmit = withErrorHandler(
+    async () => {
+      const values = await validateCreate()
       const [startDate, endDate] = values.dateRange
 
-      await apiClient.post(api.my.leaves, {
+      await createLeave({
         leave_type: values.leave_type,
         startDate: startDate.format('YYYY-MM-DD'),
         endDate: endDate.format('YYYY-MM-DD'),
         days: values.days,
         reason: values.reason,
       })
-
-      message.success('请假申请已提交')
-      setModalVisible(false)
-      form.resetFields()
-      loadData()
-    } catch (error: any) {
-      message.error(error.message || '提交失败')
-    } finally {
-      setSubmitting(false)
+    },
+    {
+      successMessage: '请假申请已提交',
+      onSuccess: () => {
+        closeModal()
+        form.resetFields()
+      }
     }
-  }
+  )
 
   const getUsedDays = (type: string) => {
-    const stat = stats.find(s => s.leave_type === type)
-    return stat?.used_days || 0
+    const stat = stats.find((s: any) => s.leaveType === type)
+    return stat?.usedDays || 0
   }
 
-  const columns = [
-    { title: '类型', dataIndex: 'leave_type', render: (v: string) => leaveTypeLabels[v] || v },
-    { title: '开始日期', dataIndex: 'startDate' },
-    { title: '结束日期', dataIndex: 'endDate' },
-    { title: '天数', dataIndex: 'days' },
+  const columns: DataTableColumn<MyLeave>[] = [
+    { title: '类型', dataIndex: 'leaveType', key: 'leaveType', render: (v: string) => leaveTypeLabels[v] || v },
+    { title: '开始日期', dataIndex: 'startDate', key: 'startDate' },
+    { title: '结束日期', dataIndex: 'endDate', key: 'endDate' },
+    { title: '天数', dataIndex: 'days', key: 'days' },
     {
       title: '状态',
       dataIndex: 'status',
-      render: (v: string) => <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag>
+      key: 'status',
+      render: (v: string | null) => v ? <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag> : '-'
     },
-    { title: '原因', dataIndex: 'reason', ellipsis: true },
-    { title: '审批人', dataIndex: 'approvedByName' },
+    { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
+    { title: '审批人', dataIndex: 'approvedByName', key: 'approvedByName' },
     {
       title: '申请时间',
       dataIndex: 'createdAt',
-      render: (v: number) => dayjs(v).format('YYYY-MM-DD HH:mm')
+      key: 'createdAt',
+      render: (v: number | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'
     },
   ]
 
@@ -139,25 +111,6 @@ export function MyLeaves() {
       title="我的请假"
       breadcrumb={[{ title: '个人中心' }, { title: '我的请假' }]}
     >
-      {/* 年假周期信息 */}
-      {annualLeaveInfo && !annualLeaveInfo.isFirstCycle && (
-        <Alert
-          message={`当前年假周期（第${annualLeaveInfo.cycleNumber}周期）`}
-          description={`${annualLeaveInfo.cycleStart} 至 ${annualLeaveInfo.cycleEnd}，本周期可用 ${annualLeaveInfo.entitledDays} 天，已用 ${annualLeaveInfo.usedDays} 天，剩余 ${annualLeaveInfo.remainingDays} 天`}
-          type="info"
-          showIcon
-          style={{ marginBottom: 24 }}
-        />
-      )}
-      {annualLeaveInfo?.isFirstCycle && (
-        <Alert
-          message="试用期内暂无年假"
-          description="入职第一周期内不享有年假，请等待下一周期开始"
-          type="warning"
-          showIcon
-          style={{ marginBottom: 24 }}
-        />
-      )}
 
       {/* 假期统计 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -188,18 +141,18 @@ export function MyLeaves() {
         bordered={false}
         className="page-card"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
             发起请假
           </Button>
         }
       >
-        <Table
-          className="table-striped"
-          dataSource={leaves}
+        <DataTable<any>
           columns={columns}
-          rowKey="id"
+          data={leaves}
           loading={loading}
+          rowKey="id"
           pagination={{ pageSize: 10 }}
+          tableProps={{ className: 'table-striped' }}
         />
       </Card>
 
@@ -208,8 +161,7 @@ export function MyLeaves() {
         title="发起请假申请"
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
-        confirmLoading={submitting}
+        onCancel={() => { closeModal(); form.resetFields() }}
         width={500}
       >
         <Form form={form} layout="vertical">

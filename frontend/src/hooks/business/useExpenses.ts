@@ -37,6 +37,20 @@ export function useExpenses() {
         api.expenseReimbursements,
         {
             staleTime: 5 * 60 * 1000,
+            select: (data: any) => {
+                // 确保返回的数据格式正确
+                if (data && typeof data === 'object') {
+                    if (Array.isArray(data.results)) {
+                        return data.results
+                    }
+                    // 如果 data 本身就是数组，直接返回
+                    if (Array.isArray(data)) {
+                        return data
+                    }
+                }
+                // 默认返回空数组
+                return []
+            },
         }
     )
 }

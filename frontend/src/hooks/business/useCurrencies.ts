@@ -106,3 +106,16 @@ export function useToggleCurrencyActive() {
         }
     })
 }
+
+export function useBatchCurrencies() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ ids, operation }: { ids: string[], operation: 'delete' | 'activate' | 'deactivate' }) => {
+            await apiClient.post(`${api.currencies}/batch`, { ids, operation })
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['currencies'] })
+            queryClient.invalidateQueries({ queryKey: ['currencies', 'options'] })
+        }
+    })
+}

@@ -6,13 +6,13 @@ export type CloudflareService = 'ip_lists' | 'email' | 'firewall'
 // 获取认证头（仅使用服务专用 Token）
 export function getAuthHeaders(env: Env, service?: CloudflareService): Record<string, string> {
   if (service === 'ip_lists' && env.CF_IP_LISTS_TOKEN) {
-    return { 'Authorization': `Bearer ${env.CF_IP_LISTS_TOKEN}` }
+    return { Authorization: `Bearer ${env.CF_IP_LISTS_TOKEN}` }
   }
   if (service === 'email' && env.CF_EMAIL_TOKEN) {
-    return { 'Authorization': `Bearer ${env.CF_EMAIL_TOKEN}` }
+    return { Authorization: `Bearer ${env.CF_EMAIL_TOKEN}` }
   }
   if (service === 'firewall' && env.CF_FIREWALL_TOKEN) {
-    return { 'Authorization': `Bearer ${env.CF_FIREWALL_TOKEN}` }
+    return { Authorization: `Bearer ${env.CF_FIREWALL_TOKEN}` }
   }
 
   // 未找到对应 Token 时返回空对象（调用方会报错）
@@ -50,25 +50,35 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
 
   try {
     // 先尝试查找名为 "caiwu-whitelist" 的列表
-    const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists?kind=ip`, {
-      headers: authHeaders,
-    })
+    const listResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists?kind=ip`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (listResponse.ok) {
-      const listData = await listResponse.json<{ result: Array<{ id: string, name: string }> }>()
-      const existingList = listData.result?.find(list =>
-        list.name === 'caiwu-whitelist' ||
-        list.name === 'caiwu_whitelist' ||
-        list.name === 'IP Whitelist' ||
-        list.name === 'caiwu-whitelist' ||
-        list.name.toLowerCase().includes('caiwu') && list.name.toLowerCase().includes('whitelist')
+      const listData = await listResponse.json<{ result: Array<{ id: string; name: string }> }>()
+      const existingList = listData.result?.find(
+        list =>
+          list.name === 'caiwu-whitelist' ||
+          list.name === 'caiwu_whitelist' ||
+          list.name === 'IP Whitelist' ||
+          list.name === 'caiwu-whitelist' ||
+          (list.name.toLowerCase().includes('caiwu') &&
+            list.name.toLowerCase().includes('whitelist'))
       )
       if (existingList) {
         return existingList.id
       }
     } else {
       // 处理非200响应
-      const error = await listResponse.json().catch(() => ({ errors: [{ message: 'Unknown error' }] })) as { errors?: Array<{ message?: string }>, message?: string }
+      const error = (await listResponse
+        .json()
+        .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
+        errors?: Array<{ message?: string }>
+        message?: string
+      }
       console.error('Failed to list IP lists:', {
         status: listResponse.status,
         statusText: listResponse.statusText,
@@ -81,21 +91,29 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
     }
 
     // 如果不存在，创建新列表
-    const createResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: 'caiwu_whitelist',
-        description: '公司管理系统 IP 白名单',
-        kind: 'ip',
-      }),
-    })
+    const createResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists`,
+      {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'caiwu_whitelist',
+          description: '公司管理系统 IP 白名单',
+          kind: 'ip',
+        }),
+      }
+    )
 
     if (!createResponse.ok) {
-      const error = await createResponse.json().catch(() => ({ errors: [{ message: 'Unknown error' }] })) as { errors?: Array<{ message?: string }>, message?: string }
+      const error = (await createResponse
+        .json()
+        .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
+        errors?: Array<{ message?: string }>
+        message?: string
+      }
       console.error('Failed to create IP list:', {
         status: createResponse.status,
         statusText: createResponse.statusText,
@@ -116,14 +134,21 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
 }
 
 // 添加 IP 到 IP List
-export async function addIPToCloudflareList(env: Env, ip: string, description?: string): Promise<{ success: boolean, itemId?: string, error?: string }> {
+export async function addIPToCloudflareList(
+  env: Env,
+  ip: string,
+  description?: string
+): Promise<{ success: boolean; itemId?: string; error?: string }> {
   if (!hasCloudflareAPIConfig(env)) {
     return { success: false, error: 'Cloudflare API credentials or Account ID not configured' }
   }
 
   const listId = await getOrCreateIPList(env)
   if (!listId) {
-    return { success: false, error: 'Failed to get or create IP list. Please check API permissions.' }
+    return {
+      success: false,
+      error: 'Failed to get or create IP list. Please check API permissions.',
+    }
   }
 
   const authHeaders = getAuthHeaders(env, 'ip_lists')
@@ -132,23 +157,34 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
   }
 
   try {
-    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([
-        {
-          ip: ip,
-          comment: description || `IP whitelist: ${ip}`,
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+      {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
         },
-      ]),
-    })
+        body: JSON.stringify([
+          {
+            ip: ip,
+            comment: description || `IP whitelist: ${ip}`,
+          },
+        ]),
+      }
+    )
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ errors: [{ message: 'Unknown error' }] })) as { errors?: Array<{ message?: string, code?: number }>, message?: string }
-      const errorMsg = error.errors?.[0]?.message || error.message || `HTTP ${response.status}: ${response.statusText}`
+      const error = (await response
+        .json()
+        .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
+        errors?: Array<{ message?: string; code?: number }>
+        message?: string
+      }
+      const errorMsg =
+        error.errors?.[0]?.message ||
+        error.message ||
+        `HTTP ${response.status}: ${response.statusText}`
       console.error('Failed to add IP to Cloudflare list:', {
         ip,
         status: response.status,
@@ -158,7 +194,9 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
       return { success: false, error: `Cloudflare API error: ${errorMsg}` }
     }
 
-    const data = await response.json<{ result: { operation_id?: string, id?: string } | Array<{ id: string }> }>()
+    const data = await response.json<{
+      result: { operation_id?: string; id?: string } | Array<{ id: string }>
+    }>()
 
     // Cloudflare API 可能返回两种格式：
     // 1. { result: { operation_id: "..." } } - 异步操作
@@ -174,12 +212,15 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       // 查询列表获取最新添加的 IP 的 ID
-      const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-        headers: authHeaders,
-      })
+      const listResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+        {
+          headers: authHeaders,
+        }
+      )
 
       if (listResponse.ok) {
-        const listData = await listResponse.json<{ result: Array<{ id: string, ip: string }> }>()
+        const listData = await listResponse.json<{ result: Array<{ id: string; ip: string }> }>()
         // 查找匹配的 IP
         const matchedItem = listData.result?.find(item => item.ip === ip)
         if (matchedItem) {
@@ -211,19 +252,45 @@ export async function addIPToCloudflareList(env: Env, ip: string, description?: 
 }
 
 // 批量添加 IP 到 Cloudflare List
-export async function addIPsToCloudflareList(env: Env, ips: Array<{ ip: string, description?: string }>): Promise<{ success: boolean, successCount: number, failedCount: number, errors: Array<{ ip: string, error: string }> }> {
+export async function addIPsToCloudflareList(
+  env: Env,
+  ips: Array<{ ip: string; description?: string }>
+): Promise<{
+  success: boolean
+  successCount: number
+  failedCount: number
+  errors: Array<{ ip: string; error: string }>
+}> {
   if (!hasCloudflareAPIConfig(env)) {
-    return { success: false, successCount: 0, failedCount: ips.length, errors: ips.map(item => ({ ip: item.ip, error: 'Cloudflare API credentials or Account ID not configured' })) }
+    return {
+      success: false,
+      successCount: 0,
+      failedCount: ips.length,
+      errors: ips.map(item => ({
+        ip: item.ip,
+        error: 'Cloudflare API credentials or Account ID not configured',
+      })),
+    }
   }
 
   const listId = await getOrCreateIPList(env)
   if (!listId) {
-    return { success: false, successCount: 0, failedCount: ips.length, errors: ips.map(item => ({ ip: item.ip, error: 'Failed to get or create IP list' })) }
+    return {
+      success: false,
+      successCount: 0,
+      failedCount: ips.length,
+      errors: ips.map(item => ({ ip: item.ip, error: 'Failed to get or create IP list' })),
+    }
   }
 
   const authHeaders = getAuthHeaders(env, 'ip_lists')
   if (!env.CF_ACCOUNT_ID) {
-    return { success: false, successCount: 0, failedCount: ips.length, errors: ips.map(item => ({ ip: item.ip, error: 'Cloudflare Account ID not configured' })) }
+    return {
+      success: false,
+      successCount: 0,
+      failedCount: ips.length,
+      errors: ips.map(item => ({ ip: item.ip, error: 'Cloudflare Account ID not configured' })),
+    }
   }
 
   try {
@@ -233,28 +300,46 @@ export async function addIPsToCloudflareList(env: Env, ips: Array<{ ip: string, 
       comment: item.description || `IP whitelist: ${item.ip}`,
     }))
 
-    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(items),
-    })
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+      {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(items),
+      }
+    )
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ errors: [{ message: 'Unknown error' }] })) as { errors?: Array<{ message?: string }>, message?: string }
-      const errorMsg = error.errors?.[0]?.message || error.message || `HTTP ${response.status}: ${response.statusText}`
+      const error = (await response
+        .json()
+        .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
+        errors?: Array<{ message?: string }>
+        message?: string
+      }
+      const errorMsg =
+        error.errors?.[0]?.message ||
+        error.message ||
+        `HTTP ${response.status}: ${response.statusText}`
       console.error('Failed to batch add IPs to Cloudflare list:', {
         count: ips.length,
         status: response.status,
         statusText: response.statusText,
         error: error.errors || error,
       })
-      return { success: false, successCount: 0, failedCount: ips.length, errors: ips.map(item => ({ ip: item.ip, error: errorMsg })) }
+      return {
+        success: false,
+        successCount: 0,
+        failedCount: ips.length,
+        errors: ips.map(item => ({ ip: item.ip, error: errorMsg })),
+      }
     }
 
-    const data = await response.json<{ result: Array<{ id: string, ip?: string }> | { operation_id?: string } }>()
+    const data = await response.json<{
+      result: Array<{ id: string; ip?: string }> | { operation_id?: string }
+    }>()
 
     // 检查是否返回了 operation_id（异步操作）
     if (!Array.isArray(data.result) && (data.result as any).operation_id) {
@@ -262,12 +347,15 @@ export async function addIPsToCloudflareList(env: Env, ips: Array<{ ip: string, 
       await new Promise(resolve => setTimeout(resolve, 2000))
 
       // 重新拉取列表来验证添加结果
-      const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-        headers: authHeaders,
-      })
+      const listResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+        {
+          headers: authHeaders,
+        }
+      )
 
       if (listResponse.ok) {
-        const listData = await listResponse.json<{ result: Array<{ id: string, ip: string }> }>()
+        const listData = await listResponse.json<{ result: Array<{ id: string; ip: string }> }>()
         const addedIPs = new Set(listData.result?.map(item => item.ip) || [])
         const successIPs = ips.filter(item => addedIPs.has(item.ip))
         const failedIPs = ips.filter(item => !addedIPs.has(item.ip))
@@ -290,7 +378,10 @@ export async function addIPsToCloudflareList(env: Env, ips: Array<{ ip: string, 
       success: successCount > 0,
       successCount,
       failedCount,
-      errors: failedCount > 0 ? ips.slice(successCount).map(item => ({ ip: item.ip, error: 'Failed to add' })) : [],
+      errors:
+        failedCount > 0
+          ? ips.slice(successCount).map(item => ({ ip: item.ip, error: 'Failed to add' }))
+          : [],
     }
   } catch (error: any) {
     console.error('Error batch adding IPs to Cloudflare list:', {
@@ -302,13 +393,19 @@ export async function addIPsToCloudflareList(env: Env, ips: Array<{ ip: string, 
       success: false,
       successCount: 0,
       failedCount: ips.length,
-      errors: ips.map(item => ({ ip: item.ip, error: `Network error: ${error.message || 'Unknown error'}` })),
+      errors: ips.map(item => ({
+        ip: item.ip,
+        error: `Network error: ${error.message || 'Unknown error'}`,
+      })),
     }
   }
 }
 
 // 批量从 IP List 删除 IP
-export async function removeIPsFromCloudflareList(env: Env, itemIds: string[]): Promise<{ success: boolean, successCount: number, failedCount: number }> {
+export async function removeIPsFromCloudflareList(
+  env: Env,
+  itemIds: string[]
+): Promise<{ success: boolean; successCount: number; failedCount: number }> {
   if (!hasCloudflareAPIConfig(env)) {
     console.warn('Cloudflare API credentials or Account ID not configured')
     return { success: false, successCount: 0, failedCount: itemIds.length }
@@ -325,17 +422,25 @@ export async function removeIPsFromCloudflareList(env: Env, itemIds: string[]): 
   }
 
   try {
-    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-      method: 'DELETE',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ items: itemIds.map(id => ({ id })) }),
-    })
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items: itemIds.map(id => ({ id })) }),
+      }
+    )
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ errors: [{ message: 'Unknown error' }] })) as { errors?: Array<{ message?: string }>, message?: string }
+      const error = (await response
+        .json()
+        .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
+        errors?: Array<{ message?: string }>
+        message?: string
+      }
       console.error('Failed to batch remove IPs from Cloudflare list:', {
         count: itemIds.length,
         status: response.status,
@@ -353,9 +458,12 @@ export async function removeIPsFromCloudflareList(env: Env, itemIds: string[]): 
     }
 
     // 重新拉取列表来验证删除结果
-    const listResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-      headers: authHeaders,
-    })
+    const listResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (listResponse.ok) {
       const listData = await listResponse.json<{ result: Array<{ id: string }> }>()
@@ -401,14 +509,17 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
 
   try {
     // Cloudflare API 删除操作返回 operation_id，需要等待操作完成
-    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-      method: 'DELETE',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ items: [{ id: itemId }] }),
-    })
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items: [{ id: itemId }] }),
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ errors: [{ message: 'Unknown error' }] }))
@@ -422,7 +533,10 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
     }
 
     // 检查响应格式
-    const data = await response.json<{ result: { operation_id?: string } | null, success: boolean }>()
+    const data = await response.json<{
+      result: { operation_id?: string } | null
+      success: boolean
+    }>()
 
     // 如果返回 operation_id，等待操作完成
     if (data.result && typeof data.result === 'object' && 'operation_id' in data.result) {
@@ -430,9 +544,12 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       // 验证删除是否成功（查询列表确认 IP 已不存在）
-      const verifyResponse = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-        headers: authHeaders,
-      })
+      const verifyResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+        {
+          headers: authHeaders,
+        }
+      )
 
       if (verifyResponse.ok) {
         const listData = await verifyResponse.json<{ result: Array<{ id: string }> }>()
@@ -456,7 +573,9 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
 }
 
 // 获取 IP List 中的所有 IP
-export async function fetchCloudflareIPListItems(env: Env): Promise<Array<{ id: string, ip: string, comment?: string }>> {
+export async function fetchCloudflareIPListItems(
+  env: Env
+): Promise<Array<{ id: string; ip: string; comment?: string }>> {
   if (!hasCloudflareAPIConfig(env)) {
     console.warn('Cloudflare API credentials or Account ID not configured')
     return []
@@ -473,9 +592,12 @@ export async function fetchCloudflareIPListItems(env: Env): Promise<Array<{ id: 
   }
 
   try {
-    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`, {
-      headers: authHeaders,
-    })
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/rules/lists/${listId}/items`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
@@ -483,7 +605,9 @@ export async function fetchCloudflareIPListItems(env: Env): Promise<Array<{ id: 
       return []
     }
 
-    const data = await response.json<{ result: Array<{ id: string, ip: string, comment?: string }> }>()
+    const data = await response.json<{
+      result: Array<{ id: string; ip: string; comment?: string }>
+    }>()
     return data.result || []
   } catch (error) {
     console.error('Error fetching Cloudflare IP list items:', error)
@@ -492,7 +616,9 @@ export async function fetchCloudflareIPListItems(env: Env): Promise<Array<{ id: 
 }
 
 // 获取或创建自定义规则（不再保存到数据库）
-export async function getOrCreateWhitelistRule(env: Env): Promise<{ ruleId: string, rulesetId: string } | null> {
+export async function getOrCreateWhitelistRule(
+  env: Env
+): Promise<{ ruleId: string; rulesetId: string } | null> {
   if (!hasCloudflareRuleConfig(env)) {
     console.warn('Cloudflare API credentials or Zone ID not configured')
     return null
@@ -508,35 +634,41 @@ export async function getOrCreateWhitelistRule(env: Env): Promise<{ ruleId: stri
   let rulesetId: string | null = null
 
   try {
-    const getRulesetResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/phases/${phase}/entrypoint`, {
-      headers: authHeaders,
-    })
+    const getRulesetResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/phases/${phase}/entrypoint`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (getRulesetResponse.ok) {
       const rulesetData = await getRulesetResponse.json<{ result: { id: string } }>()
       rulesetId = rulesetData.result?.id || null
     } else if (getRulesetResponse.status === 404) {
       // Ruleset 不存在，需要创建
-      const createRulesetResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets`, {
-        method: 'POST',
-        headers: {
-          ...authHeaders,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: 'IP Whitelist Rule',
-          kind: 'zone',
-          phase: phase,
-          rules: [
-            {
-              action: 'block',
-              expression: 'not ip.src in $caiwu_whitelist',
-              description: 'Block IPs not in whitelist',
-              enabled: false, // 默认停用
-            },
-          ],
-        }),
-      })
+      const createRulesetResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets`,
+        {
+          method: 'POST',
+          headers: {
+            ...authHeaders,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: 'IP Whitelist Rule',
+            kind: 'zone',
+            phase: phase,
+            rules: [
+              {
+                action: 'block',
+                expression: 'not ip.src in $caiwu_whitelist',
+                description: 'Block IPs not in whitelist',
+                enabled: false, // 默认停用
+              },
+            ],
+          }),
+        }
+      )
 
       if (!createRulesetResponse.ok) {
         const error = await createRulesetResponse.json()
@@ -544,7 +676,9 @@ export async function getOrCreateWhitelistRule(env: Env): Promise<{ ruleId: stri
         return null
       }
 
-      const createRulesetData = await createRulesetResponse.json<{ result: { id: string, rules: Array<{ id: string }> } }>()
+      const createRulesetData = await createRulesetResponse.json<{
+        result: { id: string; rules: Array<{ id: string }> }
+      }>()
       rulesetId = createRulesetData.result?.id || null
       const ruleId = createRulesetData.result?.rules?.[0]?.id
 
@@ -565,13 +699,21 @@ export async function getOrCreateWhitelistRule(env: Env): Promise<{ ruleId: stri
 
   // 2. 检查 ruleset 中是否已有我们的规则
   try {
-    const listRulesResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}/rules`, {
-      headers: authHeaders,
-    })
+    const listRulesResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}/rules`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (listRulesResponse.ok) {
-      const listRulesData = await listRulesResponse.json<{ result: Array<{ id: string, expression: string, enabled: boolean }> }>()
-      const existingRule = listRulesData.result?.find(rule => rule.expression.includes('caiwu_whitelist') || rule.expression.includes('caiwu-whitelist'))
+      const listRulesData = await listRulesResponse.json<{
+        result: Array<{ id: string; expression: string; enabled: boolean }>
+      }>()
+      const existingRule = listRulesData.result?.find(
+        rule =>
+          rule.expression.includes('caiwu_whitelist') || rule.expression.includes('caiwu-whitelist')
+      )
       if (existingRule) {
         // 不再保存到数据库
         return { ruleId: existingRule.id, rulesetId }
@@ -583,19 +725,22 @@ export async function getOrCreateWhitelistRule(env: Env): Promise<{ ruleId: stri
 
   // 3. 创建新规则
   try {
-    const createRuleResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}/rules`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'block',
-        expression: 'not ip.src in $caiwu_whitelist',
-        description: 'Block IPs not in whitelist',
-        enabled: false, // 默认停用
-      }),
-    })
+    const createRuleResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}/rules`,
+      {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'block',
+          expression: 'not ip.src in $caiwu_whitelist',
+          description: 'Block IPs not in whitelist',
+          enabled: false, // 默认停用
+        }),
+      }
+    )
 
     if (!createRuleResponse.ok) {
       const error = await createRuleResponse.json()
@@ -625,7 +770,8 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
   }
 
   const authHeaders = getAuthHeaders(env, 'firewall')
-  if (!env.CF_ZONE_ID) {
+  // 如果没有认证头，说明 Token 未配置，静默返回
+  if (!authHeaders.Authorization || !env.CF_ZONE_ID) {
     return false
   }
 
@@ -649,17 +795,36 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
   try {
     // 需要更新整个 ruleset，而不是单个规则
     // 先获取当前 ruleset 的所有规则
-    const getRulesetResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}`, {
-      headers: authHeaders,
-    })
+    const getRulesetResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (!getRulesetResponse.ok) {
-      const error = await getRulesetResponse.json()
-      console.error('Failed to get ruleset:', error)
+      // 如果是认证错误，静默返回
+      if (getRulesetResponse.status === 401 || getRulesetResponse.status === 403) {
+        return false
+      }
+      // 其他错误，静默处理
       return false
     }
 
-    const rulesetData = await getRulesetResponse.json<{ result: { rules: Array<{ id: string, action: string, expression: string, description?: string, enabled: boolean, last_updated?: string, version?: string, ref?: string }> } }>()
+    const rulesetData = await getRulesetResponse.json<{
+      result: {
+        rules: Array<{
+          id: string
+          action: string
+          expression: string
+          description?: string
+          enabled: boolean
+          last_updated?: string
+          version?: string
+          ref?: string
+        }>
+      }
+    }>()
     const existingRules = rulesetData.result?.rules || []
 
     // 检查规则是否存在
@@ -708,16 +873,19 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
     })
 
     // 更新整个 ruleset
-    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}`, {
-      method: 'PUT',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        rules: updatedRules,
-      }),
-    })
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}`,
+      {
+        method: 'PUT',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rules: updatedRules,
+        }),
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -728,11 +896,15 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
       return false
     }
 
-    const responseData = await response.json<{ result: { rules: Array<{ id: string, enabled: boolean }> } }>()
+    const responseData = await response.json<{
+      result: { rules: Array<{ id: string; enabled: boolean }> }
+    }>()
     // 验证更新是否成功
-    const updatedRule = responseData.result?.rules?.find((r) => r.id === ruleId)
+    const updatedRule = responseData.result?.rules?.find(r => r.id === ruleId)
     if (updatedRule && updatedRule.enabled !== enabled) {
-      console.error(`Rule status mismatch after update: expected=${enabled}, actual=${updatedRule.enabled}`)
+      console.error(
+        `Rule status mismatch after update: expected=${enabled}, actual=${updatedRule.enabled}`
+      )
       return false
     }
 
@@ -751,13 +923,16 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
 // 获取自定义规则状态（如果不存在则自动创建）
 // 重新设计：先通过 Cloudflare API 拉取规则，如果没有则创建规则后再拉取
 // 不再保存到数据库，以 Cloudflare 实时数据为准
-export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boolean, ruleId?: string, rulesetId?: string } | null> {
+export async function getWhitelistRuleStatus(
+  env: Env
+): Promise<{ enabled: boolean; ruleId?: string; rulesetId?: string } | null> {
   if (!hasCloudflareRuleConfig(env)) {
     return null
   }
 
   const authHeaders = getAuthHeaders(env, 'firewall')
-  if (!env.CF_ZONE_ID) {
+  // 如果没有认证头，说明 Token 未配置，静默返回
+  if (!authHeaders.Authorization || !env.CF_ZONE_ID) {
     return null
   }
 
@@ -768,9 +943,12 @@ export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boole
 
   try {
     // 步骤1: 获取 entry point ruleset ID
-    const getRulesetResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/phases/${phase}/entrypoint`, {
-      headers: authHeaders,
-    })
+    const getRulesetResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/phases/${phase}/entrypoint`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (getRulesetResponse.ok) {
       const rulesetData = await getRulesetResponse.json<{ result: { id: string } }>()
@@ -782,9 +960,11 @@ export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boole
         rulesetId = created.rulesetId
         ruleId = created.ruleId
       }
+    } else if (getRulesetResponse.status === 401 || getRulesetResponse.status === 403) {
+      // 认证失败，静默返回（可能是 Token 未配置或无效）
+      return null
     } else {
-      const error = await getRulesetResponse.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('Failed to get ruleset:', error)
+      // 其他错误，静默处理（避免日志噪音）
       return null
     }
 
@@ -800,32 +980,39 @@ export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boole
     }
 
     // 步骤2: 从 Cloudflare 拉取 ruleset 中的所有规则
-    const getRulesetRulesResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}`, {
-      headers: authHeaders,
-    })
+    const getRulesetRulesResponse = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${rulesetId}`,
+      {
+        headers: authHeaders,
+      }
+    )
 
     if (!getRulesetRulesResponse.ok) {
-      const error = await getRulesetRulesResponse.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('Failed to get ruleset rules:', error)
-      // 如果获取失败，尝试创建规则
-      const created = await getOrCreateWhitelistRule(env)
-      if (created) {
-        return {
-          enabled: false,
-          ruleId: created.ruleId,
-          rulesetId: created.rulesetId,
-        }
+      // 如果是认证错误，静默返回
+      if (getRulesetRulesResponse.status === 401 || getRulesetRulesResponse.status === 403) {
+        return null
       }
+      // 其他错误，静默处理
       return { enabled: false }
     }
 
-    const rulesetData = await getRulesetRulesResponse.json<{ result: { rules: Array<{ id: string, expression: string, enabled: boolean, action: string, description?: string }> } }>()
+    const rulesetData = await getRulesetRulesResponse.json<{
+      result: {
+        rules: Array<{
+          id: string
+          expression: string
+          enabled: boolean
+          action: string
+          description?: string
+        }>
+      }
+    }>()
     const existingRules = rulesetData.result?.rules || []
 
     // 步骤3: 查找匹配的规则（通过 expression 包含 'caiwu_whitelist' 或 'caiwu-whitelist'）
-    const matchingRule = existingRules.find(rule =>
-      rule.expression.includes('caiwu_whitelist') ||
-      rule.expression.includes('caiwu-whitelist')
+    const matchingRule = existingRules.find(
+      rule =>
+        rule.expression.includes('caiwu_whitelist') || rule.expression.includes('caiwu-whitelist')
     )
 
     if (matchingRule) {
@@ -843,12 +1030,17 @@ export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boole
       const created = await getOrCreateWhitelistRule(env)
       if (created) {
         // 创建后再次从 Cloudflare 拉取规则状态
-        const refreshResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${created.rulesetId}`, {
-          headers: authHeaders,
-        })
+        const refreshResponse = await fetch(
+          `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/rulesets/${created.rulesetId}`,
+          {
+            headers: authHeaders,
+          }
+        )
 
         if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json<{ result: { rules: Array<{ id: string, enabled: boolean }> } }>()
+          const refreshData = await refreshResponse.json<{
+            result: { rules: Array<{ id: string; enabled: boolean }> }
+          }>()
           const newRule = refreshData.result?.rules?.find(rule => rule.id === created.ruleId)
           if (newRule) {
             enabled = newRule.enabled
@@ -872,4 +1064,3 @@ export async function getWhitelistRuleStatus(env: Env): Promise<{ enabled: boole
 
   return { enabled: false }
 }
-

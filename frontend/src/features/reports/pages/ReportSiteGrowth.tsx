@@ -1,27 +1,30 @@
 import { useState } from 'react'
-import { Card, Button, Table, Space, message } from 'antd'
+import { Card, Button, Space } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import { DateRangePicker } from '../../../components/DateRangePicker'
+import { DataTable } from '../../../components/common/DataTable'
+import { useSiteGrowth } from '../../../hooks'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import type { SiteGrowthResponse } from '../../../hooks/business/useReports'
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportSiteGrowth() {
-  const [rows, setRows] = useState<any[]>([])
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const start = range[0].format('YYYY-MM-DD')
   const end = range[1].format('YYYY-MM-DD')
 
-  const load = async () => {
-    try {
-      const data = await apiClient.get<any>(`${api.reports.siteGrowth}?start=${start}&end=${end}`)
-      const j = data as any
-      setRows(j.rows ?? [])
-    } catch (error: any) {
-      message.error(error.message || '站点增长失败')
+  const { data, isLoading, refetch } = useSiteGrowth({ start, end })
+  const rows: SiteGrowthResponse['rows'] = data?.rows || []
+
+  const handleQuery = withErrorHandler(
+    async () => {
+      await refetch()
+    },
+    {
+      errorMessage: '站点增长失败',
     }
-  }
+  )
 
   return (
     <PageContainer
@@ -31,20 +34,21 @@ export function ReportSiteGrowth() {
       <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 12 }} wrap>
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          <Button type="primary" onClick={load}>查询</Button>
+          <Button type="primary" onClick={handleQuery}>查询</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="siteId"
-          dataSource={rows}
+        <DataTable<SiteGrowthResponse['rows'][number]>
           columns={[
-            { title: '站点', dataIndex: 'siteName' },
-            { title: '收入', dataIndex: 'incomeCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '支出', dataIndex: 'expenseCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '净额', dataIndex: 'netCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '对比期收入', dataIndex: 'prevIncomeCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '增长率', dataIndex: 'growthRate', render: (v: number) => (v * 100).toFixed(1) + '%' },
+            { title: '站点', dataIndex: 'siteName', key: 'siteName' },
+            { title: '收入', dataIndex: 'incomeCents', key: 'incomeCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '支出', dataIndex: 'expenseCents', key: 'expenseCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '净额', dataIndex: 'netCents', key: 'netCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '对比期收入', dataIndex: 'prevIncomeCents', key: 'prevIncomeCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '增长率', dataIndex: 'growthRate', key: 'growthRate', render: (v: number) => (v * 100).toFixed(1) + '%' },
           ]}
+          data={rows}
+          loading={isLoading}
+          rowKey="siteId"
+          tableProps={{ className: 'table-striped' }}
         />
       </Card>
     </PageContainer>

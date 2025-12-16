@@ -1,26 +1,15 @@
 /**
  * 数据格式化工具函数
+ * 
+ * @deprecated 请使用更具体的工具模块：
+ * - 金额格式化：使用 utils/amount.ts
+ * - 日期格式化：使用 utils/date.ts
+ * - 状态映射：使用 utils/status.ts
  */
 
-/**
- * 格式化金额（分转元）
- */
-export function formatAmount(cents: number | null | undefined): string {
-  if (cents == null) return '-'
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency: 'CNY',
-    minimumFractionDigits: 2
-  }).format(cents / 100)
-}
-
-/**
- * 格式化日期
- */
-export function formatDate(date: string | null | undefined): string {
-  if (!date) return '-'
-  return date
-}
+// 重新导出以保持向后兼容
+export { formatAmount, formatAmountWithCurrency, formatAmountSimple } from './amount'
+export { formatDate, formatDateTime, formatDateTimeFull } from './date'
 
 /**
  * 格式化百分比

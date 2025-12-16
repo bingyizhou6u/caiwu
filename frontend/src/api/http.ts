@@ -28,16 +28,6 @@ class ApiClient {
                 headers,
             })
 
-            // Handle 401 Unauthorized - token invalid or expired
-            if (response.status === 401) {
-                logout()
-                // Force redirect to login page
-                if (window.location.pathname !== '/login') {
-                    window.location.href = '/login'
-                }
-                throw new Error('Unauthorized')
-            }
-
             const contentType = response.headers.get('content-type') || ''
             let data: any
 
@@ -45,8 +35,35 @@ class ApiClient {
                 data = await response.blob()
             } else if (contentType.includes('application/json')) {
                 data = await response.json()
+
+                // V2 Unified Response Handler
+                // 如果包含 success 字段，则按照统一响应格式处理
+                if (data && typeof data === 'object' && 'success' in data) {
+                    if (data.success) {
+                        // 成功：解包 data
+                        data = data.data
+                    } else {
+                        // 失败：甚至可能 HTTP status 是 200，但业务逻辑失败
+                        const errorMsg = data.error?.message || data.message || 'Unknown error'
+                        if (!options.skipErrorHandle) {
+                            message.error(errorMsg)
+                        }
+                        throw new Error(errorMsg)
+                    }
+                }
             } else {
                 data = await response.text()
+            }
+
+            // Handle 401 Unauthorized - token invalid or expired
+            if (response.status === 401) {
+                logout()
+                // Force redirect to login page
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login'
+                }
+                const errorMsg = typeof data === 'object' && data.error ? data.error : 'Unauthorized'
+                throw new Error(errorMsg)
             }
 
             if (!response.ok) {

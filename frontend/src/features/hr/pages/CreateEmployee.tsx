@@ -2,17 +2,15 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Form, Input, Select, Button, Space, Tabs, InputNumber, message, Modal, Result } from 'antd'
 import { PlusOutlined, SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import { handleConflictError } from '../../../utils/api'
-import { useApiMutation } from '../../../utils/useApiQuery'
 import { ROLE_LABELS } from '../../../shared/constants'
-import { useCurrencies } from '../../../hooks'
+import { useCurrencies, useCreateEmployee, useUpdateEmployeeAllowances } from '../../../hooks'
 import type { Currency } from '../../../types'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createEmployeeSchema } from '../../../validations/employee.schema'
 import { EmployeeForm } from '../../employees/components/forms/EmployeeForm'
 import { PageContainer } from '../../../components/PageContainer'
+import { withErrorHandler } from '../../../utils/errorHandler'
 
 const { Option } = Select
 const { TabPane } = Tabs
@@ -21,12 +19,13 @@ export function CreateEmployee() {
     const navigate = useNavigate()
     const { data: currencies = [] } = useCurrencies()
     const { form, validateWithZod } = useZodForm(createEmployeeSchema)
-    const { mutateAsync: createEmployee, isPending: isCreating } = useApiMutation()
+    const { mutateAsync: createEmployeeMutation, isPending: isCreating } = useCreateEmployee()
+    const { mutateAsync: updateAllowances } = useUpdateEmployeeAllowances()
     const [success, setSuccess] = useState(false)
     const [createdData, setCreatedData] = useState<any>(null)
 
-    const handleCreate = async () => {
-        try {
+    const handleCreate = withErrorHandler(
+        async () => {
             const values = await validateWithZod()
 
             // 1. 创建员工 - 转换字段名为后端格式 (camelCase)
@@ -60,15 +59,11 @@ export function CreateEmployee() {
                 birthday: birthday ? birthday.format('YYYY-MM-DD') : undefined,
             }
 
-            const data = await createEmployee({
-                url: api.employees,
-                method: 'POST',
-                body: employeeData
-            })
+            const data = await createEmployeeMutation(employeeData)
 
             // 2. 创建补贴（批量）
             const allowanceTypes = ['living', 'housing', 'transportation', 'meal'] as const
-            const allowancePromises = []
+            const allowancePromises: Promise<any>[] = []
 
             const allowancesMap = {
                 living: living_allowances,
@@ -80,7 +75,7 @@ export function CreateEmployee() {
             for (const type of allowanceTypes) {
                 const allowances = allowancesMap[type] || []
                 if (allowances.length > 0) {
-                    allowancePromises.push(apiClient.put(api.employeeAllowancesBatch, {
+                    allowancePromises.push(updateAllowances({
                         employeeId: data.id,
                         allowanceType: type,
                         allowances: allowances,
@@ -94,15 +89,18 @@ export function CreateEmployee() {
 
             setCreatedData({ ...data, personalEmail: values.personalEmail })
             setSuccess(true)
-        } catch (error: any) {
-            console.error('创建员工失败:', error)
-            if (error?.message === '表单验证失败') {
-                message.error('请检查表单填写是否完整')
-            } else {
-                handleConflictError(error, '员工', 'name')
+        },
+        {
+            onError: (error: unknown) => {
+                const errorMessage = error instanceof Error ? error.message : ''
+                if (errorMessage === '表单验证失败') {
+                    message.error('请检查表单填写是否完整')
+                } else {
+                    handleConflictError(error, '员工', 'name')
+                }
             }
         }
-    }
+    )
 
     const handleBack = () => {
         navigate('/hr/employees')

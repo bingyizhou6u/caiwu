@@ -52,14 +52,18 @@ const emailTemplate = (content: string) => `<!DOCTYPE html>
 // 信息卡片样式
 const infoCard = (items: { label: string; value: string }[]) => `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8fafc; border-radius: 8px; margin: 20px 0;">
-  ${items.map(item => `
+  ${items
+    .map(
+      item => `
   <tr>
     <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
       <span style="color: #6b7280; font-size: 13px;">${item.label}</span>
       <div style="color: #1f2937; font-size: 15px; font-weight: 500; margin-top: 4px;">${item.value}</div>
     </td>
   </tr>
-  `).join('')}
+  `
+    )
+    .join('')}
 </table>`
 
 // 警告卡片样式
@@ -93,63 +97,63 @@ const primaryButton = (text: string, url: string) => `
 </a>`
 
 export class EmailService {
-    constructor(private env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) { }
+  constructor(private env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {}
 
-    /**
-     * 发送邮件通知（仅通过 EMAIL_SERVICE）
-     */
-    async sendEmail(
-        to: string,
-        subject: string,
-        htmlBody: string,
-        textBody?: string
-    ): Promise<{ success: boolean; error?: string }> {
-        if (!this.env.EMAIL_SERVICE) {
-            const errorMsg = 'EMAIL_SERVICE not configured'
-            console.error('[EmailService] ' + errorMsg)
-            return { success: false, error: errorMsg }
-        }
-
-        try {
-            const res = await this.env.EMAIL_SERVICE.fetch('https://email-worker/send', {
-                method: 'POST',
-                headers: {
-                    'content-type': 'application/json',
-                    ...(this.env.EMAIL_TOKEN ? { 'x-email-token': this.env.EMAIL_TOKEN } : {})
-                },
-                body: JSON.stringify({
-                    to,
-                    subject,
-                    html: htmlBody,
-                    text: textBody
-                })
-            })
-
-            const data: any = await res.json().catch(() => ({}))
-            if (res.ok && data?.success) return { success: true }
-
-            const errorMsg = data?.error || `Email worker failed with status ${res.status}`
-            console.error('[EmailService] Service send failed:', errorMsg)
-            return { success: false, error: errorMsg }
-        } catch (error: any) {
-            const errorMsg = error?.message || 'Failed to send via email worker'
-            console.error('[EmailService] Service send error:', errorMsg)
-            return { success: false, error: errorMsg }
-        }
+  /**
+   * 发送邮件通知（仅通过 EMAIL_SERVICE）
+   */
+  async sendEmail(
+    to: string,
+    subject: string,
+    htmlBody: string,
+    textBody?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.env.EMAIL_SERVICE) {
+      const errorMsg = 'EMAIL_SERVICE not configured'
+      console.error('[EmailService] ' + errorMsg)
+      return { success: false, error: errorMsg }
     }
 
-    /**
-     * 发送登录提醒邮件
-     */
-    async sendLoginNotificationEmail(
-        userEmail: string,
-        userName: string,
-        loginTime: string,
-        ipAddress?: string
-    ): Promise<{ success: boolean; error?: string }> {
-        const subject = '🔐 登录提醒 - AR公司管理系统'
+    try {
+      const res = await this.env.EMAIL_SERVICE.fetch('https://email-worker/send', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(this.env.EMAIL_TOKEN ? { 'x-email-token': this.env.EMAIL_TOKEN } : {}),
+        },
+        body: JSON.stringify({
+          to,
+          subject,
+          html: htmlBody,
+          text: textBody,
+        }),
+      })
 
-        const content = `
+      const data: any = await res.json().catch(() => ({}))
+      if (res.ok && data?.success) {return { success: true }}
+
+      const errorMsg = data?.error || `Email worker failed with status ${res.status}`
+      console.error('[EmailService] Service send failed:', errorMsg)
+      return { success: false, error: errorMsg }
+    } catch (error: any) {
+      const errorMsg = error?.message || 'Failed to send via email worker'
+      console.error('[EmailService] Service send error:', errorMsg)
+      return { success: false, error: errorMsg }
+    }
+  }
+
+  /**
+   * 发送登录提醒邮件
+   */
+  async sendLoginNotificationEmail(
+    userEmail: string,
+    userName: string,
+    loginTime: string,
+    ipAddress?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const subject = '🔐 登录提醒 - AR公司管理系统'
+
+    const content = `
     <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">登录提醒</h2>
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
       您好，<strong>${userName}</strong>：
@@ -158,14 +162,14 @@ export class EmailService {
       您的账号刚刚成功登录了管理系统。
     </p>
     ${infoCard([
-            { label: '登录邮箱', value: userEmail },
-            { label: '登录时间', value: loginTime },
-            ...(ipAddress ? [{ label: '登录IP', value: ipAddress }] : [])
-        ])}
+      { label: '登录邮箱', value: userEmail },
+      { label: '登录时间', value: loginTime },
+      ...(ipAddress ? [{ label: '登录IP', value: ipAddress }] : []),
+    ])}
     ${warningCard('如果这不是您的操作，请立即修改密码并联系系统管理员。')}
   `
 
-        const textBody = `登录提醒
+    const textBody = `登录提醒
     
     您好，${userName}：
     
@@ -182,22 +186,22 @@ export class EmailService {
     此邮件由系统自动发送，请勿回复。
     AR公司管理系统`
 
-        return await this.sendEmail(userEmail, subject, emailTemplate(content), textBody)
-    }
+    return await this.sendEmail(userEmail, subject, emailTemplate(content), textBody)
+  }
 
-    /**
-     * 发送账号激活邮件
-     */
-    async sendActivationEmail(
-        email: string,
-        name: string,
-        activationToken: string,
-        frontendUrl: string = 'https://caiwu.cloudflarets.com'
-    ): Promise<{ success: boolean; error?: string }> {
-        const subject = '🚀 激活您的账号 - AR公司管理系统'
-        const activationUrl = `${frontendUrl}/auth/activate?token=${activationToken}`
+  /**
+   * 发送账号激活邮件
+   */
+  async sendActivationEmail(
+    email: string,
+    name: string,
+    activationToken: string,
+    frontendUrl: string = 'https://caiwu.cloudflarets.com'
+  ): Promise<{ success: boolean; error?: string }> {
+    const subject = '🚀 激活您的账号 - AR公司管理系统'
+    const activationUrl = `${frontendUrl}/auth/activate?token=${activationToken}`
 
-        const content = `
+    const content = `
     <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">欢迎加入团队！</h2>
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
       您好，<strong>${name}</strong>：
@@ -207,9 +211,9 @@ export class EmailService {
     </p>
     
     ${infoCard([
-            { label: '登录账号', value: email },
-            { label: '说明', value: '请使用接收此邮件的【个人邮箱】作为登录账号' }
-        ])}
+      { label: '登录账号', value: email },
+      { label: '说明', value: '请使用接收此邮件的【个人邮箱】作为登录账号' },
+    ])}
 
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 14px; line-height: 1.6;">
       激活链接在 24 小时内有效。
@@ -222,7 +226,7 @@ export class EmailService {
     </div>
   `
 
-        const textBody = `欢迎加入AR公司！
+    const textBody = `欢迎加入AR公司！
     
     您好，${name}：
     
@@ -237,22 +241,22 @@ export class EmailService {
     此邮件由系统自动发送，请勿回复。
     AR公司管理系统`
 
-        return await this.sendEmail(email, subject, emailTemplate(content), textBody)
-    }
+    return await this.sendEmail(email, subject, emailTemplate(content), textBody)
+  }
 
-    /**
-     * 发送密码重置链接邮件
-     */
-    async sendPasswordResetLinkEmail(
-        email: string,
-        name: string,
-        resetToken: string,
-        frontendUrl: string = 'https://caiwu.cloudflarets.com'
-    ): Promise<{ success: boolean; error?: string }> {
-        const subject = '🔒 重置您的密码 - AR公司管理系统'
-        const resetUrl = `${frontendUrl}/auth/reset-password?token=${resetToken}`
+  /**
+   * 发送密码重置链接邮件
+   */
+  async sendPasswordResetLinkEmail(
+    email: string,
+    name: string,
+    resetToken: string,
+    frontendUrl: string = 'https://caiwu.cloudflarets.com'
+  ): Promise<{ success: boolean; error?: string }> {
+    const subject = '🔒 重置您的密码 - AR公司管理系统'
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${resetToken}`
 
-        const content = `
+    const content = `
       <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">重置密码请求</h2>
       <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
         您好，<strong>${name}</strong>：
@@ -271,7 +275,7 @@ export class EmailService {
       </div>
     `
 
-        const textBody = `重置密码请求
+    const textBody = `重置密码请求
     
     您好，${name}：
     
@@ -283,34 +287,34 @@ export class EmailService {
     此邮件由系统自动发送，请勿回复。
     AR公司管理系统`
 
-        return await this.sendEmail(email, subject, emailTemplate(content), textBody)
-    }
+    return await this.sendEmail(email, subject, emailTemplate(content), textBody)
+  }
 
-    /**
-     * 发送密码修改成功通知邮件
-     */
-    async sendPasswordChangedNotificationEmail(
-        userEmail: string,
-        userName: string,
-        changeTime: string,
-        ipAddress?: string
-    ): Promise<{ success: boolean; error?: string }> {
-        const subject = '✅ 密码修改成功 - AR公司管理系统'
+  /**
+   * 发送密码修改成功通知邮件
+   */
+  async sendPasswordChangedNotificationEmail(
+    userEmail: string,
+    userName: string,
+    changeTime: string,
+    ipAddress?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const subject = '✅ 密码修改成功 - AR公司管理系统'
 
-        const content = `
+    const content = `
     <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">密码修改成功</h2>
     <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
       您好，<strong>${userName}</strong>：
     </p>
     ${successCard('操作成功', '您的账号密码已成功修改。')}
     ${infoCard([
-            { label: '修改时间', value: changeTime },
-            ...(ipAddress ? [{ label: '操作IP', value: ipAddress }] : [])
-        ])}
+      { label: '修改时间', value: changeTime },
+      ...(ipAddress ? [{ label: '操作IP', value: ipAddress }] : []),
+    ])}
     ${warningCard('如果这不是您本人的操作，请立即联系系统管理员！')}
   `
 
-        const textBody = `密码修改成功
+    const textBody = `密码修改成功
     
     您好，${userName}：
     
@@ -323,22 +327,22 @@ export class EmailService {
     此邮件由系统自动发送，请勿回复。
     AR公司管理系统`
 
-        return await this.sendEmail(userEmail, subject, emailTemplate(content), textBody)
-    }
+    return await this.sendEmail(userEmail, subject, emailTemplate(content), textBody)
+  }
 
-    /**
-     * Send TOTP Reset Email
-     */
-    async sendTotpResetEmail(
-        email: string,
-        name: string,
-        token: string,
-        frontendUrl: string = 'https://caiwu.cloudflarets.com'
-    ): Promise<{ success: boolean; error?: string }> {
-        const subject = '🔐 重置 2FA 验证 - AR公司管理系统'
-        const resetUrl = `${frontendUrl}/auth/reset-totp?token=${token}`
+  /**
+   * Send TOTP Reset Email
+   */
+  async sendTotpResetEmail(
+    email: string,
+    name: string,
+    token: string,
+    frontendUrl: string = 'https://caiwu.cloudflarets.com'
+  ): Promise<{ success: boolean; error?: string }> {
+    const subject = '🔐 重置 2FA 验证 - AR公司管理系统'
+    const resetUrl = `${frontendUrl}/auth/reset-totp?token=${token}`
 
-        const content = `
+    const content = `
       <h2 style="margin: 0 0 16px; font-size: 20px; color: #1f2937;">2FA 重置请求</h2>
       <p style="margin: 0 0 16px; color: #4b5563; font-size: 15px; line-height: 1.6;">
         您好，<strong>${name}</strong>：
@@ -360,7 +364,7 @@ export class EmailService {
       </div>
     `
 
-        const textBody = `2FA 重置请求
+    const textBody = `2FA 重置请求
     
     您好，${name}：
     
@@ -372,6 +376,91 @@ export class EmailService {
     此邮件由系统自动发送，请勿回复。
     AR公司管理系统`
 
-        return await this.sendEmail(email, subject, emailTemplate(content), textBody)
+    return await this.sendEmail(email, subject, emailTemplate(content), textBody)
+  }
+
+  /**
+   * 发送审批通知邮件
+   */
+  async sendApprovalNotificationEmail(data: {
+    to: string
+    applicantName: string
+    type: 'leave' | 'reimbursement' | 'borrowing'
+    typeLabel: string
+    status: 'approved' | 'rejected'
+    approverName: string
+    details: {
+      id: string
+      amountCents?: number
+      currency?: string
+      startDate?: string
+      endDate?: string
+      days?: number
+      memo?: string
     }
+  }): Promise<void> {
+    const { to, applicantName, type, typeLabel, status, approverName, details } = data
+
+    const statusText = status === 'approved' ? '已批准' : '已拒绝'
+    const statusEmoji = status === 'approved' ? '✅' : '❌'
+    const statusColor = status === 'approved' ? '#10b981' : '#ef4444'
+
+    const subject = `${typeLabel}审批${statusText}通知`
+
+    let detailItems: { label: string; value: string }[] = []
+
+    if (type === 'leave') {
+      detailItems = [
+        { label: '申请类型', value: typeLabel },
+        { label: '开始日期', value: details.startDate || '-' },
+        { label: '结束日期', value: details.endDate || '-' },
+        { label: '天数', value: details.days ? `${details.days}天` : '-' },
+      ]
+    } else if (type === 'reimbursement' || type === 'borrowing') {
+      const amount = details.amountCents
+        ? `${(details.amountCents / 100).toFixed(2)} ${details.currency || 'CNY'}`
+        : '-'
+      detailItems = [
+        { label: '申请类型', value: typeLabel },
+        { label: '金额', value: amount },
+      ]
+    }
+
+    if (details.memo) {
+      detailItems.push({ label: '备注', value: details.memo })
+    }
+
+    const content = `
+      <div style="color: #1f2937;">
+        <h2 style="margin: 0 0 24px; font-size: 20px; font-weight: 700; color: #111827;">
+          ${statusEmoji} 您的${typeLabel}申请${statusText}
+        </h2>
+        
+        <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #374151;">
+          尊敬的 <strong>${applicantName}</strong>，您好！
+        </p>
+        
+        <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #374151;">
+          您的${typeLabel}申请已由 <strong>${approverName}</strong> ${statusText}。
+        </p>
+        
+        ${infoCard(detailItems)}
+        
+        <div style="margin-top: 24px; padding: 16px; background-color: #f8fafc; border-radius: 8px; border-left: 4px solid ${statusColor};">
+          <div style="font-weight: 600; color: #111827; margin-bottom: 8px;">审批结果</div>
+          <div style="color: #374151; font-size: 14px;">
+            状态：<span style="color: ${statusColor}; font-weight: 600;">${statusText}</span>
+          </div>
+        </div>
+        
+        <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+          如有疑问，请联系审批人或系统管理员。
+        </p>
+      </div>
+    `
+
+    const textBody = `${applicantName}，您的${typeLabel}申请已${statusText}。审批人：${approverName}`
+
+    return await this.sendEmail(to, subject, emailTemplate(content), textBody)
+  }
 }

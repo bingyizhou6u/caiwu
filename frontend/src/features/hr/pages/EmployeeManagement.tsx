@@ -1,11 +1,9 @@
-import { useState, useMemo, useCallback } from 'react'
-import { Card, Table, Button, Space, message, Popconfirm, Tag, Descriptions, Dropdown } from 'antd'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
+import { Card, Button, Space, message, Popconfirm, Tag, Descriptions, Dropdown } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import type { Employee } from '../../../types'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
-import { useEmployees, useFormModal, useToggleUserActive } from '../../../hooks'
+import { useEmployees, useFormModal, useToggleUserActive, useResendActivation, useResetTotp, useEmployeeSalaries, useEmployeeAllowances } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
 import { EditEmployeeModal } from '../../../features/employees/components/modals/EditEmployeeModal'
 import { RegularizeEmployeeModal } from '../../../features/employees/components/modals/RegularizeEmployeeModal'
@@ -16,10 +14,12 @@ import { AllowanceConfigModal } from '../../../features/employees/components/mod
 import { ResetUserPasswordModal } from '../../../features/employees/components/modals/ResetUserPasswordModal'
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { useApiMutation } from '../../../utils/useApiQuery'
 import { DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageContainer } from '../../../components/PageContainer'
 import { renderStatus, renderText } from '../../../utils/renderers'
+import { DataTable } from '../../../components/common/DataTable'
+import type { DataTableColumn } from '../../../components/common/DataTable'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { useNavigate } from 'react-router-dom'
 
@@ -48,11 +48,14 @@ export function EmployeeManagement() {
   const canDelete = isManager // 仅管理员可删除
 
   // Hooks
-  const { data: employees = [], refetch: refetchEmployees, isLoading } = useEmployees({
+  const queryClient = useQueryClient()
+  const { data: employees = [], isLoading, refetch: refetchEmployees } = useEmployees({
     status: statusFilter !== 'all' && statusFilter !== 'active' ? statusFilter : undefined,
     activeOnly: statusFilter === 'active'
   })
-  const { mutateAsync: updateEmployee } = useApiMutation()
+  const { mutateAsync: toggleActive } = useToggleUserActive()
+  const { mutateAsync: resendActivation } = useResendActivation()
+  const { mutateAsync: resetTotp } = useResetTotp()
 
 
 
@@ -71,57 +74,66 @@ export function EmployeeManagement() {
     setRejoinOpen(true)
   }
 
-  const handleSalaryConfig = async (employee: Employee, type: 'probation' | 'regular') => {
+  const handleSalaryConfig = (employee: Employee, type: 'probation' | 'regular') => {
     setCurrentEmployee(employee)
     setSalaryConfigType(type)
-    try {
-      const salaries = await apiClient.get<any[]>(`${api.employeeSalaries}?employeeId=${employee.id}&salaryType=${type}`)
-      setEmployeeSalaries(salaries)
-      setSalaryConfigOpen(true)
-    } catch (error: any) {
-      message.error(error.message || '加载底薪配置失败')
-    }
+    setSalaryConfigOpen(true)
   }
 
-  const handleAllowanceConfig = async (employee: Employee, type: 'living' | 'housing' | 'transportation' | 'meal' | 'birthday') => {
+  const handleAllowanceConfig = (employee: Employee, type: 'living' | 'housing' | 'transportation' | 'meal' | 'birthday') => {
     setCurrentEmployee(employee)
     setAllowanceConfigType(type)
-    try {
-      const allowances = await apiClient.get<any[]>(`${api.employeeAllowances}?employeeId=${employee.id}&allowanceType=${type}`)
-      setEmployeeAllowances(allowances)
-      setAllowanceConfigOpen(true)
-    } catch (error: any) {
-      message.error(error.message || '加载补贴配置失败')
-    }
+    setAllowanceConfigOpen(true)
   }
+
+  // 查询薪资和补贴数据
+  const { data: salariesData = [] } = useEmployeeSalaries(
+    currentEmployee && salaryConfigOpen
+      ? { employeeId: currentEmployee.id, salaryType: salaryConfigType }
+      : { employeeId: '', salaryType: 'probation' }
+  )
+
+  const { data: allowancesData = [] } = useEmployeeAllowances(
+    currentEmployee && allowanceConfigOpen
+      ? { employeeId: currentEmployee.id, allowanceType: allowanceConfigType }
+      : { employeeId: '', allowanceType: 'living' }
+  )
+
+  // 使用useEffect更新状态
+  React.useEffect(() => {
+    if (salaryConfigOpen && salariesData.length > 0) {
+      setEmployeeSalaries(salariesData)
+    }
+  }, [salaryConfigOpen, salariesData])
+
+  React.useEffect(() => {
+    if (allowanceConfigOpen && allowancesData.length > 0) {
+      setEmployeeAllowances(allowancesData)
+    }
+  }, [allowanceConfigOpen, allowancesData])
 
   const handleToggleActive = withErrorHandler(
     async (record: Employee) => {
-      await updateEmployee({
-        url: api.employeesById(record.id),
-        method: 'PUT',
-        body: { active: record.userActive === 1 ? 0 : 1 }
-      })
-      refetchEmployees()
+      await toggleActive({ id: record.id, active: record.userActive !== 1 })
     },
     { successMessage: '操作成功' }
   )
 
   const handleResendActivation = withErrorHandler(
     async (record: Employee) => {
-      await apiClient.post(api.employeesResendActivation(record.id))
+      await resendActivation(record.id)
     },
     { successMessage: '激活邮件已重新发送' }
   )
 
   const handleResetTotp = withErrorHandler(
     async (record: Employee) => {
-      await apiClient.post(api.employeesResetTotp(record.id))
+      await resetTotp(record.id)
     },
     { successMessage: '2FA 重置成功，员工下次登录将无需验证码' }
   )
 
-  const columns: ColumnsType<Employee> = useMemo(() => [
+  const columns: DataTableColumn<Employee>[] = useMemo(() => [
     {
       title: '姓名',
       dataIndex: 'name',
@@ -224,7 +236,7 @@ export function EmployeeManagement() {
       title: '账号权限',
       key: 'account_permission',
       width: 180,
-      render: (_: any, record: Employee) => {
+      render: (_: unknown, record: Employee) => {
         if (!record.userId) {
           return <Tag color="default">未创建账号</Tag>
         }
@@ -258,217 +270,215 @@ export function EmployeeManagement() {
         )
       },
     },
-    {
-      title: '操作',
-      key: 'action',
-      fixed: 'right',
-      width: 380,
-      render: (_: any, record: Employee) => (
-        <Space size="small" wrap>
-          {canEdit && record.status !== 'resigned' && (
-            <>
-              <Button size="small" onClick={() => modal.openEdit(record)}>
-                编辑
-              </Button>
-              <Button size="small" onClick={() => handleSalaryConfig(record, 'probation')}>
-                试用期底薪
-              </Button>
-              <Button size="small" onClick={() => handleSalaryConfig(record, 'regular')}>
-                转正底薪
-              </Button>
-              <Dropdown
-                menu={{
-                  items: [
-                    {
-                      key: 'living',
-                      label: '生活补贴',
-                      onClick: () => handleAllowanceConfig(record, 'living'),
-                    },
-                    {
-                      key: 'housing',
-                      label: '住房补贴',
-                      onClick: () => handleAllowanceConfig(record, 'housing'),
-                    },
-                    {
-                      key: 'transportation',
-                      label: '交通补贴',
-                      onClick: () => handleAllowanceConfig(record, 'transportation'),
-                    },
-                    {
-                      key: 'meal',
-                      label: '伙食补贴',
-                      onClick: () => handleAllowanceConfig(record, 'meal'),
-                    },
-                    {
-                      key: 'birthday',
-                      label: '生日补贴',
-                      onClick: () => handleAllowanceConfig(record, 'birthday'),
-                    },
-                  ],
-                }}
-                trigger={['click']}
-              >
-                <Button size="small" icon={<SettingOutlined />}>
-                  补贴配置
-                </Button>
-              </Dropdown>
-              {record.status === 'probation' && (
-                <Button size="small" type="primary" onClick={() => handleRegularize(record)}>
-                  转正
-                </Button>
-              )}
-              <Button size="small" danger onClick={() => handleLeave(record)}>
-                离职
-              </Button>
-            </>
-          )}
-          {canEdit && record.status === 'resigned' && (
-            <Button size="small" type="primary" onClick={() => handleRejoin(record)}>
-              重新入职
-            </Button>
-          )}
-          {isManager && record.userId && (
-            <>
-              <Button size="small" onClick={() => { setCurrentEmployee(record); setResetUserOpen(true); }}>
-                重置密码
-              </Button>
-              <Button size="small" onClick={() => handleToggleActive(record)}>
-                {record.userActive === 1 ? '停用账号' : '启用账号'}
-              </Button>
-              {!record.isActivated && record.userActive === 1 && (
-                <Popconfirm
-                  title="重新发送激活邮件？"
-                  description="这将使之前的激活链接失效"
-                  onConfirm={() => handleResendActivation(record)}
-                  okText="发送"
-                  cancelText="取消"
-                >
-                  <Button size="small">重发激活</Button>
-                </Popconfirm>
-              )}
-              {record.totpEnabled && record.userActive === 1 && (
-                <Popconfirm
-                  title="确定重置2FA？"
-                  description="重置后员工将使用无2FA模式登录"
-                  onConfirm={() => handleResetTotp(record)}
-                  okText="确定"
-                  cancelText="取消"
-                >
-                  <Button size="small" danger>重置2FA</Button>
-                </Popconfirm>
-              )}
-            </>
-          )}
-        </Space>
-      ),
-    },
   ],
     [canEdit, isManager, statusFilter, handleToggleActive, modal])
+
+  const renderActions = useCallback((record: Employee) => (
+    <Space size="small" wrap>
+      {canEdit && record.status !== 'resigned' && (
+        <>
+          <Button size="small" onClick={() => modal.openEdit(record)}>
+            编辑
+          </Button>
+          <Button size="small" onClick={() => handleSalaryConfig(record, 'probation')}>
+            试用期底薪
+          </Button>
+          <Button size="small" onClick={() => handleSalaryConfig(record, 'regular')}>
+            转正底薪
+          </Button>
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'living',
+                  label: '生活补贴',
+                  onClick: () => handleAllowanceConfig(record, 'living'),
+                },
+                {
+                  key: 'housing',
+                  label: '住房补贴',
+                  onClick: () => handleAllowanceConfig(record, 'housing'),
+                },
+                {
+                  key: 'transportation',
+                  label: '交通补贴',
+                  onClick: () => handleAllowanceConfig(record, 'transportation'),
+                },
+                {
+                  key: 'meal',
+                  label: '伙食补贴',
+                  onClick: () => handleAllowanceConfig(record, 'meal'),
+                },
+                {
+                  key: 'birthday',
+                  label: '生日补贴',
+                  onClick: () => handleAllowanceConfig(record, 'birthday'),
+                },
+              ],
+            }}
+            trigger={['click']}
+          >
+            <Button size="small" icon={<SettingOutlined />}>
+              补贴配置
+            </Button>
+          </Dropdown>
+          {record.status === 'probation' && (
+            <Button size="small" type="primary" onClick={() => handleRegularize(record)}>
+              转正
+            </Button>
+          )}
+          <Button size="small" danger onClick={() => handleLeave(record)}>
+            离职
+          </Button>
+        </>
+      )}
+      {canEdit && record.status === 'resigned' && (
+        <Button size="small" type="primary" onClick={() => handleRejoin(record)}>
+          重新入职
+        </Button>
+      )}
+      {isManager && record.userId && (
+        <>
+          <Button size="small" onClick={() => { setCurrentEmployee(record); setResetUserOpen(true); }}>
+            重置密码
+          </Button>
+          <Button size="small" onClick={() => handleToggleActive(record)}>
+            {record.userActive === 1 ? '停用账号' : '启用账号'}
+          </Button>
+          {!record.isActivated && record.userActive === 1 && (
+            <Popconfirm
+              title="重新发送激活邮件？"
+              description="这将使之前的激活链接失效"
+              onConfirm={() => handleResendActivation(record)}
+              okText="发送"
+              cancelText="取消"
+            >
+              <Button size="small">重发激活</Button>
+            </Popconfirm>
+          )}
+          {record.totpEnabled && record.userActive === 1 && (
+            <Popconfirm
+              title="确定重置2FA？"
+              description="重置后员工将使用无2FA模式登录"
+              onConfirm={() => handleResetTotp(record)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button size="small" danger>重置2FA</Button>
+            </Popconfirm>
+          )}
+        </>
+      )}
+    </Space>
+  ), [canEdit, isManager, handleToggleActive, modal, handleSalaryConfig, handleAllowanceConfig, handleRegularize, handleLeave, handleRejoin, handleResendActivation, handleResetTotp])
   return (
     <PageContainer>
       <Card
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => refetchEmployees()}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}>刷新</Button>
             <Button type="primary" onClick={() => modal.openCreate()}>新建员工</Button>
           </Space>
         }
       >
-        <Table
-          rowKey="id"
+        <DataTable<Employee>
           columns={columns}
-          dataSource={employees}
+          data={employees}
           loading={isLoading}
-          onChange={(_pagination, filters) => {
-            if (filters.status && filters.status.length > 0) {
-              setStatusFilter(filters.status[0] as string)
-            } else {
-              setStatusFilter('all')
-            }
-          }}
-          expandable={{
-            expandedRowRender: (record) => (
-              <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
-                <Descriptions.Item label="试用期工资">
-                  <SensitiveField value={((record.probationSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="转正工资">
-                  <SensitiveField value={((record.regularSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="转正日期">{record.regularDate || '-'}</Descriptions.Item>
-                <Descriptions.Item label="生活补贴">
-                  <SensitiveField value={((record.livingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="住房补贴">
-                  <SensitiveField value={((record.housingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="交通补贴">
-                  <SensitiveField value={((record.transportationAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="伙食补贴">
-                  <SensitiveField value={((record.mealAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="补贴合计">
-                  <SensitiveField value={(((record.livingAllowanceCents || 0) + (record.housingAllowanceCents || 0) + (record.transportationAllowanceCents || 0) + (record.mealAllowanceCents || 0)) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                {record.status === 'resigned' && (
-                  <>
-                    <Descriptions.Item label="离职日期">{record.leaveDate || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="离职类型">
-                      {record.leave_type === 'resigned' ? '主动离职' :
-                        record.leave_type === 'terminated' ? '被动离职' :
-                          record.leave_type === 'expired' ? '合同到期' :
-                            record.leave_type === 'retired' ? '退休' :
-                              record.leave_type === 'other' ? '其他' : '-'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="离职原因">{record.leave_reason || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="离职备注">{record.leave_memo || '-'}</Descriptions.Item>
-                  </>
-                )}
-                <Descriptions.Item label="USDT地址">
-                  <SensitiveField value={record.usdtAddress || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="紧急联系人">
-                  <SensitiveField value={record.emergencyContact || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="紧急联系人电话">
-                  {record.emergencyPhone ? (
-                    <SensitiveField value={record.emergencyPhone} type="phone" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                  ) : '-'}
-                </Descriptions.Item>
-                <Descriptions.Item label="地址" span={2}>
-                  <SensitiveField value={record.address || '-'} type="address" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-                </Descriptions.Item>
-                <Descriptions.Item label="生日">{record.birthday || '-'}</Descriptions.Item>
-                <Descriptions.Item label="备注" span={2}>{record.memo || '-'}</Descriptions.Item>
-                {record.userId && (
-                  <>
-                    <Descriptions.Item label="账号状态">
-                      {record.userActive === 1 ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>}
-                    </Descriptions.Item>
-                    {record.positionName && (
-                      <>
-                        <Descriptions.Item label="职位名称">
-                          {record.positionName}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="职位代码">
-                          {record.positionCode || '-'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="职位层级">
-                          {record.positionLevel === 1 ? '总部' :
-                            record.positionLevel === 2 ? '项目' :
-                              record.positionLevel === 3 ? '组' :
-                                record.positionLevel || '-'}
-                        </Descriptions.Item>
-                      </>
-                    )}
-                    <Descriptions.Item label="最近登录">
-                      {record.userLastLoginAt ? new Date(record.userLastLoginAt).toLocaleString() : '从未登录'}
-                    </Descriptions.Item>
-                  </>
-                )}
-              </Descriptions>
-            ),
+          rowKey="id"
+          actions={renderActions}
+          tableProps={{
+            onChange: (_pagination, filters) => {
+              if (filters.status && filters.status.length > 0) {
+                setStatusFilter(filters.status[0] as string)
+              } else {
+                setStatusFilter('all')
+              }
+            },
+            expandable: {
+              expandedRowRender: (record) => (
+                <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
+                  <Descriptions.Item label="试用期工资">
+                    <SensitiveField value={((record.probationSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="转正工资">
+                    <SensitiveField value={((record.regularSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="转正日期">{record.regularDate || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="生活补贴">
+                    <SensitiveField value={((record.livingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="住房补贴">
+                    <SensitiveField value={((record.housingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="交通补贴">
+                    <SensitiveField value={((record.transportationAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="伙食补贴">
+                    <SensitiveField value={((record.mealAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="补贴合计">
+                    <SensitiveField value={(((record.livingAllowanceCents || 0) + (record.housingAllowanceCents || 0) + (record.transportationAllowanceCents || 0) + (record.mealAllowanceCents || 0)) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  {record.status === 'resigned' && (
+                    <>
+                      <Descriptions.Item label="离职日期">{record.leaveDate || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="离职类型">
+                        {record.leave_type === 'resigned' ? '主动离职' :
+                          record.leave_type === 'terminated' ? '被动离职' :
+                            record.leave_type === 'expired' ? '合同到期' :
+                              record.leave_type === 'retired' ? '退休' :
+                                record.leave_type === 'other' ? '其他' : '-'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="离职原因">{record.leave_reason || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="离职备注">{record.leave_memo || '-'}</Descriptions.Item>
+                    </>
+                  )}
+                  <Descriptions.Item label="USDT地址">
+                    <SensitiveField value={record.usdtAddress || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="紧急联系人">
+                    <SensitiveField value={record.emergencyContact || '-'} type="default" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="紧急联系人电话">
+                    {record.emergencyPhone ? (
+                      <SensitiveField value={record.emergencyPhone} type="phone" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                    ) : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="地址" span={2}>
+                    <SensitiveField value={record.address || '-'} type="address" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="生日">{record.birthday || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="备注" span={2}>{record.memo || '-'}</Descriptions.Item>
+                  {record.userId && (
+                    <>
+                      <Descriptions.Item label="账号状态">
+                        {record.userActive === 1 ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>}
+                      </Descriptions.Item>
+                      {record.positionName && (
+                        <>
+                          <Descriptions.Item label="职位名称">
+                            {record.positionName}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="职位代码">
+                            {record.positionCode || '-'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="职位层级">
+                            {record.positionLevel === 1 ? '总部' :
+                              record.positionLevel === 2 ? '项目' :
+                                record.positionLevel === 3 ? '组' :
+                                  record.positionLevel || '-'}
+                          </Descriptions.Item>
+                        </>
+                      )}
+                      <Descriptions.Item label="最近登录">
+                        {record.userLastLoginAt ? new Date(record.userLastLoginAt).toLocaleString() : '从未登录'}
+                      </Descriptions.Item>
+                    </>
+                  )}
+                </Descriptions>
+              ),
+            },
           }}
         />
       </Card>
@@ -479,7 +489,7 @@ export function EmployeeManagement() {
         onCancel={modal.close}
         onSuccess={() => {
           modal.close()
-          refetchEmployees()
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />
 
@@ -493,7 +503,7 @@ export function EmployeeManagement() {
         onSuccess={() => {
           setRegularizeOpen(false)
           setCurrentEmployee(null)
-          refetchEmployees()
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />
 
@@ -507,7 +517,7 @@ export function EmployeeManagement() {
         onSuccess={() => {
           setLeaveOpen(false)
           setCurrentEmployee(null)
-          refetchEmployees()
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />
 
@@ -521,7 +531,7 @@ export function EmployeeManagement() {
         onSuccess={() => {
           setRejoinOpen(false)
           setCurrentEmployee(null)
-          refetchEmployees()
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />
 
@@ -539,7 +549,7 @@ export function EmployeeManagement() {
           setSalaryConfigOpen(false)
           setCurrentEmployee(null)
           setEmployeeSalaries([])
-          refetchEmployees()
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />
 
@@ -557,7 +567,7 @@ export function EmployeeManagement() {
           setAllowanceConfigOpen(false)
           setCurrentEmployee(null)
           setEmployeeAllowances([])
-          refetchEmployees()
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />
 

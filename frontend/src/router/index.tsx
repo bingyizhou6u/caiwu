@@ -1,6 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { MainLayout } from '../layouts/MainLayout'
-import { Login } from '../features/auth/pages/Login'
 import { lazy, Suspense } from 'react'
 import { Spin } from 'antd'
 
@@ -69,6 +68,7 @@ const loaders: Record<string, () => Promise<any>> = {
     // Dashboard & Auth
     'dashboard': () => import('../features/dashboard/pages/Dashboard').then(m => ({ default: m.Dashboard })),
     'change-password': () => import('../features/auth/pages/ChangePassword').then(m => ({ default: m.ChangePassword })),
+    'login': () => import('../features/auth/pages/Login').then(m => ({ default: m.Login })),
     'auth/activate': () => import('../features/auth/pages/ActivateAccount').then(m => ({ default: m.ActivateAccount })),
     'auth/reset-password': () => import('../features/auth/pages/ResetPassword').then(m => ({ default: m.ResetPassword })),
     'auth/request-totp-reset': () => import('../features/auth/pages/RequestTotpReset').then(m => ({ default: m.RequestTotpReset })),
@@ -135,6 +135,7 @@ const CompanyPolicies = lazy(loaders['my/policies'])
 const MyApprovals = lazy(loaders['my/approvals'])
 const Dashboard = lazy(loaders['dashboard'])
 const ChangePassword = lazy(loaders['change-password'])
+const Login = lazy(loaders['login'])
 const ActivateAccount = lazy(loaders['auth/activate'])
 const ResetPassword = lazy(loaders['auth/reset-password'])
 const RequestTotpReset = lazy(loaders['auth/request-totp-reset'])
@@ -160,7 +161,7 @@ import { PrivateRoute } from './PrivateRoute'
 export const router = createBrowserRouter([
     {
         path: '/login',
-        element: <Login />,
+        element: <Suspense fallback={<Loading />}><Login /></Suspense>,
     },
     {
         path: '/auth/activate',

@@ -1,13 +1,12 @@
-import { useMemo, useCallback } from 'react'
-import { Card, Table, Button, Form, Input, Select, Space, message, Switch, Popconfirm } from 'antd'
-import { api } from '../../../config/api'
+import { useMemo, useCallback, useState } from 'react'
+import { Card, Button, Form, Input, Select, Space, message, Switch, Popconfirm } from 'antd'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { api as apiClient } from '../../../api/http'
 import { FormModal } from '../../../components/FormModal'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
-import { useAccounts, useCurrencyOptions, useFormModal, useZodForm } from '../../../hooks'
-import { useBatchDeleteAccount } from '../../../hooks/business/useAccounts'
+import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount, useBatchDeleteAccount, useCurrencyOptions, useFormModal, useZodForm } from '../../../hooks'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 import { DeleteOutlined } from '@ant-design/icons'
@@ -23,8 +22,14 @@ const TYPE_OPTIONS = [
 import { PageContainer } from '../../../components/PageContainer'
 
 export function AccountManagement() {
-  const { data: accounts = [], isLoading, refetch } = useAccounts()
+  const { data: accounts = [], isLoading } = useAccounts()
   const { data: currencyOptions = [] } = useCurrencyOptions()
+  const { mutateAsync: createAccount } = useCreateAccount()
+  const { mutateAsync: updateAccount } = useUpdateAccount()
+  const { mutateAsync: deleteAccountMutation } = useDeleteAccount()
+  const { mutateAsync: batchDeleteAccount } = useBatchDeleteAccount()
+  
+  const [searchParams, setSearchParams] = useState<{ search?: string; type?: string; currency?: string; activeOnly?: string }>({})
 
   const modal = useFormModal<Account>()
   const { form: cForm, validateWithZod: validateCreate } = useZodForm(accountSchema)
@@ -33,7 +38,6 @@ export function AccountManagement() {
   const { hasPermission } = usePermissions()
   const canManageAccounts = hasPermission('finance', 'account', 'create')
 
-  const { mutateAsync: batchDeleteAccount } = useBatchDeleteAccount()
   const tableActions = useTableActions<Account>()
   const { selectedRowKeys, rowSelection } = tableActions
 
@@ -42,73 +46,107 @@ export function AccountManagement() {
     tableActions,
     {
       onSuccess: () => {
-        refetch()
         message.success('批量删除成功')
       },
       errorMessage: '批量删除失败'
     }
   )
 
-  const sorted = useMemo(() => accounts.slice().sort((a: Account, b: Account) => a.name.localeCompare(b.name)), [accounts])
-
-  const deleteAccount = useCallback(async (id: string, name: string) => {
-    try {
-      await apiClient.delete(api.accountsById(id))
-      message.success('删除成功')
-      refetch()
-    } catch (error: any) {
-      message.error(error.message || '删除失败')
+  // 过滤和排序数据
+  const filteredAndSorted = useMemo(() => {
+    let result = accounts.slice()
+    
+    // 搜索过滤
+    if (searchParams.search) {
+      const search = searchParams.search.toLowerCase()
+      result = result.filter((a: Account) => 
+        a.name.toLowerCase().includes(search) ||
+        (a.alias && a.alias.toLowerCase().includes(search)) ||
+        (a.accountNumber && a.accountNumber.toLowerCase().includes(search))
+      )
     }
-  }, [refetch])
-
-  const handleToggleActive = useCallback(async (id: string, checked: boolean) => {
-    try {
-      await apiClient.put(api.accountsById(id), { active: checked ? 1 : 0 })
-      message.success(checked ? '已启用' : '已停用')
-      refetch()
-    } catch (error: any) {
-      message.error(error.message || '操作失败')
+    
+    // 类型过滤
+    if (searchParams.type) {
+      result = result.filter((a: Account) => a.type === searchParams.type)
     }
-  }, [refetch])
+    
+    // 币种过滤
+    if (searchParams.currency) {
+      result = result.filter((a: Account) => a.currency === searchParams.currency)
+    }
+    
+    // 状态过滤
+    if (searchParams.activeOnly === 'true') {
+      result = result.filter((a: Account) => a.active === 1)
+    } else if (searchParams.activeOnly === 'false') {
+      result = result.filter((a: Account) => a.active === 0)
+    }
+    
+    // 排序
+    return result.sort((a: Account, b: Account) => a.name.localeCompare(b.name))
+  }, [accounts, searchParams])
+
+  const deleteAccount = useMemo(() => withErrorHandler(
+    async (id: string) => {
+      await deleteAccountMutation(id)
+    },
+    {
+      successMessage: '删除成功',
+      errorMessage: '删除失败'
+    }
+  ), [deleteAccountMutation])
+
+  const handleToggleActive = useMemo(() => withErrorHandler(
+    async (id: string, checked: boolean) => {
+      await updateAccount({ id, data: { active: checked ? 1 : 0 } })
+      return checked ? '已启用' : '已停用'
+    },
+    {
+      showSuccess: true,
+      onSuccess: (msg) => message.success(msg),
+      errorMessage: '操作失败'
+    }
+  ), [updateAccount])
 
   const handleCreate = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateCreate()
-      await apiClient.post(api.accounts, v)
+      await createAccount(v)
       modal.close()
       cForm.resetFields()
-      refetch()
     },
     {
       successMessage: '已创建',
-      onError: (error: any) => {
-        if (error.message !== '表单验证失败') {
+      onError: (error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : ''
+        if (errorMessage !== '表单验证失败') {
           handleConflictError(error, '账户名称', cForm.getFieldValue('name'))
         }
       }
     }
-  ), [cForm, validateCreate, modal, refetch])
+  ), [cForm, validateCreate, modal, createAccount])
 
   const handleEdit = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateEdit()
       const payload = { ...v, active: v.active ? 1 : 0 }
       if (modal.data) {
-        await apiClient.put(api.accountsById(modal.data.id), payload)
+        await updateAccount({ id: modal.data.id, data: payload })
         modal.close()
         eForm.resetFields()
-        refetch()
       }
     },
     {
       successMessage: '已更新',
-      onError: (error: any) => {
-        if (error.message !== '表单验证失败') {
+      onError: (error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : ''
+        if (errorMessage !== '表单验证失败') {
           handleConflictError(error, '账户名称', eForm.getFieldValue('name'))
         }
       }
     }
-  ), [eForm, validateEdit, modal, refetch])
+  ), [eForm, validateEdit, modal, updateAccount])
 
   const handleEditClick = useCallback((r: Account) => {
     modal.openEdit(r)
@@ -123,18 +161,67 @@ export function AccountManagement() {
     })
   }, [eForm, modal])
 
+  const columns: DataTableColumn<Account>[] = [
+    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: '账户号', dataIndex: 'accountNumber', key: 'accountNumber', render: (v: string) => v || '-' },
+    { title: '别名', dataIndex: 'alias', key: 'alias', render: (v: string) => v || '-' },
+    { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_OPTIONS.find(o => o.value === v)?.label || v },
+    { title: '币种', key: 'currency', render: (_: unknown, r: Account) => r.currencyName ? `${r.currency} - ${r.currencyName}` : r.currency },
+    { title: '管理人员', dataIndex: 'manager', key: 'manager', render: (v: string) => v || '-' },
+    { title: '启用', dataIndex: 'active', key: 'active', render: (v: number) => v === 1 ? '是' : '否' },
+  ]
+
   return (
     <PageContainer
       title="账户管理"
       breadcrumb={[{ title: '系统设置' }, { title: '账户管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
+        <SearchFilters
+          fields={[
+            { name: 'search', label: '账户名称/别名/账户号', type: 'input', placeholder: '请输入搜索关键词' },
+            {
+              name: 'type',
+              label: '类型',
+              type: 'select',
+              placeholder: '请选择类型',
+              options: [
+                { label: '全部', value: '' },
+                ...TYPE_OPTIONS,
+              ],
+            },
+            {
+              name: 'currency',
+              label: '币种',
+              type: 'select',
+              placeholder: '请选择币种',
+              options: [
+                { label: '全部', value: '' },
+                ...currencyOptions,
+              ],
+            },
+            {
+              name: 'activeOnly',
+              label: '状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                { label: '启用', value: 'true' },
+                { label: '禁用', value: 'false' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
           <Button type="primary" onClick={() => {
             modal.openCreate()
             cForm.resetFields()
           }}>新建账户</Button>
-          <Button onClick={() => refetch()} loading={isLoading}>刷新</Button>
           {canManageAccounts && (
             <Button
               danger
@@ -154,46 +241,38 @@ export function AccountManagement() {
             </Button>
           )}
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
+
+        <DataTable<Account>
+          columns={columns}
+          data={filteredAndSorted}
           loading={isLoading}
-          dataSource={sorted}
+          rowKey="id"
           rowSelection={canManageAccounts ? rowSelection : undefined}
-          columns={[
-            { title: '名称', dataIndex: 'name' },
-            { title: '账户号', dataIndex: 'accountNumber', render: (v: string) => v || '-' },
-            { title: '别名', dataIndex: 'alias', render: (v: string) => v || '-' },
-            { title: '类型', dataIndex: 'type', render: (v: string) => TYPE_OPTIONS.find(o => o.value === v)?.label || v },
-            { title: '币种', render: (_: unknown, r: Account) => r.currencyName ? `${r.currency} - ${r.currencyName}` : r.currency },
-            { title: '管理人员', dataIndex: 'manager', render: (v: string) => v || '-' },
-            { title: '启用', dataIndex: 'active', render: (v: number) => v === 1 ? '是' : '否' },
-            {
-              title: '操作', render: (_: unknown, r: Account) => (
-                <Space>
-                  <Button size="small" onClick={() => handleEditClick(r)}>编辑</Button>
-                  {canManageAccounts && (
-                    <Switch
-                      size="small"
-                      checked={r.active === 1}
-                      onChange={(checked) => handleToggleActive(r.id, checked)}
-                    />
-                  )}
-                  {canManageAccounts && (
-                    <Popconfirm
-                      title={`确定要删除账户"${r.name}"吗？`}
-                      description="删除后该账户将被永久删除，如果有流水使用此账户，将无法删除。"
-                      onConfirm={() => deleteAccount(r.id, r.name)}
-                      okText="确定"
-                      cancelText="取消"
-                    >
-                      <Button size="small" danger>删除</Button>
-                    </Popconfirm>
-                  )}
-                </Space>
-              )
-            },
-          ]} />
+          onEdit={(record) => handleEditClick(record)}
+          actions={(record) => (
+            <Space>
+              {canManageAccounts && (
+                <Switch
+                  size="small"
+                  checked={record.active === 1}
+                  onChange={(checked) => handleToggleActive(record.id, checked)}
+                />
+              )}
+              {canManageAccounts && (
+                <Popconfirm
+                  title={`确定要删除账户"${record.name}"吗？`}
+                  description="删除后该账户将被永久删除，如果有流水使用此账户，将无法删除。"
+                  onConfirm={() => deleteAccount(record.id)}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button size="small" danger>删除</Button>
+                </Popconfirm>
+              )}
+            </Space>
+          )}
+          tableProps={{ className: 'table-striped' }}
+        />
 
         <FormModal
           title="新建账户"

@@ -1,23 +1,37 @@
 import { useState, useEffect } from 'react'
 import { Layout, Card, Form, Input, Button, message } from 'antd'
+import type { FormProps } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { ThunderboltFilled } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import { useAppStore } from '../../../store/useAppStore'
+import { useHealth, useLogin } from '../../../hooks'
+import { withErrorHandler } from '../../../utils/errorHandler'
 import './Login.css'
 
 const { Header, Content } = Layout
+
+// 表单值类型定义
+interface LoginFormValues {
+  email: string
+  password: string
+}
+
+interface TotpFormValues {
+  totp: string
+}
 
 export function Login() {
     const navigate = useNavigate()
     const { setUserInfo, setToken, isAuthenticated } = useAppStore()
 
-    const [loading, setLoading] = useState(false)
     const [loginStep, setLoginStep] = useState<'login' | 'totp'>('login')
     const [loginEmail, setLoginEmail] = useState('')
     const [loginPassword, setLoginPassword] = useState('')
-    const [apiOk, setApiOk] = useState(false)
+
+    const { data: healthData } = useHealth()
+    const apiOk = !!healthData?.checks?.db
+
+    const { mutateAsync: login, isPending: loading } = useLogin()
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -25,20 +39,22 @@ export function Login() {
         }
     }, [isAuthenticated, navigate])
 
-    useEffect(() => {
-        apiClient.get<any>(api.health).then(d => setApiOk(!!d.db)).catch(() => setApiOk(false))
-    }, [])
-
-    const onLogin = async (v: any) => {
-        if (!v?.email || typeof v.email !== 'string') return message.error('请输入有效的邮箱地址')
-        if (!v?.password) return message.error('请输入密码')
-        setLoading(true)
-        try {
+    const onLogin: FormProps<LoginFormValues>['onFinish'] = withErrorHandler(
+        async (v) => {
+            if (!v?.email || typeof v.email !== 'string') {
+                message.error('请输入有效的邮箱地址')
+                return
+            }
+            if (!v?.password) {
+                message.error('请输入密码')
+                return
+            }
+            
             const payload = {
                 email: v.email.trim(),
                 password: v.password
             }
-            const data = await apiClient.post<any>(api.auth.loginPassword, payload)
+            const data = await login(payload)
 
             if (data.needTotp) {
                 // 用户需验证 TOTP
@@ -53,20 +69,21 @@ export function Login() {
                 message.success('登录成功')
                 navigate('/dashboard')
             }
-        } catch (error: any) {
-            // 使用标准消息或后端返回的消息
-            const msg = error.message || '网络连接失败，请检查您的网络'
-            message.error(msg)
-        } finally {
-            setLoading(false)
+        },
+        {
+            showSuccess: false, // 登录成功消息已手动处理
+            errorMessage: '网络连接失败，请检查您的网络'
         }
-    }
+    )
 
-    const onTotp = async (v: any) => {
-        if (!v?.totp || v.totp.length !== 6) return message.error('请输入 6 位数字验证码')
-        setLoading(true)
-        try {
-            const data = await apiClient.post<any>(api.auth.loginPassword, {
+    const onTotp: FormProps<TotpFormValues>['onFinish'] = withErrorHandler(
+        async (v) => {
+            if (!v?.totp || v.totp.length !== 6) {
+                message.error('请输入 6 位数字验证码')
+                return
+            }
+            
+            const data = await login({
                 email: loginEmail,
                 password: loginPassword,
                 totp: v.totp
@@ -75,13 +92,17 @@ export function Login() {
             setToken(data.token)
             message.success('登录成功')
             navigate('/dashboard')
-        } catch (error: any) {
-            const msg = error.message === 'Google验证码错误' ? '验证码错误或已失效，请重试' : (error.message || '网络连接失败，请检查您的网络')
-            message.error(msg)
-        } finally {
-            setLoading(false)
+        },
+        {
+            showSuccess: false, // 登录成功消息已手动处理
+            errorMessage: '验证码错误或已失效，请重试',
+            onError: (error: unknown) => {
+                const errorMessage = error instanceof Error ? error.message : '网络连接失败，请检查您的网络'
+                const msg = errorMessage === 'Google验证码错误' ? '验证码错误或已失效，请重试' : errorMessage
+                message.error(msg)
+            }
         }
-    }
+    )
 
 
 

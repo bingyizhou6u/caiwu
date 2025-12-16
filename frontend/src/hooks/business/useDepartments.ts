@@ -1,5 +1,7 @@
 import { useApiQuery } from '../../utils/useApiQuery'
 import { api } from '../../config/api'
+import { api as apiClient } from '../../api/http'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Department, SelectOption } from '../../types'
 
 /**
@@ -59,4 +61,42 @@ export function useDepartmentOptions(includeHQ = true) {
             staleTime: 60 * 60 * 1000, // 1小时缓存
         }
     )
+}
+
+export function useCreateDepartment() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (data: Partial<Department>) => {
+            const result = await apiClient.post<Department>(api.departments, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['departments'] })
+        },
+    })
+}
+
+export function useUpdateDepartment() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<Department> }) => {
+            const result = await apiClient.put<Department>(`${api.departments}/${id}`, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['departments'] })
+        },
+    })
+}
+
+export function useDeleteDepartment() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (id: string) => {
+            await apiClient.delete(`${api.departments}/${id}`)
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['departments'] })
+        },
+    })
 }

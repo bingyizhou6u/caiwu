@@ -1,44 +1,42 @@
-import { useState, useEffect } from 'react'
-import { Card, Button, Table, Space, Select, message } from 'antd'
+import React, { useState } from 'react'
+import { Card, Button, Space, Select } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
-import { loadExpenseCategories } from '../../../utils/loaders'
 import { DateRangePicker } from '../../../components/DateRangePicker'
+import { DataTable } from '../../../components/common/DataTable'
+import { useExpenseDetail, useExpenseCategories } from '../../../hooks'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import type { SelectOption } from '../../../types/business'
+import type { ExpenseDetailResponse } from '../../../hooks/business/useReports'
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportExpenseDetail() {
-  const [rows, setRows] = useState<any[]>([])
-  const [categories, setCategories] = useState<{ value: string, label: string }[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>()
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const start = range[0].format('YYYY-MM-DD')
   const end = range[1].format('YYYY-MM-DD')
 
-  const loadCategories = async () => {
-    try {
-      const categoriesData = await loadExpenseCategories()
-      setCategories(categoriesData.map(c => ({ value: c.value as string, label: c.label })))
-    } catch (e) {
-      // ignore
-    }
-  }
+  const { data, isLoading, refetch } = useExpenseDetail({ start, end, categoryId: selectedCategoryId })
+  const { data: categoriesData = [] } = useExpenseCategories()
+  // 确保 categories 始终是数组
+  const categories = React.useMemo(() => {
+    if (!Array.isArray(categoriesData)) return []
+    return categoriesData.map((c: SelectOption) => ({ 
+      value: c.value, 
+      label: c.label 
+    }))
+  }, [categoriesData])
 
-  useEffect(() => {
-    loadCategories()
-  }, [])
+  const rows: ExpenseDetailResponse['rows'] = data?.rows || []
 
-  const load = async () => {
-    try {
-      const url = `${api.reports.expenseDetail}?start=${start}&end=${end}${selectedCategoryId ? `&categoryId=${selectedCategoryId}` : ''}`
-      const data = await apiClient.get<any>(url)
-      const j = data as any
-      setRows(j.rows ?? [])
-    } catch (error: any) {
-      message.error(error.message || '日常支出明细失败')
+  const handleQuery = withErrorHandler(
+    async () => {
+      await refetch()
+    },
+    {
+      errorMessage: '日常支出明细失败',
     }
-  }
+  )
 
   return (
     <PageContainer
@@ -56,23 +54,24 @@ export function ReportExpenseDetail() {
             value={selectedCategoryId}
             onChange={(v) => setSelectedCategoryId(v)}
           />
-          <Button type="primary" onClick={load}>查询</Button>
+          <Button type="primary" onClick={handleQuery}>查询</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          dataSource={rows}
+        <DataTable<ExpenseDetailResponse['rows'][number]>
           columns={[
-            { title: '凭证号', dataIndex: 'voucherNo' },
-            { title: '日期', dataIndex: 'bizDate' },
-            { title: '类别', dataIndex: 'categoryName' },
-            { title: '账户', dataIndex: 'accountName' },
-            { title: '金额', dataIndex: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '对方', dataIndex: 'counterparty' },
-            { title: '项目', dataIndex: 'departmentName' },
-            { title: '站点', dataIndex: 'siteName' },
-            { title: '备注', dataIndex: 'memo' },
+            { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo' },
+            { title: '日期', dataIndex: 'expenseDate', key: 'expenseDate' },
+            { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
+            { title: '账户', dataIndex: 'accountName', key: 'accountName' },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '对方', dataIndex: 'counterparty', key: 'counterparty' },
+            { title: '项目', dataIndex: 'departmentName', key: 'departmentName' },
+            { title: '站点', dataIndex: 'siteName', key: 'siteName' },
+            { title: '备注', dataIndex: 'description', key: 'description' },
           ]}
+          data={rows}
+          loading={isLoading}
+          rowKey="id"
+          tableProps={{ className: 'table-striped' }}
         />
       </Card>
     </PageContainer>

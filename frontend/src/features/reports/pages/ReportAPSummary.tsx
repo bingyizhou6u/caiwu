@@ -1,29 +1,35 @@
 import { useState } from 'react'
-import { Card, Button, Table, Space, Statistic, message } from 'antd'
+import { Card, Button, Space, Statistic } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import { DateRangePicker } from '../../../components/DateRangePicker'
+import { DataTable } from '../../../components/common/DataTable'
+import { useAPSummary } from '../../../hooks'
+import { withErrorHandler } from '../../../utils/errorHandler'
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportAPSummary() {
-  const [rows, setRows] = useState<any[]>([])
-  const [stats, setStats] = useState<any>({})
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
   const start = range[0].format('YYYY-MM-DD')
   const end = range[1].format('YYYY-MM-DD')
+  
+  const { data, isLoading, refetch } = useAPSummary({ start, end })
+  
+  const rows = data?.rows || []
+  const stats = data ? {
+    total: data.totalCents,
+    settled: data.settledCents,
+    byStatus: data.byStatus,
+  } : { total: 0, settled: 0, byStatus: {} }
 
-  const load = async () => {
-    try {
-      const data = await apiClient.get<any>(`${api.reports.apSummary}?start=${start}&end=${end}`)
-      const j = data as any
-      setRows(j.rows ?? [])
-      setStats({ total: j.totalCents, settled: j.settledCents, byStatus: j.byStatus })
-    } catch (error: any) {
-      message.error(error.message || '应付账款汇总失败')
+  const handleQuery = withErrorHandler(
+    async () => {
+      await refetch()
+    },
+    {
+      errorMessage: '应付账款汇总失败',
     }
-  }
+  )
 
   return (
     <PageContainer
@@ -33,7 +39,7 @@ export function ReportAPSummary() {
       <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 12 }} wrap>
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          <Button type="primary" onClick={load}>查询</Button>
+          <Button type="primary" onClick={handleQuery}>查询</Button>
         </Space>
         <Space style={{ marginBottom: 12 }}>
           <Statistic title="期间总额" value={((stats.total || 0) / 100).toFixed(2)} />
@@ -42,19 +48,20 @@ export function ReportAPSummary() {
             <Statistic key={status} title={`${status}状态`} value={((cents || 0) / 100).toFixed(2)} />
           ))}
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          dataSource={rows}
+        <DataTable<any>
           columns={[
-            { title: '单号', dataIndex: 'docNo' },
-            { title: '开立', dataIndex: 'issueDate' },
-            { title: '到期', dataIndex: 'dueDate' },
-            { title: '供应商', dataIndex: 'partyId' },
-            { title: '金额', dataIndex: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '已结', dataIndex: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '状态', dataIndex: 'status' },
+            { title: '单号', dataIndex: 'docNo', key: 'docNo' },
+            { title: '开立', dataIndex: 'issueDate', key: 'issueDate' },
+            { title: '到期', dataIndex: 'dueDate', key: 'dueDate' },
+            { title: '供应商', dataIndex: 'partyId', key: 'partyId' },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '状态', dataIndex: 'status', key: 'status' },
           ]}
+          data={rows}
+          loading={isLoading}
+          rowKey="id"
+          tableProps={{ className: 'table-striped' }}
         />
       </Card>
     </PageContainer>

@@ -27,22 +27,30 @@ export interface Employee {
 }
 
 // 从Context获取用户职位信息（由中间件预加载）
-export function getUserPosition(c: Context<{ Bindings: Env, Variables: AppVariables }>): Position | undefined {
+export function getUserPosition(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>
+): Position | undefined {
   return c.get('userPosition') as Position | undefined
 }
 
 // 从Context获取用户员工信息（由中间件预加载）
-export function getUserEmployee(c: Context<{ Bindings: Env, Variables: AppVariables }>): Employee | undefined {
+export function getUserEmployee(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>
+): Employee | undefined {
   return c.get('userEmployee') as Employee | undefined
 }
 
 // 从Context获取用户ID
-export function getUserId(c: Context<{ Bindings: Env, Variables: AppVariables }>): string | undefined {
+export function getUserId(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>
+): string | undefined {
   return c.get('userId') as string | undefined
 }
 
 // 从Context获取部门允许的模块列表
-export function getDepartmentModules(c: Context<{ Bindings: Env, Variables: AppVariables }>): string[] {
+export function getDepartmentModules(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>
+): string[] {
   return (c.get('departmentModules') as string[] | undefined) || ['*']
 }
 
@@ -52,7 +60,10 @@ export function getDepartmentModules(c: Context<{ Bindings: Env, Variables: AppV
  * @param module 模块名（如 hr、finance、asset）
  * @returns 是否有访问权限
  */
-export function hasDepartmentModuleAccess(c: Context<{ Bindings: Env, Variables: AppVariables }>, module: string): boolean {
+export function hasDepartmentModuleAccess(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>,
+  module: string
+): boolean {
   const position = getUserPosition(c)
 
   // 总部人员（level=1）不受部门模块限制
@@ -86,13 +97,13 @@ export function hasDepartmentModuleAccess(c: Context<{ Bindings: Env, Variables:
  * @param action 操作：view/create/update/delete/approve/reject/export
  */
 export function hasPermission(
-  c: Context<{ Bindings: Env, Variables: AppVariables }>,
+  c: Context<{ Bindings: Env; Variables: AppVariables }>,
   module: string,
   subModule: string,
   action: string
 ): boolean {
   const position = getUserPosition(c)
-  if (!position || !position.permissions) return false
+  if (!position || !position.permissions) {return false}
 
   // 1. 先检查部门是否允许访问该模块（总部人员跳过此检查）
   if (!hasDepartmentModuleAccess(c, module)) {
@@ -101,10 +112,10 @@ export function hasPermission(
 
   // 2. 再检查职位是否有该操作权限
   const modulePerms = position.permissions[module]
-  if (!modulePerms) return false
+  if (!modulePerms) {return false}
 
   const subModulePerms = modulePerms[subModule]
-  if (!subModulePerms) return false
+  if (!subModulePerms) {return false}
 
   if (Array.isArray(subModulePerms)) {
     return subModulePerms.includes(action)
@@ -116,7 +127,9 @@ export function hasPermission(
 /**
  * 检查是否可以管理下属（审批权限）
  */
-export function canManageSubordinates(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
+export function canManageSubordinates(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>
+): boolean {
   const position = getUserPosition(c)
   return position ? position.canManageSubordinates === 1 : false
 }
@@ -124,7 +137,9 @@ export function canManageSubordinates(c: Context<{ Bindings: Env, Variables: App
 /**
  * 检查是否是总部人员（level=1）
  */
-export function isHeadquartersStaff(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
+export function isHeadquartersStaff(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>
+): boolean {
   const position = getUserPosition(c)
   return position ? position.level === 1 : false
 }
@@ -132,7 +147,7 @@ export function isHeadquartersStaff(c: Context<{ Bindings: Env, Variables: AppVa
 /**
  * 检查是否是项目人员（level=2）
  */
-export function isProjectStaff(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
+export function isProjectStaff(c: Context<{ Bindings: Env; Variables: AppVariables }>): boolean {
   const position = getUserPosition(c)
   return position ? position.level === 2 : false
 }
@@ -140,7 +155,7 @@ export function isProjectStaff(c: Context<{ Bindings: Env, Variables: AppVariabl
 /**
  * 检查是否是组成员（level=3）
  */
-export function isTeamMember(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
+export function isTeamMember(c: Context<{ Bindings: Env; Variables: AppVariables }>): boolean {
   const position = getUserPosition(c)
   return position ? position.level === 3 : false
 }
@@ -148,19 +163,21 @@ export function isTeamMember(c: Context<{ Bindings: Env, Variables: AppVariables
 /**
  * 检查是否有指定职位
  */
-export function hasPositionCode(c: Context<{ Bindings: Env, Variables: AppVariables }>, codes: string[]): boolean {
+export function hasPositionCode(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>,
+  codes: string[]
+): boolean {
   const position = getUserPosition(c)
   return position ? codes.includes(position.code) : false
 }
-
 
 /**
  * 获取用户完整权限配置
  * 直接返回职位的权限配置
  */
-export function getUserPermissions(c: Context<{ Bindings: Env, Variables: AppVariables }>): any {
+export function getUserPermissions(c: Context<{ Bindings: Env; Variables: AppVariables }>): any {
   const position = getUserPosition(c)
-  if (!position || !position.permissions) return {}
+  if (!position || !position.permissions) {return {}}
   return position.permissions
 }
 
@@ -177,15 +194,15 @@ export function getUserPermissions(c: Context<{ Bindings: Env, Variables: AppVar
  * @returns SQL过滤条件和绑定参数
  */
 export function getDataAccessFilter(
-  c: Context<{ Bindings: Env, Variables: AppVariables }>,
+  c: Context<{ Bindings: Env; Variables: AppVariables }>,
   tableAlias: string = 'e',
   options: {
-    deptColumn?: string      // 部门字段，默认 'department_id'
-    orgDeptColumn?: string   // 组织/组字段，默认 'org_department_id'
-    ownerColumn?: string     // 所有者字段，默认 'id' (用于工程师查看自己)
-    skipOrgDept?: boolean    // 是否跳过组级别过滤 (如果不分层级)
+    deptColumn?: string // 部门字段，默认 'department_id'
+    orgDeptColumn?: string // 组织/组字段，默认 'org_department_id'
+    ownerColumn?: string // 所有者字段，默认 'id' (用于工程师查看自己)
+    skipOrgDept?: boolean // 是否跳过组级别过滤 (如果不分层级)
   } = {}
-): { where: string, binds: any[] } {
+): { where: string; binds: any[] } {
   const position = getUserPosition(c)
   const employee = getUserEmployee(c)
   const deptId = employee?.departmentId
@@ -212,7 +229,7 @@ export function getDataAccessFilter(
     }
     return {
       where: `${alias}${deptCol} = ?`,
-      binds: [deptId]
+      binds: [deptId],
     }
   }
 
@@ -225,7 +242,7 @@ export function getDataAccessFilter(
       // 安全起见，退化为查看 owner
       return {
         where: `${alias}${ownerCol} = ?`,
-        binds: [employee.id]
+        binds: [employee.id],
       }
     }
 
@@ -234,20 +251,22 @@ export function getDataAccessFilter(
     }
     return {
       where: `${alias}${orgDeptCol} = ?`,
-      binds: [orgDeptId]
+      binds: [orgDeptId],
     }
   }
 
   // 工程师（team_engineer）或其他：只能访问自己的数据
   return {
     where: `${alias}${ownerCol} = ?`,
-    binds: [employee.id]
+    binds: [employee.id],
   }
 }
 
 /**
  * 获取当前用户ID
  */
-export function getCurrentUserId(c: Context<{ Bindings: Env, Variables: AppVariables }>): string | undefined {
+export function getCurrentUserId(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>
+): string | undefined {
   return getUserId(c)
 }

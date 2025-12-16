@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Table, theme } from 'antd';
-import type { TableProps } from 'antd';
+import type { TableProps, ColumnsType } from 'antd';
 import List from 'rc-virtual-list';
 import ResizeObserver from 'rc-resize-observer';
 
@@ -27,8 +27,8 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
         };
     });
 
-    const gridRef = useRef<any>();
-    const [connectObject] = useState<any>(() => {
+    const gridRef = useRef<{ scrollLeft?: number; scrollTo?: (options: { left: number }) => void; resetAfterIndex?: (index: number) => void } | null>(null);
+    const [connectObject] = useState<{ scrollLeft?: number }>(() => {
         const obj = {};
         Object.defineProperty(obj, 'scrollLeft', {
             get: () => {
@@ -52,7 +52,13 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
 
     useEffect(() => resetVirtualGrid, [tableWidth]);
 
-    const renderVirtualList = (rawData: readonly RecordType[], { scrollbarSize, ref, onScroll }: any) => {
+    interface VirtualListParams {
+        scrollbarSize?: number
+        ref: React.MutableRefObject<unknown>
+        onScroll?: (e: { currentTarget: HTMLElement }) => void
+    }
+
+    const renderVirtualList = (rawData: readonly RecordType[], { scrollbarSize, ref, onScroll }: VirtualListParams) => {
         ref.current = connectObject;
         const totalHeight = rawData.length * 54;
 
@@ -62,7 +68,16 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
                 data={rawData as RecordType[]}
                 height={scroll!.y as number}
                 itemHeight={54}
-                itemKey={(item: any) => item[props.rowKey as string] || item.id}
+                itemKey={(item: RecordType) => {
+                    const rowKey = props.rowKey
+                    if (typeof rowKey === 'string') {
+                        return (item as Record<string, unknown>)[rowKey] as string || (item as { id?: string }).id || ''
+                    }
+                    if (typeof rowKey === 'function') {
+                        return rowKey(item) || ''
+                    }
+                    return (item as { id?: string }).id || ''
+                }}
                 onScroll={onScroll}
             >
                 {(item: RecordType, index: number) => {
@@ -83,9 +98,9 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
                             }}
                             className="virtual-table-row"
                         >
-                            {mergedColumns.map((column: any, i) => {
+                            {mergedColumns.map((column, i) => {
                                 const { dataIndex, render, align = 'left' } = column;
-                                const value = dataIndex ? (item as any)[dataIndex] : item;
+                                const value = dataIndex ? (item as Record<string, unknown>)[dataIndex] : item;
                                 const text = render ? render(value, item, index) : value;
 
                                 return (
@@ -127,7 +142,7 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
                 columns={mergedColumns}
                 pagination={false}
                 components={{
-                    body: renderVirtualList as any,
+                    body: renderVirtualList as TableProps<RecordType>['components']['body'],
                 }}
             />
         </ResizeObserver>

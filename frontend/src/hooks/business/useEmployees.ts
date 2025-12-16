@@ -33,6 +33,73 @@ export function useEmployees(filter?: EmployeeFilter) {
     )
 }
 
+export function useCreateEmployee() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (data: Partial<Employee>) => {
+            const result = await apiClient.post<Employee>(api.employees, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['employees'] })
+        },
+    })
+}
+
+export function useResendActivation() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (employeeId: string) => {
+            await apiClient.post(api.employeesResendActivation(employeeId))
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['employees'] })
+        },
+    })
+}
+
+export function useResetTotp() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (employeeId: string) => {
+            await apiClient.post(api.employeesResetTotp(employeeId))
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['employees'] })
+        },
+    })
+}
+
+export function useEmployeeSalaries(params: { employeeId: string; salaryType: 'probation' | 'regular' }) {
+    const queryParams = new URLSearchParams()
+    queryParams.append('employeeId', params.employeeId)
+    queryParams.append('salaryType', params.salaryType)
+
+    return useApiQuery<any[]>(
+        ['employeeSalaries', params],
+        `${api.employeeSalaries}?${queryParams.toString()}`,
+        {
+            enabled: !!params.employeeId && !!params.salaryType,
+            staleTime: 5 * 60 * 1000,
+        }
+    )
+}
+
+export function useEmployeeAllowances(params: { employeeId: string; allowanceType: string }) {
+    const queryParams = new URLSearchParams()
+    queryParams.append('employeeId', params.employeeId)
+    queryParams.append('allowanceType', params.allowanceType)
+
+    return useApiQuery<any[]>(
+        ['employeeAllowances', params],
+        `${api.employeeAllowances}?${queryParams.toString()}`,
+        {
+            enabled: !!params.employeeId && !!params.allowanceType,
+            staleTime: 5 * 60 * 1000,
+        }
+    )
+}
+
 export function useRegularizeEmployee() {
     const queryClient = useQueryClient()
     return useMutation({

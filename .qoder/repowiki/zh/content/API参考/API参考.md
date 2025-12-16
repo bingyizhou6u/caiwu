@@ -6,17 +6,29 @@
 - [export-openapi.ts](file://backend/scripts/export-openapi.ts)
 - [api.ts](file://frontend/src/config/api.ts)
 - [schema.d.ts](file://frontend/src/types/schema.d.ts)
-- [auth.ts](file://backend/src/routes/auth.ts)
-- [employees.ts](file://backend/src/routes/employees.ts)
-- [employee-leaves.ts](file://backend/src/routes/employee-leaves.ts)
-- [expense-reimbursements.ts](file://backend/src/routes/expense-reimbursements.ts)
-- [flows.ts](file://backend/src/routes/flows.ts)
-- [ar-ap.ts](file://backend/src/routes/ar-ap.ts)
-- [reports.ts](file://backend/src/routes/reports.ts)
+- [auth.ts](file://backend/src/routes/v2/auth.ts) - V2版本
+- [employees.ts](file://backend/src/routes/v2/employees.ts) - V2版本
+- [employee-leaves.ts](file://backend/src/routes/v2/employee-leaves.ts) - V2版本
+- [expense-reimbursements.ts](file://backend/src/routes/v2/expense-reimbursements.ts) - V2版本
+- [flows.ts](file://backend/src/routes/v2/flows.ts) - V2版本
+- [ar-ap.ts](file://backend/src/routes/v2/ar-ap.ts) - V2版本
+- [reports.ts](file://backend/src/routes/v2/reports.ts) - V2版本
 - [common.schema.ts](file://backend/src/schemas/common.schema.ts)
 - [business.schema.ts](file://backend/src/schemas/business.schema.ts)
 - [employee.schema.ts](file://backend/src/schemas/employee.schema.ts)
+- [response.ts](file://backend/src/utils/response.ts) - V2响应格式工具
+- [errors.ts](file://backend/src/utils/errors.js) - V2错误处理
 </cite>
+
+> **📌 API版本说明**
+> 
+> 本文档描述的是 **API v2** 版本，所有端点使用 `/api/v2/` 前缀（兼容 `/api/` 路径）。
+> 
+> **主要变化**：
+> - ✅ 响应格式统一为 `{ success: boolean, data?: any, error?: { code, message } }`
+> - ✅ 分页响应使用 `{ items: [], pagination: {} }` 结构
+> - ✅ 错误响应统一使用 `error` 对象，包含错误码和消息
+> - ✅ 所有路由已迁移到 `backend/src/routes/v2/` 目录
 
 ## 目录
 1. [API设计原则](#api设计原则)
@@ -33,12 +45,17 @@
 
 ## API设计原则
 
-本系统遵循RESTful架构风格，采用统一的响应格式和命名规范。所有API端点均以`/api`为前缀，使用HTTP动词表示操作类型（GET、POST、PUT、DELETE）。响应体采用统一的JSON格式，包含`ok`字段表示操作成功与否，以及相应的数据或错误信息。
+本系统遵循RESTful架构风格，采用统一的响应格式和命名规范。所有API端点均以`/api/v2`为前缀（兼容`/api`路径），使用HTTP动词表示操作类型（GET、POST、PUT、DELETE）。响应体采用统一的JSON格式，包含`success`字段表示操作成功与否，以及相应的数据或错误信息。
+
+### API版本
+- **当前版本**: v2
+- **路径格式**: `/api/v2/...` 或 `/api/...`（自动映射到v2）
+- **响应格式**: 统一使用 `{ success: boolean, data?: any, error?: { code, message } }` 结构
 
 API设计遵循以下原则：
 - **资源导向**：每个API端点代表一个明确的资源（如员工、请假、报销等）
-- **统一响应格式**：所有响应都遵循一致的结构，便于前端处理
-- **版本控制**：通过OpenAPI规范进行版本管理
+- **统一响应格式**：所有响应都遵循一致的结构（`success` + `data`/`error`），便于前端处理
+- **版本控制**：通过URL路径进行版本管理（`/api/v2/...`），支持多版本并存
 - **安全性**：所有受保护的端点都需要JWT认证
 - **可发现性**：通过OpenAPI文档提供完整的API描述
 
@@ -53,7 +70,7 @@ API设计遵循以下原则：
 
 #### 登录
 ```http
-POST /api/auth/login
+POST /api/v2/auth/login
 ```
 
 **请求头**
@@ -68,49 +85,65 @@ POST /api/auth/login
 }
 ```
 
-**响应体**
+**响应体（V2格式）**
 ```json
 {
-  "ok": true,
-  "token": "string",
-  "expiresIn": 0,
-  "user": {},
-  "mustChangePassword": true,
-  "needTotp": true,
-  "needBindTotp": true,
-  "message": "string",
-  "error": "string",
-  "code": "string"
+  "success": true,
+  "data": {
+    "token": "string",
+    "expiresIn": 0,
+    "user": {},
+    "mustChangePassword": false,
+    "needTotp": false,
+    "message": "string"
+  }
+}
+```
+
+**错误响应**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "AUTH_UNAUTHORIZED",
+    "message": "认证失败"
+  }
 }
 ```
 
 #### 获取当前用户信息
 ```http
-GET /api/me
+GET /api/v2/auth/me
 ```
 
 **请求头**
 - `Authorization: Bearer <token>`
 
-**响应体**
+**响应体（V2格式）**
 ```json
 {
-  "user": {}
+  "success": true,
+  "data": {
+    "user": {}
+  }
 }
 ```
 
 #### 获取用户权限
 ```http
-GET /api/my-permissions
+GET /api/v2/my-permissions
 ```
 
 **请求头**
 - `Authorization: Bearer <token>`
 
-**响应体**
+**响应体（V2格式）**
 ```json
 {
-  "permissions": {}
+  "success": true,
+  "data": {
+    "permissions": {}
+  }
 }
 ```
 
@@ -124,7 +157,23 @@ GET /api/my-permissions
 
 ### 获取员工列表
 ```http
-GET /api/employees
+GET /api/v2/employees
+```
+
+**响应体（V2格式）**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [],
+    "pagination": {
+      "page": 1,
+      "pageSize": 20,
+      "total": 100,
+      "totalPages": 5
+    }
+  }
+}
 ```
 
 **请求头**
@@ -810,9 +859,9 @@ import { writeFileSync } from 'fs'
 import { resolve } from 'path'
 
 const doc = app.getOpenAPI31Document({
-    openapi: '3.1.0',
+    openapi: '3.0.0',
     info: {
-        version: '1.0.0',
+        version: '2.0.0',
         title: 'Caiwu API',
     },
 })
@@ -839,32 +888,33 @@ node backend/scripts/export-openapi.ts
 
 ## 前端调用示例
 
-### 基础API配置
+### 基础API配置（V2）
 ```typescript
 // API配置
 const API_BASE = import.meta.env.DEV
   ? 'http://127.0.0.1:8787'
   : ''
 
+export const API_VERSION = 'v2'
 export const api = {
   base: API_BASE,
   auth: {
-    login: `${API_BASE}/api/auth/login`,
-    me: `${API_BASE}/api/me`,
+    login: `${API_BASE}/api/v2/auth/login`,
+    me: `${API_BASE}/api/v2/auth/me`,
   },
-  employees: `${API_BASE}/api/employees`,
-  employeeLeaves: `${API_BASE}/api/employee-leaves`,
-  expenseReimbursements: `${API_BASE}/api/expense-reimbursements`,
-  flows: `${API_BASE}/api/flows`,
+  employees: `${API_BASE}/api/v2/employees`,
+  employeeLeaves: `${API_BASE}/api/v2/employee-leaves`,
+  expenseReimbursements: `${API_BASE}/api/v2/expense-reimbursements`,
+  flows: `${API_BASE}/api/v2/flows`,
   reports: {
     dashboard: {
-      stats: `${API_BASE}/api/reports/dashboard/stats`,
+      stats: `${API_BASE}/api/v2/reports/dashboard/stats`,
     },
   },
 }
 ```
 
-### 登录示例
+### 登录示例（V2格式）
 ```typescript
 async function login(email: string, password: string) {
   const response = await fetch(api.auth.login, {
@@ -876,30 +926,40 @@ async function login(email: string, password: string) {
   })
   
   const data = await response.json()
-  if (data.ok && data.token) {
-    localStorage.setItem('authToken', data.token)
-    return data.user
+  // V2 响应格式：使用 success 字段
+  if (data.success && data.data?.token) {
+    const token = data.data.token
+    localStorage.setItem('authToken', token)
+    return data.data.user
   }
-  throw new Error(data.message || '登录失败')
+  // 处理错误响应
+  throw new Error(data.error?.message || '登录失败')
 }
 ```
 
-### 获取员工列表
+### 获取员工列表（V2格式）
 ```typescript
-async function getEmployees() {
+async function getEmployees(page = 1, pageSize = 20) {
   const token = localStorage.getItem('authToken')
-  const response = await fetch(api.employees, {
+  const response = await fetch(`${api.employees}?page=${page}&pageSize=${pageSize}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
     },
   })
   
-  if (!response.ok) throw new Error('获取员工列表失败')
-  return await response.json()
+  const data = await response.json()
+  if (data.success) {
+    // V2 分页格式：data.items 和 data.pagination
+    return {
+      items: data.data.items,
+      pagination: data.data.pagination
+    }
+  }
+  throw new Error(data.error?.message || '获取员工列表失败')
 }
 ```
 
-### 创建请假
+### 创建请假（V2格式）
 ```typescript
 async function createLeave(leaveData: any) {
   const token = localStorage.getItem('authToken')
@@ -912,8 +972,49 @@ async function createLeave(leaveData: any) {
     body: JSON.stringify(leaveData),
   })
   
-  if (!response.ok) throw new Error('创建请假失败')
-  return await response.json()
+  const data = await response.json()
+  if (data.success) {
+    return data.data // V2 格式：数据在 data 字段中
+  }
+  throw new Error(data.error?.message || '创建请假失败')
+}
+```
+
+### 统一错误处理（V2）
+```typescript
+// 统一的 API 客户端封装
+class ApiClient {
+  async request(url: string, options: RequestInit = {}) {
+    const token = localStorage.getItem('authToken')
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    })
+    
+    const data = await response.json()
+    
+    if (data.success) {
+      return data.data
+    }
+    
+    // 统一错误处理
+    throw new Error(data.error?.message || '请求失败')
+  }
+  
+  get(url: string) {
+    return this.request(url, { method: 'GET' })
+  }
+  
+  post(url: string, body: any) {
+    return this.request(url, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  }
 }
 ```
 
@@ -928,17 +1029,52 @@ async function createLeave(leaveData: any) {
 - 资源名称使用复数形式
 - 路径层次清晰，反映资源关系
 
-### 请求/响应格式
-- 请求体使用JSON格式
-- 响应体包含统一的结构：
-  ```json
-  {
-    "ok": true,
-    "data": {},
-    "error": ""
+### 请求/响应格式（V2）
+
+#### 成功响应格式
+```json
+{
+  "success": true,
+  "data": {
+    // 实际数据内容
+  },
+  "message": "可选的成功消息"
+}
+```
+
+#### 分页响应格式
+```json
+{
+  "success": true,
+  "data": {
+    "items": [],
+    "pagination": {
+      "page": 1,
+      "pageSize": 20,
+      "total": 100,
+      "totalPages": 5
+    }
   }
-  ```
-- 错误响应包含错误码和描述
+}
+```
+
+#### 错误响应格式
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "错误描述",
+    "details": {}
+  }
+}
+```
+
+#### 关键变化（V1 → V2）
+- ✅ `ok` → `success`：统一使用布尔值 `success` 字段
+- ✅ 数据统一放在 `data` 字段中
+- ✅ 错误信息统一放在 `error` 对象中，包含 `code` 和 `message`
+- ✅ 分页数据使用 `items` + `pagination` 结构
 
 ### 认证机制
 - 使用JWT进行认证

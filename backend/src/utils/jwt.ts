@@ -63,19 +63,23 @@ export type AuthTokenPayload = {
   sub: string
   email: string
   name: string
-  role?: string  // 可选，从 position 中推导
+  role?: string // 可选，从 position 中推导
   position?: any
   iat?: number
   exp?: number
 }
 
-export async function signAuthToken(payload: AuthTokenPayload, secret: string, ttlSeconds = AUTH_TOKEN_TTL) {
+export async function signAuthToken(
+  payload: AuthTokenPayload,
+  secret: string,
+  ttlSeconds = AUTH_TOKEN_TTL
+) {
   const header = { alg: 'HS256', typ: 'JWT' }
   const issuedAt = Math.floor(Date.now() / 1000)
   const fullPayload = {
     ...payload,
     iat: issuedAt,
-    exp: issuedAt + ttlSeconds
+    exp: issuedAt + ttlSeconds,
   }
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header))
@@ -91,14 +95,19 @@ export async function signAuthToken(payload: AuthTokenPayload, secret: string, t
 
 export async function verifyAuthToken(token: string, secret: string): Promise<AuthTokenPayload> {
   const parts = token.split('.')
-  if (parts.length !== 3) throw new Error('Invalid token format')
+  if (parts.length !== 3) {throw new Error('Invalid token format')}
 
   const [encodedHeader, encodedPayload, encodedSignature] = parts
   const data = `${encodedHeader}.${encodedPayload}`
 
   const key = await getKey(secret)
-  const isValid = await crypto.subtle.verify('HMAC', key, base64UrlDecode(encodedSignature), encoder.encode(data))
-  if (!isValid) throw new Error('Invalid token signature')
+  const isValid = await crypto.subtle.verify(
+    'HMAC',
+    key,
+    base64UrlDecode(encodedSignature),
+    encoder.encode(data)
+  )
+  if (!isValid) {throw new Error('Invalid token signature')}
 
   const payloadJson = decoder.decode(base64UrlDecode(encodedPayload))
   const payload = JSON.parse(payloadJson)
@@ -111,8 +120,8 @@ export async function verifyAuthToken(token: string, secret: string): Promise<Au
 }
 
 export function extractBearerToken(header?: string | null) {
-  if (!header) return null
+  if (!header) {return null}
   const [type, token] = header.split(' ')
-  if (!token || type.toLowerCase() !== 'bearer') return null
+  if (!token || type.toLowerCase() !== 'bearer') {return null}
   return token.trim()
 }

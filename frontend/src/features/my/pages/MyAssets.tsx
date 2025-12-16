@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Tabs, Tag, Typography, Spin, Empty } from 'antd'
+import { Card, Tabs, Tag, Typography, Spin, Empty } from 'antd'
 import { ToolOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
+import { useMyAssets } from '../../../hooks'
 
 const { Title } = Typography
 
@@ -22,30 +20,15 @@ interface Asset {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 
 export function MyAssets() {
-  const [loading, setLoading] = useState(true)
-  const [current, setCurrent] = useState<Asset[]>([])
-  const [returned, setReturned] = useState<Asset[]>([])
+  const { data, isLoading: loading } = useMyAssets()
+  
+  const current = data?.current || []
+  const returned = data?.returned || []
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const result = await apiClient.get<any>(api.my.assets)
-      setCurrent(result.current || [])
-      setReturned(result.returned || [])
-    } catch (error) {
-      console.error('Failed to load assets:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const columns = [
+  const columns: DataTableColumn<Asset>[] = [
     { title: '资产编号', dataIndex: 'assetCode' },
     { title: '资产名称', dataIndex: 'assetName' },
     { title: '品牌', dataIndex: 'brand' },
@@ -60,7 +43,7 @@ export function MyAssets() {
     { title: '备注', dataIndex: 'memo', ellipsis: true },
   ]
 
-  const returnedColumns = [
+  const returnedColumns: DataTableColumn<Asset>[] = [
     ...columns,
     { title: '归还日期', dataIndex: 'returnDate' },
   ]
@@ -80,12 +63,11 @@ export function MyAssets() {
             key: 'current',
             label: `当前持有 (${current.length})`,
             children: current.length > 0 ? (
-              <Table
-                className="table-striped"
-                dataSource={current}
+              <DataTable<Asset>
                 columns={columns}
+                data={current}
                 rowKey="id"
-                pagination={false}
+                tableProps={{ className: 'table-striped', pagination: false }}
               />
             ) : <Empty description="暂无持有资产" />
           },
@@ -93,12 +75,11 @@ export function MyAssets() {
             key: 'returned',
             label: `已归还 (${returned.length})`,
             children: returned.length > 0 ? (
-              <Table
-                className="table-striped"
-                dataSource={returned}
+              <DataTable<Asset>
                 columns={returnedColumns}
+                data={returned}
                 rowKey="id"
-                pagination={{ pageSize: 10 }}
+                tableProps={{ className: 'table-striped', pagination: { pageSize: 10 } }}
               />
             ) : <Empty description="暂无归还记录" />
           },

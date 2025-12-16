@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Table, Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Radio, Upload, Popconfirm, Card } from 'antd'
+import { useState, useEffect, useMemo } from 'react'
+import { Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Radio, Upload, Popconfirm, Card } from 'antd'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
@@ -15,6 +15,8 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useMultipleModals } from '../../../hooks/forms/useFormModal'
 import { createFlowSchema } from '../../../validations/flow.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { Flow } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
 import { renderCurrency, renderDate, renderText } from '../../../utils/renderers'
@@ -29,6 +31,7 @@ const TYPE_LABELS: Record<string, string> = {
 export function Flows() {
   // 模态框
   const modals = useMultipleModals(['create', 'voucherUpload', 'preview'])
+  const [searchParams, setSearchParams] = useState<{ type?: string; accountId?: string; categoryId?: string; dateRangeStart?: string; dateRangeEnd?: string }>({})
 
   const { form, validateWithZod } = useZodForm(createFlowSchema)
 
@@ -40,7 +43,7 @@ export function Flows() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
 
-  const { data: flowsData, isLoading: loading, refetch: load } = useFlows(page, pageSize)
+  const { data: flowsData, isLoading: loading, refetch } = useFlows(page, pageSize)
   const flows = flowsData?.list || []
   const total = flowsData?.total || 0
 
@@ -56,7 +59,7 @@ export function Flows() {
     tableActions,
     {
       onSuccess: () => {
-        load()
+        refetch()
         message.success('批量删除成功')
       },
       errorMessage: '批量删除失败'
@@ -102,7 +105,7 @@ export function Flows() {
       form.resetFields()
       setFileList([])
       setVoucherUrls([])
-      load()
+      refetch()
     },
     { successMessage: '已新增' }
   )
@@ -124,7 +127,7 @@ export function Flows() {
       modals.close('voucherUpload')
       setVoucherUploadUrls([])
       setVoucherUploadFileList([])
-      load()
+      refetch()
     },
     { successMessage: '凭证更新成功' }
   )
@@ -170,8 +173,9 @@ export function Flows() {
       message.success('凭证上传成功（已转换为WebP格式）')
       setUploading(false)
       return false
-    } catch (error: any) {
-      message.error('上传失败: ' + (error.message || '未知错误'))
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      message.error('上传失败: ' + errorMessage)
       setUploading(false)
       return false
     }
@@ -183,7 +187,61 @@ export function Flows() {
       breadcrumb={[{ title: '财务管理' }, { title: '收支记账' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
+        <SearchFilters
+          fields={[
+            {
+              name: 'type',
+              label: '类型',
+              type: 'select',
+              placeholder: '请选择类型',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'income', label: '收入' },
+                { value: 'expense', label: '支出' },
+                { value: 'transfer', label: '转账' },
+                { value: 'adjust', label: '调整' },
+              ],
+            },
+            {
+              name: 'accountId',
+              label: '账户',
+              type: 'select',
+              placeholder: '请选择账户',
+              options: [
+                { label: '全部', value: '' },
+                ...accounts.map((a: any) => ({ value: a.value, label: a.label })),
+              ],
+            },
+            {
+              name: 'categoryId',
+              label: '类别',
+              type: 'select',
+              placeholder: '请选择类别',
+              options: [
+                { label: '全部', value: '' },
+                ...allCategories.map((c: any) => ({ value: c.value, label: c.label })),
+              ],
+            },
+            {
+              name: 'dateRange',
+              label: '日期范围',
+              type: 'dateRange',
+            },
+          ]}
+          onSearch={(values) => {
+            const params: any = {}
+            if (values.type) params.type = values.type
+            if (values.accountId) params.accountId = values.accountId
+            if (values.categoryId) params.categoryId = values.categoryId
+            if (values.dateRangeStart) params.dateRangeStart = values.dateRangeStart
+            if (values.dateRangeEnd) params.dateRangeEnd = values.dateRangeEnd
+            setSearchParams(params)
+          }}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
           <Button type="primary" onClick={() => {
             modals.open('create')
             setSelectedType('income')
@@ -191,7 +249,7 @@ export function Flows() {
             form.resetFields()
             form.setFieldsValue({ type: 'income', bizDate: dayjs(), method: 'cash' })
           }}>新建记账</Button>
-          <Button onClick={() => load()}>刷新</Button>
+          <Button onClick={() => refetch()}>刷新</Button>
           <Button
             danger
             disabled={selectedRowKeys.length === 0}
@@ -209,38 +267,60 @@ export function Flows() {
             </Popconfirm>
           </Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          loading={loading}
-          dataSource={flows}
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            onChange: (p, ps) => {
-              setPage(p)
-              setPageSize(ps)
-            },
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条`
-          }}
-          rowSelection={rowSelection}
-          columns={[
-            { title: '凭证号', dataIndex: 'voucherNo' },
-            { title: '日期', dataIndex: 'bizDate', render: (v) => renderDate(v) },
-            { title: '类型', dataIndex: 'type', render: (v: string) => TYPE_LABELS[v] || v },
-            { title: '金额', dataIndex: 'amountCents', render: (v) => renderCurrency(v) },
-            { title: '归属', render: (_: any, r: any) => r.departmentId ? '项目' : '总部' },
-            { title: '账户', dataIndex: 'accountName' },
-            { title: '类别', dataIndex: 'categoryName' },
-            { title: '对方', dataIndex: 'counterparty', render: (v) => renderText(v) },
-            { title: '备注', dataIndex: 'memo', render: (v) => renderText(v) },
-            {
-              title: '凭证',
-              dataIndex: 'voucherUrls',
-              render: (urls: string[] | undefined, record: Flow) => {
-                const voucherUrls = urls || (record.voucherUrl ? [record.voucherUrl] : [])
+
+        {(() => {
+          // 过滤数据
+          const filteredFlows = useMemo(() => {
+            let result = flows
+            if (searchParams.type) {
+              result = result.filter((f: Flow) => f.type === searchParams.type)
+            }
+            if (searchParams.accountId) {
+              result = result.filter((f: Flow) => f.accountId === searchParams.accountId)
+            }
+            if (searchParams.categoryId) {
+              result = result.filter((f: Flow) => f.categoryId === searchParams.categoryId)
+            }
+            if (searchParams.dateRangeStart) {
+              const start = dayjs(searchParams.dateRangeStart).startOf('day')
+              result = result.filter((f: Flow) => dayjs(f.bizDate).isAfter(start) || dayjs(f.bizDate).isSame(start))
+            }
+            if (searchParams.dateRangeEnd) {
+              const end = dayjs(searchParams.dateRangeEnd).endOf('day')
+              result = result.filter((f: Flow) => dayjs(f.bizDate).isBefore(end) || dayjs(f.bizDate).isSame(end))
+            }
+            return result
+          }, [flows, searchParams])
+
+          const columns: DataTableColumn<Flow>[] = [
+            { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo' },
+            { title: '日期', dataIndex: 'bizDate', key: 'bizDate', render: (v: string) => renderDate(v) },
+            { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_LABELS[v] || v },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => renderCurrency(v) },
+            { title: '归属', key: 'owner', render: (_: unknown, r: Flow) => r.departmentId ? '项目' : '总部' },
+            { title: '账户', dataIndex: 'accountName', key: 'accountName' },
+            { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
+            { title: '对方', dataIndex: 'counterparty', key: 'counterparty', render: (v: string) => renderText(v) },
+            { title: '备注', dataIndex: 'memo', key: 'memo', render: (v: string) => renderText(v) },
+          ]
+
+          return (
+            <DataTable<Flow>
+              columns={columns}
+              data={filteredFlows}
+              loading={loading}
+              rowKey="id"
+              pagination={{
+                current: page,
+                pageSize: pageSize,
+                total: total,
+                onChange: (p, ps) => {
+                  setPage(p)
+                  setPageSize(ps)
+                },
+              }}
+              actions={(record) => {
+                const voucherUrls = record.voucherUrls || (record.voucherUrl ? [record.voucherUrl] : [])
                 return (
                   <Space>
                     {voucherUrls.length > 0 ? (
@@ -267,9 +347,11 @@ export function Flows() {
                     </Button>
                   </Space>
                 )
-              }
-            },
-          ]} />
+              }}
+              tableProps={{ className: 'table-striped', rowSelection }}
+            />
+          )
+        })()}
 
         <Modal title="新建记账" open={modals.isOpen('create')} onOk={onCreate} confirmLoading={isCreating} onCancel={() => {
           modals.close('create')
@@ -314,7 +396,7 @@ export function Flows() {
                 <Form.Item name="departmentId" label="项目">
                   <Select
                     placeholder="请选择项目"
-                    options={departments}
+                    options={Array.isArray(departments) ? departments : []}
                     allowClear
                     onChange={(value) => {
                       setSelectedDepartmentId(value)
@@ -325,13 +407,13 @@ export function Flows() {
                 <Form.Item name="siteId" label="站点（可选）">
                   <Select
                     placeholder="请选择站点"
-                    options={sites
+                    options={Array.isArray(sites) ? sites
                       .filter((s: any) => !selectedDepartmentId || s.departmentId === selectedDepartmentId)
-                      .map((s: any) => ({ value: s.value, label: s.label }))}
+                      .map((s: any) => ({ value: s.value, label: s.label })) : []}
                     allowClear
                     onChange={(value) => {
                       if (value) {
-                        const site = sites.find((s: any) => s.value === value)
+                        const site = Array.isArray(sites) ? sites.find((s: any) => s.value === value) : undefined
                         if (site) {
                           form.setFieldsValue({ departmentId: site.departmentId })
                           setSelectedDepartmentId(site.departmentId)
@@ -370,12 +452,12 @@ export function Flows() {
               <Select
                 showSearch
                 placeholder="选择账户"
-                options={accounts}
+                options={Array.isArray(accounts) ? accounts : []}
                 filterOption={(input, option) => (option?.search || '').includes(input.toLowerCase())}
               />
             </Form.Item>
             <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
-              <Select options={categories} placeholder="选择类别" showSearch optionFilterProp="label" />
+              <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" showSearch optionFilterProp="label" />
             </Form.Item>
             <Form.Item name="counterparty" label="对方">
               <Input />

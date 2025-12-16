@@ -153,3 +153,47 @@ export function useReturnFixedAsset() {
         }
     })
 }
+
+export function useFixedAssetPurchase() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (data: any) => {
+            const result = await apiClient.post<any>(api.fixedAssetsPurchase, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fixedAssets'] })
+        }
+    })
+}
+
+export function useFixedAssetSale() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+            const result = await apiClient.post<any>(api.fixedAssetsSale(id), data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fixedAssets'] })
+        }
+    })
+}
+
+export function useFixedAssetAllocations(params?: { employeeId?: string; returned?: string }) {
+    const queryParams = new URLSearchParams()
+    if (params?.employeeId) queryParams.append('employeeId', params.employeeId)
+    if (params?.returned !== undefined) queryParams.append('returned', params.returned)
+
+    const url = queryParams.toString()
+        ? `${api.fixedAssetsAllocations}?${queryParams.toString()}`
+        : api.fixedAssetsAllocations
+
+    return useApiQuery<any[]>(
+        ['fixedAssetsAllocations', params],
+        url,
+        {
+            staleTime: CACHE_TIME.BUSINESS_DATA,
+        }
+    )
+}

@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
-import { Card, Table, Button, Form, Input, Space, message, Switch, Popconfirm } from 'antd'
+import { useMemo, useState } from 'react'
+import { Card, Button, Form, Input, Space, message, Switch, Popconfirm } from 'antd'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import { useCurrencies, useCreateCurrency, useUpdateCurrency, useDeleteCurrency, useToggleCurrencyActive } from '../../../hooks/business/useCurrencies'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
@@ -21,6 +23,7 @@ export function CurrencyManagement() {
 
   const cModal = useFormModal<Currency>()
   const eModal = useFormModal<Currency>()
+  const [searchParams, setSearchParams] = useState<{ search?: string; activeOnly?: string }>({})
 
   const { form: cForm, validateWithZod: validateCreate } = useZodForm(currencySchema)
   const { form: eForm, validateWithZod: validateEdit } = useZodForm(currencySchema)
@@ -28,7 +31,29 @@ export function CurrencyManagement() {
   const { hasPermission } = usePermissions()
   const canManageCurrency = hasPermission('system', 'currency', 'create')
 
-  const sorted = useMemo(() => currencies.slice().sort((a: Currency, b: Currency) => a.code.localeCompare(b.code)), [currencies])
+  // 过滤和排序数据
+  const filteredAndSorted = useMemo(() => {
+    let result = currencies.slice()
+    
+    // 搜索过滤
+    if (searchParams.search) {
+      const search = searchParams.search.toLowerCase()
+      result = result.filter((c: Currency) => 
+        c.code.toLowerCase().includes(search) || 
+        c.name.toLowerCase().includes(search)
+      )
+    }
+    
+    // 状态过滤
+    if (searchParams.activeOnly === 'true') {
+      result = result.filter((c: Currency) => c.active === 1)
+    } else if (searchParams.activeOnly === 'false') {
+      result = result.filter((c: Currency) => c.active === 0)
+    }
+    
+    // 排序
+    return result.sort((a: Currency, b: Currency) => a.code.localeCompare(b.code))
+  }, [currencies, searchParams])
 
   const deleteCurrency = useMemo(() => withErrorHandler(
     async (code: string) => {
@@ -86,53 +111,80 @@ export function CurrencyManagement() {
     }
   ), [eForm, validateEdit, eModal, updateCurrency])
 
+  const columns: DataTableColumn<Currency>[] = [
+    { title: '代码', dataIndex: 'code', key: 'code' },
+    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: '启用', dataIndex: 'active', key: 'active', render: (v: number) => v === 1 ? '是' : '否' },
+  ]
+
   return (
     <PageContainer
       title="币种管理"
       breadcrumb={[{ title: '系统设置' }, { title: '币种管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
+        <SearchFilters
+          fields={[
+            { name: 'search', label: '币种代码/名称', type: 'input', placeholder: '请输入币种代码或名称' },
+            {
+              name: 'activeOnly',
+              label: '状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                { label: '启用', value: 'true' },
+                { label: '禁用', value: 'false' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
           <Button type="primary" onClick={() => { cModal.openCreate(); cForm.resetFields() }}>新增币种</Button>
           <Button onClick={() => refetch()} loading={isLoading}>刷新</Button>
         </Space>
-        <Table className="table-striped" rowKey="code" loading={isLoading} dataSource={sorted} columns={[
-          { title: '代码', dataIndex: 'code' },
-          { title: '名称', dataIndex: 'name' },
-          { title: '启用', dataIndex: 'active', render: (v: number) => v === 1 ? '是' : '否' },
-          {
-            title: '操作', render: (_: any, r: Currency) => (
-              <Space>
-                <Button size="small" onClick={() => {
-                  eModal.openEdit(r)
-                  eForm.setFieldsValue({
-                    code: r.code,
-                    name: r.name,
-                    active: r.active === 1
-                  })
-                }}>编辑</Button>
-                {canManageCurrency && (
-                  <Switch
-                    size="small"
-                    checked={r.active === 1}
-                    onChange={(checked) => handleToggleActive(r.code, checked)}
-                  />
-                )}
-                {canManageCurrency && (
-                  <Popconfirm
-                    title={`确定要删除币种"${r.code}"吗？`}
-                    description="删除后该币种将被永久删除，如果有账户使用此币种，将无法删除。"
-                    onConfirm={() => deleteCurrency(r.code)}
-                    okText="确定"
-                    cancelText="取消"
-                  >
-                    <Button size="small" danger>删除</Button>
-                  </Popconfirm>
-                )}
-              </Space>
-            )
-          }
-        ]} />
+
+        <DataTable<Currency>
+          columns={columns}
+          data={filteredAndSorted}
+          loading={isLoading}
+          rowKey="code"
+          onEdit={(record) => {
+            eModal.openEdit(record)
+            eForm.setFieldsValue({
+              code: record.code,
+              name: record.name,
+              active: record.active === 1
+            })
+          }}
+          actions={(record) => (
+            <Space>
+              {canManageCurrency && (
+                <Switch
+                  size="small"
+                  checked={record.active === 1}
+                  onChange={(checked) => handleToggleActive(record.code, checked)}
+                />
+              )}
+              {canManageCurrency && (
+                <Popconfirm
+                  title={`确定要删除币种"${record.code}"吗？`}
+                  description="删除后该币种将被永久删除，如果有账户使用此币种，将无法删除。"
+                  onConfirm={() => deleteCurrency(record.code)}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button size="small" danger>删除</Button>
+                </Popconfirm>
+              )}
+            </Space>
+          )}
+          tableProps={{ className: 'table-striped' }}
+        />
 
         <FormModal
           title="新增币种"

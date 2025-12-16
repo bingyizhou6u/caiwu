@@ -1,10 +1,9 @@
 import { useApiQuery } from '../../utils/useApiQuery'
 import { api } from '../../config/api'
 import { api as apiClient } from '../../api/http'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { CACHE_TIME } from '../../config/cache'
 import type { Borrowing } from '../../types/business'
-
-import { keepPreviousData } from '@tanstack/react-query'
 
 export function useBorrowings(page: number = 1, pageSize: number = 20) {
     return useApiQuery<{ total: number, list: Borrowing[] }>(
@@ -15,7 +14,7 @@ export function useBorrowings(page: number = 1, pageSize: number = 20) {
                 total: data.total ?? 0,
                 list: data.results ?? []
             }),
-            staleTime: 5 * 60 * 1000,
+            staleTime: CACHE_TIME.TRANSACTION_DATA,
             placeholderData: keepPreviousData
         }
     )

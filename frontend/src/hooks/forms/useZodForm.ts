@@ -35,11 +35,11 @@ export function useZodForm<T extends z.ZodType>(schema: T) {
 
             if (!result.success) {
                 // 转换Zod错误为Antd Form错误
-                const zodError = result.error as any
-                // Zod v4 uses issues, v3 uses errors (or issues)
-                const issues = zodError.issues || zodError.errors || []
-                const errors = issues.map((err: any) => ({
-                    name: err.path,
+                const zodError = result.error
+                // Zod 使用 issues 数组
+                const issues = zodError.issues || []
+                const errors = issues.map((err) => ({
+                    name: err.path.map(String),
                     errors: [err.message]
                 }))
                 form.setFields(errors)

@@ -55,7 +55,7 @@ export const accountSchema = z.object({
   id: uuidSchema,
   name: z.string().min(1, '账户名称不能为空'),
   type: z.enum(['cash', 'bank', 'alipay', 'wechat', 'other'], {
-    errorMap: () => ({ message: '账户类型不正确' })
+    errorMap: () => ({ message: '账户类型不正确' }),
   }),
   currency: z.string().length(3, '币种代码必须为3位'),
   alias: z.string().optional().nullable(),
@@ -176,6 +176,6 @@ export const availablePositionsResponseSchema = z.object({
     projectName: z.string().nullable(),
     departmentId: z.string(),
     departmentName: z.string(),
-    isHq: z.boolean()
-  })
+    isHq: z.boolean(),
+  }),
 })

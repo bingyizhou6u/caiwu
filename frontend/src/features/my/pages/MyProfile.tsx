@@ -1,80 +1,55 @@
-import { useState, useEffect } from 'react'
-import { Card, Descriptions, Button, Modal, Form, Input, message, Spin, Typography, Avatar, Space, Divider } from 'antd'
+import { Card, Descriptions, Button, Modal, Form, Input, Spin, Typography, Avatar, Space, Divider } from 'antd'
 import { UserOutlined, EditOutlined, PhoneOutlined, MailOutlined, IdcardOutlined, BankOutlined, TeamOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import { useMyProfile, useUpdateMyProfile } from '../../../hooks'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { z } from 'zod'
 
 const { Title } = Typography
 
-interface Profile {
-  id: string
-  userId: string
-  name: string
-  email: string
-  phone: string
-  idCard: string
-  bankAccount: string
-  bankName: string
-  position: string
-  positionCode: string
-  department: string
-  orgDepartment: string
-  entryDate: string
-  contractEndDate: string
-  emergencyContact: string
-  emergencyPhone: string
-}
+const updateProfileSchema = z.object({
+  phone: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+})
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function MyProfile() {
-  const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [modalVisible, setModalVisible] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [form] = Form.useForm()
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const result = await apiClient.get<Profile>(api.my.profile)
-      setProfile(result)
-    } catch (error) {
-      console.error('Failed to load profile:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: profile, isLoading: loading } = useMyProfile()
+  const { mutateAsync: updateProfile } = useUpdateMyProfile()
+  const { form, validateWithZod: validateUpdate } = useZodForm(updateProfileSchema)
+  
+  const {
+    isOpen: modalVisible,
+    openEdit,
+    close: closeModal,
+  } = useFormModal()
 
   const handleEdit = () => {
-    form.setFieldsValue({
-      phone: profile?.phone,
-      emergencyContact: profile?.emergencyContact,
-      emergencyPhone: profile?.emergencyPhone,
-    })
-    setModalVisible(true)
-  }
-
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields()
-      setSubmitting(true)
-
-      await apiClient.put(api.my.profile, values)
-
-      message.success('信息更新成功')
-      setModalVisible(false)
-      loadData()
-    } catch (error: any) {
-      message.error(error.message || '更新失败')
-    } finally {
-      setSubmitting(false)
+    if (profile) {
+      form.setFieldsValue({
+        phone: profile.phone || '',
+        emergencyContact: profile.emergencyContact || '',
+        emergencyPhone: profile.emergencyPhone || '',
+      })
+      openEdit()
     }
   }
+
+  const handleSubmit = withErrorHandler(
+    async () => {
+      const values = await validateUpdate()
+      await updateProfile(values)
+    },
+    {
+      successMessage: '信息更新成功',
+      onSuccess: () => {
+        closeModal()
+      }
+    }
+  )
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>
@@ -94,11 +69,11 @@ export function MyProfile() {
         <Space size="large" align="start">
           <Avatar size={80} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
           <div>
-            <Title level={3} style={{ margin: 0 }}>{profile.name}</Title>
+            <Title level={3} style={{ margin: 0 }}>{profileData.name || '-'}</Title>
             <Space style={{ marginTop: 8 }}>
-              <TeamOutlined /> {profile.position}
-              {profile.orgDepartment && <span>· {profile.orgDepartment}</span>}
-              {profile.department && <span>· {profile.department}</span>}
+              <TeamOutlined /> {profileData.position || '-'}
+              {profileData.orgDepartment && <span>· {profileData.orgDepartment}</span>}
+              {profileData.department && <span>· {profileData.department}</span>}
             </Space>
           </div>
         </Space>
@@ -116,21 +91,21 @@ export function MyProfile() {
         }
       >
         <Descriptions column={{ xs: 1, sm: 2, md: 2 }} bordered>
-          <Descriptions.Item label={<><MailOutlined /> 邮箱</>}>{profile.email}</Descriptions.Item>
-          <Descriptions.Item label={<><PhoneOutlined /> 手机</>}>{profile.phone || '-'}</Descriptions.Item>
-          <Descriptions.Item label={<><IdcardOutlined /> 身份证</>}>{profile.idCard || '-'}</Descriptions.Item>
-          <Descriptions.Item label={<><BankOutlined /> 银行账户</>}>{profile.bankAccount || '-'}</Descriptions.Item>
-          <Descriptions.Item label="开户行">{profile.bankName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="职位代码">{profile.positionCode || '-'}</Descriptions.Item>
-          <Descriptions.Item label="入职日期">{profile.entryDate || '-'}</Descriptions.Item>
-          <Descriptions.Item label="合同到期">{profile.contractEndDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label={<><MailOutlined /> 邮箱</>}>{profileData.email}</Descriptions.Item>
+          <Descriptions.Item label={<><PhoneOutlined /> 手机</>}>{profileData.phone || '-'}</Descriptions.Item>
+          <Descriptions.Item label={<><IdcardOutlined /> 身份证</>}>{profileData.idCard || '-'}</Descriptions.Item>
+          <Descriptions.Item label={<><BankOutlined /> 银行账户</>}>{profileData.bankAccount || '-'}</Descriptions.Item>
+          <Descriptions.Item label="开户行">{profileData.bankName || '-'}</Descriptions.Item>
+          <Descriptions.Item label="职位代码">{profileData.positionCode || '-'}</Descriptions.Item>
+          <Descriptions.Item label="入职日期">{profileData.entryDate || '-'}</Descriptions.Item>
+          <Descriptions.Item label="合同到期">{profileData.contractEndDate || '-'}</Descriptions.Item>
         </Descriptions>
 
         <Divider>紧急联系人</Divider>
 
         <Descriptions column={{ xs: 1, sm: 2 }} bordered>
-          <Descriptions.Item label="联系人">{profile.emergencyContact || '-'}</Descriptions.Item>
-          <Descriptions.Item label="联系电话">{profile.emergencyPhone || '-'}</Descriptions.Item>
+          <Descriptions.Item label="联系人">{profileData.emergencyContact || '-'}</Descriptions.Item>
+          <Descriptions.Item label="联系电话">{profileData.emergencyPhone || '-'}</Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -139,8 +114,7 @@ export function MyProfile() {
         title="编辑个人信息"
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
-        confirmLoading={submitting}
+        onCancel={() => { closeModal(); form.resetFields() }}
         width={500}
       >
         <Form form={form} layout="vertical">

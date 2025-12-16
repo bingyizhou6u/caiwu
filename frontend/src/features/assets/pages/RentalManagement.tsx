@@ -1,17 +1,62 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs } from 'antd'
-import { UploadOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
+import { Card, Button, Modal, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs } from 'antd'
+import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
+import type { FormInstance } from 'antd'
 import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 import { formatAmount } from '../../../utils/formatters'
-import { loadCurrencies, loadDepartments, loadAccounts, loadExpenseCategories, loadEmployees } from '../../../utils/loaders'
-import type { RentalProperty, RentalPayableBill, DormitoryAllocation, SelectOption } from '../../../types/rental'
+import type { RentalProperty, DormitoryAllocation, RentalPayment, RentalPropertyChange } from '../../../types/rental'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { PageContainer } from '../../../components/PageContainer'
-import { VirtualTable } from '../../../components/VirtualTable'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { useRentalProperties, useRentalProperty, useCreateRentalProperty, useUpdateRentalProperty, useCreateRentalPayment, useAllocateDormitory } from '../../../hooks'
+import { useCurrencies, useDepartments, useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { createRentalPropertySchema, updateRentalPropertySchema, createRentalPaymentSchema, allocateDormitorySchema, type CreateRentalPropertyFormData, type UpdateRentalPropertyFormData, type CreateRentalPaymentFormData, type AllocateDormitoryFormData } from '../../../validations/rental.schema'
+
+// API 响应类型
+interface UploadResponse {
+  url: string
+}
+
+interface CreatePaymentResponse {
+  id: string
+  voucher_no?: string
+}
+
+interface CreatePropertyResponse {
+  id: string
+}
+
+// 详情页面使用的扩展类型
+interface DormitoryAllocationWithDetails extends DormitoryAllocation {
+  employeeName?: string
+  employee_departmentName?: string
+  room_number?: string
+  bed_number?: string
+  // 兼容后端可能返回的下划线命名
+  roomNumber?: string
+  bedNumber?: string
+}
+
+// 变动记录类型（后端可能返回下划线命名）
+interface RentalPropertyChangeWithSnakeCase extends RentalPropertyChange {
+  change_date?: number
+  change_type?: string
+  from_lease_start?: string
+  to_lease_start?: string
+  from_lease_end?: string
+  to_lease_end?: string
+  from_monthlyRentCents?: number
+  to_monthlyRentCents?: number
+  from_status?: string
+  to_status?: string
+}
 
 const { TextArea } = Input
 
@@ -47,23 +92,6 @@ const STATUS_OPTIONS = [
 
 export function RentalManagement() {
   const { hasPermission } = usePermissions()
-  const [data, setData] = useState<RentalProperty[]>([])
-  const [loading, setLoading] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [paymentOpen, setPaymentOpen] = useState(false)
-  const [allocateOpen, setAllocateOpen] = useState(false)
-  const [currentProperty, setCurrentProperty] = useState<RentalProperty | null>(null)
-  const [createForm] = Form.useForm()
-  const [editForm] = Form.useForm()
-  const [paymentForm] = Form.useForm()
-  const [allocateForm] = Form.useForm()
-  const [currencies, setCurrencies] = useState<SelectOption[]>([])
-  const [departments, setDepartments] = useState<SelectOption[]>([])
-  const [accounts, setAccounts] = useState<SelectOption[]>([])
-  const [categories, setCategories] = useState<SelectOption[]>([])
-  const [employees, setEmployees] = useState<SelectOption[]>([])
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | undefined>()
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [uploading, setUploading] = useState(false)
@@ -71,64 +99,105 @@ export function RentalManagement() {
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [contractFileList, setContractFileList] = useState<UploadFile[]>([])
   const [contractUploading, setContractUploading] = useState(false)
-  const [payableBills, setPayableBills] = useState<RentalPayableBill[]>([])
+  
   const canManageRental = hasPermission('asset', 'rental', 'create')
   const canAllocate = hasPermission('asset', 'rental', 'allocate') || canManageRental
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (propertyTypeFilter) params.append('propertyType', propertyTypeFilter)
-      if (statusFilter) params.append('status', statusFilter)
-      const response = await apiClient.get<{ results: any[] }>(`${api.rentalProperties}?${params.toString()}`)
-      setData(response.results)
-    } catch (error: any) {
-      message.error(`查询失败: ${error.message || '网络错误'}`)
-    } finally {
-      setLoading(false)
+  // React Query hooks for data
+  const { data = [], isLoading: loading, refetch } = useRentalProperties({
+    propertyType: propertyTypeFilter,
+    status: statusFilter
+  })
+  
+  // Business data hooks
+  const { data: currencies = [] } = useCurrencies()
+  const { data: departments = [] } = useDepartments()
+  const { data: accounts = [] } = useAccounts()
+  const { data: categories = [] } = useExpenseCategories()
+  const { data: employees = [] } = useEmployees()
+
+  // Mutations
+  const { mutateAsync: createProperty } = useCreateRentalProperty()
+  const { mutateAsync: updateProperty } = useUpdateRentalProperty()
+  const { mutateAsync: createPayment } = useCreateRentalPayment()
+  const { mutateAsync: allocateDormitory } = useAllocateDormitory()
+
+  // Form modals
+  const {
+    isOpen: createOpen,
+    openCreate,
+    close: closeCreate,
+  } = useFormModal()
+
+  const {
+    isOpen: editOpen,
+    data: editProperty,
+    openEdit,
+    close: closeEdit,
+  } = useFormModal<RentalProperty>()
+
+  const {
+    isOpen: detailOpen,
+    data: detailProperty,
+    openEdit: openDetail,
+    close: closeDetail,
+  } = useFormModal<RentalProperty>()
+
+  const {
+    isOpen: paymentOpen,
+    data: paymentProperty,
+    openEdit: openPayment,
+    close: closePayment,
+  } = useFormModal<RentalProperty>()
+
+  const {
+    isOpen: allocateOpen,
+    data: allocateProperty,
+    openEdit: openAllocate,
+    close: closeAllocate,
+  } = useFormModal<RentalProperty>()
+
+  // Forms with Zod validation
+  const { form: createForm, validateWithZod: validateCreate } = useZodForm(createRentalPropertySchema)
+  const { form: editForm, validateWithZod: validateEdit } = useZodForm(updateRentalPropertySchema)
+  const { form: paymentForm, validateWithZod: validatePayment } = useZodForm(createRentalPaymentSchema)
+  const { form: allocateForm, validateWithZod: validateAllocate } = useZodForm(allocateDormitorySchema)
+
+  // Load property detail
+  const detailId = detailProperty?.id || editProperty?.id || paymentProperty?.id || allocateProperty?.id || ''
+  const { data: currentProperty } = useRentalProperty(detailId)
+
+  // Initialize edit form when property is loaded
+  React.useEffect(() => {
+    if (editOpen && editProperty && currentProperty) {
+      editForm.setFieldsValue({
+        propertyCode: currentProperty.propertyCode,
+        name: currentProperty.name,
+        propertyType: currentProperty.propertyType,
+        address: currentProperty.address,
+        areaSqm: currentProperty.areaSqm,
+        rentType: currentProperty.rentType || 'monthly',
+        monthlyRentCents: currentProperty.monthlyRentCents ? currentProperty.monthlyRentCents / 100 : null,
+        yearlyRentCents: currentProperty.yearlyRentCents ? currentProperty.yearlyRentCents / 100 : null,
+        paymentPeriodMonths: currentProperty.paymentPeriodMonths || 1,
+        currency: currentProperty.currency,
+        landlordName: currentProperty.landlordName,
+        landlordContact: currentProperty.landlordContact,
+        leaseStartDate: currentProperty.leaseStartDate ? dayjs(currentProperty.leaseStartDate) : null,
+        leaseEndDate: currentProperty.leaseEndDate ? dayjs(currentProperty.leaseEndDate) : null,
+        depositCents: currentProperty.depositCents ? currentProperty.depositCents / 100 : null,
+        paymentMethod: currentProperty.paymentMethod,
+        paymentDay: currentProperty.paymentDay || 1,
+        departmentId: currentProperty.departmentId,
+        status: currentProperty.status,
+        memo: currentProperty.memo,
+        contractFileUrl: currentProperty.contractFileUrl,
+      })
+      setContractFileList(currentProperty.contractFileUrl ? [{ uid: '1', name: '合同文件', status: 'done', url: currentProperty.contractFileUrl }] : [])
     }
-  }, [propertyTypeFilter, statusFilter])
+  }, [editOpen, editProperty, currentProperty, editForm])
 
-  const loadMasterData = useCallback(async () => {
-    try {
-      const [currenciesData, departmentsData, accountsData, categoriesData, employeesData] = await Promise.all([
-        loadCurrencies(),
-        loadDepartments(),
-        loadAccounts(),
-        loadExpenseCategories(),
-        loadEmployees()
-      ])
-      setCurrencies(currenciesData)
-      setDepartments(departmentsData)
-      setAccounts(accountsData)
-      setCategories(categoriesData)
-      setEmployees(employeesData)
-    } catch (error: any) {
-      message.error(`加载基础数据失败: ${error.message || '网络错误'}`)
-    }
-  }, [])
-
-  const loadPayableBills = useCallback(async () => {
-    try {
-      const response = await apiClient.get<{ results: any[] }>(`${api.rentalPayableBills}?status=unpaid`)
-      setPayableBills(response.results)
-    } catch (error: any) {
-      message.error(`加载应付账单失败: ${error.message || '网络错误'}`)
-    }
-  }, [])
-
-  useEffect(() => {
-    load()
-    loadMasterData()
-    loadPayableBills()
-  }, [load, loadMasterData, loadPayableBills])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const handleContractUpload = async (file: File, form: any) => {
+  const handleContractUpload = async (file: File, form: FormInstance) => {
     setContractUploading(true)
     try {
       // 检查文件类型
@@ -149,15 +218,16 @@ export function RentalManagement() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const data = await apiClient.post<any>(api.upload.contract, formData)
+      const data = await apiClient.post<UploadResponse>(api.upload.contract, formData)
 
       form.setFieldValue('contractFileUrl', data.url)
       setContractFileList([{ uid: '1', name: file.name, status: 'done', url: data.url }])
       message.success('合同上传成功')
       setContractUploading(false)
       return false
-    } catch (error: any) {
-      message.error('上传失败: ' + (error.message || '未知错误'))
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      message.error('上传失败: ' + errorMessage)
       setContractUploading(false)
       return false
     }
@@ -179,139 +249,150 @@ export function RentalManagement() {
       message.success('凭证上传成功（已转换为WebP格式）')
       setUploading(false)
       return false
-    } catch (error: any) {
-      message.error('上传失败: ' + (error.message || '未知错误'))
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      message.error('上传失败: ' + errorMessage)
       setUploading(false)
       return false
     }
   }
 
-  const handleCreate = async () => {
-    const v = await createForm.validateFields()
-    const payload = {
-      ...v,
-      monthlyRentCents: v.rentType === 'monthly' && v.monthlyRentCents ? v.monthlyRentCents * 100 : null,
-      yearlyRentCents: v.rentType === 'yearly' && v.yearlyRentCents ? v.yearlyRentCents * 100 : null,
-      depositCents: v.depositCents ? v.depositCents * 100 : null,
-      leaseStartDate: v.leaseStartDate ? v.leaseStartDate.format('YYYY-MM-DD') : null,
-      leaseEndDate: v.leaseEndDate ? v.leaseEndDate.format('YYYY-MM-DD') : null,
-    }
+  const handleCreate = withErrorHandler(
+    async () => {
+      const v = await validateCreate()
+      const initialEmployees = v.initialEmployees || []
+      
+      const { initialEmployees: _, ...rest } = v
+      const payload = {
+        ...rest,
+        monthlyRentCents: v.rentType === 'monthly' && v.monthlyRentCents ? Math.round(v.monthlyRentCents * 100) : null,
+        yearlyRentCents: v.rentType === 'yearly' && v.yearlyRentCents ? Math.round(v.yearlyRentCents * 100) : null,
+        depositCents: v.depositCents ? Math.round(v.depositCents * 100) : null,
+        leaseStartDate: v.leaseStartDate ? v.leaseStartDate.format('YYYY-MM-DD') : null,
+        leaseEndDate: v.leaseEndDate ? v.leaseEndDate.format('YYYY-MM-DD') : null,
+      }
 
-    // 移除initialEmployees，单独处理
-    const initialEmployees = v.initialEmployees || []
-    delete payload.initialEmployees
-
-    try {
-      const result = await apiClient.post<any>(api.rentalProperties, payload)
+      const result = await createProperty(payload) as CreatePropertyResponse
 
       // 如果有初始员工分配，创建分配记录
       if (v.propertyType === 'dormitory' && initialEmployees.length > 0) {
         const propertyId = result.id
         for (const employeeId of initialEmployees) {
           try {
-            const allocRes = await apiClient.post<any>(api.rentalPropertiesAllocateDormitory(propertyId), {
-              employeeId: employeeId,
-              allocationDate: v.leaseStartDate ? v.leaseStartDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
+            await allocateDormitory({
+              propertyId,
+              data: {
+                employeeId: employeeId,
+                allocationDate: v.leaseStartDate ? v.leaseStartDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
+              }
             })
-          } catch (error: any) {
-            console.error(`分配员工失败 (${employeeId}):`, error.message || '网络错误')
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : '网络错误'
+            console.error(`分配员工失败 (${employeeId}):`, errorMessage)
           }
         }
       }
 
-      message.success('创建成功' + (initialEmployees.length > 0 ? `，已分配${initialEmployees.length}名员工` : ''))
-      setCreateOpen(false)
-      createForm.resetFields()
-      setContractFileList([])
-      load()
-    } catch (error: any) {
-      message.error('创建失败：' + (error.message || '网络错误'))
+      const employeeCount = initialEmployees.length
+      if (employeeCount > 0) {
+        message.success(`创建成功，已分配${employeeCount}名员工`)
+      }
+      return { employeeCount }
+    },
+    {
+      successMessage: '创建成功',
+      onSuccess: () => {
+        closeCreate()
+        createForm.resetFields()
+        setContractFileList([])
+        refetch()
+      }
     }
-  }
+  )
 
-  const handleEdit = async () => {
-    if (!currentProperty) return
+  const handleEdit = withErrorHandler(
+    async () => {
+      if (!editProperty) return
 
-    const v = await editForm.validateFields()
-    const payload = {
-      ...v,
-      monthlyRentCents: Math.round((v.monthlyRentCents || 0) * 100),
-      depositCents: v.depositCents ? Math.round(v.depositCents * 100) : null,
-      leaseStartDate: v.leaseStartDate ? v.leaseStartDate.format('YYYY-MM-DD') : null,
-      leaseEndDate: v.leaseEndDate ? v.leaseEndDate.format('YYYY-MM-DD') : null,
+      const v = await validateEdit()
+      const payload = {
+        ...v,
+        monthlyRentCents: v.monthlyRentCents !== undefined ? Math.round(v.monthlyRentCents * 100) : undefined,
+        yearlyRentCents: v.yearlyRentCents !== undefined ? Math.round(v.yearlyRentCents * 100) : undefined,
+        depositCents: v.depositCents !== undefined ? Math.round(v.depositCents * 100) : undefined,
+        leaseStartDate: v.leaseStartDate ? v.leaseStartDate.format('YYYY-MM-DD') : undefined,
+        leaseEndDate: v.leaseEndDate ? v.leaseEndDate.format('YYYY-MM-DD') : undefined,
+      }
+
+      await updateProperty({ id: editProperty.id, data: payload })
+    },
+    {
+      successMessage: '更新成功',
+      onSuccess: () => {
+        closeEdit()
+        editForm.resetFields()
+        setContractFileList([])
+        refetch()
+      }
     }
+  )
 
-    try {
-      await apiClient.put(api.rentalPropertiesById(currentProperty.id), payload)
-      message.success('更新成功')
-      setEditOpen(false)
-      setCurrentProperty(null)
-      editForm.resetFields()
-      setContractFileList([])
-      load()
-    } catch (error: any) {
-      message.error('更新失败：' + (error.message || '网络错误'))
+  const handlePayment = withErrorHandler(
+    async () => {
+      const v = await validatePayment()
+      const paymentDate = v.paymentDate.format('YYYY-MM-DD')
+      const paymentDateObj = v.paymentDate
+      const year = paymentDateObj.year()
+      const month = paymentDateObj.month() + 1
+
+      const payload = {
+        ...v,
+        paymentDate: paymentDate,
+        year,
+        month,
+        amountCents: Math.round(v.amountCents * 100),
+      }
+
+      const result = await createPayment(payload) as CreatePaymentResponse
+      if (result?.voucher_no) {
+        message.success(`付款记录成功，凭证号：${result.voucher_no}`)
+      }
+      return result
+    },
+    {
+      successMessage: '付款记录成功',
+      onSuccess: () => {
+        closePayment()
+        paymentForm.resetFields()
+        setVoucherFile(null)
+        setFileList([])
+        refetch()
+      }
     }
-  }
+  )
 
-  const handlePayment = async () => {
-    const v = await paymentForm.validateFields()
-    const paymentDate = v.paymentDate ? v.paymentDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0]
-    const paymentDateObj = v.paymentDate ? v.paymentDate : dayjs()
-    const year = paymentDateObj.year()
-    const month = paymentDateObj.month() + 1
+  const handleAllocate = withErrorHandler(
+    async () => {
+      if (!allocateProperty) return
 
-    const payload = {
-      ...v,
-      paymentDate: paymentDate,
-      year,
-      month,
-      amountCents: Math.round((v.amountCents || 0) * 100),
+      const v = await validateAllocate()
+      const payload = {
+        ...v,
+        allocationDate: v.allocationDate.format('YYYY-MM-DD'),
+        monthlyRentCents: v.monthlyRentCents ? Math.round(v.monthlyRentCents * 100) : undefined,
+      }
+
+      await allocateDormitory({ propertyId: allocateProperty.id, data: payload })
+    },
+    {
+      successMessage: '分配成功',
+      onSuccess: () => {
+        closeAllocate()
+        allocateForm.resetFields()
+        refetch()
+      }
     }
-
-    try {
-      const result = await apiClient.post<any>(api.rentalPayments, payload)
-      message.success(`付款记录成功，凭证号：${result.voucher_no}`)
-      setPaymentOpen(false)
-      paymentForm.resetFields()
-      setVoucherFile(null)
-      setFileList([])
-      load()
-    } catch (error: any) {
-      message.error('记录付款失败：' + (error.message || '网络错误'))
-    }
-  }
-
-  const handleAllocate = async () => {
-    if (!currentProperty) return
-
-    const v = await allocateForm.validateFields()
-    const payload = {
-      ...v,
-      allocationDate: v.allocationDate ? v.allocationDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
-      monthlyRentCents: v.monthlyRentCents ? Math.round(v.monthlyRentCents * 100) : null,
-    }
-
-    try {
-      await apiClient.post(api.rentalPropertiesAllocateDormitory(currentProperty.id), payload)
-      message.success('分配成功')
-      setAllocateOpen(false)
-      allocateForm.resetFields()
-      load()
-    } catch (error: any) {
-      message.error('分配失败：' + (error.message || '网络错误'))
-    }
-  }
-
-  const loadDetail = async (id: string) => {
-    try {
-      const j = await apiClient.get<any>(api.rentalPropertiesById(id))
-      setCurrentProperty(j)
-      setDetailOpen(true)
-    } catch (e) {
-      message.error('加载详情失败')
-    }
-  }
+  )
 
   return (
     <PageContainer
@@ -324,11 +405,11 @@ export function RentalManagement() {
       extra={
         <Space wrap>
           {canManageRental && (
-            <Button type="primary" onClick={() => { setCreateOpen(true); createForm.resetFields() }}>
+            <Button type="primary" onClick={() => { openCreate(); createForm.resetFields() }}>
               新建租赁
             </Button>
           )}
-          <Button onClick={load}>刷新</Button>
+          <Button onClick={() => refetch()}>刷新</Button>
           <Select
             placeholder="类型筛选"
             allowClear
@@ -351,17 +432,18 @@ export function RentalManagement() {
       }
     >
       <Card bordered={false} className="page-card">
-        <VirtualTable
-          className="table-striped"
+        <DataTable<RentalProperty>
           rowKey="id"
           loading={loading}
-          dataSource={data}
+          data={data}
+          tableProps={{ className: 'table-striped', scroll: { x: 1200 } }}
           columns={[
-            { title: '房屋编号', dataIndex: 'propertyCode', width: 120 },
-            { title: '房屋名称', dataIndex: 'name', width: 200 },
+            { title: '房屋编号', dataIndex: 'propertyCode', key: 'propertyCode', width: 120 },
+            { title: '房屋名称', dataIndex: 'name', key: 'name', width: 200 },
             {
               title: '类型',
               dataIndex: 'propertyType',
+              key: 'propertyType',
               width: 100,
               render: (v: string) => {
                 const option = PROPERTY_TYPE_OPTIONS.find(o => o.value === v)
@@ -370,8 +452,9 @@ export function RentalManagement() {
             },
             {
               title: '租金',
+              key: 'rent',
               width: 120,
-              render: (_: any, r: any) => {
+              render: (_: unknown, r: RentalProperty) => {
                 if (r.rentType === 'yearly') {
                   const rent = r.yearlyRentCents ? formatAmount(r.yearlyRentCents) : '0.00'
                   return `${rent} ${r.currency || ''}/年`
@@ -383,18 +466,20 @@ export function RentalManagement() {
             },
             {
               title: '付款周期',
+              key: 'paymentPeriod',
               width: 100,
-              render: (_: any, r: any) => {
+              render: (_: unknown, r: RentalProperty) => {
                 const period = PAYMENT_PERIOD_OPTIONS.find(o => o.value === r.paymentPeriodMonths)
                 return period?.label || `${r.paymentPeriodMonths || 1}月`
               }
             },
-            { title: '租赁开始', dataIndex: 'leaseStartDate', width: 120 },
-            { title: '租赁结束', dataIndex: 'leaseEndDate', width: 120 },
+            { title: '租赁开始', dataIndex: 'leaseStartDate', key: 'leaseStartDate', width: 120 },
+            { title: '租赁结束', dataIndex: 'leaseEndDate', key: 'leaseEndDate', width: 120 },
             {
               title: '使用项目/员工',
+              key: 'usage',
               width: 200,
-              render: (_: any, r: any) => {
+              render: (_: unknown, r: RentalProperty) => {
                 if (r.propertyType === 'office') {
                   return r.departmentName || '-'
                 } else {
@@ -406,6 +491,7 @@ export function RentalManagement() {
             {
               title: '状态',
               dataIndex: 'status',
+              key: 'status',
               width: 100,
               render: (v: string) => {
                 const option = STATUS_OPTIONS.find(o => o.value === v)
@@ -419,43 +505,17 @@ export function RentalManagement() {
             },
             {
               title: '操作',
+              key: 'actions',
               width: 250,
-              fixed: 'right',
-              render: (_: any, r: any) => (
+              fixed: 'right' as const,
+              render: (_: unknown, r: RentalProperty) => (
                 <Space>
-                  <Button size="small" onClick={() => loadDetail(r.id)}>详情</Button>
+                  <Button size="small" onClick={() => openDetail(r)}>详情</Button>
                   {canManageRental && (
                     <>
-                      <Button size="small" onClick={() => {
-                        setCurrentProperty(r)
-                        editForm.setFieldsValue({
-                          propertyCode: r.propertyCode,
-                          name: r.name,
-                          propertyType: r.propertyType,
-                          address: r.address,
-                          areaSqm: r.areaSqm,
-                          rentType: r.rentType || 'monthly',
-                          monthlyRentCents: r.monthlyRentCents ? r.monthlyRentCents / 100 : null,
-                          yearlyRentCents: r.yearlyRentCents ? r.yearlyRentCents / 100 : null,
-                          paymentPeriodMonths: r.paymentPeriodMonths || 1,
-                          currency: r.currency,
-                          landlordName: r.landlordName,
-                          landlordContact: r.landlordContact,
-                          leaseStartDate: r.leaseStartDate ? dayjs(r.leaseStartDate) : null,
-                          leaseEndDate: r.leaseEndDate ? dayjs(r.leaseEndDate) : null,
-                          depositCents: r.depositCents ? r.depositCents / 100 : null,
-                          paymentMethod: r.paymentMethod,
-                          paymentDay: r.paymentDay || 1,
-                          departmentId: r.departmentId,
-                          status: r.status,
-                          memo: r.memo,
-                          contractFileUrl: r.contractFileUrl,
-                        })
-                        setContractFileList(r.contractFileUrl ? [{ uid: '1', name: '合同文件', status: 'done', url: r.contractFileUrl }] : [])
-                        setEditOpen(true)
-                      }}>编辑</Button>
+                      <Button size="small" onClick={() => openEdit(r)}>编辑</Button>
                       <Button size="small" type="primary" onClick={() => {
-                        setCurrentProperty(r)
+                        openPayment(r)
                         paymentForm.resetFields()
                         // 计算本次付款金额（根据付款周期）
                         let amount = null
@@ -475,17 +535,15 @@ export function RentalManagement() {
                         })
                         setVoucherFile(null)
                         setFileList([])
-                        setPaymentOpen(true)
                       }}>记录付款</Button>
                       {r.propertyType === 'dormitory' && canAllocate && (
                         <Button size="small" onClick={() => {
-                          setCurrentProperty(r)
+                          openAllocate(r)
                           allocateForm.resetFields()
                           allocateForm.setFieldsValue({
                             allocationDate: dayjs(),
                             monthlyRentCents: null,
                           })
-                          setAllocateOpen(true)
                         }}>分配宿舍</Button>
                       )}
                     </>
@@ -493,8 +551,7 @@ export function RentalManagement() {
                 </Space>
               )
             },
-          ]}
-          scroll={{ x: 1200 }}
+          ] satisfies DataTableColumn<RentalProperty>[]}
           pagination={{ pageSize: 20 }}
         />
       </Card>
@@ -503,7 +560,7 @@ export function RentalManagement() {
       <Modal
         title="新建租赁"
         open={createOpen}
-        onCancel={() => { setCreateOpen(false); createForm.resetFields() }}
+        onCancel={() => { closeCreate(); createForm.resetFields() }}
         onOk={handleCreate}
         width={800}
       >
@@ -641,9 +698,9 @@ export function RentalManagement() {
 
       {/* 编辑租赁 */}
       <Modal
-        title={`编辑租赁：${currentProperty?.name || ''}`}
+        title={`编辑租赁：${editProperty?.name || ''}`}
         open={editOpen}
-        onCancel={() => { setEditOpen(false); setCurrentProperty(null); editForm.resetFields() }}
+        onCancel={() => { closeEdit(); editForm.resetFields() }}
         onOk={handleEdit}
         width={800}
       >
@@ -751,9 +808,9 @@ export function RentalManagement() {
 
       {/* 租赁详情 */}
       <Modal
-        title={`租赁详情：${currentProperty?.name || ''}`}
+        title={`租赁详情：${currentProperty?.name || detailProperty?.name || ''}`}
         open={detailOpen}
-        onCancel={() => { setDetailOpen(false); setCurrentProperty(null) }}
+        onCancel={() => { closeDetail() }}
         width={1000}
         footer={null}
       >
@@ -784,7 +841,7 @@ export function RentalManagement() {
                   <p><strong>使用项目：</strong>{currentProperty.departmentName || '-'}</p>
                 ) : (
                   <>
-                    <p><strong>使用员工：</strong>{currentProperty.allocations && currentProperty.allocations.length > 0 ? currentProperty.allocations.filter((a: any) => !a.returnDate).map((a: any) => a.employeeName).join('、') : '-'}</p>
+                    <p><strong>使用员工：</strong>{currentProperty.allocations && currentProperty.allocations.length > 0 ? currentProperty.allocations.filter((a) => !a.returnDate).map((a) => a.employeeName).join('、') : '-'}</p>
                   </>
                 )}
                 <p><strong>状态：</strong>{STATUS_OPTIONS.find(o => o.value === currentProperty.status)?.label || currentProperty.status}</p>
@@ -804,94 +861,163 @@ export function RentalManagement() {
               </div>
             </Tabs.TabPane>
             <Tabs.TabPane tab="付款记录" key="payments">
-              <Table
-                rowKey="id"
-                dataSource={currentProperty.payments || []}
+              <DataTable<RentalPayment>
                 columns={[
-                  { title: '付款日期', dataIndex: 'paymentDate', width: 120 },
+                  { title: '付款日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120 },
                   {
                     title: '年月',
+                    key: 'yearMonth',
                     width: 100,
-                    render: (_: any, r: any) => `${r.year}年${r.month}月`
+                    render: (_: unknown, r: RentalPayment) => `${r.year}年${r.month}月`
                   },
                   {
                     title: '金额',
+                    key: 'amount',
                     width: 120,
-                    render: (_: any, r: any) => `${formatAmount(r.amountCents)} ${r.currency || ''}`
+                    render: (_: unknown, r: RentalPayment) => `${formatAmount(r.amountCents)} ${r.currency || ''}`
                   },
-                  { title: '付款账户', dataIndex: 'accountName', width: 150 },
-                  { title: '付款方式', dataIndex: 'paymentMethod', width: 100 },
-                  { title: '备注', dataIndex: 'memo' },
-                ]}
+                  { title: '付款账户', dataIndex: 'accountName', key: 'accountName', width: 150 },
+                  { title: '付款方式', dataIndex: 'paymentMethod', key: 'paymentMethod', width: 100 },
+                  { title: '备注', dataIndex: 'memo', key: 'memo' },
+                ] satisfies DataTableColumn<RentalPayment>[]}
+                data={currentProperty.payments || []}
+                rowKey="id"
                 pagination={{ pageSize: 20 }}
               />
             </Tabs.TabPane>
             {currentProperty.propertyType === 'dormitory' && (
               <Tabs.TabPane tab="宿舍分配" key="allocations">
-                <Table
-                  rowKey="id"
-                  dataSource={currentProperty.allocations || []}
+                <DataTable<DormitoryAllocationWithDetails>
                   columns={[
-                    { title: '员工姓名', dataIndex: 'employeeName', width: 120 },
-                    { title: '员工项目', dataIndex: 'employee_departmentName', width: 120 },
-                    { title: '房间号', dataIndex: 'room_number', width: 100 },
-                    { title: '床位号', dataIndex: 'bed_number', width: 100 },
-                    { title: '分配日期', dataIndex: 'allocationDate', width: 120 },
+                    { title: '员工姓名', dataIndex: 'employeeName', key: 'employeeName', width: 120 },
+                    { title: '员工项目', dataIndex: 'employee_departmentName', key: 'employee_departmentName', width: 120 },
+                    { 
+                      title: '房间号', 
+                      key: 'room_number', 
+                      width: 100,
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.room_number || r.roomNumber || '-'
+                    },
+                    { 
+                      title: '床位号', 
+                      key: 'bed_number', 
+                      width: 100,
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.bed_number || r.bedNumber || '-'
+                    },
+                    { title: '分配日期', dataIndex: 'allocationDate', key: 'allocationDate', width: 120 },
                     {
                       title: '归还日期',
                       dataIndex: 'returnDate',
+                      key: 'returnDate',
                       width: 120,
-                      render: (v: string) => v || '-'
+                      render: (v: string | undefined) => v || '-'
                     },
                     {
                       title: '员工月租金',
+                      key: 'monthlyRent',
                       width: 120,
-                      render: (_: any, r: any) => r.monthlyRentCents ? `${formatAmount(r.monthlyRentCents)} ${currentProperty.currency}` : '-'
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.monthlyRentCents ? `${formatAmount(r.monthlyRentCents)} ${currentProperty.currency}` : '-'
                     },
-                    { title: '状态', width: 100, render: (_: any, r: any) => r.returnDate ? '已归还' : '使用中' },
-                  ]}
+                    { title: '状态', key: 'status', width: 100, render: (_: unknown, r: DormitoryAllocationWithDetails) => r.returnDate ? '已归还' : '使用中' },
+                  ] satisfies DataTableColumn<DormitoryAllocationWithDetails>[]}
+                  data={(currentProperty.allocations || []) as DormitoryAllocationWithDetails[]}
+                  rowKey="id"
                   pagination={{ pageSize: 20 }}
                 />
               </Tabs.TabPane>
             )}
             <Tabs.TabPane tab="变动记录" key="changes">
-              <Table
-                rowKey="id"
-                dataSource={currentProperty.changes || []}
+              <DataTable<RentalPropertyChangeWithSnakeCase>
                 columns={[
-                  { title: '变动日期', dataIndex: 'change_date', width: 120 },
-                  {
-                    title: '变动类型',
-                    dataIndex: 'change_type',
-                    width: 120,
-                    render: (v: string) => {
-                      const types: Record<string, string> = {
-                        renew: '续签',
-                        terminate: '终止',
-                        modify: '修改',
-                        transfer: '转租',
-                      }
-                      return types[v] || v
+                  { 
+                    title: '变动日期', 
+                    key: 'changedAt', 
+                    width: 120, 
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => {
+                      const date = r.change_date || r.changedAt
+                      return date ? dayjs(typeof date === 'number' ? date : date).format('YYYY-MM-DD') : '-'
                     }
                   },
-                  { title: '原租赁开始', dataIndex: 'from_lease_start', width: 120 },
-                  { title: '新租赁开始', dataIndex: 'to_lease_start', width: 120 },
-                  { title: '原租赁结束', dataIndex: 'from_lease_end', width: 120 },
-                  { title: '新租赁结束', dataIndex: 'to_lease_end', width: 120 },
+                  {
+                    title: '变动类型',
+                    key: 'change_type',
+                    width: 120,
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => {
+                      if (r.change_type) {
+                        const types: Record<string, string> = {
+                          renew: '续签',
+                          terminate: '终止',
+                          modify: '修改',
+                          transfer: '转租',
+                        }
+                        return types[r.change_type] || r.change_type
+                      }
+                      // 根据变更内容推断类型
+                      if (r.fromStatus === 'active' && r.toStatus === 'expired') return '到期'
+                      if (r.toStatus === 'terminated') return '终止'
+                      const fromEnd = r.from_lease_end || r.fromLeaseEnd
+                      const toEnd = r.to_lease_end || r.toLeaseEnd
+                      if (fromEnd && toEnd && toEnd > fromEnd) return '续签'
+                      return '修改'
+                    }
+                  },
+                  { 
+                    title: '原租赁开始', 
+                    key: 'fromLeaseStart', 
+                    width: 120,
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_lease_start || r.fromLeaseStart || '-'
+                  },
+                  { 
+                    title: '新租赁开始', 
+                    key: 'toLeaseStart', 
+                    width: 120,
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_lease_start || r.toLeaseStart || '-'
+                  },
+                  { 
+                    title: '原租赁结束', 
+                    key: 'fromLeaseEnd', 
+                    width: 120,
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_lease_end || r.fromLeaseEnd || '-'
+                  },
+                  { 
+                    title: '新租赁结束', 
+                    key: 'toLeaseEnd', 
+                    width: 120,
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_lease_end || r.toLeaseEnd || '-'
+                  },
                   {
                     title: '原月租金',
+                    key: 'from_monthlyRent',
                     width: 120,
-                    render: (_: any, r: any) => r.from_monthlyRentCents ? formatAmount(r.from_monthlyRentCents) : '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => {
+                      const amount = r.from_monthlyRentCents || r.fromMonthlyRentCents
+                      return amount ? formatAmount(amount) : '-'
+                    }
                   },
                   {
                     title: '新月租金',
+                    key: 'to_monthlyRent',
                     width: 120,
-                    render: (_: any, r: any) => r.to_monthlyRentCents ? formatAmount(r.to_monthlyRentCents) : '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => {
+                      const amount = r.to_monthlyRentCents || r.toMonthlyRentCents
+                      return amount ? formatAmount(amount) : '-'
+                    }
                   },
-                  { title: '原状态', dataIndex: 'from_status', width: 100 },
-                  { title: '新状态', dataIndex: 'to_status', width: 100 },
-                  { title: '备注', dataIndex: 'memo' },
-                ]}
+                  { 
+                    title: '原状态', 
+                    key: 'fromStatus', 
+                    width: 100,
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_status || r.fromStatus || '-'
+                  },
+                  { 
+                    title: '新状态', 
+                    key: 'toStatus', 
+                    width: 100,
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_status || r.toStatus || '-'
+                  },
+                  { title: '备注', dataIndex: 'memo', key: 'memo' },
+                ] satisfies DataTableColumn<RentalPropertyChangeWithSnakeCase>[]}
+                data={(currentProperty.changes || []) as RentalPropertyChangeWithSnakeCase[]}
+                rowKey="id"
                 pagination={{ pageSize: 20 }}
               />
             </Tabs.TabPane>
@@ -901,13 +1027,13 @@ export function RentalManagement() {
 
       {/* 记录付款 */}
       <Modal
-        title={`记录付款：${currentProperty?.name || ''}`}
+        title={`记录付款：${paymentProperty?.name || ''}`}
         open={paymentOpen}
-        onCancel={() => { setPaymentOpen(false); setCurrentProperty(null); paymentForm.resetFields(); setVoucherFile(null); setFileList([]) }}
+        onCancel={() => { closePayment(); paymentForm.resetFields(); setVoucherFile(null); setFileList([]) }}
         onOk={handlePayment}
         width={700}
       >
-        {currentProperty && (
+        {paymentProperty && (
           <Form form={paymentForm} layout="vertical">
             <Form.Item name="propertyId" hidden>
               <Input />
@@ -923,7 +1049,7 @@ export function RentalManagement() {
             </Form.Item>
             <Form.Item name="accountId" label="付款账户" rules={[{ required: true }]}>
               <Select
-                options={accounts.filter(a => a.currency === currentProperty.currency)}
+                options={accounts.filter((a) => a.currency === paymentProperty.currency)}
                 showSearch
                 optionFilterProp="label"
                 placeholder="选择账户"
@@ -959,13 +1085,13 @@ export function RentalManagement() {
 
       {/* 分配宿舍 */}
       <Modal
-        title={`分配宿舍：${currentProperty?.name || ''}`}
+        title={`分配宿舍：${allocateProperty?.name || ''}`}
         open={allocateOpen}
-        onCancel={() => { setAllocateOpen(false); setCurrentProperty(null); allocateForm.resetFields() }}
+        onCancel={() => { closeAllocate(); allocateForm.resetFields() }}
         onOk={handleAllocate}
         width={600}
       >
-        {currentProperty && (
+        {allocateProperty && (
           <Form form={allocateForm} layout="vertical">
             <Form.Item name="employeeId" label="分配给员工" rules={[{ required: true }]}>
               <Select

@@ -1,13 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Card, Table, Button, Input, Select, DatePicker, Space, Row, Col, Tag, message } from 'antd'
-import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Card, Button, Space, Tag, message } from 'antd'
+import { ReloadOutlined, DownloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { useAuditLogs, useAuditLogOptions, useExportAuditLogs } from '../../../hooks/business/useAuditLogs'
-import type { AuditLogQueryParams } from '../../../hooks/business/useAuditLogs'
-
-const { RangePicker } = DatePicker
-const { Option } = Select
+import { useAuditLogs, useAuditLogOptions, useExportAuditLogs, type AuditLog, type AuditLogQueryParams } from '../../../hooks/business/useAuditLogs'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 
 import { PageContainer } from '../../../components/PageContainer'
 
@@ -25,12 +23,12 @@ export function AuditLogs() {
   const { data: options } = useAuditLogOptions()
   const { mutateAsync: exportLogs, isPending: exporting } = useExportAuditLogs()
 
-  const handleSearch = (newFilters: any) => {
+  const handleSearch = (newFilters: Partial<AuditLogQueryParams>) => {
     setFilters(prev => ({ ...prev, ...newFilters }))
     setPagination(prev => ({ ...prev, current: 1 }))
   }
 
-  const handleTableChange = (newPagination: any) => {
+  const handleTableChange = (newPagination: { current?: number; pageSize?: number }) => {
     setPagination(prev => ({
       current: newPagination.current || 1,
       pageSize: newPagination.pageSize || 20
@@ -55,7 +53,7 @@ export function AuditLogs() {
     }
   )
 
-  const columns = [
+  const columns: DataTableColumn<AuditLog>[] = [
     {
       title: '时间',
       dataIndex: 'at',
@@ -66,7 +64,7 @@ export function AuditLogs() {
       title: '操作人',
       dataIndex: 'actorName',
       width: 120,
-      render: (text: string, record: any) => (
+      render: (text: string, record: AuditLog) => (
         <Space direction="vertical" size={0}>
           <span>{text || '系统'}</span>
           {record.actorEmail && <span style={{ fontSize: 12, color: '#999' }}>{record.actorEmail}</span>}
@@ -99,7 +97,7 @@ export function AuditLogs() {
       title: 'IP地址',
       dataIndex: 'ip',
       width: 140,
-      render: (text: string, record: any) => (
+      render: (text: string, record: AuditLog) => (
         <Space direction="vertical" size={0}>
           <span>{text || '-'}</span>
           {record.ipLocation && <span style={{ fontSize: 12, color: '#999' }}>{record.ipLocation}</span>}
@@ -114,67 +112,65 @@ export function AuditLogs() {
       breadcrumb={[{ title: '系统设置' }, { title: '审计日志' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <Row gutter={[16, 16]}>
-            <Col span={6}>
-              <Select
-                style={{ width: '100%' }}
-                placeholder="操作类型"
-                allowClear
-                onChange={(val) => handleSearch({ action: val })}
-                options={options?.actions.map((a: string) => ({ label: a, value: a }))}
-              />
-            </Col>
-            <Col span={6}>
-              <Select
-                style={{ width: '100%' }}
-                placeholder="对象类型"
-                allowClear
-                onChange={(val) => handleSearch({ entity: val })}
-                options={options?.entities.map((e: string) => ({ label: e, value: e }))}
-              />
-            </Col>
-            <Col span={6}>
-              <Input
-                placeholder="搜索操作人..."
-                prefix={<SearchOutlined />}
-                onPressEnter={(e) => handleSearch({ actor_keyword: e.currentTarget.value })}
-              />
-            </Col>
-            <Col span={6}>
-              <RangePicker
-                style={{ width: '100%' }}
-                showTime
-                onChange={(dates) => {
-                  handleSearch({
-                    start_time: dates?.[0]?.valueOf(),
-                    end_time: dates?.[1]?.valueOf()
-                  })
-                }}
-              />
-            </Col>
-          </Row>
+        <SearchFilters
+          fields={[
+            {
+              name: 'action',
+              label: '操作类型',
+              type: 'select',
+              placeholder: '请选择操作类型',
+              options: options?.actions.map((a: string) => ({ label: a, value: a })),
+            },
+            {
+              name: 'entity',
+              label: '对象类型',
+              type: 'select',
+              placeholder: '请选择对象类型',
+              options: options?.entities.map((e: string) => ({ label: e, value: e })),
+            },
+            {
+              name: 'actor_keyword',
+              label: '操作人',
+              type: 'input',
+              placeholder: '搜索操作人...',
+            },
+            {
+              name: 'timeRange',
+              label: '时间范围',
+              type: 'dateRange',
+              placeholder: ['开始时间', '结束时间'],
+            },
+          ]}
+          onSearch={(values) => {
+            const searchParams: Partial<AuditLogQueryParams> = {}
+            if (values.action) searchParams.action = values.action
+            if (values.entity) searchParams.entity = values.entity
+            if (values.actor_keyword) searchParams.actor_keyword = values.actor_keyword
+            if (values.timeRangeStart) searchParams.start_time = dayjs(values.timeRangeStart).valueOf()
+            if (values.timeRangeEnd) searchParams.end_time = dayjs(values.timeRangeEnd).valueOf()
+            handleSearch(searchParams)
+          }}
+          onReset={() => handleSearch({})}
+        />
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button icon={<ReloadOutlined />} onClick={() => refetch()}>刷新</Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport} loading={exporting}>导出CSV</Button>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>刷新</Button>
+          <Button icon={<DownloadOutlined />} onClick={handleExport} loading={exporting}>导出CSV</Button>
+        </div>
 
-          <Table
-            className="table-striped"
-            rowKey="id"
-            columns={columns}
-            dataSource={data?.results || []}
-            loading={isLoading}
-            pagination={{
-              ...pagination,
-              total: data?.total || 0,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条`
-            }}
-            onChange={handleTableChange}
-          />
-        </Space>
+        <DataTable<AuditLog>
+          columns={columns}
+          data={data?.results || []}
+          loading={isLoading}
+          rowKey="id"
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: data?.total || 0,
+            onChange: (page, pageSize) => handleTableChange({ current: page, pageSize }),
+          }}
+          tableProps={{ className: 'table-striped' }}
+        />
       </Card>
     </PageContainer>
   )

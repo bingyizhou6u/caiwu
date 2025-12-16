@@ -2,7 +2,7 @@
  * React Query Hooks - 统一的数据获取和缓存
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { api as apiClient } from '../api/http'
 
 /**
@@ -14,9 +14,12 @@ export function useApiQuery<T = any>(
   options?: {
     enabled?: boolean
     staleTime?: number
+    gcTime?: number
     refetchInterval?: number
+    refetchOnWindowFocus?: boolean
     select?: (data: any) => any
-    placeholderData?: (previousData: any) => any
+    placeholderData?: ((previousData: any) => any) | any
+    keepPreviousData?: boolean
   }
 ) {
   return useQuery({
@@ -27,9 +30,11 @@ export function useApiQuery<T = any>(
     },
     enabled: options?.enabled,
     staleTime: options?.staleTime,
+    gcTime: options?.gcTime,
     refetchInterval: options?.refetchInterval,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus,
     select: options?.select,
-    placeholderData: options?.placeholderData,
+    placeholderData: options?.keepPreviousData ? keepPreviousData : options?.placeholderData,
   })
 }
 

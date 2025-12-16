@@ -43,13 +43,22 @@ export interface AccountTransfer {
 
 export interface AccountTransaction {
     id: string
-    bizDate: string
-    type: string
+    bizDate?: string
+    transactionDate?: string
+    type?: string
+    transactionType?: string
     amountCents: number
-    balanceCents: number
+    balanceCents?: number
+    balanceBeforeCents?: number
+    balanceAfterCents?: number
     memo?: string
     relatedId?: string
     relatedType?: string
+    voucherNo?: string | null
+    voucherUrl?: string | null
+    counterparty?: string | null
+    categoryName?: string | null
+    createdAt?: number
 }
 
 export interface Borrowing {

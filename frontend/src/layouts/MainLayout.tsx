@@ -172,7 +172,7 @@ export function MainLayout() {
                     </div>
                     <div className="header-right">
                         <GlobalSearch />
-                        <Dropdown menu={{ items: userMenu as any }} placement="bottomRight">
+                        <Dropdown menu={{ items: userMenu }} placement="bottomRight">
                             <div className="user-dropdown">
                                 <Avatar icon={<UserOutlined />} className="user-avatar" />
                                 <span className="user-name">{userInfo?.name}</span>

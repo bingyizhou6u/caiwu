@@ -1,5 +1,7 @@
 import { useApiQuery } from '../../utils/useApiQuery'
 import { api } from '../../config/api'
+import { api as apiClient } from '../../api/http'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Site, SelectOption } from '../../types'
 
 /**
@@ -50,4 +52,51 @@ export function useSiteOptions(activeOnly = true) {
             staleTime: 10 * 60 * 1000,
         }
     )
+}
+
+/**
+ * 创建站点
+ */
+export function useCreateSite() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (data: Partial<Site>) => {
+            const result = await apiClient.post<Site>(api.sites, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sites'] })
+        },
+    })
+}
+
+/**
+ * 更新站点
+ */
+export function useUpdateSite() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<Site> }) => {
+            const result = await apiClient.put<Site>(`${api.sites}/${id}`, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sites'] })
+        },
+    })
+}
+
+/**
+ * 删除站点
+ */
+export function useDeleteSite() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (id: string) => {
+            await apiClient.delete(`${api.sites}/${id}`)
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sites'] })
+        },
+    })
 }

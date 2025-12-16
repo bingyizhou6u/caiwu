@@ -19,6 +19,25 @@ export default defineWorkersConfig({
                 },
             },
         },
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'json', 'html'],
+            exclude: [
+                'node_modules/',
+                'test/',
+                '**/*.test.ts',
+                '**/*.config.ts',
+                'scripts/',
+                'coverage/',
+                '*.d.ts'
+            ],
+            thresholds: {
+                lines: 70,
+                functions: 70,
+                branches: 65,
+                statements: 70
+            }
+        },
     },
     resolve: {
         alias: {

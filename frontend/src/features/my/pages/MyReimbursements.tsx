@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Button, Tag, Space, Modal, Form, Select, DatePicker, InputNumber, Input, message, Statistic, Row, Col, Typography } from 'antd'
+import { useState } from 'react'
+import { Card, Button, Tag, Space, Modal, Form, Select, DatePicker, InputNumber, Input, message, Statistic, Row, Col, Typography } from 'antd'
 import { PlusOutlined, FileTextOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
+import { useMyReimbursements, useCreateMyReimbursement } from '../../../hooks'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { z } from 'zod'
 
 const { TextArea } = Input
 const { Title } = Typography
@@ -50,38 +53,38 @@ const statusLabels: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+
+const createReimbursementSchema = z.object({
+  expenseType: z.string().min(1, '请选择费用类型'),
+  amount: z.number().min(0.01, '金额必须大于0'),
+  currencyId: z.string().optional(),
+  expenseDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的费用日期'),
+  description: z.string().optional(),
+  voucherUrl: z.string().optional(),
+})
+
+type CreateReimbursementFormData = z.infer<typeof createReimbursementSchema>
 
 export function MyReimbursements() {
-  const [loading, setLoading] = useState(true)
-  const [reimbursements, setReimbursements] = useState<Reimbursement[]>([])
-  const [stats, setStats] = useState<Stats[]>([])
-  const [modalVisible, setModalVisible] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [form] = Form.useForm()
+  const { data, isLoading: loading } = useMyReimbursements()
+  const { mutateAsync: createReimbursement } = useCreateMyReimbursement()
+  const { form, validateWithZod: validateCreate } = useZodForm(createReimbursementSchema)
+  
+  const {
+    isOpen: modalVisible,
+    openCreate,
+    close: closeModal,
+  } = useFormModal()
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  const reimbursements = data?.reimbursements || []
+  const stats = data?.stats || []
 
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const result = await apiClient.get<any>(api.my.reimbursements)
-      setReimbursements(result.reimbursements || [])
-      setStats(result.stats || [])
-    } catch (error) {
-      console.error('Failed to load reimbursements:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const handleSubmit = withErrorHandler(
+    async () => {
+      const values = await validateCreate()
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields()
-      setSubmitting(true)
-
-      await apiClient.post(api.my.reimbursements, {
+      await createReimbursement({
         expenseType: values.expenseType,
         amountCents: Math.round(values.amount * 100),
         currencyId: values.currencyId || 'CNY',
@@ -89,42 +92,42 @@ export function MyReimbursements() {
         description: values.description,
         voucherUrl: values.voucherUrl,
       })
-
-      message.success('报销申请已提交')
-      setModalVisible(false)
+    },
+    {
+      successMessage: '报销申请已提交',
+      onSuccess: () => {
+        closeModal()
       form.resetFields()
-      loadData()
-    } catch (error: any) {
-      message.error(error.message || '提交失败')
-    } finally {
-      setSubmitting(false)
     }
   }
+  )
 
   const getStatValue = (status: string) => {
-    const stat = stats.find(s => s.status === status)
+    const stat = stats.find((s: Stats) => s.status === status)
     return stat?.totalCents || 0
   }
 
-  const columns = [
-    { title: '类型', dataIndex: 'expenseType', render: (v: string) => expenseTypeLabels[v] || v },
-    { title: '费用日期', dataIndex: 'expenseDate' },
+  const columns: DataTableColumn<Reimbursement>[] = [
+    { title: '类型', dataIndex: 'expenseType', key: 'expenseType', render: (v: string) => expenseTypeLabels[v] || v },
+    { title: '费用日期', dataIndex: 'expenseDate', key: 'expenseDate' },
     {
       title: '金额',
-      dataIndex: 'amountCents',
-      render: (v: number, r: Reimbursement) => `${r.currency_symbol || '¥'}${(v / 100).toFixed(2)}`
+      key: 'amount',
+      render: (_: unknown, r: Reimbursement) => `${r.currency_symbol || '¥'}${(r.amountCents / 100).toFixed(2)}`
     },
-    { title: '说明', dataIndex: 'description', ellipsis: true },
+    { title: '说明', dataIndex: 'description', key: 'description', ellipsis: true },
     {
       title: '状态',
       dataIndex: 'status',
-      render: (v: string) => <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag>
+      key: 'status',
+      render: (v: string | null) => v ? <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag> : '-'
     },
-    { title: '审批人', dataIndex: 'approvedByName' },
+    { title: '审批人', dataIndex: 'approvedByName', key: 'approvedByName' },
     {
       title: '申请时间',
       dataIndex: 'createdAt',
-      render: (v: number) => dayjs(v).format('YYYY-MM-DD HH:mm')
+      key: 'createdAt',
+      render: (v: number | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'
     },
   ]
 
@@ -185,18 +188,18 @@ export function MyReimbursements() {
         bordered={false}
         className="page-card"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
             发起报销
           </Button>
         }
       >
-        <Table
-          className="table-striped"
-          dataSource={reimbursements}
+        <DataTable<Reimbursement>
           columns={columns}
-          rowKey="id"
+          data={reimbursements}
           loading={loading}
+          rowKey="id"
           pagination={{ pageSize: 10 }}
+          tableProps={{ className: 'table-striped' }}
         />
       </Card>
 
@@ -205,8 +208,7 @@ export function MyReimbursements() {
         title="发起报销申请"
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
-        confirmLoading={submitting}
+        onCancel={() => { closeModal(); form.resetFields() }}
         width={500}
       >
         <Form form={form} layout="vertical" initialValues={{ currencyId: 'CNY' }}>

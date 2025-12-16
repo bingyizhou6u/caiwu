@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Layout, Card, Button, Result, Spin, message } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ThunderboltFilled } from '@ant-design/icons'
-import { api as apiClient } from '../../../api/http'
-import { api } from '../../../config/api'
+import { useVerifyTotpResetToken, useConfirmTotpReset } from '../../../hooks'
+import { withErrorHandler } from '../../../utils/errorHandler'
 import './Login.css'
 
 const { Header, Content } = Layout
@@ -15,44 +15,49 @@ export function ResetTotpConfirm() {
 
     const [verifying, setVerifying] = useState(true)
     const [valid, setValid] = useState(false)
-    const [confirming, setConfirming] = useState(false)
     const [success, setSuccess] = useState(false)
+
+    const { mutateAsync: verifyToken } = useVerifyTotpResetToken()
+    const { mutateAsync: confirmReset, isPending: confirming } = useConfirmTotpReset()
 
     useEffect(() => {
         if (!token) {
             setVerifying(false)
             return
         }
-        verifyToken()
+        handleVerifyToken()
     }, [token])
 
-    const verifyToken = async () => {
-        try {
+    const handleVerifyToken = withErrorHandler(
+        async () => {
             if (!token) return
-            // 手动拼接查询参数，因为 RequestOptions 可能不支持 'params'
-            await apiClient.get(`${api.auth.verifyTotpResetToken}?token=${token}`)
+            await verifyToken(token)
             setValid(true)
-        } catch (error) {
-            setValid(false)
-        } finally {
-            setVerifying(false)
+        },
+        {
+            showSuccess: false,
+            showError: false, // 静默处理错误，使用 Result 组件显示
+            onError: () => {
+                setValid(false)
+            },
+            onFinally: () => {
+                setVerifying(false)
+            }
         }
-    }
+    )
 
-    const handleConfirm = async () => {
-        setConfirming(true)
-        try {
+    const handleConfirm = withErrorHandler(
+        async () => {
             if (!token) return
-            await apiClient.post(api.auth.confirmTotpReset, { token })
+            await confirmReset(token)
             setSuccess(true)
             message.success('2FA 已重置，请使用密码登录')
-        } catch (error: any) {
-            const msg = error.message || '重置失败，请联系管理员'
-            message.error(msg)
-        } finally {
-            setConfirming(false)
+        },
+        {
+            showSuccess: false, // 手动显示成功消息
+            errorMessage: '重置失败，请联系管理员'
         }
-    }
+    )
 
     return (
         <Layout className="login-layout">

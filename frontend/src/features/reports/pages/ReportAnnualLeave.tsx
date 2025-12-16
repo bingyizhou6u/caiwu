@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Card, Table, Typography, Space, Spin, Select, Row, Col, Statistic, Progress, Tag, Alert } from 'antd'
 import { CalendarOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import { useDepartments } from '../../../hooks/useBusinessData'
+import { useAnnualLeave } from '../../../hooks'
 
 const { Title, Text } = Typography
 
@@ -39,47 +39,21 @@ interface AnnualLeaveConfig {
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportAnnualLeave() {
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<AnnualLeaveRecord[]>([])
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [config, setConfig] = useState<AnnualLeaveConfig | null>(null)
-  const [departments, setDepartments] = useState<any[]>([])
   const [selectedDept, setSelectedDept] = useState<string | undefined>()
 
-  useEffect(() => {
-    loadDepartments()
-    loadData()
-  }, [])
+  // Business data hooks
+  const { data: departmentsData = [] } = useDepartments()
+  // 确保 departments 始终是数组
+  const departments = React.useMemo(() => {
+    return Array.isArray(departmentsData) ? departmentsData : []
+  }, [departmentsData])
 
-  useEffect(() => {
-    loadData()
-  }, [selectedDept])
-
-  const loadDepartments = async () => {
-    try {
-      const result = await apiClient.get<any>(api.departments)
-      setDepartments(result.results || [])
-    } catch (e) {
-      console.error('Failed to load departments:', e)
-    }
-  }
-
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (selectedDept) params.set('departmentId', selectedDept)
-
-      const result = await apiClient.get<any>(`${api.reports.annualLeave}?${params}`)
-      setData(result.results || [])
-      setSummary(result.summary || null)
-      setConfig(result.config || null)
-    } catch (error) {
-      console.error('Failed to load annual leave report:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: reportData, isLoading: loading } = useAnnualLeave(selectedDept ? { departmentId: selectedDept } : undefined)
+  
+  // 确保 data 始终是数组
+  const data = Array.isArray(reportData?.results) ? reportData.results : []
+  const summary = reportData?.summary || null
+  const config = reportData?.config || null
 
   const columns: ColumnsType<AnnualLeaveRecord> = [
     {
@@ -217,11 +191,11 @@ export function ReportAnnualLeave() {
             allowClear
             value={selectedDept}
             onChange={setSelectedDept}
-          >
-            {departments.map(d => (
-              <Select.Option key={d.id} value={d.id}>{d.name}</Select.Option>
-            ))}
-          </Select>
+            options={departments.map(d => ({
+              value: d.id,
+              label: d.name,
+            }))}
+          />
         </Space>
 
         <Table

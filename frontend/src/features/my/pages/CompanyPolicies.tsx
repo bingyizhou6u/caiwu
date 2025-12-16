@@ -1,4 +1,4 @@
-import { Typography, Card, Collapse, Divider, Tag, Table, Space } from 'antd'
+import { Typography, Card, Collapse, Divider, Tag, Space } from 'antd'
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -12,15 +12,23 @@ const { Title, Paragraph, Text } = Typography
 const { Panel } = Collapse
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+
+interface LeaveType {
+  key: string
+  type: string
+  description: string
+  paid: boolean
+}
 
 export function CompanyPolicies() {
-  const leaveTypeColumns = [
+  const leaveTypeColumns: DataTableColumn<LeaveType>[] = [
     { title: '假期类型', dataIndex: 'type', key: 'type' },
     { title: '说明', dataIndex: 'description', key: 'description' },
     { title: '是否带薪', dataIndex: 'paid', key: 'paid', render: (v: boolean) => v ? <Tag color="green">带薪</Tag> : <Tag color="orange">无薪</Tag> },
   ]
 
-  const leaveTypes = [
+  const leaveTypes: LeaveType[] = [
     { key: '1', type: '年假', description: '根据个人设置的年假天数，入职第一周期无年假', paid: true },
     { key: '2', type: '病假', description: '因病需要休息，需提供医院证明', paid: true },
     { key: '3', type: '事假', description: '因个人事务需要请假', paid: false },
@@ -93,12 +101,10 @@ export function CompanyPolicies() {
               <Divider />
 
               <Title level={5}>假期类型</Title>
-              <Table
-                className="table-striped"
+              <DataTable<LeaveType>
                 columns={leaveTypeColumns}
-                dataSource={leaveTypes}
-                pagination={false}
-                size="small"
+                data={leaveTypes}
+                tableProps={{ className: 'table-striped', pagination: false, size: 'small' }}
               />
 
               <Divider />

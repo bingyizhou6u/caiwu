@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Alert } from 'antd'
+import { Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Alert } from 'antd'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { Dayjs } from 'dayjs'
@@ -14,6 +14,7 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import type { AccountTransfer as AccountTransferType } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 
 export function AccountTransfer() {
   const [open, setOpen] = useState(false)
@@ -32,7 +33,7 @@ export function AccountTransfer() {
 
   // 数据 Hook
   const { data: accounts = [] } = useAccounts()
-  const { data: transfers = [], isLoading: loading, refetch: load } = useAccountTransfers(
+  const { data: transfers = [], isLoading: loading, refetch } = useAccountTransfers(
     dateRange ? [dateRange[0].format('YYYY-MM-DD'), dateRange[1].format('YYYY-MM-DD')] : undefined
   )
   const { mutateAsync: createTransfer, isPending: isCreating } = useCreateAccountTransfer()
@@ -64,7 +65,7 @@ export function AccountTransfer() {
       setToAccount(undefined)
       setFromAmount(undefined)
       setExchangeRate(undefined)
-      load()
+      refetch()
     },
     { successMessage: '转账成功' }
   )
@@ -82,15 +83,16 @@ export function AccountTransfer() {
       message.success('凭证上传成功')
       setUploading(false)
       return false
-    } catch (error: any) {
-      message.error('上传失败: ' + (error.message || '未知错误'))
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      message.error('上传失败: ' + errorMessage)
       setUploading(false)
       return false
     }
   }
 
-  const fromAccountInfo = accounts.find((a: any) => a.value === fromAccount)
-  const toAccountInfo = accounts.find((a: any) => a.value === toAccount)
+  const fromAccountInfo = accounts.find((a) => a.value === fromAccount)
+  const toAccountInfo = accounts.find((a) => a.value === toAccount)
   const isSameCurrency = fromAccountInfo?.currency === toAccountInfo?.currency
 
   // 计算转入金额
@@ -116,21 +118,17 @@ export function AccountTransfer() {
             value={dateRange}
             onChange={setDateRange}
           />
-          <Button onClick={() => load()}>刷新</Button>
+          <Button onClick={() => refetch()}>刷新</Button>
         </Space>
 
-        <Table
-          className="table-striped"
-          rowKey="id"
-          loading={loading}
-          dataSource={transfers}
-          pagination={{ pageSize: 20 }}
+        <DataTable<AccountTransferType>
           columns={[
-            { title: '转账日期', dataIndex: 'transferDate', width: 110 },
+            { title: '转账日期', dataIndex: 'transferDate', key: 'transferDate', width: 110 },
             {
               title: '转出账户',
+              key: 'fromAccount',
               width: 150,
-              render: (_: any, r: AccountTransferType) => (
+              render: (_: unknown, r: AccountTransferType) => (
                 <div>
                   <div>{r.fromAccountName}</div>
                   <div style={{ fontSize: 12, color: '#999' }}>{r.fromAccountCurrency}</div>
@@ -140,14 +138,16 @@ export function AccountTransfer() {
             {
               title: '转出金额',
               dataIndex: 'fromAmountCents',
+              key: 'fromAmountCents',
               width: 120,
               align: 'right',
               render: (v: number) => (v / 100).toFixed(2)
             },
             {
               title: '转入账户',
+              key: 'toAccount',
               width: 150,
-              render: (_: any, r: AccountTransferType) => (
+              render: (_: unknown, r: AccountTransferType) => (
                 <div>
                   <div>{r.toAccountName}</div>
                   <div style={{ fontSize: 12, color: '#999' }}>{r.toAccountCurrency}</div>
@@ -157,6 +157,7 @@ export function AccountTransfer() {
             {
               title: '转入金额',
               dataIndex: 'toAmountCents',
+              key: 'toAmountCents',
               width: 120,
               align: 'right',
               render: (v: number) => (v / 100).toFixed(2)
@@ -164,14 +165,16 @@ export function AccountTransfer() {
             {
               title: '汇率',
               dataIndex: 'exchangeRate',
+              key: 'exchangeRate',
               width: 100,
               align: 'right',
               render: (v: number) => v ? v.toFixed(6) : '-'
             },
-            { title: '备注', dataIndex: 'memo', ellipsis: true },
+            { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
             {
               title: '凭证',
               dataIndex: 'voucherUrl',
+              key: 'voucherUrl',
               width: 100,
               render: (v: string) => v ? (
                 <Button size="small" icon={<EyeOutlined />} onClick={() => {
@@ -180,7 +183,12 @@ export function AccountTransfer() {
                 }}>查看</Button>
               ) : '-'
             },
-          ]}
+          ] satisfies DataTableColumn<AccountTransferType>[]}
+          data={transfers}
+          loading={loading}
+          rowKey="id"
+          pagination={{ pageSize: 20 }}
+          tableProps={{ className: 'table-striped' }}
         />
 
         <Modal
@@ -207,7 +215,7 @@ export function AccountTransfer() {
             <Form.Item name="fromAccountId" label="转出账户" rules={[{ required: true, message: '请选择转出账户' }]}>
               <Select
                 style={{ width: '100%' }}
-                options={accounts}
+                options={Array.isArray(accounts) ? accounts : []}
                 placeholder="选择转出账户"
                 onChange={(v) => {
                   setFromAccount(v)
@@ -219,7 +227,7 @@ export function AccountTransfer() {
             <Form.Item name="toAccountId" label="转入账户" rules={[{ required: true, message: '请选择转入账户' }]}>
               <Select
                 style={{ width: '100%' }}
-                options={accounts.filter((a: any) => a.value !== fromAccount)}
+                options={Array.isArray(accounts) ? accounts.filter((a: any) => a.value !== fromAccount) : []}
                 placeholder="选择转入账户"
                 onChange={(v) => {
                   setToAccount(v)

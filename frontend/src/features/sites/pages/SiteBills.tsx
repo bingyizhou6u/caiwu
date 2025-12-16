@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Space, message, Select, DatePicker, InputNumber, Radio, Popconfirm } from 'antd'
+import React, { useState } from 'react'
+import { Card, Button, Modal, Form, Input, Space, Select, DatePicker, InputNumber, Radio, Popconfirm } from 'antd'
 import dayjs from 'dayjs'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
-import { loadCurrencies, loadAccounts, loadExpenseCategories } from '../../../utils/loaders'
+import { useCurrencies, useAccounts, useExpenseCategories, useSites } from '../../../hooks/useBusinessData'
+import { useSiteBills, useCreateSiteBill, useUpdateSiteBill, useDeleteSiteBill } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { z } from 'zod'
 
 const BILL_TYPE_LABELS: Record<string, string> = {
   income: '收入',
@@ -18,19 +21,25 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import type { DataTableColumn } from '../../../components/common/DataTable'
+
+const siteBillSchema = z.object({
+  siteId: z.string().min(1, '请选择站点'),
+  billDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的账单日期'),
+  billType: z.enum(['income', 'expense'], { message: '请选择账单类型' }),
+  amount: z.number().min(0.01, '金额必须大于0'),
+  currency: z.string().min(1, '请选择币种'),
+  description: z.string().optional(),
+  accountId: z.string().optional().nullable(),
+  categoryId: z.string().optional().nullable(),
+  status: z.string().optional(),
+  paymentDate: z.any().optional().nullable(),
+  memo: z.string().optional().nullable(),
+})
 
 export function SiteBills() {
-  const [data, setData] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [editingBill, setEditingBill] = useState<any>(null)
-  const [form] = Form.useForm()
-  const [editForm] = Form.useForm()
-  const [sites, setSites] = useState<any[]>([])
-  const [currencies, setCurrencies] = useState<any[]>([])
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
   const [filters, setFilters] = useState({
     siteId: undefined as string | undefined,
     startDate: undefined as string | undefined,
@@ -42,55 +51,53 @@ export function SiteBills() {
   const { hasPermission } = usePermissions()
   const canEdit = hasPermission('site', 'bill', 'create')
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (filters.siteId) params.append('siteId', filters.siteId)
-      if (filters.startDate) params.append('startDate', filters.startDate)
-      if (filters.endDate) params.append('endDate', filters.endDate)
-      if (filters.billType) params.append('billType', filters.billType)
-      if (filters.status) params.append('status', filters.status)
+  const { data: billsData = [], isLoading: loading } = useSiteBills(filters)
+  const { mutateAsync: createBill } = useCreateSiteBill()
+  const { mutateAsync: updateBill } = useUpdateSiteBill()
+  const { mutateAsync: deleteBill } = useDeleteSiteBill()
 
-      const j = await apiClient.get<any>(`${api.siteBills}?${params}`)
-      setData(j.results ?? [])
-    } catch (error: any) {
-      message.error(`查询失败: ${error.message || '网络错误'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { form, validateWithZod: validateCreate } = useZodForm(siteBillSchema)
+  const { form: editForm, validateWithZod: validateEdit } = useZodForm(siteBillSchema)
+  
+  const {
+    isOpen: open,
+    openCreate,
+    close: closeCreate,
+  } = useFormModal()
 
-  const loadMasterData = async () => {
-    try {
-      const [currenciesData, accountsData, categoriesData, sitesData] = await Promise.all([
-        loadCurrencies().then(results => results.map(r => ({ value: r.value, label: r.label }))),
-        loadAccounts(),
-        loadExpenseCategories(),
-        apiClient.get<any[]>(api.sites).then(results => results.filter((s: any) => s.active === 1))
-      ])
-      setCurrencies(currenciesData)
-      setAccounts(accountsData.map(a => ({ value: a.value, label: a.label, currency: a.currency })))
-      setCategories(categoriesData.map(c => ({ value: c.value, label: c.label })))
-      setSites(sitesData)
-    } catch (error: any) {
-      message.error(`加载基础数据失败: ${error.message || '网络错误'}`)
-    }
-  }
+  const {
+    isOpen: editOpen,
+    data: editingBill,
+    openEdit,
+    close: closeEdit,
+  } = useFormModal<any>()
 
-  useEffect(() => {
-    load()
-    loadMasterData()
-  }, [])
+  // Business data hooks
+  const { data: currenciesData = [] } = useCurrencies()
+  const { data: accountsData = [] } = useAccounts()
+  const { data: categoriesData = [] } = useExpenseCategories()
+  const { data: sitesData = [] } = useSites()
 
-  useEffect(() => {
-    load()
-  }, [filters])
+  // Transform data format
+  const currencies = React.useMemo(() => currenciesData.map((r: any) => ({ 
+    value: r.value, 
+    label: r.label 
+  })), [currenciesData])
+  const accounts = React.useMemo(() => accountsData.map((a: any) => ({ 
+    value: a.value, 
+    label: a.label, 
+    currency: a.currency 
+  })), [accountsData])
+  const categories = React.useMemo(() => categoriesData.map((c: any) => ({ 
+    value: c.value, 
+    label: c.label 
+  })), [categoriesData])
+  const sites = React.useMemo(() => sitesData.filter((s: any) => s.active === 1), [sitesData])
 
-  const handleSubmit = async () => {
-    const v = await form.validateFields()
-    try {
-      await apiClient.post(api.siteBills, {
+  const handleSubmit = withErrorHandler(
+    async () => {
+      const v = await validateCreate()
+      await createBill({
         siteId: v.siteId,
         billDate: v.billDate.format('YYYY-MM-DD'),
         billType: v.billType,
@@ -103,52 +110,71 @@ export function SiteBills() {
         paymentDate: v.paymentDate ? v.paymentDate.format('YYYY-MM-DD') : null,
         memo: v.memo || null,
       })
-
-      message.success('创建成功')
-      setOpen(false)
-      form.resetFields()
-      load()
-    } catch (error: any) {
-      message.error(`创建失败: ${error.message || '未知错误'}`)
+    },
+    {
+      successMessage: '创建成功',
+      onSuccess: () => {
+        closeCreate()
+        form.resetFields()
+      }
     }
-  }
+  )
 
-  const handleEdit = async () => {
-    const v = await editForm.validateFields()
-    try {
-      await apiClient.put(`${api.siteBills}/${editingBill.id}`, {
-        siteId: v.siteId,
-        billDate: v.billDate.format('YYYY-MM-DD'),
-        billType: v.billType,
-        amountCents: Math.round(v.amount * 100),
-        currency: v.currency,
-        description: v.description || null,
-        accountId: v.accountId || null,
-        categoryId: v.categoryId || null,
-        status: v.status,
-        paymentDate: v.paymentDate ? v.paymentDate.format('YYYY-MM-DD') : null,
-        memo: v.memo || null,
+  const handleEdit = withErrorHandler(
+    async () => {
+      if (!editingBill) return
+      const v = await validateEdit()
+      await updateBill({
+        id: editingBill.id,
+        data: {
+          siteId: v.siteId,
+          billDate: v.billDate.format('YYYY-MM-DD'),
+          billType: v.billType,
+          amountCents: Math.round(v.amount * 100),
+          currency: v.currency,
+          description: v.description || null,
+          accountId: v.accountId || null,
+          categoryId: v.categoryId || null,
+          status: v.status || 'pending',
+          paymentDate: v.paymentDate ? v.paymentDate.format('YYYY-MM-DD') : null,
+          memo: v.memo || null,
+        }
       })
-
-      message.success('更新成功')
-      setEditOpen(false)
-      setEditingBill(null)
-      editForm.resetFields()
-      load()
-    } catch (error: any) {
-      message.error(`更新失败: ${error.message || '未知错误'}`)
+    },
+    {
+      successMessage: '更新成功',
+      onSuccess: () => {
+        closeEdit()
+        editForm.resetFields()
+      }
     }
-  }
+  )
 
-  const handleDelete = async (id: string) => {
-    try {
-      await apiClient.delete(`${api.siteBills}/${id}`)
-
-      message.success('删除成功')
-      load()
-    } catch (error: any) {
-      message.error(`删除失败: ${error.message || '未知错误'}`)
+  const handleDelete = withErrorHandler(
+    async (id: string) => {
+      await deleteBill(id)
+    },
+    {
+      successMessage: '删除成功',
+      errorMessage: '删除失败'
     }
+  )
+
+  const handleEditClick = (record: any) => {
+    openEdit(record)
+    editForm.setFieldsValue({
+      siteId: record.siteId,
+      billDate: dayjs(record.billDate),
+      billType: record.billType,
+      amount: record.amountCents / 100,
+      currency: record.currency,
+      description: record.description,
+      accountId: record.accountId,
+      categoryId: record.categoryId,
+      status: record.status,
+      paymentDate: record.paymentDate ? dayjs(record.paymentDate) : null,
+      memo: record.memo,
+    })
   }
 
   return (
@@ -157,125 +183,132 @@ export function SiteBills() {
       breadcrumb={[{ title: '站点管理' }, { title: '站点账单' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }} wrap>
+        <SearchFilters
+          fields={[
+            {
+              name: 'siteId',
+              label: '站点',
+              type: 'select',
+              placeholder: '请选择站点',
+              options: [
+                { label: '全部', value: '' },
+                ...sites.map((s: any) => ({ value: s.id, label: `${s.name}${s.siteCode ? ` (${s.siteCode})` : ''}` })),
+              ],
+            },
+            {
+              name: 'dateRange',
+              label: '日期范围',
+              type: 'dateRange',
+              placeholder: ['开始日期', '结束日期'],
+            },
+            {
+              name: 'billType',
+              label: '账单类型',
+              type: 'select',
+              placeholder: '请选择账单类型',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'income', label: '收入' },
+                { value: 'expense', label: '支出' },
+              ],
+            },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'pending', label: '待处理' },
+                { value: 'paid', label: '已支付' },
+                { value: 'cancelled', label: '已取消' },
+              ],
+            },
+          ]}
+          onSearch={(values) => {
+            setFilters({
+              siteId: values.siteId || undefined,
+              startDate: values.dateRangeStart || undefined,
+              endDate: values.dateRangeEnd || undefined,
+              billType: values.billType || undefined,
+              status: values.status || undefined,
+            })
+          }}
+          onReset={() => {
+            setFilters({
+              siteId: undefined,
+              startDate: undefined,
+              endDate: undefined,
+              billType: undefined,
+              status: undefined,
+            })
+          }}
+          initialValues={{
+            siteId: filters.siteId || '',
+            dateRangeStart: filters.startDate,
+            dateRangeEnd: filters.endDate,
+            billType: filters.billType || '',
+            status: filters.status || '',
+          }}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }} wrap>
           {canEdit && (
             <Button type="primary" onClick={() => {
               form.resetFields()
               form.setFieldsValue({ billDate: dayjs(), billType: 'income', status: 'pending' })
-              setOpen(true)
+              openCreate()
             }}>新建账单</Button>
           )}
-          <Select
-            placeholder="选择站点"
-            allowClear
-            style={{ width: 200 }}
-            value={filters.siteId}
-            onChange={(value) => setFilters({ ...filters, siteId: value })}
-            options={sites.map((s: any) => ({ value: s.id, label: `${s.name}${s.siteCode ? ` (${s.siteCode})` : ''}` }))}
-          />
-          <DatePicker
-            placeholder="开始日期"
-            value={filters.startDate ? dayjs(filters.startDate) : null}
-            onChange={(date) => setFilters({ ...filters, startDate: date ? date.format('YYYY-MM-DD') : undefined })}
-          />
-          <DatePicker
-            placeholder="结束日期"
-            value={filters.endDate ? dayjs(filters.endDate) : null}
-            onChange={(date) => setFilters({ ...filters, endDate: date ? date.format('YYYY-MM-DD') : undefined })}
-          />
-          <Select
-            placeholder="账单类型"
-            allowClear
-            style={{ width: 120 }}
-            value={filters.billType}
-            onChange={(value) => setFilters({ ...filters, billType: value })}
-            options={[
-              { value: 'income', label: '收入' },
-              { value: 'expense', label: '支出' },
-            ]}
-          />
-          <Select
-            placeholder="状态"
-            allowClear
-            style={{ width: 120 }}
-            value={filters.status}
-            onChange={(value) => setFilters({ ...filters, status: value })}
-            options={[
-              { value: 'pending', label: '待处理' },
-              { value: 'paid', label: '已支付' },
-              { value: 'cancelled', label: '已取消' },
-            ]}
-          />
-          <Button onClick={load}>刷新</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          dataSource={data}
-          loading={loading}
+
+        <DataTable<any>
           columns={[
-            { title: '账单日期', dataIndex: 'billDate', width: 120 },
-            { title: '站点', dataIndex: 'siteName', width: 150, render: (v: string, r: any) => `${v}${r.siteCode ? ` (${r.siteCode})` : ''}` },
-            { title: '类型', dataIndex: 'billType', width: 80, render: (v: string) => BILL_TYPE_LABELS[v] || v },
+            { title: '账单日期', dataIndex: 'billDate', key: 'billDate', width: 120 },
+            { title: '站点', dataIndex: 'siteName', key: 'siteName', width: 150, render: (v: string, r: any) => `${v}${r.siteCode ? ` (${r.siteCode})` : ''}` },
+            { title: '类型', dataIndex: 'billType', key: 'billType', width: 80, render: (v: string) => BILL_TYPE_LABELS[v] || v },
             {
               title: '金额',
+              key: 'amount',
               width: 150,
               align: 'right',
               render: (_: any, r: any) => `${(r.amountCents / 100).toFixed(2)} ${r.currency}`
             },
-            { title: '描述', dataIndex: 'description', ellipsis: true },
-            { title: '账户', dataIndex: 'accountName', width: 120 },
-            { title: '类别', dataIndex: 'categoryName', width: 120 },
-            { title: '状态', dataIndex: 'status', width: 100, render: (v: string) => STATUS_LABELS[v] || v },
-            { title: '支付日期', dataIndex: 'paymentDate', width: 120, render: (v: string) => v || '-' },
-            { title: '备注', dataIndex: 'memo', ellipsis: true },
-            { title: '创建人', dataIndex: 'creator_name', width: 100 },
-            {
-              title: '操作',
-              width: 120,
-              fixed: 'right',
-              render: (_: any, r: any) => (
-                <Space>
-                  {canEdit && (
-                    <Button size="small" onClick={() => {
-                      setEditingBill(r)
-                      editForm.setFieldsValue({
-                        siteId: r.siteId,
-                        billDate: dayjs(r.billDate),
-                        billType: r.billType,
-                        amount: r.amountCents / 100,
-                        currency: r.currency,
-                        description: r.description,
-                        accountId: r.accountId,
-                        categoryId: r.categoryId,
-                        status: r.status,
-                        paymentDate: r.paymentDate ? dayjs(r.paymentDate) : null,
-                        memo: r.memo,
-                      })
-                      setEditOpen(true)
-                    }}>编辑</Button>
-                  )}
-                  {canEdit && (
-                    <Popconfirm
-                      title="确定要删除这条账单吗？"
-                      onConfirm={() => handleDelete(r.id)}
-                      okText="确定"
-                      cancelText="取消"
-                    >
-                      <Button size="small" danger>删除</Button>
-                    </Popconfirm>
-                  )}
-                </Space>
-              ),
-            },
-          ]}
+            { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
+            { title: '账户', dataIndex: 'accountName', key: 'accountName', width: 120 },
+            { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
+            { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => STATUS_LABELS[v] || v },
+            { title: '支付日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120, render: (v: string) => v || '-' },
+            { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
+            { title: '创建人', dataIndex: 'creator_name', key: 'creator_name', width: 100 },
+          ] as DataTableColumn<any>[]}
+          data={billsData}
+          loading={loading}
+          rowKey="id"
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1400 }}
+          tableProps={{ className: 'table-striped', scroll: { x: 1400 } }}
+          actions={(r: any) => (
+            <Space>
+              {canEdit && (
+                <Button size="small" onClick={() => handleEditClick(r)}>编辑</Button>
+              )}
+              {canEdit && (
+                <Popconfirm
+                  title="确定要删除这条账单吗？"
+                  onConfirm={() => handleDelete(r.id)}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button size="small" danger>删除</Button>
+                </Popconfirm>
+              )}
+            </Space>
+          )}
         />
 
         {/* 新建账单 */}
         <Modal title="新建站点账单" open={open} onOk={handleSubmit} onCancel={() => {
-          setOpen(false)
+          closeCreate()
           form.resetFields()
         }} width={800}>
           <Form form={form} layout="vertical">
@@ -351,8 +384,7 @@ export function SiteBills() {
 
         {/* 编辑账单 */}
         <Modal title="编辑站点账单" open={editOpen} onOk={handleEdit} onCancel={() => {
-          setEditOpen(false)
-          setEditingBill(null)
+          closeEdit()
           editForm.resetFields()
         }} width={800}>
           <Form form={editForm} layout="vertical">

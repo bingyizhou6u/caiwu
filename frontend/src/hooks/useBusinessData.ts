@@ -22,10 +22,14 @@ export function useDepartments() {
         ['departments'],
         api.departments,
         {
-            select: (data: any) => (Array.isArray(data) ? data : data?.results || []).filter((r: any) => r.active === 1).map((r: any) => ({
-                value: String(r.id),
-                label: r.name
-            })),
+            select: (data: any) => {
+                const rawData = Array.isArray(data) ? data : (data?.results || [])
+                if (!Array.isArray(rawData)) return []
+                return rawData.filter((r: any) => r.active === 1).map((r: any) => ({
+                    value: String(r.id),
+                    label: r.name
+                }))
+            },
             staleTime: CACHE_TIME.MASTER_DATA
         }
     )

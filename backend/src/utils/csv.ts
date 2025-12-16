@@ -12,4 +12,3 @@ export function parseCsv(text: string): string[][] {
     return l.split(',').map(s => s.trim())
   })
 }
-

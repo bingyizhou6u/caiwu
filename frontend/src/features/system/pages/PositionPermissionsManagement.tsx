@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Card, Table, Tag, Space, Collapse, Button, Checkbox, Form, message, Switch, Popconfirm } from 'antd'
+import { Card, Tag, Space, Collapse, Button, Checkbox, Form, message, Switch, Popconfirm } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import { DataTable } from '../../../components/common/DataTable'
+import type { DataTableColumn } from '../../../components/common/DataTable'
 import { ActionColumn } from '../../../components/ActionColumn'
 import { FormModal } from '../../../components/FormModal'
 import { usePositions, useFormModal } from '../../../hooks'
@@ -103,7 +105,7 @@ const LEVEL_LABELS: Record<number, string> = {
 }
 
 // 权限摘要显示
-function PermissionSummary({ permissions }: { permissions: any }) {
+function PermissionSummary({ permissions }: { permissions: string | Record<string, unknown> | null | undefined }) {
   const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
 
   const moduleCounts: string[] = []
@@ -130,7 +132,7 @@ function PermissionSummary({ permissions }: { permissions: any }) {
 }
 
 // 权限详情展示
-function PermissionDetail({ permissions }: { permissions: any }) {
+function PermissionDetail({ permissions }: { permissions: string | Record<string, unknown> | null | undefined }) {
   const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
 
   if (Object.keys(perms).length === 0) {
@@ -284,7 +286,8 @@ function PermissionEditForm({
 }
 
 export function PositionPermissionsManagement() {
-  const { data: positions = [], isLoading, refetch } = usePositions()
+  const { data: positions = [], isLoading } = usePositions()
+  const { mutateAsync: updatePosition } = useUpdatePosition()
   const modal = useFormModal<Position>()
   const [form] = Form.useForm()
   const { hasPermission } = usePermissions()
@@ -292,20 +295,19 @@ export function PositionPermissionsManagement() {
 
   // 切换启用状态
   const [togglingId, setTogglingId] = useState<string | null>(null)
-  const handleToggleActive = async (record: Position, checked: boolean) => {
-    setTogglingId(record.id)
-    try {
-      await apiClient.put(`${api.positions}/${record.id}`, {
-        active: checked ? 1 : 0
-      })
-      message.success(`已${checked ? '启用' : '禁用'}职位：${record.name}`)
-      refetch()
-    } catch (error: any) {
-      message.error(error.message || '操作失败')
-    } finally {
-      setTogglingId(null)
+  const handleToggleActive = useMemo(() => withErrorHandler(
+    async (record: Position, checked: boolean) => {
+      setTogglingId(record.id)
+      await updatePosition({ id: record.id, data: { active: checked ? 1 : 0 } })
+      return `已${checked ? '启用' : '禁用'}职位：${record.name}`
+    },
+    {
+      showSuccess: true,
+      onSuccess: (msg) => message.success(msg),
+      onError: () => {},
+      onFinally: () => setTogglingId(null)
     }
-  }
+  ), [updatePosition])
 
   // 编辑权限状态
   const [editingPermissions, setEditingPermissions] = useState<Record<string, Record<string, string[]>>>({})
@@ -320,21 +322,19 @@ export function PositionPermissionsManagement() {
     }
   }, [modal.isEdit, modal.data])
 
-  const handleSubmit = useMemo(() => async () => {
-    if (!modal.data) return
-    try {
-      await apiClient.put(`${api.positions}/${modal.data.id}`, {
-        permissions: editingPermissions
-      })
-      message.success('权限保存成功')
+  const handleSubmit = useMemo(() => withErrorHandler(
+    async () => {
+      if (!modal.data) return
+      await updatePosition({ id: modal.data.id, data: { permissions: editingPermissions } })
       modal.close()
-      refetch()
-    } catch (error: any) {
-      message.error(error.message || '保存失败')
+    },
+    {
+      successMessage: '权限保存成功',
+      errorMessage: '保存失败'
     }
-  }, [modal, editingPermissions, refetch])
+  ), [modal, editingPermissions, updatePosition])
 
-  const columns: ColumnsType<any> = [
+  const columns: DataTableColumn<Position>[] = [
     { title: '职位代码', dataIndex: 'code', width: 140 },
     { title: '职位名称', dataIndex: 'name', width: 120 },
     {
@@ -353,7 +353,7 @@ export function PositionPermissionsManagement() {
       title: '权限配置',
       dataIndex: 'permissions',
       width: 280,
-      render: (v: any) => <PermissionSummary permissions={v} />
+      render: (v: string | Record<string, unknown> | null | undefined) => <PermissionSummary permissions={v} />
     },
     { title: '描述', dataIndex: 'description', ellipsis: true },
     {
@@ -406,27 +406,29 @@ export function PositionPermissionsManagement() {
         <Space style={{ marginBottom: 12 }}>
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
         </Space>
-        <Table
-          className="table-striped"
+        <DataTable<Position>
           columns={columns}
-          dataSource={positions}
-          rowKey="id"
+          data={positions}
           loading={isLoading}
+          rowKey="id"
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1100 }}
-          locale={{ emptyText: '暂无职位数据' }}
-          expandable={{
-            expandedRowRender: (record) => (
-              <div style={{ padding: '12px 0' }}>
-                <h4 style={{ marginBottom: 12 }}>权限详情</h4>
-                <PermissionDetail permissions={record.permissions} />
-              </div>
-            ),
-            rowExpandable: (record) => {
-              const perms = typeof record.permissions === 'string'
-                ? JSON.parse(record.permissions || '{}')
-                : record.permissions || {}
-              return Object.keys(perms).length > 0
+          tableProps={{
+            className: 'table-striped',
+            scroll: { x: 1100 },
+            locale: { emptyText: '暂无职位数据' },
+            expandable: {
+              expandedRowRender: (record) => (
+                <div style={{ padding: '12px 0' }}>
+                  <h4 style={{ marginBottom: 12 }}>权限详情</h4>
+                  <PermissionDetail permissions={record.permissions} />
+                </div>
+              ),
+              rowExpandable: (record) => {
+                const perms = typeof record.permissions === 'string'
+                  ? JSON.parse(record.permissions || '{}')
+                  : record.permissions || {}
+                return Object.keys(perms).length > 0
+              },
             },
           }}
         />

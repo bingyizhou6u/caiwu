@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Select, Space, message, DatePicker } from 'antd'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import React, { useState, useMemo } from 'react'
+import { Card, Button, Modal, Form, Input, Select, Space, message, DatePicker } from 'antd'
 import dayjs from 'dayjs'
-import { loadEmployees } from '../../../utils/loaders'
+import { useEmployees } from '../../../hooks/useBusinessData'
+import { useFixedAssets, useFixedAssetAllocations, useAllocateFixedAsset, useReturnFixedAsset } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import type { FixedAsset, FixedAssetAllocation } from '../../../types/domain'
+import type { SelectOption } from '../../../types/business'
 
 const { TextArea } = Input
 
@@ -15,72 +17,42 @@ const ALLOCATION_TYPE_OPTIONS = [
 ]
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable } from '../../../components/common/DataTable'
 
 export function FixedAssetAllocation() {
-  const [data, setData] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
   const [allocateOpen, setAllocateOpen] = useState(false)
   const [returnOpen, setReturnOpen] = useState(false)
-  const [currentAsset, setCurrentAsset] = useState<any>(null)
-  const [currentAllocation, setCurrentAllocation] = useState<any>(null)
+  const [currentAsset, setCurrentAsset] = useState<FixedAsset | null>(null)
+  const [currentAllocation, setCurrentAllocation] = useState<FixedAssetAllocation | null>(null)
   const [allocateForm] = Form.useForm()
   const [returnForm] = Form.useForm()
-  const [assets, setAssets] = useState<any[]>([])
-  const [employees, setEmployees] = useState<any[]>([])
   const [employeeFilter, setEmployeeFilter] = useState<string | undefined>()
   const [returnedFilter, setReturnedFilter] = useState<string | undefined>()
 
   const { hasPermission, isFinance: checkIsFinance, isHR } = usePermissions()
   const canManageAssets = checkIsFinance() || isHR()
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (employeeFilter) params.append('employeeId', employeeFilter)
-      if (returnedFilter === 'true') params.append('returned', 'true')
-      else if (returnedFilter === 'false') params.append('returned', 'false')
+  // Business data hooks
+  const { data: employeesData = [] } = useEmployees()
+  const employees = React.useMemo(() => employeesData.map((e: SelectOption) => ({
+    id: e.value as string,
+    name: e.label.split(' (')[0],
+    active: 1
+  })), [employeesData])
 
-      const url = params.toString()
-        ? `${api.fixedAssetsAllocations}?${params.toString()}`
-        : api.fixedAssetsAllocations
+  const { data: allAssets = [] } = useFixedAssets()
+  const assets = useMemo(() => {
+    return allAssets.filter((a: FixedAsset) => a.status === 'in_use' || a.status === 'idle')
+  }, [allAssets])
 
-      const rows = await apiClient.get<any[]>(url)
-      setData(rows)
-    } catch (error: any) {
-      message.error(`查询失败: ${error.message || '网络错误'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: allocations = [], isLoading } = useFixedAssetAllocations({
+    employeeId: employeeFilter,
+    returned: returnedFilter
+  })
+  const { mutateAsync: allocateAsset } = useAllocateFixedAsset()
+  const { mutateAsync: returnAsset } = useReturnFixedAsset()
 
-  const loadMasterData = async () => {
-    try {
-      const [assetsData, employeesData] = await Promise.all([
-        apiClient.get<any[]>(api.fixedAssets).then(results => results.filter((a: any) => a.status === 'in_use' || a.status === 'idle')),
-        loadEmployees()
-      ])
-      setAssets(assetsData)
-      setEmployees(employeesData.map(e => ({
-        id: e.value as string,
-        name: e.label.split(' (')[0],
-        active: 1
-      })))
-    } catch (error: any) {
-      message.error(`加载基础数据失败: ${error.message || '网络错误'}`)
-    }
-  }
-
-  useEffect(() => {
-    load()
-    loadMasterData()
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [employeeFilter, returnedFilter])
-
-  const handleAllocate = (asset: any) => {
+  const handleAllocate = (asset: FixedAsset) => {
     if (asset.status === 'sold' || asset.status === 'scrapped') {
       message.warning('该资产不能分配')
       return
@@ -94,7 +66,7 @@ export function FixedAssetAllocation() {
     setAllocateOpen(true)
   }
 
-  const handleReturn = (allocation: any) => {
+  const handleReturn = (allocation: FixedAssetAllocation) => {
     if (allocation.returnDate) {
       message.warning('该资产已归还')
       return
@@ -107,49 +79,47 @@ export function FixedAssetAllocation() {
     setReturnOpen(true)
   }
 
-  const handleAllocateSubmit = async () => {
-    if (!currentAsset) return
+  const handleAllocateSubmit = withErrorHandler(
+    async () => {
+      if (!currentAsset) return
 
-    const v = await allocateForm.validateFields()
-    const payload = {
-      ...v,
-      allocationDate: v.allocationDate ? v.allocationDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
-    }
+      const v = await allocateForm.validateFields()
+      const payload = {
+        ...v,
+        allocationDate: v.allocationDate ? v.allocationDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
+      }
 
-    try {
-      await apiClient.post(api.fixedAssetsAllocate(currentAsset.id), payload)
-      message.success('资产分配成功')
+      await allocateAsset({ id: currentAsset.id, data: payload })
       setAllocateOpen(false)
       setCurrentAsset(null)
       allocateForm.resetFields()
-      load()
-      loadMasterData()
-    } catch (error: any) {
-      message.error('分配失败：' + (error.message || '网络错误'))
+    },
+    {
+      successMessage: '资产分配成功',
+      errorMessage: '分配失败'
     }
-  }
+  )
 
-  const handleReturnSubmit = async () => {
-    if (!currentAllocation) return
+  const handleReturnSubmit = withErrorHandler(
+    async () => {
+      if (!currentAllocation) return
 
-    const v = await returnForm.validateFields()
-    const payload = {
-      ...v,
-      returnDate: v.returnDate ? v.returnDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
-    }
+      const v = await returnForm.validateFields()
+      const payload = {
+        ...v,
+        returnDate: v.returnDate ? v.returnDate.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
+      }
 
-    try {
-      await apiClient.post(api.fixedAssetsAllocationReturn(currentAllocation.id), payload)
-      message.success('资产归还成功')
+      await returnAsset({ id: currentAllocation.id, data: payload })
       setReturnOpen(false)
       setCurrentAllocation(null)
       returnForm.resetFields()
-      load()
-      loadMasterData()
-    } catch (error: any) {
-      message.error('归还失败：' + (error.message || '网络错误'))
+    },
+    {
+      successMessage: '资产归还成功',
+      errorMessage: '归还失败'
     }
-  }
+  )
 
   return (
     <PageContainer
@@ -196,7 +166,6 @@ export function FixedAssetAllocation() {
               分配资产
             </Button>
           )}
-          <Button onClick={load}>刷新</Button>
           <Select
             placeholder="员工筛选"
             allowClear
@@ -224,57 +193,55 @@ export function FixedAssetAllocation() {
           </Select>
         </Space>
 
-        <Table
-          className="table-striped"
-          rowKey="id"
-          loading={loading}
-          dataSource={data}
+        <DataTable<any>
           columns={[
-            { title: '资产编号', dataIndex: 'assetCode', width: 120 },
-            { title: '资产名称', dataIndex: 'assetName', width: 200 },
-            { title: '员工姓名', dataIndex: 'employeeName', width: 120 },
-            { title: '员工项目', dataIndex: 'employee_departmentName', width: 120 },
+            { title: '资产编号', dataIndex: 'assetCode', key: 'assetCode', width: 120 },
+            { title: '资产名称', dataIndex: 'assetName', key: 'assetName', width: 200 },
+            { title: '员工姓名', dataIndex: 'employeeName', key: 'employeeName', width: 120 },
+            { title: '员工项目', dataIndex: 'employee_departmentName', key: 'employee_departmentName', width: 120 },
             {
               title: '分配类型',
               dataIndex: 'allocationType',
+              key: 'allocationType',
               width: 120,
               render: (v: string) => {
                 const option = ALLOCATION_TYPE_OPTIONS.find(o => o.value === v)
                 return option?.label || v
               }
             },
-            { title: '分配日期', dataIndex: 'allocationDate', width: 120 },
+            { title: '分配日期', dataIndex: 'allocationDate', key: 'allocationDate', width: 120 },
             {
               title: '归还日期',
               dataIndex: 'returnDate',
+              key: 'returnDate',
               width: 120,
               render: (v: string) => v || '-'
             },
             {
               title: '状态',
+              key: 'status',
               width: 100,
-              render: (_: any, r: any) => (
+              render: (_: unknown, r: FixedAssetAllocation) => (
                 <span style={{ color: r.returnDate ? '#999' : '#52c41a' }}>
                   {r.returnDate ? '已归还' : '使用中'}
                 </span>
               )
             },
-            {
-              title: '操作',
-              width: 100,
-              render: (_: any, r: any) => (
-                <Button
-                  size="small"
-                  onClick={() => handleReturn(r)}
-                  disabled={!!r.returnDate || !checkIsFinance()}
-                >
-                  归还
-                </Button>
-              )
-            },
-          ]}
-          scroll={{ x: 1100 }}
+          ] as DataTableColumn<FixedAssetAllocation>[]}
+          data={allocations}
+          loading={isLoading}
+          rowKey="id"
           pagination={{ pageSize: 20 }}
+          tableProps={{ className: 'table-striped', scroll: { x: 1100 } }}
+          actions={(r: FixedAssetAllocation) => (
+            <Button
+              size="small"
+              onClick={() => handleReturn(r)}
+              disabled={!!r.returnDate || !checkIsFinance()}
+            >
+              归还
+            </Button>
+          )}
         />
 
         <Modal

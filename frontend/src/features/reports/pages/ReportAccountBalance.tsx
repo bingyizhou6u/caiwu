@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { Card, DatePicker, Button, Table, Space, Statistic, message, Breadcrumb, Modal } from 'antd'
+import React, { useState, useMemo } from 'react'
+import { Card, DatePicker, Button, Table, Space, Statistic, Breadcrumb, Modal } from 'antd'
 import { HomeOutlined } from '@ant-design/icons'
-import dayjs from 'dayjs'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import dayjs, { Dayjs } from 'dayjs'
+import { useAccountBalance } from '../../../hooks'
+import type { AccountBalanceResponse } from '../../../hooks/business/useReports'
 
 type ViewLevel = 'currency' | 'accounts' | 'details'
 type CurrencySummary = {
@@ -49,87 +49,70 @@ const TYPE_LABELS: Record<string, string> = {
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportAccountBalance() {
-  const [asOf, setAsOf] = useState<any>(dayjs())
+  const [asOf, setAsOf] = useState<Dayjs>(dayjs())
   const [viewLevel, setViewLevel] = useState<ViewLevel>('currency')
-  const [currencySummaries, setCurrencySummaries] = useState<CurrencySummary[]>([])
-  const [accountSummaries, setAccountSummaries] = useState<AccountSummary[]>([])
-  const [transactionDetails, setTransactionDetails] = useState<TransactionDetail[]>([])
   const [selectedCurrency, setSelectedCurrency] = useState<string>('')
   const [selectedAccountId, setSelectedAccountId] = useState<string>('')
   const [selectedAccountName, setSelectedAccountName] = useState<string>('')
-  const [loading, setLoading] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
 
-  const loadCurrencySummary = async () => {
-    const asOfStr = asOf.format('YYYY-MM-DD')
-    setLoading(true)
-    try {
-      const data = await apiClient.get<any>(`${api.reports.accountBalance}?as_of=${asOfStr}`)
-      const j = data as any
-      const rows = j.rows ?? []
+  const asOfStr = asOf.format('YYYY-MM-DD')
+  const { data: balanceData, isLoading: loading } = useAccountBalance({ asOf: asOfStr })
+  
+  const rows: AccountBalanceResponse['rows'] = balanceData?.rows || []
 
-      // 按币种汇总
-      const totalsByCurrency: Record<string, CurrencySummary> = {}
-      for (const row of rows) {
-        const curr = row.currency || 'CNY'
-        if (!totalsByCurrency[curr]) {
-          totalsByCurrency[curr] = {
-            currency: curr,
-            opening_cents: 0,
-            income_cents: 0,
-            expense_cents: 0,
-            closing_cents: 0,
-            count: 0
-          }
+  // 按币种汇总
+  const currencySummaries = useMemo(() => {
+    const totalsByCurrency: Record<string, CurrencySummary> = {}
+    for (const row of rows) {
+      const curr = row.currency || 'CNY'
+      if (!totalsByCurrency[curr]) {
+        totalsByCurrency[curr] = {
+          currency: curr,
+          opening_cents: 0,
+          income_cents: 0,
+          expense_cents: 0,
+          closing_cents: 0,
+          count: 0
         }
-        totalsByCurrency[curr].opening_cents += row.opening_cents || 0
-        totalsByCurrency[curr].income_cents += row.income_cents || 0
-        totalsByCurrency[curr].expense_cents += row.expense_cents || 0
-        totalsByCurrency[curr].closing_cents += row.closing_cents || 0
-        totalsByCurrency[curr].count += 1
       }
-
-      setCurrencySummaries(Object.values(totalsByCurrency))
-      setViewLevel('currency')
-    } catch (error: any) {
-      message.error(error.message || '账户余额汇总失败')
-    } finally {
-      setLoading(false)
+      totalsByCurrency[curr].opening_cents += row.opening_cents || 0
+      totalsByCurrency[curr].income_cents += row.income_cents || 0
+      totalsByCurrency[curr].expense_cents += row.expense_cents || 0
+      totalsByCurrency[curr].closing_cents += row.closing_cents || 0
+      totalsByCurrency[curr].count += 1
     }
+    return Object.values(totalsByCurrency)
+  }, [rows])
+
+  // 按币种筛选账户
+  const accountSummaries = useMemo(() => {
+    if (!selectedCurrency) return []
+    return rows.filter((r) => (r.currency || 'CNY') === selectedCurrency)
+  }, [rows, selectedCurrency])
+
+  // 账户明细（从rows中筛选，因为API返回的数据已经包含明细）
+  const transactionDetails = useMemo(() => {
+    if (!selectedAccountId) return []
+    return rows.filter((r) => r.accountId === selectedAccountId && r.transactionDate)
+  }, [rows, selectedAccountId])
+
+  const loadCurrencySummary = () => {
+    setViewLevel('currency')
+    setSelectedCurrency('')
+    setSelectedAccountId('')
   }
 
-  const loadAccountsByCurrency = async (currency: string) => {
-    const asOfStr = asOf.format('YYYY-MM-DD')
-    setLoading(true)
-    try {
-      const data = await apiClient.get<any>(`${api.reports.accountBalance}?as_of=${asOfStr}`)
-      const j = data as any
-      const rows = j.rows ?? []
-      const accounts = rows.filter((r: any) => (r.currency || 'CNY') === currency)
-      setAccountSummaries(accounts)
-      setSelectedCurrency(currency)
-      setViewLevel('accounts')
-    } catch (error: any) {
-      message.error(error.message || '查询失败')
-    } finally {
-      setLoading(false)
-    }
+  const loadAccountsByCurrency = (currency: string) => {
+    setSelectedCurrency(currency)
+    setViewLevel('accounts')
   }
 
-  const loadAccountDetails = async (accountId: string, accountName: string) => {
-    setLoading(true)
-    try {
-      const results = await apiClient.get<TransactionDetail[]>(`${api.accountsById(accountId)}/transactions`)
-      setTransactionDetails(results)
-      setSelectedAccountId(accountId)
-      setSelectedAccountName(accountName)
-      setViewLevel('details')
-    } catch (error: any) {
-      message.error(error.message || '查询账户明细失败')
-    } finally {
-      setLoading(false)
-    }
+  const loadAccountDetails = (accountId: string, accountName: string) => {
+    setSelectedAccountId(accountId)
+    setSelectedAccountName(accountName)
+    setViewLevel('details')
   }
 
   const breadcrumbItems = [
@@ -148,7 +131,7 @@ export function ReportAccountBalance() {
       title: <span style={{ cursor: 'pointer', color: '#1890ff' }} onClick={() => loadAccountsByCurrency(selectedCurrency)}>{selectedCurrency} - 账户汇总</span>
     },
     viewLevel === 'details' && { title: `${selectedAccountName} - 账户明细` },
-  ].filter(Boolean) as any[]
+  ].filter(Boolean) as Array<{ title: string | React.ReactNode; onClick?: () => void }>
 
   return (
     <PageContainer

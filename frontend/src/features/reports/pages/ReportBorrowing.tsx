@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Space, Button, message, Breadcrumb, Statistic, Tag } from 'antd'
+import { useState } from 'react'
+import { Card, Table, Space, Button, Breadcrumb, Statistic, Tag } from 'antd'
 import { HomeOutlined, ArrowLeftOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import type { ColumnsType } from 'antd/es/table'
+import { useBorrowingSummary, useBorrowingDetail } from '../../../hooks'
 
 type ViewLevel = 'summary' | 'detail'
 type BorrowerSummary = {
@@ -57,47 +56,27 @@ import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportBorrowing() {
   const [viewLevel, setViewLevel] = useState<ViewLevel>('summary')
-  const [summaries, setSummaries] = useState<BorrowerSummary[]>([])
-  const [detail, setDetail] = useState<BorrowerDetail | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [selectedUserName, setSelectedUserName] = useState<string>('')
-  const [loading, setLoading] = useState(false)
 
-  const loadBorrowersSummary = async () => {
-    setLoading(true)
-    try {
-      const results = await apiClient.get<{ results: BorrowerSummary[] }>(
-        api.reports.borrowingSummary
-      )
-      setSummaries(results.results || [])
-      setViewLevel('summary')
-    } catch (error: any) {
-      message.error(error.message || '加载借款报表失败')
-    } finally {
-      setLoading(false)
-    }
+  const { data: summaryData, isLoading: summaryLoading } = useBorrowingSummary()
+  const { data: detailData, isLoading: detailLoading } = useBorrowingDetail(selectedUserId)
+
+  const summaries = summaryData?.results || []
+  const detail = detailData || null
+  const loading = summaryLoading || detailLoading
+
+  const loadBorrowersSummary = () => {
+    setViewLevel('summary')
+    setSelectedUserId('')
+    setSelectedUserName('')
   }
 
-  const loadDetail = async (userId: string, userName: string) => {
-    setLoading(true)
-    try {
-      const data = await apiClient.get<BorrowerDetail>(
-        api.reports.borrowingDetail(userId)
-      )
-      setDetail(data)
-      setSelectedUserId(userId)
-      setSelectedUserName(userName)
-      setViewLevel('detail')
-    } catch (error: any) {
-      message.error(error.message || '加载明细失败')
-    } finally {
-      setLoading(false)
-    }
+  const loadDetail = (userId: string, userName: string) => {
+    setSelectedUserId(userId)
+    setSelectedUserName(userName)
+    setViewLevel('detail')
   }
-
-  useEffect(() => {
-    loadBorrowersSummary()
-  }, [])
 
   // 汇总表格列
   const summaryColumns: ColumnsType<BorrowerSummary> = [
@@ -152,7 +131,7 @@ export function ReportBorrowing() {
       key: 'action',
       width: 120,
       fixed: 'right',
-      render: (_: any, record: BorrowerSummary) => (
+      render: (_: unknown, record: BorrowerSummary) => (
         <Button type="link" size="small" onClick={() => loadDetail(record.userId, record.borrowerName)}>
           查看明细
         </Button>

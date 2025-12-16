@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Table, Button, Input, Modal, Form, message, Space, Popconfirm, Switch, Card, Alert } from 'antd'
+import { Button, Input, Modal, Form, message, Space, Popconfirm, Switch, Card, Alert } from 'antd'
 import { PlusOutlined, DeleteOutlined, SyncOutlined, ReloadOutlined, FileAddOutlined } from '@ant-design/icons'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { useIPWhitelist, useIPRuleStatus, useCreateIPRule, useToggleIPRule, useAddIP, useDeleteIP, useBatchAddIP, useBatchDeleteIP, useSyncIPWhitelist } from '../../../hooks/business/useIPWhitelist'
@@ -8,6 +8,8 @@ import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { ipWhitelistSchema, ipBatchSchema } from '../../../validations/ipWhitelist.schema'
 import type { IPWhitelist } from '../../../hooks/business/useIPWhitelist'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
+import { DataTable } from '../../../components/common/DataTable'
+import type { DataTableColumn } from '../../../components/common/DataTable'
 
 import { PageContainer } from '../../../components/PageContainer'
 
@@ -144,7 +146,7 @@ const IPWhitelistManagement: React.FC = () => {
     }
   ), [syncIP, refetch])
 
-  const columns = [
+  const columns: DataTableColumn<IPWhitelist>[] = [
     {
       title: 'IP地址',
       dataIndex: 'ip_address',
@@ -161,22 +163,6 @@ const IPWhitelistManagement: React.FC = () => {
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (timestamp: number) => new Date(timestamp).toLocaleString('zh-CN'),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: unknown, record: IPWhitelist) => (
-        <Popconfirm
-          title="确定要删除此IP白名单吗？"
-          onConfirm={() => handleDelete(record.id)}
-          okText="确定"
-          cancelText="取消"
-        >
-          <Button type="link" danger icon={<DeleteOutlined />}>
-            删除
-          </Button>
-        </Popconfirm>
-      ),
     },
   ]
 
@@ -277,14 +263,28 @@ const IPWhitelistManagement: React.FC = () => {
           </Space>
         </div>
 
-        <Table
-          className="table-striped"
+        <DataTable<IPWhitelist>
           columns={columns}
-          dataSource={data}
+          data={data}
           loading={isLoading}
           rowKey="id"
           pagination={{ pageSize: 20 }}
-          rowSelection={rowSelection}
+          tableProps={{
+            className: 'table-striped',
+            rowSelection,
+          }}
+          actions={(_: unknown, record: IPWhitelist) => (
+            <Popconfirm
+              title="确定要删除此IP白名单吗？"
+              onConfirm={() => handleDelete(record.id)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button type="link" danger icon={<DeleteOutlined />}>
+                删除
+              </Button>
+            </Popconfirm>
+          )}
         />
       </Card>
 

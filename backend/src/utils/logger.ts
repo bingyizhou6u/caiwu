@@ -1,4 +1,3 @@
-
 import { Context } from 'hono'
 
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG'
@@ -27,13 +26,13 @@ export class Logger {
     'cookie',
     'totp',
     'totpSecret',
-    'totpCode'
+    'totpCode',
   ])
 
   private static sanitize(data: any): any {
-    if (!data) return data
-    if (typeof data === 'string') return data
-    if (typeof data !== 'object') return data
+    if (!data) {return data}
+    if (typeof data === 'string') {return data}
+    if (typeof data !== 'object') {return data}
 
     if (Array.isArray(data)) {
       return data.map(item => this.sanitize(item))
@@ -53,11 +52,11 @@ export class Logger {
   }
 
   static getContext(c?: Context): Partial<LogEntry> {
-    if (!c) return {}
+    if (!c) {return {}}
     return {
       requestId: c.get('requestId') || 'unknown',
       userId: c.get('userId'),
-      ip: c.req.header('cf-connecting-ip') || c.req.header('x-real-ip')
+      ip: c.req.header('cf-connecting-ip') || c.req.header('x-real-ip'),
     }
   }
 
@@ -73,7 +72,7 @@ export class Logger {
       userId: context.userId,
       ip: context.ip,
       message,
-      data: this.sanitize(data)
+      data: this.sanitize(data),
     }
 
     const output = JSON.stringify(entry)

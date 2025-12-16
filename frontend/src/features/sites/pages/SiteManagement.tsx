@@ -1,20 +1,23 @@
 import { useMemo, useCallback } from 'react'
-import { Card, Table, Button, Form, Input, Space, message, Select, Popconfirm, Switch, ColorPicker } from 'antd'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
+import { Card, Button, Form, Input, Space, message, Select, Popconfirm, Switch, ColorPicker } from 'antd'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { useSites, useDepartmentOptions, useFormModal, useZodForm } from '../../../hooks'
+import { useSites, useCreateSite, useUpdateSite, useDeleteSite, useDepartmentOptions, useFormModal, useZodForm } from '../../../hooks'
 import { siteSchema } from '../../../validations/site.schema'
 import { FormModal } from '../../../components/FormModal'
 import { usePermissions } from '../../../utils/permissions'
 import type { Site } from '../../../types'
+import { DataTable } from '../../../components/common/DataTable'
+import type { DataTableColumn } from '../../../components/common/DataTable'
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function SiteManagement() {
-  const { data: siteData = [], isLoading, refetch } = useSites()
+  const { data: siteData = [], isLoading } = useSites()
   const { data: deptOptions = [] } = useDepartmentOptions(false) // 不包含总部，因为站点必须属于某个具体项目
+  const { mutateAsync: createSite } = useCreateSite()
+  const { mutateAsync: updateSite } = useUpdateSite()
+  const { mutateAsync: deleteSiteMutation } = useDeleteSite()
 
   const modal = useFormModal<Site>()
   const { form, validateWithZod } = useZodForm(siteSchema)
@@ -27,13 +30,12 @@ export function SiteManagement() {
     async () => {
       const v = await validateWithZod()
       if (modal.isEdit && modal.data) {
-        await apiClient.put(`${api.sites}/${modal.data.id}`, v)
+        await updateSite({ id: modal.data.id, data: v })
       } else {
-        await apiClient.post(api.sites, v)
+        await createSite(v)
       }
       modal.close()
       form.resetFields()
-      refetch()
     },
     {
       successMessage: modal.isEdit ? '更新成功' : '创建成功',
@@ -43,23 +45,21 @@ export function SiteManagement() {
         }
       }
     }
-  ), [modal, form, validateWithZod, refetch])
+  ), [modal, form, validateWithZod, createSite, updateSite])
 
   const deleteSite = useMemo(() => withErrorHandler(
     async (id: string) => {
-      await apiClient.delete(`${api.sites}/${id}`)
-      refetch()
+      await deleteSiteMutation(id)
     },
     {
       successMessage: '删除成功',
       errorMessage: '删除失败'
     }
-  ), [refetch])
+  ), [deleteSiteMutation])
 
   const handleToggleActive = useMemo(() => withErrorHandler(
     async (id: string, checked: boolean) => {
-      await apiClient.put(`${api.sites}/${id}`, { active: checked ? 1 : 0 })
-      refetch()
+      await updateSite({ id, data: { active: checked ? 1 : 0 } })
       return checked ? '已启用' : '已停用'
     },
     {
@@ -67,7 +67,7 @@ export function SiteManagement() {
       onSuccess: (msg) => message.success(msg),
       errorMessage: '操作失败'
     }
-  ), [refetch])
+  ), [updateSite])
 
   const handleEdit = useCallback((record: Site) => {
     modal.openEdit(record)
@@ -102,18 +102,15 @@ export function SiteManagement() {
           )}
           <Button onClick={() => refetch()} loading={isLoading}>刷新</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          loading={isLoading}
-          dataSource={siteData}
+        <DataTable<Site>
           columns={[
-            { title: '站点名称', dataIndex: 'name', width: 120 },
-            { title: '站点编号', dataIndex: 'siteCode', width: 120, render: (v: string) => v || '-' },
-            { title: '版面风格', dataIndex: 'themeStyle', width: 120, render: (v: string) => v || '-' },
+            { title: '站点名称', dataIndex: 'name', key: 'name', width: 120 },
+            { title: '站点编号', dataIndex: 'siteCode', key: 'siteCode', width: 120, render: (v: string) => v || '-' },
+            { title: '版面风格', dataIndex: 'themeStyle', key: 'themeStyle', width: 120, render: (v: string) => v || '-' },
             {
               title: '主题色',
               dataIndex: 'themeColor',
+              key: 'themeColor',
               width: 100,
               render: (v: string) => v ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -123,46 +120,48 @@ export function SiteManagement() {
               ) : '-'
             },
             {
-              title: '前台网址', dataIndex: 'frontendUrl', width: 200, render: (v: string) => v ? (
+              title: '前台网址', dataIndex: 'frontendUrl', key: 'frontendUrl', width: 200, render: (v: string) => v ? (
                 <a href={v} target="_blank" rel="noopener noreferrer">{v}</a>
               ) : '-'
             },
             {
-              title: '所属项目', dataIndex: 'departmentId', width: 120, render: (v: string) => {
+              title: '所属项目', dataIndex: 'departmentId', key: 'departmentId', width: 120, render: (v: string) => {
                 const dept = deptOptions.find((d: any) => d.value === v)
                 return dept ? dept.label : '-'
               }
             },
-            { title: '状态', dataIndex: 'active', width: 80, render: (v: number) => v ? '启用' : '禁用' },
-            {
-              title: '操作', width: 150, render: (_: unknown, r: Site) => (
-                <Space>
-                  {canManageSites && (
-                    <>
-                      <Button size="small" onClick={() => handleEdit(r)}>编辑</Button>
-                      <Switch
-                        size="small"
-                        checked={r.active === 1}
-                        onChange={(checked) => handleToggleActive(r.id, checked)}
-                      />
-                    </>
-                  )}
-                  {isManager && (
-                    <Popconfirm
-                      title={`确定要删除站点"${r.name}"吗？`}
-                      description="删除后该站点将被永久删除，此操作不可恢复。"
-                      onConfirm={() => deleteSite(r.id)}
-                      okText="确定"
-                      cancelText="取消"
-                    >
-                      <Button size="small" danger>删除</Button>
-                    </Popconfirm>
-                  )}
-                </Space>
-              )
-            },
-          ]}
+            { title: '状态', dataIndex: 'active', key: 'active', width: 80, render: (v: number) => v ? '启用' : '禁用' },
+          ] as DataTableColumn<Site>[]}
+          data={siteData}
+          loading={isLoading}
+          rowKey="id"
           pagination={{ pageSize: 20 }}
+          tableProps={{ className: 'table-striped' }}
+          actions={(r: Site) => (
+            <Space>
+              {canManageSites && (
+                <>
+                  <Button size="small" onClick={() => handleEdit(r)}>编辑</Button>
+                  <Switch
+                    size="small"
+                    checked={r.active === 1}
+                    onChange={(checked) => handleToggleActive(r.id, checked)}
+                  />
+                </>
+              )}
+              {isManager && (
+                <Popconfirm
+                  title={`确定要删除站点"${r.name}"吗？`}
+                  description="删除后该站点将被永久删除，此操作不可恢复。"
+                  onConfirm={() => deleteSite(r.id)}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button size="small" danger>删除</Button>
+                </Popconfirm>
+              )}
+            </Space>
+          )}
         />
 
         <FormModal

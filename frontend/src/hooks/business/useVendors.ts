@@ -54,6 +54,44 @@ export function useVendorOptions(options: { activeOnly?: boolean } = {}) {
     )
 }
 
+export function useCreateVendor() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (data: Partial<Vendor>) => {
+            const result = await apiClient.post<Vendor>(api.vendors, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['vendors'] })
+        },
+    })
+}
+
+export function useUpdateVendor() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<Vendor> }) => {
+            const result = await apiClient.put<Vendor>(`${api.vendors}/${id}`, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['vendors'] })
+        },
+    })
+}
+
+export function useDeleteVendor() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (id: string) => {
+            await apiClient.delete(`${api.vendors}/${id}`)
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['vendors'] })
+        },
+    })
+}
+
 export function useBatchDeleteVendor() {
     const queryClient = useQueryClient()
     return useMutation({

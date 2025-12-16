@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag } from 'antd'
-import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
+import { useState, useMemo } from 'react'
+import { Card, Button, Modal, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag } from 'antd'
+import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
 import { formatAmount } from '../../../utils/formatters'
-import { loadAccounts, loadIncomeCategories } from '../../../utils/loaders'
+import { useAccounts, useIncomeCategories } from '../../../hooks/useBusinessData'
+import { useFixedAssets, useFixedAssetSale } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
+import { withErrorHandler } from '../../../utils/errorHandler'
 
 const { TextArea } = Input
 
@@ -18,60 +19,33 @@ const STATUS_OPTIONS = [
 ]
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable } from '../../../components/common/DataTable'
 
 export function FixedAssetSale() {
-  const [data, setData] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
-  const [currentAsset, setCurrentAsset] = useState<any>(null)
+  const [currentAsset, setCurrentAsset] = useState<FixedAsset | null>(null)
   const [form] = Form.useForm()
-  const [accounts, setAccounts] = useState<{ value: string, label: string, currency?: string }[]>([])
-  const [categories, setCategories] = useState<{ value: string, label: string }[]>([])
   const [uploading, setUploading] = useState(false)
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [search, setSearch] = useState('')
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (statusFilter) params.append('status', statusFilter)
-      if (search) params.append('search', search)
+  // Business data hooks
+  const { data: accounts = [] } = useAccounts()
+  const { data: categories = [] } = useIncomeCategories()
+  const { data: allAssets = [], isLoading } = useFixedAssets({ 
+    status: statusFilter,
+    search: search || undefined
+  })
+  const { mutateAsync: saleAsset } = useFixedAssetSale()
 
-      const j = await apiClient.get<any>(`${api.fixedAssets}?${params.toString()}`)
-      setData(j.results ?? [])
-    } catch (error: any) {
-      message.error(`查询失败: ${error.message || '网络错误'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Filter assets
+  const data = useMemo(() => {
+    return allAssets.filter((a: FixedAsset) => a.status !== 'sold' && a.status !== 'scrapped')
+  }, [allAssets])
 
-  const loadMasterData = async () => {
-    try {
-      const [accountsData, categoriesData] = await Promise.all([
-        loadAccounts(),
-        loadIncomeCategories()
-      ])
-      setAccounts(accountsData)
-      setCategories(categoriesData)
-    } catch (error: any) {
-      message.error(`加载基础数据失败: ${error.message || '网络错误'}`)
-    }
-  }
-
-  useEffect(() => {
-    load()
-    loadMasterData()
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [statusFilter, search])
-
-  const handleSale = (asset: any) => {
+  const handleSale = (asset: FixedAsset) => {
     if (asset.status === 'sold') {
       message.warning('该资产已卖出')
       return
@@ -110,44 +84,46 @@ export function FixedAssetSale() {
       message.success('凭证上传成功（已转换为WebP格式）')
       setUploading(false)
       return false
-    } catch (error: any) {
-      message.error('上传失败: ' + (error.message || '未知错误'))
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      message.error('上传失败: ' + errorMessage)
       setUploading(false)
       return false
     }
   }
 
-  const handleSubmit = async () => {
-    if (!currentAsset) return
+  const handleSubmit = withErrorHandler(
+    async () => {
+      if (!currentAsset) return
 
-    const v = await form.validateFields()
+      const v = await form.validateFields()
 
-    // 验证账户币种匹配
-    const account = accounts.find(a => a.value === v.accountId)
-    if (account?.currency !== currentAsset.currency) {
-      message.error(`账户币种（${account?.currency}）与资产币种（${currentAsset.currency}）不匹配`)
-      return
-    }
+      // 验证账户币种匹配
+      const account = accounts.find((a: SelectOption & { currency?: string }) => a.value === v.accountId)
+      if (account?.currency !== currentAsset.currency) {
+        throw new Error(`账户币种（${account?.currency}）与资产币种（currentAsset.currency}）不匹配`)
+      }
 
-    const payload = {
-      ...v,
-      sale_price_cents: Math.round((v.sale_price_cents || 0) * 100),
-      sale_date: v.sale_date ? v.sale_date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
-    }
+      const payload = {
+        ...v,
+        sale_price_cents: Math.round((v.sale_price_cents || 0) * 100),
+        sale_date: v.sale_date ? v.sale_date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0],
+      }
 
-    try {
-      const result = await apiClient.post<any>(api.fixedAssetsSale(currentAsset.id), payload)
-      message.success(`资产卖出成功，凭证号：${result.voucher_no}`)
+      const result = await saleAsset({ id: currentAsset.id, data: payload })
       setOpen(false)
       setCurrentAsset(null)
       form.resetFields()
       setVoucherFile(null)
       setFileList([])
-      load()
-    } catch (error: any) {
-      message.error('卖出失败：' + (error.message || '网络错误'))
+      return `资产卖出成功，凭证号：${result.voucher_no}`
+    },
+    {
+      showSuccess: true,
+      onSuccess: (msg) => message.success(msg),
+      errorMessage: '卖出失败'
     }
-  }
+  )
 
   return (
     <PageContainer
@@ -156,13 +132,11 @@ export function FixedAssetSale() {
     >
       <Card bordered={false} className="page-card">
         <Space style={{ marginBottom: 16 }} wrap>
-          <Button onClick={load}>刷新</Button>
           <Input.Search
             placeholder="搜索资产编号、名称"
             style={{ width: 300 }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onSearch={load}
             allowClear
           />
           <Select
@@ -176,27 +150,25 @@ export function FixedAssetSale() {
           </Select>
         </Space>
 
-        <Table
-          className="table-striped"
-          rowKey="id"
-          loading={loading}
-          dataSource={data.filter(a => a.status !== 'sold' && a.status !== 'scrapped')}
+        <DataTable<any>
           columns={[
-            { title: '资产编号', dataIndex: 'assetCode', width: 120 },
-            { title: '资产名称', dataIndex: 'name', width: 200 },
-            { title: '类别', dataIndex: 'category', width: 100 },
+            { title: '资产编号', dataIndex: 'assetCode', key: 'assetCode', width: 120 },
+            { title: '资产名称', dataIndex: 'name', key: 'name', width: 200 },
+            { title: '类别', dataIndex: 'category', key: 'category', width: 100 },
             {
               title: '购买价格',
+              key: 'purchasePrice',
               width: 120,
-              render: (_: any, r: any) => {
+              render: (_: unknown, r: FixedAsset) => {
                 const price = r.purchasePriceCents ? formatAmount(r.purchasePriceCents) : '0.00'
                 return `${price} ${r.currency || ''}`
               }
             },
             {
               title: '当前净值',
+              key: 'currentValue',
               width: 120,
-              render: (_: any, r: any) => {
+              render: (_: unknown, r: FixedAsset) => {
                 const value = r.currentValueCents ? formatAmount(r.currentValueCents) : '0.00'
                 return `${value} ${r.currency || ''}`
               }
@@ -204,6 +176,7 @@ export function FixedAssetSale() {
             {
               title: '状态',
               dataIndex: 'status',
+              key: 'status',
               width: 100,
               render: (v: string) => {
                 const option = STATUS_OPTIONS.find(o => o.value === v)
@@ -215,18 +188,17 @@ export function FixedAssetSale() {
                 return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
               }
             },
-            {
-              title: '操作',
-              width: 100,
-              render: (_: any, r: any) => (
-                <Button size="small" type="primary" onClick={() => handleSale(r)} disabled={r.status === 'sold'}>
-                  卖出
-                </Button>
-              )
-            },
-          ]}
-          scroll={{ x: 900 }}
+          ] as DataTableColumn<FixedAsset>[]}
+          data={data}
+          loading={isLoading}
+          rowKey="id"
           pagination={{ pageSize: 20 }}
+          tableProps={{ className: 'table-striped', scroll: { x: 900 } }}
+          actions={(r: FixedAsset) => (
+            <Button size="small" type="primary" onClick={() => handleSale(r)} disabled={r.status === 'sold'}>
+              卖出
+            </Button>
+          )}
         />
 
         <Modal

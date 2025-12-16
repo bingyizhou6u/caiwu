@@ -10,8 +10,7 @@ export function generateTotpSecret(email: string) {
 export function verifyTotp(token: string, secret: string): boolean {
   try {
     return authenticator.verify({ token, secret })
-  } catch (error) {
+  } catch {
     return false
   }
 }
-

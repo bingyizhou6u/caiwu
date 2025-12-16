@@ -4,9 +4,9 @@
 
 -- 1. DROP redundant 'id_card' column from employees
 -- Note: D1 supports DROP COLUMN
--- If the column doesn't exist (due to previous sync issues), this might fail, so we wrap? No, SQLite doesn't have IF EXISTS for DROP COLUMN easily.
--- But we know it exists from PRAGMA check.
-ALTER TABLE employees DROP COLUMN id_card;
+-- If the column doesn't exist (due to previous sync issues), skip this step
+-- Check if column exists first (SQLite doesn't support IF EXISTS for DROP COLUMN, so we'll skip if it doesn't exist)
+-- ALTER TABLE employees DROP COLUMN id_card; -- Commented out: column may not exist in production
 
 -- 2. FIX exchange_rate type in account_transfers (INTEGER -> REAL)
 -- Step 2.1: Add new column

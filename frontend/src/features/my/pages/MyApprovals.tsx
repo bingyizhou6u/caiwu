@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Tabs, Tag, Button, Space, Modal, Input, message, Badge, Typography, Empty } from 'antd'
+import { useState } from 'react'
+import { Card, Tabs, Tag, Button, Space, Modal, Input, message, Badge, Typography, Empty } from 'antd'
 import { CheckOutlined, CloseOutlined, CalendarOutlined, FileTextOutlined, BankOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
+import { useMyPendingApprovals, useApproveLeaveMy, useRejectLeave, useApproveReimbursement, useRejectReimbursement, useApproveBorrowing, useRejectBorrowing } from '../../../hooks'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
 
 const { TextArea } = Input
 const { Title } = Typography
@@ -65,59 +66,73 @@ const expenseTypeLabels: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable } from '../../../components/common/DataTable'
 
 export function MyApprovals() {
-  const [loading, setLoading] = useState(true)
-  const [leaves, setLeaves] = useState<PendingLeave[]>([])
-  const [reimbursements, setReimbursements] = useState<PendingReimbursement[]>([])
-  const [borrowings, setBorrowings] = useState<PendingBorrowing[]>([])
-  const [counts, setCounts] = useState<ApprovalCounts>({ leaves: 0, reimbursements: 0, borrowings: 0 })
-  const [actionModal, setActionModal] = useState<{ visible: boolean, type: string, id: string, action: 'approve' | 'reject' } | null>(null)
+  const { data, isLoading: loading } = useMyPendingApprovals()
+  const { mutateAsync: approveLeave } = useApproveLeaveMy()
+  const { mutateAsync: rejectLeave } = useRejectLeave()
+  const { mutateAsync: approveReimbursement } = useApproveReimbursement()
+  const { mutateAsync: rejectReimbursement } = useRejectReimbursement()
+  const { mutateAsync: approveBorrowing } = useApproveBorrowing()
+  const { mutateAsync: rejectBorrowing } = useRejectBorrowing()
+
   const [memo, setMemo] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  
+  const {
+    isOpen: actionModalVisible,
+    data: actionModalData,
+    openEdit: openActionModal,
+    close: closeActionModal,
+  } = useFormModal<{ type: string; id: string; action: 'approve' | 'reject' }>()
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  const leaves = data?.leaves || []
+  const reimbursements = data?.reimbursements || []
+  const borrowings = data?.borrowings || []
+  const counts = data?.counts || { leaves: 0, reimbursements: 0, borrowings: 0 }
 
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const result = await apiClient.get<any>(api.approvals.pending)
-      setLeaves(result.leaves || [])
-      setReimbursements(result.reimbursements || [])
-      setBorrowings(result.borrowings || [])
-      setCounts(result.counts || { leaves: 0, reimbursements: 0, borrowings: 0 })
-    } catch (error) {
-      console.error('Failed to load approvals:', error)
-    } finally {
-      setLoading(false)
+  const handleAction = withErrorHandler(
+    async () => {
+      if (!actionModalData) return
+
+      const { type, id, action } = actionModalData
+
+      if (type === 'leave') {
+        if (action === 'approve') {
+          await approveLeave({ id, memo })
+        } else {
+          await rejectLeave({ id, memo })
+        }
+      } else if (type === 'reimbursement') {
+        if (action === 'approve') {
+          await approveReimbursement({ id, memo })
+        } else {
+          await rejectReimbursement({ id, memo })
+        }
+      } else if (type === 'borrowing') {
+        if (action === 'approve') {
+          await approveBorrowing({ id, memo })
+        } else {
+          await rejectBorrowing({ id, memo })
+        }
+      }
+    },
+    {
+      successMessage: (_, { action }) => action === 'approve' ? '审批通过' : '已驳回',
+      onSuccess: () => {
+        closeActionModal()
+        setMemo('')
+      }
     }
-  }
-
-  const handleAction = async () => {
-    if (!actionModal) return
-    setSubmitting(true)
-    try {
-      await apiClient.post(`/approvals/${actionModal.type}/${actionModal.id}/${actionModal.action}`, { memo })
-      message.success(actionModal.action === 'approve' ? '审批通过' : '已驳回')
-      setActionModal(null)
-      setMemo('')
-      loadData()
-    } catch (error: any) {
-      message.error(error.message || '操作失败')
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  )
 
   const showActionModal = (type: string, id: string, action: 'approve' | 'reject') => {
-    setActionModal({ visible: true, type, id, action })
+    openActionModal({ type, id, action })
   }
 
   const leaveColumns = [
     { title: '申请人', dataIndex: 'employeeName' },
-    { title: '部门', render: (_: any, r: PendingLeave) => r.orgDepartmentName || r.departmentName },
+    { title: '部门', render: (_: unknown, r: PendingLeave) => r.orgDepartmentName || r.departmentName },
     { title: '类型', dataIndex: 'leaveType', render: (v: string) => leaveTypeLabels[v] || v },
     { title: '开始日期', dataIndex: 'startDate' },
     { title: '结束日期', dataIndex: 'endDate' },
@@ -126,7 +141,7 @@ export function MyApprovals() {
     { title: '申请时间', dataIndex: 'createdAt', render: (v: number) => dayjs(v).format('MM-DD HH:mm') },
     {
       title: '操作',
-      render: (_: any, r: PendingLeave) => (
+      render: (_: unknown, r: PendingLeave) => (
         <Space>
           <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => showActionModal('leave', r.id, 'approve')}>通过</Button>
           <Button danger size="small" icon={<CloseOutlined />} onClick={() => showActionModal('leave', r.id, 'reject')}>驳回</Button>
@@ -137,7 +152,7 @@ export function MyApprovals() {
 
   const reimbursementColumns = [
     { title: '申请人', dataIndex: 'employeeName' },
-    { title: '部门', render: (_: any, r: PendingReimbursement) => r.orgDepartmentName || r.departmentName },
+    { title: '部门', render: (_: unknown, r: PendingReimbursement) => r.orgDepartmentName || r.departmentName },
     { title: '类型', dataIndex: 'expenseType', render: (v: string) => expenseTypeLabels[v] || v },
     { title: '费用日期', dataIndex: 'expenseDate' },
     { title: '金额', dataIndex: 'amountCents', render: (v: number, r: PendingReimbursement) => `${r.currency_symbol || '¥'}${(v / 100).toFixed(2)}` },
@@ -188,36 +203,56 @@ export function MyApprovals() {
             key: 'leaves',
             label: <><CalendarOutlined /> 请假 <Badge count={counts.leaves} size="small" /></>,
             children: leaves.length > 0 ? (
-              <Table className="table-striped" dataSource={leaves} columns={leaveColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+              <DataTable<any>
+                columns={leaveColumns}
+                data={leaves}
+                loading={loading}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+                tableProps={{ className: 'table-striped' }}
+              />
             ) : <Empty description="暂无待审批请假" />
           },
           {
             key: 'reimbursements',
             label: <><FileTextOutlined /> 报销 <Badge count={counts.reimbursements} size="small" /></>,
             children: reimbursements.length > 0 ? (
-              <Table className="table-striped" dataSource={reimbursements} columns={reimbursementColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+              <DataTable<any>
+                columns={reimbursementColumns}
+                data={reimbursements}
+                loading={loading}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+                tableProps={{ className: 'table-striped' }}
+              />
             ) : <Empty description="暂无待审批报销" />
           },
           {
             key: 'borrowings',
             label: <><BankOutlined /> 借支 <Badge count={counts.borrowings} size="small" /></>,
             children: borrowings.length > 0 ? (
-              <Table className="table-striped" dataSource={borrowings} columns={borrowingColumns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+              <DataTable<any>
+                columns={borrowingColumns}
+                data={borrowings}
+                loading={loading}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+                tableProps={{ className: 'table-striped' }}
+              />
             ) : <Empty description="暂无待审批借支" />
           },
         ]} />
 
         {/* 审批操作弹窗 */}
         <Modal
-          title={actionModal?.action === 'approve' ? '确认通过' : '确认驳回'}
-          open={!!actionModal?.visible}
+          title={actionModalData?.action === 'approve' ? '确认通过' : '确认驳回'}
+          open={actionModalVisible}
           onOk={handleAction}
-          onCancel={() => { setActionModal(null); setMemo('') }}
-          confirmLoading={submitting}
-          okText={actionModal?.action === 'approve' ? '通过' : '驳回'}
-          okButtonProps={{ danger: actionModal?.action === 'reject' }}
+          onCancel={() => { closeActionModal(); setMemo('') }}
+          okText={actionModalData?.action === 'approve' ? '通过' : '驳回'}
+          okButtonProps={{ danger: actionModalData?.action === 'reject' }}
         >
-          <p>{actionModal?.action === 'approve' ? '确定要通过此申请吗？' : '确定要驳回此申请吗？'}</p>
+          <p>{actionModalData?.action === 'approve' ? '确定要通过此申请吗？' : '确定要驳回此申请吗？'}</p>
           <TextArea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}

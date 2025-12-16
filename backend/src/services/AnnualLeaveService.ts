@@ -9,42 +9,43 @@ import { systemConfig, employeeLeaves } from '../db/schema.js'
 import * as schema from '../db/schema.js'
 
 export interface AnnualLeaveConfig {
-  cycleMonths: number      // 周期月数: 6 或 12
-  daysPerCycle: number     // 每周期年假天数
+  cycleMonths: number // 周期月数: 6 或 12
+  daysPerCycle: number // 每周期年假天数
   overtimeMultiplier: number // 未休折算系数
 }
 
 export interface CycleInfo {
-  cycleNumber: number      // 当前是第几个周期 (从1开始)
-  cycleStart: string       // 周期开始日期 YYYY-MM-DD
-  cycleEnd: string         // 周期结束日期 YYYY-MM-DD
-  daysInCycle: number      // 周期总天数
+  cycleNumber: number // 当前是第几个周期 (从1开始)
+  cycleStart: string // 周期开始日期 YYYY-MM-DD
+  cycleEnd: string // 周期结束日期 YYYY-MM-DD
+  daysInCycle: number // 周期总天数
   daysWorkedInCycle: number // 本周期已工作天数
-  isFirstCycle: boolean    // 是否为第一周期（无年假）
+  isFirstCycle: boolean // 是否为第一周期（无年假）
 }
 
 export interface AnnualLeaveStats {
   config: AnnualLeaveConfig
   cycle: CycleInfo
-  entitledDays: number     // 本周期应得年假天数
-  usedDays: number         // 本周期已使用天数
-  remainingDays: number    // 本周期剩余天数
+  entitledDays: number // 本周期应得年假天数
+  usedDays: number // 本周期已使用天数
+  remainingDays: number // 本周期剩余天数
 }
 
 export interface LeaveSettlement {
-  entitledDays: number     // 按比例应得年假
-  usedDays: number         // 已使用天数
-  unusedDays: number       // 未休天数 (正数=补偿, 负数=扣回)
+  entitledDays: number // 按比例应得年假
+  usedDays: number // 已使用天数
+  unusedDays: number // 未休天数 (正数=补偿, 负数=扣回)
   dailySalaryCents: number // 日薪(分)
-  settlementCents: number  // 结算金额(分): 正=补偿, 负=扣回
+  settlementCents: number // 结算金额(分): 正=补偿, 负=扣回
 }
 
 export class AnnualLeaveService {
-  constructor(private db: DrizzleD1Database<typeof schema>) { }
+  constructor(private db: DrizzleD1Database<typeof schema>) {}
 
   // 获取年假配置
   async getAnnualLeaveConfig(): Promise<AnnualLeaveConfig> {
-    const configs = await this.db.select({ key: systemConfig.key, value: systemConfig.value })
+    const configs = await this.db
+      .select({ key: systemConfig.key, value: systemConfig.value })
       .from(systemConfig)
       .where(like(systemConfig.key, 'annual_leave%'))
       .all()
@@ -67,8 +68,8 @@ export class AnnualLeaveService {
     const target = new Date(targetDate)
 
     // 计算从入职到目标日期经过的完整月数
-    const monthsDiff = (target.getFullYear() - join.getFullYear()) * 12 +
-      (target.getMonth() - join.getMonth())
+    const monthsDiff =
+      (target.getFullYear() - join.getFullYear()) * 12 + (target.getMonth() - join.getMonth())
 
     // 计算当前所在周期序号 (从1开始)
     const cycleNumber = Math.floor(monthsDiff / cycleMonths) + 1
@@ -83,11 +84,13 @@ export class AnnualLeaveService {
     cycleEnd.setDate(cycleEnd.getDate() - 1) // 减1天得到周期最后一天
 
     // 计算周期总天数
-    const daysInCycle = Math.ceil((cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const daysInCycle =
+      Math.ceil((cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
 
     // 计算本周期已工作天数
     const effectiveTarget = target < cycleEnd ? target : cycleEnd
-    const daysWorkedInCycle = Math.ceil((effectiveTarget.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const daysWorkedInCycle =
+      Math.ceil((effectiveTarget.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
 
     return {
       cycleNumber,
@@ -105,15 +108,18 @@ export class AnnualLeaveService {
     cycleStart: string,
     cycleEnd: string
   ): Promise<number> {
-    const result = await this.db.select({ usedDays: employeeLeaves.days })
+    const result = await this.db
+      .select({ usedDays: employeeLeaves.days })
       .from(employeeLeaves)
-      .where(and(
-        eq(employeeLeaves.employeeId, employeeId),
-        eq(employeeLeaves.leaveType, 'annual'),
-        eq(employeeLeaves.status, 'approved'),
-        gte(employeeLeaves.startDate, cycleStart),
-        lte(employeeLeaves.startDate, cycleEnd)
-      ))
+      .where(
+        and(
+          eq(employeeLeaves.employeeId, employeeId),
+          eq(employeeLeaves.leaveType, 'annual'),
+          eq(employeeLeaves.status, 'approved'),
+          gte(employeeLeaves.startDate, cycleStart),
+          lte(employeeLeaves.startDate, cycleEnd)
+        )
+      )
       .all()
 
     // 汇总天数
@@ -193,7 +199,7 @@ export class AnnualLeaveService {
     employeeId: string,
     joinDate: string,
     requestDays: number
-  ): Promise<{ valid: boolean, message?: string, remaining?: number }> {
+  ): Promise<{ valid: boolean; message?: string; remaining?: number }> {
     const stats = await this.getAnnualLeaveStats(employeeId, joinDate)
 
     if (stats.cycle.isFirstCycle) {

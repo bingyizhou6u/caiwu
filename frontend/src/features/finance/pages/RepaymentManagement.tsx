@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Space, message, Select, DatePicker } from 'antd'
+import { useState, useMemo } from 'react'
+import { Card, Button, Modal, Form, Input, Space, message, Select, DatePicker } from 'antd'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
 import { useAccounts } from '../../../hooks/useBusinessData'
@@ -7,12 +7,15 @@ import { useBorrowings, useRepayments, useCreateRepayment } from '../../../hooks
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createRepaymentSchema } from '../../../validations/repayment.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import type { Repayment } from '../../../types/business'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import type { Repayment, Borrowing } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function RepaymentManagement() {
   const [open, setOpen] = useState(false)
+  const [searchParams, setSearchParams] = useState<{ borrower?: string; currency?: string }>({})
 
   const { form, validateWithZod } = useZodForm(createRepaymentSchema)
 
@@ -21,12 +24,12 @@ export function RepaymentManagement() {
 
   // 数据 Hook
   const { data: accounts = [] } = useAccounts()
-  const { data: borrowings = [] } = useBorrowings()
-  const { data: repayments = [], isLoading: loading, refetch: load } = useRepayments()
+  const { data: borrowingsData = { total: 0, list: [] } } = useBorrowings(1, 100) // 获取借款用于下拉选择（最多100条）
+  const { data: repayments = [], isLoading: loading, refetch } = useRepayments()
   const { mutateAsync: createRepayment, isPending: isCreating } = useCreateRepayment()
 
   // 借款选项
-  const borrowingOptions = borrowings.map((b: any) => ({
+  const borrowingOptions = (borrowingsData.list || []).map((b: Borrowing) => ({
     value: b.id,
     label: `${b.borrowerName || b.borrowerEmail || '-'} - ${(b.amountCents / 100).toFixed(2)} ${b.currency} (${b.borrowDate})`,
     currency: b.currency
@@ -42,7 +45,7 @@ export function RepaymentManagement() {
       })
       setOpen(false)
       form.resetFields()
-      load()
+      refetch()
     },
     { successMessage: '创建成功' }
   )
@@ -53,7 +56,29 @@ export function RepaymentManagement() {
       breadcrumb={[{ title: '财务管理' }, { title: '还款管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
+        <SearchFilters
+          fields={[
+            { name: 'borrower', label: '借款人', type: 'input', placeholder: '请输入借款人姓名或邮箱' },
+            {
+              name: 'currency',
+              label: '币种',
+              type: 'select',
+              placeholder: '请选择币种',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'CNY', label: 'CNY - 人民币' },
+                { value: 'USD', label: 'USD - 美元' },
+                { value: 'EUR', label: 'EUR - 欧元' },
+                { value: 'USDT', label: 'USDT - 泰达币' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
           {canEdit && (
             <Button type="primary" onClick={() => {
               form.resetFields()
@@ -61,27 +86,51 @@ export function RepaymentManagement() {
               setOpen(true)
             }}>新建还款</Button>
           )}
-          <Button onClick={() => load()}>刷新</Button>
+          <Button onClick={() => refetch()}>刷新</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          loading={loading}
-          dataSource={repayments}
-          columns={[
-            { title: '借款人', render: (_: unknown, r: Repayment) => r.borrowerName || r.borrowerEmail || '-' },
-            { title: '邮箱', dataIndex: 'borrower_email', render: (v: string) => v || '-' },
-            { title: '资金账户', dataIndex: 'accountName' },
+
+        {(() => {
+          // 过滤数据
+          const filteredRepayments = useMemo(() => {
+            return repayments.filter((r: Repayment) => {
+              if (searchParams.borrower) {
+                const search = searchParams.borrower.toLowerCase()
+                if (!r.borrowerName?.toLowerCase().includes(search) && !r.borrowerEmail?.toLowerCase().includes(search)) {
+                  return false
+                }
+              }
+              if (searchParams.currency && r.currency !== searchParams.currency) {
+                return false
+              }
+              return true
+            })
+          }, [repayments, searchParams])
+
+          const columns: DataTableColumn<Repayment>[] = [
+            { title: '借款人', key: 'borrower', render: (_: unknown, r: Repayment) => r.borrowerName || r.borrowerEmail || '-' },
+            { title: '邮箱', dataIndex: 'borrower_email', key: 'borrower_email', render: (v: string) => v || '-' },
+            { title: '资金账户', dataIndex: 'accountName', key: 'accountName' },
             {
               title: '还款金额',
+              key: 'amount',
               render: (_: unknown, r: Repayment) => `${(r.amountCents / 100).toFixed(2)} ${r.currency}`
             },
-            { title: '还款日期', dataIndex: 'repay_date' },
-            { title: '备注', dataIndex: 'memo', render: (v: string) => v || '-' },
-            { title: '创建人', dataIndex: 'creator_name' },
-          ]}
-          pagination={{ pageSize: 20 }}
-        />
+            { title: '还款日期', dataIndex: 'repay_date', key: 'repay_date' },
+            { title: '备注', dataIndex: 'memo', key: 'memo', render: (v: string) => v || '-' },
+            { title: '创建人', dataIndex: 'creator_name', key: 'creator_name' },
+          ]
+
+          return (
+            <DataTable<Repayment>
+              columns={columns}
+              data={filteredRepayments}
+              loading={loading}
+              rowKey="id"
+              pagination={{ pageSize: 20 }}
+              tableProps={{ className: 'table-striped' }}
+            />
+          )
+        })()}
 
         <Modal
           title="新建还款"

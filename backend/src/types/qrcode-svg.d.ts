@@ -1,1 +1,1 @@
-declare module 'qrcode-svg';
+declare module 'qrcode-svg'

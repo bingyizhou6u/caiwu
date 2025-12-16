@@ -1,5 +1,7 @@
 import { useApiQuery } from '../../utils/useApiQuery'
 import { api } from '../../config/api'
+import { api as apiClient } from '../../api/http'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Position } from '../../types'
 
 /**
@@ -23,4 +25,17 @@ export function usePositions() {
             }
         }
     )
+}
+
+export function useUpdatePosition() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<Position> }) => {
+            const result = await apiClient.put<Position>(`${api.positions}/${id}`, data)
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['positions'] })
+        },
+    })
 }

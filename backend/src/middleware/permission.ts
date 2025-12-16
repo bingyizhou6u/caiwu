@@ -10,12 +10,12 @@ import { Errors } from '../utils/errors.js'
  * @param action Action name (e.g., 'create')
  */
 export function requirePermission(module: string, subModule: string, action: string) {
-    return createMiddleware<{ Bindings: Env, Variables: AppVariables }>(async (c, next) => {
-        if (!hasPermission(c, module, subModule, action)) {
-            throw Errors.FORBIDDEN()
-        }
-        await next()
-    })
+  return createMiddleware<{ Bindings: Env; Variables: AppVariables }>(async (c, next) => {
+    if (!hasPermission(c, module, subModule, action)) {
+      throw Errors.FORBIDDEN()
+    }
+    await next()
+  })
 }
 
 /**
@@ -25,14 +25,18 @@ export function requirePermission(module: string, subModule: string, action: str
  * @param action Action name
  * @param handler Route handler
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function protectRoute(module: string, subModule: string, action: string, handler: (c: any) => any) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return async (c: any) => {
-        if (!hasPermission(c, module, subModule, action)) {
-            throw Errors.FORBIDDEN()
-        }
-        return handler(c)
+ 
+export function protectRoute(
+  module: string,
+  subModule: string,
+  action: string,
+  handler: (c: any) => any
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return async (c: any) => {
+    if (!hasPermission(c, module, subModule, action)) {
+      throw Errors.FORBIDDEN()
     }
+    return handler(c)
+  }
 }
-

@@ -6,7 +6,7 @@ import { getSession, createDb } from './db.js'
 import * as schema from '../db/schema.js'
 
 // 从Cloudflare请求头获取IP和IP归属地信息
-function getIPInfo(c: any): { ip: string | null, ipLocation: string | null } {
+function getIPInfo(c: any): { ip: string | null; ipLocation: string | null } {
   try {
     // 获取客户端IP
     const cfIp = c.req.header('cf-connecting-ip')
@@ -20,8 +20,8 @@ function getIPInfo(c: any): { ip: string | null, ipLocation: string | null } {
     let ipLocation: string | null = null
     if (country || city) {
       const parts: string[] = []
-      if (city) parts.push(city)
-      if (country) parts.push(country)
+      if (city) {parts.push(city)}
+      if (country) {parts.push(country)}
       ipLocation = parts.join(', ')
     }
 
@@ -33,9 +33,13 @@ function getIPInfo(c: any): { ip: string | null, ipLocation: string | null } {
   }
 }
 
-
-
-export function logAuditAction(c: any, action: string, entity: string, entityId?: string, detail?: string) {
+export function logAuditAction(
+  c: any,
+  action: string,
+  entity: string,
+  entityId?: string,
+  detail?: string
+) {
   const userId = c.get('userId') as string | undefined
   const auditService = c.get('services')?.audit
 
@@ -47,13 +51,17 @@ export function logAuditAction(c: any, action: string, entity: string, entityId?
     // 注意：AuditService 需要 actorId。如果 session 也拿不到，就无法记录（或者记录为 system?）
     const sid = getCookie(c, 'sid')
     if (sid && auditService) {
-      getSession(createDb(c.env.DB), sid).then(s => {
-        if (s) {
-          auditService.log(s.userId, action, entity, entityId, detail, ip, ipLocation).catch((err: any) => {
-            console.error('Audit log error:', err)
-          })
-        }
-      }).catch(() => { })
+      getSession(createDb(c.env.DB), sid)
+        .then(s => {
+          if (s) {
+            auditService
+              .log(s.userId, action, entity, entityId, detail, ip, ipLocation)
+              .catch((err: any) => {
+                console.error('Audit log error:', err)
+              })
+          }
+        })
+        .catch(() => {})
     }
     return
   }
@@ -64,9 +72,11 @@ export function logAuditAction(c: any, action: string, entity: string, entityId?
   }
 
   // 使用await确保日志记录完成，但使用catch避免阻塞主流程
-  const promise = auditService.log(userId, action, entity, entityId, detail, ip, ipLocation).catch((err: any) => {
-    console.error('Audit log error:', err, { action, entity, entityId, userId })
-  })
+  const promise = auditService
+    .log(userId, action, entity, entityId, detail, ip, ipLocation)
+    .catch((err: any) => {
+      console.error('Audit log error:', err, { action, entity, entityId, userId })
+    })
   try {
     const ctx = (c as any).executionCtx
     if (ctx && typeof ctx.waitUntil === 'function') {

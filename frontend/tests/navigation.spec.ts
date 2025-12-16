@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('navigate to employee management', async ({ page }) => {
     // Mock health check
     await page.route('**/api/health', async route => {
-        await route.fulfill({ json: { db: true } });
+        await route.fulfill({ json: { checks: { db: true }, status: 'healthy' } });
     });
 
     // Mock login API

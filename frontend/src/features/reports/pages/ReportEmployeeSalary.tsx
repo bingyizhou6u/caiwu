@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Space, Select, message, Statistic, Row, Col } from 'antd'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
-import type { ColumnsType } from 'antd/es/table'
+import { useState, useMemo } from 'react'
+import { Card, Space, Select, Statistic, Row, Col } from 'antd'
 import { formatAmount } from '../../../utils/formatters'
+import { DataTable } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import { useEmployeeSalary } from '../../../hooks'
+import type { ColumnsType } from 'antd/es/table'
 
 type EmployeeSalaryRow = {
   employeeId: string
@@ -25,45 +26,26 @@ type EmployeeSalaryRow = {
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportEmployeeSalary() {
-  const [data, setData] = useState<EmployeeSalaryRow[]>([])
-  const [loading, setLoading] = useState(false)
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [month, setMonth] = useState<number | undefined>(undefined)
 
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.append('year', String(year))
-      if (month !== undefined) {
-        params.append('month', String(month))
-      }
-      const results = await apiClient.get<{ results: EmployeeSalaryRow[] }>(
-        `${api.reports.employeeSalary}?${params.toString()}`
-      )
-      setData(results.results || [])
-    } catch (error: any) {
-      message.error(error.message || '加载薪资表失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [year, month])
+  const { data, isLoading: loading } = useEmployeeSalary({ year, month })
+  // 确保 dataRows 始终是数组，防止 React 错误
+  const dataRows = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : [])
 
   // 计算汇总数据
-  const summary = data.reduce((acc, row) => {
-    acc.totalSalary += row.actualSalaryCents
-    acc.employeeCount = new Set([...acc.employeeIds, row.employeeId]).size
-    acc.employeeIds.add(row.employeeId)
-    return acc
-  }, {
-    totalSalary: 0,
-    employeeCount: 0,
-    employeeIds: new Set<string>(),
-  })
+  const summary = useMemo(() => {
+    return dataRows.reduce((acc: { totalSalary: number; employeeIds: Set<string> }, row: EmployeeSalaryRow) => {
+      acc.totalSalary += row.actualSalaryCents
+      acc.employeeIds.add(row.employeeId)
+      return acc
+    }, {
+      totalSalary: 0,
+      employeeIds: new Set<string>(),
+    })
+  }, [dataRows])
+  
+  const employeeCount = summary.employeeIds.size
 
   const columns: ColumnsType<EmployeeSalaryRow> = [
     {
@@ -115,7 +97,7 @@ export function ReportEmployeeSalary() {
       key: 'month',
       width: 80,
       render: (m: number) => `${m}月`,
-      sorter: (a, b) => {
+      sorter: (a: EmployeeSalaryRow, b: EmployeeSalaryRow) => {
         // 首先按年份降序
         if (a.year !== b.year) {
           return b.year - a.year
@@ -186,31 +168,41 @@ export function ReportEmployeeSalary() {
     <PageContainer
       title="员工薪资报表"
       breadcrumb={[{ title: '报表中心' }, { title: '员工薪资报表' }]}
-      extra={
-        <Space>
-          <Select
-            style={{ width: 120 }}
-            value={year}
-            onChange={setYear}
-            options={yearOptions}
-          />
-          <Select
-            style={{ width: 120 }}
-            value={month}
-            onChange={setMonth}
-            placeholder="全部月份"
-            allowClear
-            options={monthOptions}
-          />
-        </Space>
-      }
     >
       <Card bordered={false} className="page-card">
-        <Row gutter={16} style={{ marginBottom: 16 }}>
+        <SearchFilters
+          fields={[
+            {
+              name: 'year',
+              label: '年份',
+              type: 'select',
+              placeholder: '请选择年份',
+              options: yearOptions,
+            },
+            {
+              name: 'month',
+              label: '月份',
+              type: 'select',
+              placeholder: '全部月份',
+              options: [{ label: '全部月份', value: undefined }, ...monthOptions],
+            },
+          ]}
+          onSearch={(values) => {
+            setYear(values.year || new Date().getFullYear())
+            setMonth(values.month)
+          }}
+          onReset={() => {
+            setYear(new Date().getFullYear())
+            setMonth(undefined)
+          }}
+          initialValues={{ year, month }}
+        />
+
+        <Row gutter={16} style={{ marginBottom: 16, marginTop: 16 }}>
           <Col span={8}>
             <Statistic
               title="员工总数"
-              value={summary.employeeCount}
+              value={employeeCount}
               suffix="人"
             />
           </Col>
@@ -224,20 +216,22 @@ export function ReportEmployeeSalary() {
           <Col span={8}>
             <Statistic
               title="平均工资"
-              value={summary.employeeCount > 0 ? (summary.totalSalary / summary.employeeCount) / 100 : 0}
+              value={employeeCount > 0 ? (summary.totalSalary / employeeCount) / 100 : 0}
               precision={2}
             />
           </Col>
         </Row>
 
-        <Table
-          className="table-striped"
+        <DataTable<EmployeeSalaryRow>
           columns={columns}
-          dataSource={data}
-          rowKey={(record) => `${record.employeeId}-${record.year}-${record.month}`}
+          data={dataRows}
           loading={loading}
+          rowKey={(record) => `${record.employeeId}-${record.year}-${record.month}`}
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1200 }}
+          tableProps={{
+            className: 'table-striped',
+            scroll: { x: 1200 },
+          }}
         />
       </Card>
     </PageContainer>

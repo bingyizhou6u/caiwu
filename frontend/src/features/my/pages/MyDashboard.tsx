@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { Card, Row, Col, Statistic, List, Tag, Typography, Spin, Avatar, Space } from 'antd'
+import { Card, Row, Col, Statistic, List, Tag, Typography, Avatar, Space, Spin } from 'antd'
 import {
   DollarOutlined,
   CalendarOutlined,
@@ -8,45 +7,11 @@ import {
   UserOutlined,
   ClockCircleOutlined
 } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
+import { useMyDashboard } from '../../../hooks'
+import type { MyDashboard } from '../../../hooks/business/useMy'
 
 const { Title, Text } = Typography
-
-interface DashboardData {
-  employee: {
-    id: string
-    name: string
-    email: string
-    position: string
-    department: string
-    orgDepartment: string
-  }
-  stats: {
-    salary: Array<{ total_cents: number, currencyId: string }>
-    annualLeave: {
-      cycleMonths: number
-      cycleNumber: number
-      cycleStart: string | null
-      cycleEnd: string | null
-      isFirstCycle: boolean
-      total: number
-      used: number
-      remaining: number
-    }
-    pendingReimbursementCents: number
-    borrowingBalanceCents: number
-  }
-  recentApplications: Array<{
-    id: string
-    type: 'leave' | 'reimbursement'
-    sub_type: string
-    status: string
-    amount: string
-    createdAt: number
-  }>
-}
 
 const statusColors: Record<string, string> = {
   pending: 'processing',
@@ -80,24 +45,7 @@ const expenseTypeLabels: Record<string, string> = {
 import { PageContainer } from '../../../components/PageContainer'
 
 export function MyDashboard() {
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<DashboardData | null>(null)
-
-  useEffect(() => {
-    loadDashboard()
-  }, [])
-
-  const loadDashboard = async () => {
-    setLoading(true)
-    try {
-      const result = await apiClient.get<DashboardData>(api.my.dashboard)
-      setData(result)
-    } catch (error) {
-      console.error('Failed to load dashboard:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, isLoading: loading } = useMyDashboard()
 
   if (loading) {
     return (
@@ -112,7 +60,7 @@ export function MyDashboard() {
   }
 
   const { employee, stats, recentApplications } = data
-  const mainSalary = stats.salary.find(s => s.currencyId === 'CNY')
+  const mainSalary = stats.salary.find((s) => s.currencyId === 'CNY')
 
   return (
     <PageContainer
@@ -138,7 +86,7 @@ export function MyDashboard() {
           <Card bordered={false} className="page-card">
             <Statistic
               title="本月薪资"
-              value={mainSalary ? mainSalary.total_cents / 100 : 0}
+              value={mainSalary ? mainSalary.totalCents / 100 : 0}
               prefix={<DollarOutlined />}
               suffix="元"
               precision={2}
@@ -191,7 +139,7 @@ export function MyDashboard() {
         <List
           dataSource={recentApplications}
           locale={{ emptyText: '暂无申请记录' }}
-          renderItem={(item) => (
+          renderItem={(item: MyDashboard['recentApplications'][number]) => (
             <List.Item>
               <List.Item.Meta
                 avatar={
@@ -203,25 +151,27 @@ export function MyDashboard() {
                   <Space>
                     <span>
                       {item.type === 'leave'
-                        ? `请假 - ${leaveTypeLabels[item.sub_type] || item.sub_type}`
-                        : `报销 - ${expenseTypeLabels[item.sub_type] || item.sub_type}`
+                        ? `请假 - ${leaveTypeLabels[item.subType] || item.subType}`
+                        : `报销 - ${expenseTypeLabels[item.subType] || item.subType}`
                       }
                     </span>
-                    <Tag color={statusColors[item.status]}>
-                      {statusLabels[item.status] || item.status}
+                    <Tag color={statusColors[item.status || '']}>
+                      {statusLabels[item.status || ''] || item.status || '-'}
                     </Tag>
                   </Space>
                 }
                 description={
                   <Space>
                     <ClockCircleOutlined />
-                    {dayjs(item.createdAt).format('YYYY-MM-DD HH:mm')}
-                    <span style={{ marginLeft: 16 }}>
-                      {item.type === 'leave'
-                        ? item.amount
-                        : `¥${(parseInt(item.amount) / 100).toFixed(2)}`
-                      }
-                    </span>
+                    {item.createdAt ? dayjs(item.createdAt).format('YYYY-MM-DD HH:mm') : '-'}
+                    {item.amount && (
+                      <span style={{ marginLeft: 16 }}>
+                        {item.type === 'leave'
+                          ? item.amount
+                          : `¥${(parseInt(item.amount) / 100).toFixed(2)}`
+                        }
+                      </span>
+                    )}
                   </Space>
                 }
               />

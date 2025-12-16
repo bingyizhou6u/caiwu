@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Card, Table, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, InputNumber } from 'antd'
+import { Card, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, InputNumber, Table } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
-import type { ColumnsType } from 'antd/es/table'
 import { formatAmount } from '../../../utils/formatters'
-import { loadCurrencies, loadAccounts } from '../../../utils/loaders'
+import { useCurrencies, useAccounts } from '../../../hooks/useBusinessData'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { useSalaryPayments, useGenerateSalaryPayments, useEmployeeConfirmSalary, useFinanceApproveSalary, usePaymentTransferSalary, useRequestAllocationSalary, useApproveAllocationSalary, useConfirmPaymentSalary } from '../../../hooks/business/useSalaryPayments'
@@ -13,6 +13,8 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { salaryPaymentGenerateSchema, salaryPaymentTransferSchema, salaryPaymentAllocationSchema, salaryPaymentConfirmSchema } from '../../../validations/salary.schema'
+import { DataTable } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { SalaryPayment } from '../../../hooks/business/useSalaryPayments'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -48,8 +50,6 @@ export function SalaryPayments() {
   const { mutateAsync: approveAllocation } = useApproveAllocationSalary()
   const { mutateAsync: confirmPayment } = useConfirmPaymentSalary()
 
-  const [accounts, setAccounts] = useState<Array<{ value: string, label: string, currency?: string }>>([])
-  const [currencies, setCurrencies] = useState<Array<{ value: string, label: string }>>([])
   const [uploading, setUploading] = useState(false)
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -95,21 +95,9 @@ export function SalaryPayments() {
   const { form: allocationForm, validateWithZod: validateAllocation } = useZodForm(salaryPaymentAllocationSchema)
   const { form: confirmForm, validateWithZod: validateConfirm } = useZodForm(salaryPaymentConfirmSchema)
 
-  useEffect(() => {
-    const loadMasterData = async () => {
-      try {
-        const [accountsData, currenciesData] = await Promise.all([
-          loadAccounts(),
-          loadCurrencies()
-        ])
-        setAccounts(accountsData)
-        setCurrencies(currenciesData)
-      } catch (error: any) {
-        message.error(`加载基础数据失败: ${error.message || '网络错误'}`)
-      }
-    }
-    loadMasterData()
-  }, [])
+  // Business data hooks
+  const { data: accounts = [] } = useAccounts()
+  const { data: currencies = [] } = useCurrencies()
 
   // 初始化生成表单
   useEffect(() => {
@@ -148,47 +136,55 @@ export function SalaryPayments() {
   const handlePaymentTransferConfirm = withErrorHandler(
     async () => {
       if (!transferRow) return
-      setSubmitting(true)
-      try {
-        const values = await validateTransfer()
-        await paymentTransfer({ id: transferRow.id, accountId: values.accountId })
-        message.success('标记转账成功')
-        closeTransfer()
-        transferForm.resetFields()
-      } finally {
+      const values = await validateTransfer()
+      await paymentTransfer({ id: transferRow.id, accountId: values.accountId })
+      message.success('标记转账成功')
+      closeTransfer()
+      transferForm.resetFields()
+    },
+    {
+      showSuccess: false, // 手动显示成功消息
+      errorMessage: '标记转账失败',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { errorMessage: '标记转账失败' }
+    }
   )
 
   const handleAllocationRequest = withErrorHandler(
     async () => {
       if (!allocationRow) return
-      setSubmitting(true)
-      try {
-        const values = await validateAllocation()
-        const allocations = values.allocations.map((a: any) => ({
-          currencyId: a.currencyId,
-          amountCents: Math.round(a.amountCents * 100),
-          accountId: a.accountId || undefined
-        }))
+      const values = await validateAllocation()
+      const allocations = values.allocations.map((a: any) => ({
+        currencyId: a.currencyId,
+        amountCents: Math.round(a.amountCents * 100),
+        accountId: a.accountId || undefined
+      }))
 
-        // 验证总额
-        const total = allocations.reduce((sum: number, a: any) => sum + (a.amountCents || 0), 0)
-        if (total > allocationRow.salary_cents) {
-          throw new Error(`分配总额不能超过薪资总额 ${formatAmount(allocationRow.salary_cents)}`)
-        }
+      // 验证总额
+      const total = allocations.reduce((sum: number, a: any) => sum + (a.amountCents || 0), 0)
+      if (total > allocationRow.salary_cents) {
+        throw new Error(`分配总额不能超过薪资总额 ${formatAmount(allocationRow.salary_cents)}`)
+      }
 
-        await requestAllocation({ id: allocationRow.id, allocations })
-        message.success('申请成功')
-        closeAllocation()
-        allocationForm.resetFields()
-      } finally {
+      await requestAllocation({ id: allocationRow.id, allocations })
+      message.success('申请成功')
+      closeAllocation()
+      allocationForm.resetFields()
+    },
+    {
+      showSuccess: false, // 手动显示成功消息
+      errorMessage: '申请失败',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { errorMessage: '申请失败' }
+    }
   )
 
   const handleAllocationApprove = withErrorHandler(
@@ -215,8 +211,9 @@ export function SalaryPayments() {
       message.success('凭证上传成功（已转换为WebP格式）')
       setUploading(false)
       return false
-    } catch (error: any) {
-      message.error('上传失败: ' + (error.message || '未知错误'))
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      message.error('上传失败: ' + errorMessage)
       setUploading(false)
       return false
     }
@@ -225,19 +222,23 @@ export function SalaryPayments() {
   const handlePaymentConfirm = withErrorHandler(
     async () => {
       if (!confirmRow) return
-      setSubmitting(true)
-      try {
-        const values = await validateConfirm()
-        await confirmPayment({ id: confirmRow.id, payment_voucher_path: values.payment_voucher_path })
-        message.success('确认成功')
-        closeConfirm()
-        setFileList([])
-        confirmForm.resetFields()
-      } finally {
+      const values = await validateConfirm()
+      await confirmPayment({ id: confirmRow.id, payment_voucher_path: values.payment_voucher_path })
+      message.success('确认成功')
+      closeConfirm()
+      setFileList([])
+      confirmForm.resetFields()
+    },
+    {
+      showSuccess: false, // 手动显示成功消息
+      errorMessage: '确认失败',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { errorMessage: '确认失败' }
+    }
   )
 
   const showPreview = (url: string) => {
@@ -401,51 +402,68 @@ export function SalaryPayments() {
       breadcrumb={[{ title: '人事管理' }, { title: '薪资发放管理' }]}
     >
       <Card
-        title="薪资发放管理"
-        extra={
-          _isFinance && (
-            <Button type="primary" onClick={openGenerate}>
-              生成薪资单
-            </Button>
-          )
-        }
         className="page-card"
         bordered={false}
       >
-        <Space style={{ marginBottom: 16 }}>
-          <Select
-            style={{ width: 120 }}
-            value={year}
-            onChange={setYear}
-            options={yearOptions}
-          />
-          <Select
-            style={{ width: 120 }}
-            value={month}
-            onChange={setMonth}
-            placeholder="全部月份"
-            allowClear
-            options={monthOptions}
-          />
-          <Select
-            style={{ width: 150 }}
-            value={status}
-            onChange={setStatus}
-            placeholder="全部状态"
-            allowClear
-            options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
-          />
+        <SearchFilters
+          fields={[
+            {
+              name: 'year',
+              label: '年份',
+              type: 'select',
+              placeholder: '请选择年份',
+              options: yearOptions,
+            },
+            {
+              name: 'month',
+              label: '月份',
+              type: 'select',
+              placeholder: '请选择月份',
+              options: [
+                { label: '全部', value: '' },
+                ...monthOptions,
+              ],
+            },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
+              ],
+            },
+          ]}
+          onSearch={(values) => {
+            if (values.year) setYear(values.year)
+            if (values.month !== undefined) setMonth(values.month || undefined)
+            if (values.status !== undefined) setStatus(values.status || undefined)
+          }}
+          onReset={() => {
+            setYear(new Date().getFullYear())
+            setMonth(undefined)
+            setStatus(undefined)
+          }}
+          initialValues={{ year, month: month || '', status: status || '' }}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
+          {_isFinance && (
+            <Button type="primary" onClick={openGenerate}>
+              生成薪资单
+            </Button>
+          )}
           <Button onClick={() => refetch()}>刷新</Button>
         </Space>
 
-        <Table
-          className="table-striped"
+        <DataTable<SalaryPayment>
           columns={columns}
-          dataSource={payments}
-          rowKey="id"
+          data={payments}
           loading={isLoading}
+          rowKey="id"
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1200 }}
+          tableProps={{ className: 'table-striped', scroll: { x: 1200 } }}
         />
 
         <Modal
@@ -497,7 +515,7 @@ export function SalaryPayments() {
                 <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                   {transferRow.allocations.map((alloc, idx) => (
                     <div key={idx} style={{ marginBottom: 8, padding: 8, background: '#f5f5f5', borderRadius: 4 }}>
-                      <div>{alloc.currencyName || currencies.find(c => c.value === alloc.currencyId)?.label || alloc.currencyId}: {formatAmount(alloc.amountCents)}</div>
+                      <div>{alloc.currencyName || currencies.find((c: any) => c.value === alloc.currencyId)?.label || alloc.currencyId}: {formatAmount(alloc.amountCents)}</div>
                       {alloc.accountName && <div style={{ fontSize: 12, color: '#666' }}>账户: {alloc.accountName}</div>}
                     </div>
                   ))}
@@ -513,7 +531,7 @@ export function SalaryPayments() {
                 placeholder="请选择账户"
                 showSearch
                 filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                 }
                 options={accounts}
               />
@@ -577,9 +595,9 @@ export function SalaryPayments() {
                             allowClear
                             showSearch
                             filterOption={(input, option) =>
-                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                              String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                             }
-                            options={accounts.filter(acc => {
+                            options={accounts.filter((acc: any) => {
                               const currency = allocationForm.getFieldValue(['allocations', name, 'currencyId'])
                               return !currency || acc.currency === currency
                             })}
@@ -617,7 +635,7 @@ export function SalaryPayments() {
               <p>总薪资: {formatAmount(allocationApproveRow.salary_cents)}</p>
               <Table
                 columns={[
-                  { title: '币种', dataIndex: 'currencyName', key: 'currencyName', render: (_: any, r: any) => r.currencyName || currencies.find(c => c.value === r.currencyId)?.label || r.currencyId },
+                  { title: '币种', dataIndex: 'currencyName', key: 'currencyName', render: (_: any, r: any) => r.currencyName || currencies.find((c: any) => c.value === r.currencyId)?.label || r.currencyId },
                   { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (c: number) => formatAmount(c) },
                   { title: '账户', dataIndex: 'accountName', key: 'accountName', render: (n: string) => n || '-' },
                   {

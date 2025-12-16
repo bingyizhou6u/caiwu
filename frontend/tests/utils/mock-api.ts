@@ -17,7 +17,7 @@ export async function setupCommonMocks(page: Page) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ results: [] }) });
     });
 
-    await page.route('**/api/health', async route => route.fulfill({ json: { db: true } }));
+    await page.route('**/api/health', async route => route.fulfill({ json: { checks: { db: true }, status: 'healthy' } }));
 
     // Login Mock
     await page.route('**/api/auth/login-password', async route => {

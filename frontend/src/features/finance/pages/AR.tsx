@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Descriptions, Upload } from 'antd'
+import { useState, useMemo } from 'react'
+import { Card, Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Descriptions, Upload, Table } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
@@ -10,6 +10,8 @@ import { useAccounts, useIncomeCategories, useSites } from '../../../hooks/useBu
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createARSchema, confirmARSchema, settleARSchema } from '../../../validations/ar.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { ARAP } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
@@ -20,6 +22,7 @@ export function AR() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [searchParams, setSearchParams] = useState<{ siteName?: string; status?: string }>({})
 
   // 状态
   const [confirmingDoc, setConfirmingDoc] = useState<ARAP | null>(null)
@@ -67,7 +70,7 @@ export function AR() {
       })
       setCreateOpen(false)
       createForm.form.resetFields()
-      load()
+      refetch()
     },
     { successMessage: '已新增' }
   )
@@ -94,7 +97,7 @@ export function AR() {
       setFileList([])
       setVoucherUrl(undefined)
       confirmForm.form.resetFields()
-      load()
+      refetch()
     },
     { successMessage: '已确认并生成收入记录' }
   )
@@ -142,7 +145,7 @@ export function AR() {
     setFileList([])
     setVoucherUrl(undefined)
     confirmForm.form.resetFields()
-    confirmForm.form.setFieldsValue({ bizDate: dayjs(record.issueDate) })
+    confirmForm.form.setFieldValue('bizDate', dayjs(record.issueDate))
   }
 
   const openDetailModal = (record: ARAP) => {
@@ -151,25 +154,81 @@ export function AR() {
     settleForm.form.resetFields()
   }
 
+  // ARAP 扩展类型（包含可能的 siteName 字段）
+  interface ARAPWithSiteName extends ARAP {
+    siteName?: string
+  }
+
+  // 过滤数据
+  const filteredDocs = useMemo(() => {
+    return docs.list.filter((doc: ARAP) => {
+      if (searchParams.siteName) {
+        const search = searchParams.siteName.toLowerCase()
+        // AR 单据使用 partyName 字段
+        const name = (doc as ARAPWithSiteName).siteName || doc.partyName || ''
+        if (!name.toLowerCase().includes(search)) {
+          return false
+        }
+      }
+      if (searchParams.status && doc.status !== searchParams.status) {
+        return false
+      }
+      return true
+    })
+  }, [docs.list, searchParams])
+
+  const columns: DataTableColumn<ARAPWithSiteName>[] = [
+    { title: '单号', dataIndex: 'docNo', key: 'docNo' },
+    { title: '客户（站点）', key: 'siteName', render: (_: unknown, r: ARAPWithSiteName) => r.siteName || r.partyName || '-' },
+    { title: '开立日期', dataIndex: 'issueDate', key: 'issueDate' },
+    { title: '到期日', dataIndex: 'dueDate', key: 'dueDate' },
+    { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
+    { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
+    { title: '状态', dataIndex: 'status', key: 'status' },
+  ]
+
   return (
     <PageContainer
       title="应收管理"
       breadcrumb={[{ title: '财务管理' }, { title: '应收管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
+        <SearchFilters
+          fields={[
+            { name: 'siteName', label: '客户（站点）', type: 'input', placeholder: '请输入客户或站点名称' },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'open', label: '未结' },
+                { value: 'partial', label: '部分结算' },
+                { value: 'settled', label: '已结清' },
+                { value: 'pending', label: '待确认' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
           <Button type="primary" onClick={() => {
             setCreateOpen(true)
             createForm.form.resetFields()
-            createForm.form.setFieldsValue({ issueDate: dayjs() })
+            createForm.form.setFieldValue('issueDate', dayjs())
           }}>新建应收</Button>
-          <Button onClick={() => load()}>刷新</Button>
+          <Button onClick={() => refetch()}>刷新</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
+
+        <DataTable<ARAPWithSiteName>
+          columns={columns}
+          data={filteredDocs as ARAPWithSiteName[]}
           loading={loading}
-          dataSource={docs.list}
+          rowKey="id"
           pagination={{
             current: page,
             pageSize: pageSize,
@@ -178,29 +237,16 @@ export function AR() {
               setPage(p)
               setPageSize(ps)
             },
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条`
           }}
-          columns={[
-            { title: '单号', dataIndex: 'docNo' },
-            { title: '客户（站点）', dataIndex: 'siteName', render: (v: string) => v || '-' },
-            { title: '开立日期', dataIndex: 'issueDate' },
-            { title: '到期日', dataIndex: 'dueDate' },
-            { title: '金额', dataIndex: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '已结', dataIndex: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '状态', dataIndex: 'status' },
-            {
-              title: '操作',
-              render: (_: any, r: ARAP) => (
-                <Space>
-                  {(r.status === 'open' || r.status === 'pending') && (
-                    <Button size="small" type="primary" onClick={() => openConfirmModal(r)}>确认</Button>
-                  )}
-                  <Button size="small" onClick={() => openDetailModal(r)}>对账单</Button>
-                </Space>
-              )
-            }
-          ]}
+          actions={(record) => (
+            <Space>
+              {(record.status === 'open' || record.status === 'pending') && (
+                <Button size="small" type="primary" onClick={() => openConfirmModal(record)}>确认</Button>
+              )}
+              <Button size="small" onClick={() => openDetailModal(record)}>对账单</Button>
+            </Space>
+          )}
+          tableProps={{ className: 'table-striped' }}
         />
 
         <Modal
@@ -213,7 +259,7 @@ export function AR() {
         >
           <Form form={createForm.form} layout="vertical">
             <Form.Item name="siteId" label="客户（站点）" rules={[{ required: true, message: '请选择站点' }]} className="form-full-width">
-              <Select options={sites} placeholder="选择站点" showSearch />
+              <Select options={Array.isArray(sites) ? sites : []} placeholder="选择站点" showSearch />
             </Form.Item>
             <Form.Item name="issueDate" label="开立日期" rules={[{ required: true, message: '请选择开立日期' }]} className="form-full-width">
               <DatePicker className="form-full-width" />
@@ -268,7 +314,7 @@ export function AR() {
               <div style={{ height: 12 }} />
               <Form layout="inline" form={settleForm.form}>
                 <Form.Item name="flowId" rules={[{ required: true, message: '请选择流水' }]}>
-                  <Select style={{ width: 360 }} options={flows} placeholder="选择对应的收款流水" />
+                  <Select style={{ width: 360 }} options={Array.isArray(flows) ? flows : []} placeholder="选择对应的收款流水" />
                 </Form.Item>
                 <Form.Item name="settle_amount" rules={[{ required: true, message: '请输入核销金额' }]}>
                   <InputNumber min={0.01} step={0.01} placeholder="核销金额" />
@@ -299,10 +345,10 @@ export function AR() {
             <Form form={confirmForm.form} layout="vertical" onFinish={handleConfirm}>
               <Form.Item label="金额">{(confirmingDoc.amountCents / 100).toFixed(2)}</Form.Item>
               <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
-                <Select options={accounts} placeholder="选择账户" showSearch />
+                <Select options={Array.isArray(accounts) ? accounts : []} placeholder="选择账户" showSearch />
               </Form.Item>
               <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]} className="form-full-width">
-                <Select options={categories} placeholder="选择类别" />
+                <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" />
               </Form.Item>
               <Form.Item name="bizDate" label="业务日期" rules={[{ required: true, message: '请选择业务日期' }]} className="form-full-width">
                 <DatePicker className="form-full-width" />

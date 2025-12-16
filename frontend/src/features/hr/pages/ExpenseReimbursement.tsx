@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, DatePicker, InputNumber, Upload } from 'antd'
+import { useEffect, useState, useMemo } from 'react'
+import { Card, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, DatePicker, InputNumber, Upload } from 'antd'
 import { api } from '../../../config/api'
-import type { ColumnsType } from 'antd/es/table'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { EyeOutlined, UploadOutlined, ReloadOutlined } from '@ant-design/icons'
 import { formatAmount } from '../../../utils/formatters'
-import { loadCurrencies, loadAccounts, loadExpenseCategories, loadEmployees } from '../../../utils/loaders'
+import { useCurrencies, useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
 import { uploadImageAsWebP } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useApproveExpense, usePayExpense } from '../../../hooks/business/useExpenses'
@@ -14,6 +13,8 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { expenseSchema, approveExpenseSchema } from '../../../validations/expense.schema'
+import { DataTable } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { ExpenseReimbursement } from '../../../hooks/business/useExpenses'
 
 const { Option } = Select
@@ -44,17 +45,16 @@ const STATUS_COLORS: Record<string, string> = {
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ExpenseReimbursement() {
-  const { data: expenses = [], isLoading, refetch } = useExpenses()
+  const { data: expensesData, isLoading, refetch } = useExpenses()
+  // 确保 expenses 始终是数组
+  const expenses = Array.isArray(expensesData) ? expensesData : []
   const { mutateAsync: createExpense } = useCreateExpense()
   const { mutateAsync: updateExpense } = useUpdateExpense()
   const { mutateAsync: deleteExpense } = useDeleteExpense()
   const { mutateAsync: approveExpense } = useApproveExpense()
   const { mutateAsync: payExpense } = usePayExpense()
 
-  const [employees, setEmployees] = useState<any[]>([])
-  const [currencies, setCurrencies] = useState<any[]>([])
-  const [accounts, setAccounts] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
+  const [searchParams, setSearchParams] = useState<{ employee?: string; expenseType?: string; status?: string }>({})
 
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string>('')
@@ -91,43 +91,48 @@ export function ExpenseReimbursement() {
   const { form: editForm, validateWithZod: validateEdit } = useZodForm(expenseSchema)
   const { form: approveForm, validateWithZod: validateApprove } = useZodForm(approveExpenseSchema)
 
-  useEffect(() => {
-    loadMasterData()
-  }, [])
+  // Business data hooks
+  const { data: employeesData = [] } = useEmployees()
+  const { data: currenciesData = [] } = useCurrencies()
+  const { data: accountsData = [] } = useAccounts()
+  const { data: categoriesData = [] } = useExpenseCategories()
 
-  const loadMasterData = async () => {
-    try {
-      const [currenciesData, accountsData, categoriesData, employeesData] = await Promise.all([
-        loadCurrencies(),
-        loadAccounts(),
-        loadExpenseCategories(),
-        loadEmployees()
-      ])
-      // 将SelectOption格式转换为原始格式
-      setCurrencies(currenciesData.map(c => ({
-        id: c.value as string,
-        code: c.value as string,
-        name: c.label.split(' - ')[1] || c.label
-      })))
-      setAccounts(accountsData.map(a => ({
-        id: a.value as string,
-        name: a.label.split(' (')[0],
-        currency: a.currency
-      })))
-      setCategories(categoriesData.map(c => ({
-        id: c.value as string,
-        name: c.label,
-        kind: 'expense'
-      })))
-      setEmployees(employeesData.map(e => ({
-        id: e.value as string,
-        name: e.label.split(' (')[0],
-        active: 1
-      })))
-    } catch (error: any) {
-      message.error(`加载基础数据失败: ${error.message || '网络错误'}`)
-    }
-  }
+  // 将SelectOption格式转换为原始格式，确保数据始终是数组
+  const employees = useMemo(() => {
+    if (!Array.isArray(employeesData)) return []
+    return employeesData.map((e: any) => ({
+      id: e.value as string,
+      name: e.label.split(' (')[0],
+      active: 1
+    }))
+  }, [employeesData])
+
+  const currencies = useMemo(() => {
+    if (!Array.isArray(currenciesData)) return []
+    return currenciesData.map((c: any) => ({
+      id: c.value as string,
+      code: c.value as string,
+      name: c.label.split(' - ')[1] || c.label
+    }))
+  }, [currenciesData])
+
+  const accounts = useMemo(() => {
+    if (!Array.isArray(accountsData)) return []
+    return accountsData.map((a: any) => ({
+      id: a.value as string,
+      name: a.label.split(' (')[0],
+      currency: a.currency
+    }))
+  }, [accountsData])
+
+  const categories = useMemo(() => {
+    if (!Array.isArray(categoriesData)) return []
+    return categoriesData.map((c: any) => ({
+      id: c.value as string,
+      name: c.label,
+      kind: 'expense'
+    }))
+  }, [categoriesData])
 
   const uploadVoucher = async (file: File): Promise<string> => {
     return uploadImageAsWebP(file, api.upload.voucher)
@@ -135,86 +140,95 @@ export function ExpenseReimbursement() {
 
   const handleCreate = withErrorHandler(
     async () => {
-      setSubmitting(true)
-      try {
-        const values = await validateCreate()
+      const values = await validateCreate()
 
-        // 必须上传凭证
-        if (!createVoucherFile) {
-          throw new Error('请上传凭证')
-        }
+      // 必须上传凭证
+      if (!createVoucherFile) {
+        throw new Error('请上传凭证')
+      }
 
-        // 先上传凭证
-        const voucherUrl = await uploadVoucher(createVoucherFile)
+      // 先上传凭证
+      const voucherUrl = await uploadVoucher(createVoucherFile)
 
-        await createExpense({
-          ...values,
-          amountCents: Math.round(values.amount * 100),
-          expenseDate: dayjs(values.expenseDate).format('YYYY-MM-DD'),
-          voucherUrl: voucherUrl,
-        })
-        closeCreate()
-        createForm.resetFields()
-        setCreateVoucherFile(null)
-      } finally {
+      await createExpense({
+        ...values,
+        amountCents: Math.round(values.amount * 100),
+        expenseDate: dayjs(values.expenseDate).format('YYYY-MM-DD'),
+        voucherUrl: voucherUrl,
+      })
+      closeCreate()
+      createForm.resetFields()
+      setCreateVoucherFile(null)
+    },
+    {
+      successMessage: '创建成功',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { successMessage: '创建成功' }
+    }
   )
 
   const handleUpdate = withErrorHandler(
     async () => {
       if (!editRow) return
-      setSubmitting(true)
-      try {
-        const values = await validateEdit()
-        let voucherUrl = editRow.voucherUrl
+      const values = await validateEdit()
+      let voucherUrl = editRow.voucherUrl
 
-        // 如果有上传的新文件，先上传凭证
-        if (editVoucherFile) {
-          voucherUrl = await uploadVoucher(editVoucherFile)
+      // 如果有上传的新文件，先上传凭证
+      if (editVoucherFile) {
+        voucherUrl = await uploadVoucher(editVoucherFile)
+      }
+
+      await updateExpense({
+        id: editRow.id,
+        data: {
+          ...values,
+          amountCents: Math.round(values.amount * 100),
+          expenseDate: dayjs(values.expenseDate).format('YYYY-MM-DD'),
+          voucherUrl: voucherUrl,
         }
-
-        await updateExpense({
-          id: editRow.id,
-          data: {
-            ...values,
-            amountCents: Math.round(values.amount * 100),
-            expenseDate: dayjs(values.expenseDate).format('YYYY-MM-DD'),
-            voucherUrl: voucherUrl,
-          }
-        })
-        closeEdit()
-        editForm.resetFields()
-        setEditVoucherFile(null)
-      } finally {
+      })
+      closeEdit()
+      editForm.resetFields()
+      setEditVoucherFile(null)
+    },
+    {
+      successMessage: '更新成功',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { successMessage: '更新成功' }
+    }
   )
 
   const handleApproveConfirm = withErrorHandler(
     async () => {
       if (!approveRow) return
-      setSubmitting(true)
-      try {
-        const values = await validateApprove()
-        await approveExpense({
-          id: approveRow.id,
-          status: values.status,
-          accountId: values.status === 'approved' ? values.accountId : undefined,
-          categoryId: values.status === 'approved' ? values.categoryId : undefined,
-          memo: values.memo,
-        })
-        closeApprove()
-        approveForm.resetFields()
-      } finally {
+      const values = await validateApprove()
+      await approveExpense({
+        id: approveRow.id,
+        status: values.status,
+        accountId: values.status === 'approved' ? values.accountId : undefined,
+        categoryId: values.status === 'approved' ? values.categoryId : undefined,
+        memo: values.memo,
+      })
+      closeApprove()
+      approveForm.resetFields()
+    },
+    {
+      successMessage: '操作成功',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { successMessage: '操作成功' }
+    }
   )
 
   const handlePay = withErrorHandler(
@@ -260,7 +274,24 @@ export function ExpenseReimbursement() {
     openApprove(record)
   }
 
-  const columns: ColumnsType<ExpenseReimbursement> = [
+  // 过滤数据，确保 expenses 始终是数组
+  const filteredExpenses = useMemo(() => {
+    const expensesArray = Array.isArray(expenses) ? expenses : []
+    let result = expensesArray
+    if (searchParams.employee) {
+      const search = searchParams.employee.toLowerCase()
+      result = result.filter((e: ExpenseReimbursement) => e.employeeName?.toLowerCase().includes(search))
+    }
+    if (searchParams.expenseType) {
+      result = result.filter((e: ExpenseReimbursement) => e.expenseType === searchParams.expenseType)
+    }
+    if (searchParams.status) {
+      result = result.filter((e: ExpenseReimbursement) => e.status === searchParams.status)
+    }
+    return result
+  }, [expenses, searchParams])
+
+  const columns = [
     {
       title: '员工姓名',
       dataIndex: 'employeeName',
@@ -392,28 +423,101 @@ export function ExpenseReimbursement() {
       breadcrumb={[{ title: '人事管理' }, { title: '员工报销管理' }]}
     >
       <Card
-        title="员工报销管理"
-        extra={
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
-            {canEdit && (
-              <Button type="primary" onClick={openCreate}>
-                新建报销
-              </Button>
-            )}
-          </Space>
-        }
         className="page-card"
         bordered={false}
       >
-        <Table
-          className="table-striped"
+        <SearchFilters
+          fields={[
+            { name: 'employee', label: '员工姓名', type: 'input', placeholder: '请输入员工姓名' },
+            {
+              name: 'expenseType',
+              label: '报销类型',
+              type: 'select',
+              placeholder: '请选择报销类型',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'travel', label: '差旅费' },
+                { value: 'office', label: '办公用品' },
+                { value: 'meal', label: '餐饮' },
+                { value: 'transport', label: '交通' },
+                { value: 'other', label: '其他' },
+              ],
+            },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                { value: 'pending', label: '待审批' },
+                { value: 'approved', label: '已批准' },
+                { value: 'rejected', label: '已拒绝' },
+                { value: 'paid', label: '已支付' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
+          {canEdit && (
+            <Button type="primary" onClick={openCreate}>
+              新建报销
+            </Button>
+          )}
+        </Space>
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
+          {canEdit && (
+            <Button type="primary" onClick={openCreate}>
+              新建报销
+            </Button>
+          )}
+        </Space>
+
+        <DataTable<ExpenseReimbursement>
           columns={columns}
-          dataSource={expenses}
-          rowKey="id"
+          data={filteredExpenses}
           loading={isLoading}
+          rowKey="id"
+          actions={(record) => (
+            <Space>
+              {canEdit && record.status === 'pending' && (
+                <Button size="small" onClick={() => onEdit(record)}>
+                  编辑
+                </Button>
+              )}
+              {canApprove && record.status === 'pending' && (
+                <Button size="small" type="primary" onClick={() => onApprove(record)}>
+                  审批
+                </Button>
+              )}
+              {canApprove && record.status === 'approved' && (
+                <Button size="small" type="primary" onClick={() => handlePay(record.id)}>
+                  标记已支付
+                </Button>
+              )}
+              {isManager && (
+                <Popconfirm
+                  title="确定要删除这条报销记录吗？"
+                  onConfirm={() => handleDelete(record.id)}
+                  okText="确定"
+                  cancelText="取消"
+                >
+                  <Button size="small" danger>
+                    删除
+                  </Button>
+                </Popconfirm>
+              )}
+            </Space>
+          )}
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1400 }}
+          tableProps={{ className: 'table-striped', scroll: { x: 1400 } }}
         />
 
         <Modal
@@ -436,11 +540,13 @@ export function ExpenseReimbursement() {
               label="员工"
             >
               <Select placeholder="请选择员工" showSearch optionFilterProp="children">
-                {employees.map((emp) => (
-                  <Option key={emp.id} value={emp.id}>
-                    {emp.name} ({emp.departmentName})
-                  </Option>
-                ))}
+                {Array.isArray(employees)
+                  ? employees.map((emp: any) => (
+                      <Option key={emp.id} value={emp.id}>
+                        {emp.name} {emp.departmentName ? `(${emp.departmentName})` : ''}
+                      </Option>
+                    ))
+                  : []}
               </Select>
             </Form.Item>
             <Form.Item
@@ -460,11 +566,13 @@ export function ExpenseReimbursement() {
               label="币种"
             >
               <Select placeholder="请选择币种">
-                {currencies.map((curr) => (
-                  <Option key={curr.code} value={curr.code}>
-                    {curr.code} - {curr.name}
-                  </Option>
-                ))}
+                {Array.isArray(currencies)
+                  ? currencies.map((curr: any) => (
+                      <Option key={curr.code} value={curr.code}>
+                        {curr.code} - {curr.name}
+                      </Option>
+                    ))
+                  : []}
               </Select>
             </Form.Item>
             <Form.Item
@@ -552,11 +660,13 @@ export function ExpenseReimbursement() {
               label="币种"
             >
               <Select placeholder="请选择币种">
-                {currencies.map((curr) => (
-                  <Option key={curr.code} value={curr.code}>
-                    {curr.code} - {curr.name}
-                  </Option>
-                ))}
+                {Array.isArray(currencies)
+                  ? currencies.map((curr: any) => (
+                      <Option key={curr.code} value={curr.code}>
+                        {curr.code} - {curr.name}
+                      </Option>
+                    ))
+                  : []}
               </Select>
             </Form.Item>
             <Form.Item
@@ -690,13 +800,15 @@ export function ExpenseReimbursement() {
                             String(option?.label || "").toLowerCase().includes(input.toLowerCase())
                           }
                         >
-                          {accounts
-                            .filter((acc: any) => acc.currency === approveRow?.currencyId)
-                            .map((acc: any) => (
-                              <Option key={acc.id} value={acc.id}>
-                                {acc.name} ({acc.currencyCode})
-                              </Option>
-                            ))}
+                          {Array.isArray(accounts)
+                            ? accounts
+                                .filter((acc: any) => acc.currency === approveRow?.currencyId)
+                                .map((acc: any) => (
+                                  <Option key={acc.id} value={acc.id}>
+                                    {acc.name} ({acc.currencyCode || acc.currency})
+                                  </Option>
+                                ))
+                            : []}
                         </Select>
                       </Form.Item>
                       <Form.Item
@@ -705,11 +817,13 @@ export function ExpenseReimbursement() {
                         dependencies={['status']}
                       >
                         <Select placeholder="请选择支出类别" showSearch optionFilterProp="children">
-                          {categories.map((cat: any) => (
-                            <Option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </Option>
-                          ))}
+                          {Array.isArray(categories)
+                            ? categories.map((cat: any) => (
+                                <Option key={cat.id} value={cat.id}>
+                                  {cat.name}
+                                </Option>
+                              ))
+                            : []}
                         </Select>
                       </Form.Item>
                     </>

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SalaryPaymentService } from '../../src/services/SalaryPaymentService'
+import { SalaryPaymentGenerationService } from '../../src/services/SalaryPaymentGenerationService'
 import { createDb } from '../../src/db'
 import { env } from 'cloudflare:test'
 import { applySchema } from '../setup'
@@ -7,97 +8,255 @@ import { employees, employeeSalaries, currencies } from '../../src/db/schema'
 import { v4 as uuid } from 'uuid'
 
 describe('SalaryPaymentService', () => {
-    let db: any
-    let salaryPaymentService: SalaryPaymentService
+  let db: any
+  let salaryPaymentService: SalaryPaymentService
+  let salaryPaymentGenerationService: SalaryPaymentGenerationService
 
+  beforeEach(async () => {
+    db = createDb(env.DB)
+    // @ts-ignore
+    db.transaction = async cb => cb(db)
+    await applySchema(env.DB)
+    salaryPaymentService = new SalaryPaymentService(db)
+    salaryPaymentGenerationService = new SalaryPaymentGenerationService(db)
+
+    // Setup test data
+    // 1. Currency
+    await db
+      .insert(currencies)
+      .values({
+        code: 'USDT',
+        name: 'Tether',
+        active: 1,
+      })
+      .run()
+
+    // 2. Employee
+    await db
+      .insert(employees)
+      .values({
+        id: 'emp1',
+        email: 'test@example.com',
+        name: 'Test Employee',
+        joinDate: '2023-01-01',
+        status: 'regular',
+        regularSalaryCents: 100000, // 1000.00
+        active: 1,
+      })
+      .run()
+
+    // 3. Employee Salary (Multi-currency)
+    await db
+      .insert(employeeSalaries)
+      .values({
+        id: uuid(),
+        employeeId: 'emp1',
+        salaryType: 'regular',
+        currencyId: 'USDT',
+        amountCents: 100000,
+        createdAt: Date.now(),
+      })
+      .run()
+  })
+
+  it('should generate salary payments', async () => {
+    const result = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+    expect(result.created).toBe(1)
+    expect(result.ids.length).toBe(1)
+
+    const payment = await salaryPaymentService.get(result.ids[0])
+    expect(payment).toBeDefined()
+    expect(payment?.salaryCents).toBe(100000)
+    expect(payment?.status).toBe('pending_employee_confirmation')
+  })
+
+  it('should handle employee confirmation and finance approval', async () => {
+    const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+    const id = genResult.ids[0]
+
+    // Employee Confirm
+    await salaryPaymentService.employeeConfirm(id, 'emp1')
+    let payment = await salaryPaymentService.get(id)
+    expect(payment?.status).toBe('pending_finance_approval')
+    expect(payment?.employeeConfirmedBy).toBe('emp1')
+
+    // Finance Approve
+    await salaryPaymentService.financeApprove(id, 'finance1')
+    payment = await salaryPaymentService.get(id)
+    expect(payment?.status).toBe('pending_payment')
+    expect(payment?.financeApprovedBy).toBe('finance1')
+  })
+
+  it('should handle currency allocation workflow', async () => {
+    const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+    const id = genResult.ids[0]
+
+    // Employee Confirm first (needed for some logic, though service doesn't strictly enforce it for allocation request, but route does)
+    // Service.requestAllocation doesn't check status strictly in my implementation, but let's follow flow
+
+    // Request Allocation
+    await salaryPaymentService.requestAllocation(
+      id,
+      [{ currencyId: 'USDT', amountCents: 50000 }],
+      'emp1'
+    )
+
+    let payment = await salaryPaymentService.get(id)
+    expect(payment?.allocationStatus).toBe('requested')
+    expect(payment?.allocations.length).toBe(1)
+    expect(payment?.allocations[0].amountCents).toBe(50000)
+    expect(payment?.allocations[0].status).toBe('pending')
+
+    // Approve Allocation
+    await salaryPaymentService.approveAllocation(id, undefined, true, 'finance1')
+
+    payment = await salaryPaymentService.get(id)
+    expect(payment?.allocationStatus).toBe('approved')
+    expect(payment?.allocations[0].status).toBe('approved')
+  })
+
+  describe('乐观锁并发控制', () => {
+    it('应该允许版本号匹配的更新', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
+      const payment = await salaryPaymentService.get(id)
+      const version = payment?.version || 1
+
+      // 使用正确的版本号应该成功
+      await salaryPaymentService.employeeConfirm(id, 'emp1', version)
+      const updated = await salaryPaymentService.get(id)
+      expect(updated?.version).toBe(version + 1)
+    })
+
+    it('应该拒绝版本号不匹配的更新', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
+      const payment = await salaryPaymentService.get(id)
+      const version = payment?.version || 1
+
+      // 先更新一次，版本号会变化
+      await salaryPaymentService.employeeConfirm(id, 'emp1', version)
+
+      // 使用旧的版本号应该失败
+      await expect(
+        salaryPaymentService.employeeConfirm(id, 'emp1', version)
+      ).rejects.toThrow()
+    })
+
+    it('应该在没有版本号时正常工作（向后兼容）', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
+
+      // 不传版本号应该正常工作
+      await salaryPaymentService.employeeConfirm(id, 'emp1')
+      const updated = await salaryPaymentService.get(id)
+      expect(updated?.status).toBe('pending_finance_approval')
+    })
+  })
+
+  describe('状态机验证', () => {
+    it('应该允许有效的状态转换', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
+
+      // pending_employee_confirmation -> pending_finance_approval
+      await salaryPaymentService.employeeConfirm(id, 'emp1')
+      let payment = await salaryPaymentService.get(id)
+      expect(payment?.status).toBe('pending_finance_approval')
+
+      // pending_finance_approval -> pending_payment
+      await salaryPaymentService.financeApprove(id, 'finance1')
+      payment = await salaryPaymentService.get(id)
+      expect(payment?.status).toBe('pending_payment')
+    })
+
+    it('应该拒绝无效的状态转换', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
+
+      // 直接尝试从 pending_employee_confirmation 转换到 pending_payment 应该失败
+      await expect(
+        salaryPaymentService.financeApprove(id, 'finance1')
+      ).rejects.toThrow()
+    })
+  })
+
+  describe('多币种分配验证', () => {
     beforeEach(async () => {
-        db = createDb(env.DB)
-        // @ts-ignore
-        db.transaction = async (cb) => cb(db)
-        await applySchema(env.DB)
-        salaryPaymentService = new SalaryPaymentService(db)
-
-        // Setup test data
-        // 1. Currency
-        await db.insert(currencies).values({
-            code: 'USDT',
-            name: 'Tether',
-            active: 1
-        }).run()
-
-        // 2. Employee
-        await db.insert(employees).values({
-            id: 'emp1',
-            email: 'test@example.com',
-            name: 'Test Employee',
-            joinDate: '2023-01-01',
-            status: 'regular',
-            regularSalaryCents: 100000, // 1000.00
-            active: 1
-        }).run()
-
-        // 3. Employee Salary (Multi-currency)
-        await db.insert(employeeSalaries).values({
-            id: uuid(),
-            employeeId: 'emp1',
-            salaryType: 'regular',
-            currencyId: 'USDT',
-            amountCents: 100000,
-            createdAt: Date.now()
-        }).run()
+      // 添加 CNY 币种
+      await db
+        .insert(currencies)
+        .values({
+          code: 'CNY',
+          name: 'Chinese Yuan',
+          active: 1,
+        })
+        .run()
     })
 
-    it('should generate salary payments', async () => {
-        const result = await salaryPaymentService.generate(2023, 10, 'admin')
-        expect(result.created).toBe(1)
-        expect(result.ids.length).toBe(1)
+    it('应该验证多币种分配总额（允许1%误差）', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
 
-        const payment = await salaryPaymentService.get(result.ids[0])
-        expect(payment).toBeDefined()
-        expect(payment?.salaryCents).toBe(100000)
-        expect(payment?.status).toBe('pending_employee_confirmation')
+      // 总薪资是 100000 USDT
+      // 分配 50000 USDT + 50000 CNY（假设汇率 1:1）
+      await expect(
+        salaryPaymentService.requestAllocation(
+          id,
+          [
+            { currencyId: 'USDT', amountCents: 50000, exchangeRate: 1 },
+            { currencyId: 'CNY', amountCents: 50000, exchangeRate: 1 },
+          ],
+          'emp1'
+        )
+      ).resolves.not.toThrow()
     })
 
-    it('should handle employee confirmation and finance approval', async () => {
-        const genResult = await salaryPaymentService.generate(2023, 10, 'admin')
-        const id = genResult.ids[0]
+    it('应该拒绝超出允许误差的多币种分配', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
 
-        // Employee Confirm
-        await salaryPaymentService.employeeConfirm(id, 'emp1')
-        let payment = await salaryPaymentService.get(id)
-        expect(payment?.status).toBe('pending_finance_approval')
-        expect(payment?.employeeConfirmedBy).toBe('emp1')
+      // 总薪资是 100000 USDT
+      // 分配 50000 USDT + 60000 CNY（假设汇率 1:1），总计 110000，超出 1% 误差
+      await expect(
+        salaryPaymentService.requestAllocation(
+          id,
+          [
+            { currencyId: 'USDT', amountCents: 50000, exchangeRate: 1 },
+            { currencyId: 'CNY', amountCents: 60000, exchangeRate: 1 },
+          ],
+          'emp1'
+        )
+      ).rejects.toThrow()
+    })
+  })
 
-        // Finance Approve
-        await salaryPaymentService.financeApprove(id, 'finance1')
-        payment = await salaryPaymentService.get(id)
-        expect(payment?.status).toBe('pending_payment')
-        expect(payment?.financeApprovedBy).toBe('finance1')
+  describe('回退功能', () => {
+    it('应该允许从 pending_finance_approval 回退', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
+
+      await salaryPaymentService.employeeConfirm(id, 'emp1')
+      await salaryPaymentService.rollbackPayment(id, '测试回退', 'emp1')
+
+      const payment = await salaryPaymentService.get(id)
+      expect(payment?.status).toBe('pending_employee_confirmation')
+      expect(payment?.rollbackReason).toBe('测试回退')
     })
 
-    it('should handle currency allocation workflow', async () => {
-        const genResult = await salaryPaymentService.generate(2023, 10, 'admin')
-        const id = genResult.ids[0]
+    it('应该拒绝从 completed 状态回退', async () => {
+      const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
+      const id = genResult.ids[0]
 
-        // Employee Confirm first (needed for some logic, though service doesn't strictly enforce it for allocation request, but route does)
-        // Service.requestAllocation doesn't check status strictly in my implementation, but let's follow flow
+      // 完成整个流程
+      await salaryPaymentService.employeeConfirm(id, 'emp1')
+      await salaryPaymentService.financeApprove(id, 'finance1')
+      // ... 其他步骤
 
-        // Request Allocation
-        await salaryPaymentService.requestAllocation(id, [
-            { currencyId: 'USDT', amountCents: 50000 }
-        ], 'emp1')
-
-        let payment = await salaryPaymentService.get(id)
-        expect(payment?.allocationStatus).toBe('requested')
-        expect(payment?.allocations.length).toBe(1)
-        expect(payment?.allocations[0].amountCents).toBe(50000)
-        expect(payment?.allocations[0].status).toBe('pending')
-
-        // Approve Allocation
-        await salaryPaymentService.approveAllocation(id, undefined, true, 'finance1')
-
-        payment = await salaryPaymentService.get(id)
-        expect(payment?.allocationStatus).toBe('approved')
-        expect(payment?.allocations[0].status).toBe('approved')
+      // 尝试回退应该失败
+      await expect(
+        salaryPaymentService.rollbackPayment(id, '测试', 'emp1')
+      ).rejects.toThrow()
     })
+  })
 })

@@ -22,10 +22,10 @@ export function buildUpdateSql(
   if (updates.length === 0) {
     throw new Error('No updates provided')
   }
-  
+
   const finalBinds = [...binds, id]
   const sql = `update ${tableName} set ${updates.join(',')} where id=?`
-  
+
   return { sql, binds: finalBinds }
 }
 
@@ -34,17 +34,20 @@ export function buildUpdateSql(
  * @param fieldMap 字段映射对象，key为字段名，value为值（undefined表示不更新）
  * @returns { updates: string[], binds: any[] } 更新字段数组和绑定值数组
  */
-export function buildUpdateFields(fieldMap: Record<string, any>): { updates: string[]; binds: any[] } {
+export function buildUpdateFields(fieldMap: Record<string, any>): {
+  updates: string[]
+  binds: any[]
+} {
   const updates: string[] = []
   const binds: any[] = []
-  
+
   for (const [key, value] of Object.entries(fieldMap)) {
     if (value !== undefined) {
       updates.push(`${key}=?`)
       binds.push(value)
     }
   }
-  
+
   return { updates, binds }
 }
 
@@ -63,12 +66,14 @@ export async function executeUpdate(
   fieldMap: Record<string, any>
 ): Promise<void> {
   const { updates, binds } = buildUpdateFields(fieldMap)
-  
+
   if (updates.length === 0) {
     throw new Error('No updates provided')
   }
-  
-  const { sql, binds: finalBinds } = buildUpdateSql(tableName, id, updates, binds)
-  await db.prepare(sql).bind(...finalBinds).run()
-}
 
+  const { sql, binds: finalBinds } = buildUpdateSql(tableName, id, updates, binds)
+  await db
+    .prepare(sql)
+    .bind(...finalBinds)
+    .run()
+}

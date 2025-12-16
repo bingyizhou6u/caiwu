@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Card, Table, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, DatePicker, InputNumber, Popconfirm } from 'antd'
+import React, { useState } from 'react'
+import { Card, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, DatePicker, InputNumber, Popconfirm } from 'antd'
 import { UploadOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
-import { api } from '../../../config/api'
 import type { ColumnsType } from 'antd/es/table'
+import { api } from '../../../config/api'
 import { formatAmount } from '../../../utils/formatters'
 import dayjs from 'dayjs'
-import { loadCurrencies, loadAccounts, loadEmployees } from '../../../utils/loaders'
+import { useCurrencies, useAccounts, useEmployees } from '../../../hooks/useBusinessData'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { useAllowances, useCreateAllowance, useUpdateAllowance, useDeleteAllowance, useGenerateAllowances } from '../../../hooks/business/useAllowances'
@@ -14,6 +14,8 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { allowancePaymentSchema, allowancePaymentUpdateSchema, allowancePaymentGenerateSchema } from '../../../validations/allowance.schema'
+import { DataTable } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { AllowancePayment } from '../../../hooks/business/useAllowances'
 
 const { TextArea } = Input
@@ -48,9 +50,6 @@ export function AllowancePayments() {
   const { mutateAsync: deleteAllowance } = useDeleteAllowance()
   const { mutateAsync: generateAllowances } = useGenerateAllowances()
 
-  const [employees, setEmployees] = useState<Array<{ value: string, label: string }>>([])
-  const [currencies, setCurrencies] = useState<Array<{ value: string, label: string }>>([])
-  const [accounts, setAccounts] = useState<Array<{ value: string, label: string, currency?: string }>>([])
 
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
@@ -81,91 +80,99 @@ export function AllowancePayments() {
   const { form: editForm, validateWithZod: validateEdit } = useZodForm(allowancePaymentUpdateSchema)
   const { form: generateForm, validateWithZod: validateGenerate } = useZodForm(allowancePaymentGenerateSchema)
 
-  useEffect(() => {
-    const loadMasterData = async () => {
-      if (canManage) {
-        try {
-          const [currenciesData, accountsData, employeesData] = await Promise.all([
-            loadCurrencies(),
-            loadAccounts(),
-            loadEmployees()
-          ])
-          setCurrencies(currenciesData.map(c => ({ value: c.value as string, label: c.label.split(' - ')[1] || c.label })))
-          setAccounts(accountsData.map(a => ({
-            value: a.value as string,
-            label: `${a.label.split(' (')[0]} (${a.currency || ''})`,
-            currency: a.currency
-          })))
-          setEmployees(employeesData.map(e => ({ value: e.value as string, label: e.label.split(' (')[0] })))
-        } catch (error: any) {
-          message.error(`加载基础数据失败: ${error.message || '网络错误'}`)
-        }
-      }
-    }
-    loadMasterData()
-  }, [canManage])
+  // Business data hooks
+  const { data: currenciesData = [] } = useCurrencies()
+  const { data: accountsData = [] } = useAccounts()
+  const { data: employeesData = [] } = useEmployees()
+
+  // Transform data format
+  const currencies = React.useMemo(() => canManage ? currenciesData.map((c: any) => ({ 
+    value: c.value as string, 
+    label: c.label.split(' - ')[1] || c.label 
+  })) : [], [currenciesData, canManage])
+
+  const accounts = React.useMemo(() => canManage ? accountsData.map((a: any) => ({
+    value: a.value as string,
+    label: `${a.label.split(' (')[0]} (${a.currency || ''})`,
+    currency: a.currency
+  })) : [], [accountsData, canManage])
+
+  const employees = React.useMemo(() => canManage ? employeesData.map((e: any) => ({ 
+    value: e.value as string, 
+    label: e.label.split(' (')[0] 
+  })) : [], [employeesData, canManage])
 
   const handleGenerate = withErrorHandler(
     async () => {
       setGenerateLoading(true)
-      try {
-        const values = await validateGenerate()
-        const d = await generateAllowances({
-          year: values.year,
-          month: values.month,
-          paymentDate: dayjs(values.paymentDate).format('YYYY-MM-DD'),
-        })
-        message.success(`成功生成 ${d.created} 条补贴发放记录`)
-        closeGenerate()
-        generateForm.resetFields()
-      } finally {
+      const values = await validateGenerate()
+      const d = await generateAllowances({
+        year: values.year,
+        month: values.month,
+        paymentDate: dayjs(values.paymentDate).format('YYYY-MM-DD'),
+      })
+      message.success(`成功生成 ${d.created} 条补贴发放记录`)
+      closeGenerate()
+      generateForm.resetFields()
+    },
+    {
+      showSuccess: false, // 手动显示成功消息以显示动态数量
+      onSuccess: () => {
+        setGenerateLoading(false)
+      },
+      onError: () => {
         setGenerateLoading(false)
       }
-    },
-    { successMessage: '生成成功' } // 消息已在上层手动处理以显示动态数量
+    }
   )
 
   const handleCreate = withErrorHandler(
     async () => {
-      setSubmitting(true)
-      try {
-        const values = await validateCreate()
-        await createAllowance({
-          ...values,
-          amountCents: Math.round(values.amount * 100),
-          paymentDate: dayjs(values.paymentDate).format('YYYY-MM-DD'),
-        })
-        closeCreate()
-        createForm.resetFields()
-      } finally {
+      const values = await validateCreate()
+      await createAllowance({
+        ...values,
+        amountCents: Math.round(values.amount * 100),
+        paymentDate: dayjs(values.paymentDate).format('YYYY-MM-DD'),
+      })
+      closeCreate()
+      createForm.resetFields()
+    },
+    {
+      successMessage: '创建成功',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { successMessage: '创建成功' }
+    }
   )
 
   const handleUpdate = withErrorHandler(
     async () => {
       if (!editRow) return
-      setSubmitting(true)
-      try {
-        const values = await validateEdit()
-        await updateAllowance({
-          id: editRow.id,
-          data: {
-            ...values,
-            paymentDate: dayjs(values.paymentDate).format('YYYY-MM-DD'),
-          }
-        })
-        closeEdit()
-        editForm.resetFields()
-        setVoucherFile(null)
-        setFileList([])
-      } finally {
+      const values = await validateEdit()
+      await updateAllowance({
+        id: editRow.id,
+        data: {
+          ...values,
+          paymentDate: dayjs(values.paymentDate).format('YYYY-MM-DD'),
+        }
+      })
+      closeEdit()
+      editForm.resetFields()
+      setVoucherFile(null)
+      setFileList([])
+    },
+    {
+      successMessage: '更新成功',
+      onSuccess: () => {
+        setSubmitting(false)
+      },
+      onError: () => {
         setSubmitting(false)
       }
-    },
-    { successMessage: '更新成功' }
+    }
   )
 
   const handleDelete = withErrorHandler(
@@ -333,70 +340,85 @@ export function AllowancePayments() {
       breadcrumb={[{ title: '人事管理' }, { title: '补贴发放管理' }]}
     >
       <Card
-        title="补贴发放管理"
-        extra={
-          canManage && (
-            <Space>
+        className="page-card"
+        bordered={false}
+      >
+        <SearchFilters
+          fields={[
+            {
+              name: 'year',
+              label: '年份',
+              type: 'select',
+              placeholder: '请选择年份',
+              options: yearOptions,
+            },
+            {
+              name: 'month',
+              label: '月份',
+              type: 'select',
+              placeholder: '请选择月份',
+              options: [
+                { label: '全部', value: '' },
+                ...monthOptions,
+              ],
+            },
+            {
+              name: 'allowanceType',
+              label: '补贴类型',
+              type: 'select',
+              placeholder: '请选择补贴类型',
+              options: [
+                { label: '全部', value: '' },
+                ...Object.entries(ALLOWANCE_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+              ],
+            },
+            ...(canManage ? [{
+              name: 'employeeId',
+              label: '员工',
+              type: 'select',
+              placeholder: '请选择员工',
+              options: [
+                { label: '全部', value: '' },
+                ...employees,
+              ],
+            }] : []),
+          ]}
+          onSearch={(values) => {
+            if (values.year) setYear(values.year)
+            if (values.month !== undefined) setMonth(values.month || undefined)
+            if (values.allowanceType !== undefined) setAllowanceType(values.allowanceType || undefined)
+            if (values.employeeId !== undefined) setEmployeeId(values.employeeId || undefined)
+          }}
+          onReset={() => {
+            setYear(new Date().getFullYear())
+            setMonth(undefined)
+            setAllowanceType(undefined)
+            setEmployeeId(undefined)
+          }}
+          initialValues={{ year, month: month || '', allowanceType: allowanceType || '', employeeId: employeeId || '' }}
+        />
+
+        <Space style={{ marginBottom: 12, marginTop: 16 }}>
+          {canManage && (
+            <>
               <Button onClick={onGenerateOpen}>
                 生成补贴发放
               </Button>
               <Button type="primary" onClick={openCreate}>
                 新建发放记录
               </Button>
-            </Space>
-          )
-        }
-        className="page-card"
-        bordered={false}
-      >
-        <Space style={{ marginBottom: 16 }}>
-          <Select
-            style={{ width: 120 }}
-            value={year}
-            onChange={setYear}
-            options={yearOptions}
-          />
-          <Select
-            style={{ width: 120 }}
-            value={month}
-            onChange={setMonth}
-            placeholder="全部月份"
-            allowClear
-            options={monthOptions}
-          />
-          <Select
-            style={{ width: 120 }}
-            value={allowanceType}
-            onChange={setAllowanceType}
-            placeholder="全部类型"
-            allowClear
-            options={Object.entries(ALLOWANCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
-          />
-          {canManage && (
-            <Select
-              style={{ width: 150 }}
-              value={employeeId}
-              onChange={setEmployeeId}
-              placeholder="全部员工"
-              allowClear
-              showSearch
-              options={employees}
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-            />
+            </>
           )}
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
         </Space>
 
-        <Table
-          className="table-striped"
+        <DataTable<AllowancePayment>
           columns={columns}
-          dataSource={allowances}
-          rowKey="id"
+          data={allowances}
           loading={isLoading}
+          rowKey="id"
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1400 }}
+          tableProps={{ className: 'table-striped', scroll: { x: 1400 } }}
         />
 
         <Modal
@@ -519,8 +541,9 @@ export function AllowancePayments() {
                       setFileList([{ uid: '-1', name: file.name, status: 'done', url: api.vouchers(url) }])
                       setUploading(false)
                     })
-                    .catch((error) => {
-                      message.error('上传失败：' + error.message)
+                    .catch((error: unknown) => {
+                      const errorMessage = error instanceof Error ? error.message : '未知错误'
+                      message.error('上传失败：' + errorMessage)
                       setFileList([])
                       setUploading(false)
                     })

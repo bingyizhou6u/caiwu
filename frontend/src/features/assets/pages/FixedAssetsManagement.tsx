@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, Space, Button, Input, Select, Tag, Popconfirm, message, Modal, Form, DatePicker, InputNumber, Tabs, Table } from 'antd'
+import { Card, Space, Button, Input, Select, Tag, Popconfirm, message, Modal, Form, DatePicker, InputNumber, Tabs } from 'antd'
 import { DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
@@ -10,7 +10,34 @@ import { useMultipleModals } from '../../../hooks/forms/useFormModal'
 import { useDepartments, useSites, useVendors, useCurrencies } from '../../../hooks'
 import { VirtualTable } from '../../../components/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 import type { FixedAsset } from '../../../types'
+
+// 折旧记录类型
+interface DepreciationRecord {
+  id: string
+  depreciationDate: string
+  depreciationAmountCents?: number
+  accumulatedDepreciationCents?: number
+  remainingValueCents?: number
+  memo?: string
+}
+
+// 变动记录类型
+interface AssetChangeRecord {
+  id: string
+  changeDate: string
+  changeType: string
+  fromDeptName?: string
+  toDeptName?: string
+  fromSiteName?: string
+  toSiteName?: string
+  fromCustodian?: string
+  toCustodian?: string
+  fromStatus?: string
+  toStatus?: string
+  memo?: string
+}
 
 // 常量
 const STATUS_OPTIONS = [
@@ -49,6 +76,12 @@ export function FixedAssetsManagement() {
   const { data: sites = [] } = useSites()
   const { data: vendors = [] } = useVendors()
   const { data: currencies = [] } = useCurrencies()
+
+  // 确保所有数据都是数组
+  const safeDepartments = Array.isArray(departments) ? departments : []
+  const safeSites = Array.isArray(sites) ? sites : []
+  const safeVendors = Array.isArray(vendors) ? vendors : []
+  const safeCurrencies = Array.isArray(currencies) ? currencies : []
 
   // 表单
   const [cForm] = Form.useForm()
@@ -232,7 +265,7 @@ export function FixedAssetsManagement() {
             style={{ width: 150 }}
             value={filterDepartment}
             onChange={setFilterDepartment}
-            options={departments}
+            options={safeDepartments}
           />
           <Select
             placeholder="类别筛选"
@@ -338,16 +371,16 @@ export function FixedAssetsManagement() {
               <InputNumber className="form-full-width" min={0} precision={2} placeholder="请输入购买价格" />
             </Form.Item>
             <Form.Item name="currency" label="币种" required className="form-no-margin-bottom">
-              <Select options={currencies} showSearch optionFilterProp="label" placeholder="选择币种" />
+              <Select options={safeCurrencies} showSearch optionFilterProp="label" placeholder="选择币种" />
             </Form.Item>
             <Form.Item name="vendorId" label="供应商" className="form-no-margin-bottom">
-              <Select options={vendors} showSearch optionFilterProp="label" placeholder="选择供应商" allowClear />
+              <Select options={safeVendors} showSearch optionFilterProp="label" placeholder="选择供应商" allowClear />
             </Form.Item>
             <Form.Item name="departmentId" label="使用项目" className="form-no-margin-bottom">
-              <Select options={departments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+              <Select options={safeDepartments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
             </Form.Item>
             <Form.Item name="siteId" label="资产位置" className="form-no-margin-bottom">
-              <Select options={sites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />
+              <Select options={safeSites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />
             </Form.Item>
             <Form.Item name="custodian" label="责任人" className="form-no-margin-bottom">
               <Input placeholder="使用人/责任人姓名" />
@@ -444,36 +477,36 @@ export function FixedAssetsManagement() {
                 </div>
               </Tabs.TabPane>
               <Tabs.TabPane tab="折旧记录" key="depreciations">
-                <Table
-                  rowKey="id"
-                  dataSource={detailData.depreciations || []}
+                <DataTable<DepreciationRecord>
                   columns={[
-                    { title: '折旧日期', dataIndex: 'depreciationDate', width: 120 },
-                    { title: '折旧金额', render: (_, r: any) => `${((r.depreciationAmountCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
-                    { title: '累计折旧', render: (_, r: any) => `${((r.accumulatedDepreciationCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
-                    { title: '剩余价值', render: (_, r: any) => `${((r.remainingValueCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
-                    { title: '备注', dataIndex: 'memo' },
-                  ]}
+                    { title: '折旧日期', dataIndex: 'depreciationDate', key: 'depreciationDate', width: 120 },
+                    { title: '折旧金额', key: 'depreciationAmount', render: (_: unknown, r: DepreciationRecord) => `${((r.depreciationAmountCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
+                    { title: '累计折旧', key: 'accumulatedDepreciation', render: (_: unknown, r: DepreciationRecord) => `${((r.accumulatedDepreciationCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
+                    { title: '剩余价值', key: 'remainingValue', render: (_: unknown, r: DepreciationRecord) => `${((r.remainingValueCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
+                    { title: '备注', dataIndex: 'memo', key: 'memo' },
+                  ] satisfies DataTableColumn<DepreciationRecord>[]}
+                  data={(detailData.depreciations || []) as DepreciationRecord[]}
+                  rowKey="id"
                   pagination={{ pageSize: 20 }}
                 />
               </Tabs.TabPane>
               <Tabs.TabPane tab="变动记录" key="changes">
-                <Table
-                  rowKey="id"
-                  dataSource={detailData.changes || []}
+                <DataTable<AssetChangeRecord>
                   columns={[
-                    { title: '变动日期', dataIndex: 'changeDate', width: 120 },
-                    { title: '变动类型', dataIndex: 'changeType', width: 120 },
-                    { title: '原项目', dataIndex: 'fromDeptName', width: 120 },
-                    { title: '新项目', dataIndex: 'toDeptName', width: 120 },
-                    { title: '原位置', dataIndex: 'fromSiteName', width: 120 },
-                    { title: '新位置', dataIndex: 'toSiteName', width: 120 },
-                    { title: '原责任人', dataIndex: 'fromCustodian', width: 100 },
-                    { title: '新责任人', dataIndex: 'toCustodian', width: 100 },
-                    { title: '原状态', dataIndex: 'fromStatus', width: 100 },
-                    { title: '新状态', dataIndex: 'toStatus', width: 100 },
-                    { title: '备注', dataIndex: 'memo' },
-                  ]}
+                    { title: '变动日期', dataIndex: 'changeDate', key: 'changeDate', width: 120 },
+                    { title: '变动类型', dataIndex: 'changeType', key: 'changeType', width: 120 },
+                    { title: '原项目', dataIndex: 'fromDeptName', key: 'fromDeptName', width: 120 },
+                    { title: '新项目', dataIndex: 'toDeptName', key: 'toDeptName', width: 120 },
+                    { title: '原位置', dataIndex: 'fromSiteName', key: 'fromSiteName', width: 120 },
+                    { title: '新位置', dataIndex: 'toSiteName', key: 'toSiteName', width: 120 },
+                    { title: '原责任人', dataIndex: 'fromCustodian', key: 'fromCustodian', width: 100 },
+                    { title: '新责任人', dataIndex: 'toCustodian', key: 'toCustodian', width: 100 },
+                    { title: '原状态', dataIndex: 'fromStatus', key: 'fromStatus', width: 100 },
+                    { title: '新状态', dataIndex: 'toStatus', key: 'toStatus', width: 100 },
+                    { title: '备注', dataIndex: 'memo', key: 'memo' },
+                  ] satisfies DataTableColumn<AssetChangeRecord>[]}
+                  data={(detailData.changes || []) as AssetChangeRecord[]}
+                  rowKey="id"
                   pagination={{ pageSize: 20 }}
                 />
               </Tabs.TabPane>
@@ -488,10 +521,10 @@ export function FixedAssetsManagement() {
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
             <Form.Item name="toDepartmentId" label="调至项目">
-              <Select options={departments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+              <Select options={safeDepartments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
             </Form.Item>
             <Form.Item name="toSiteId" label="调至位置">
-              <Select options={sites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />
+              <Select options={safeSites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />
             </Form.Item>
             <Form.Item name="toCustodian" label="调至责任人">
               <Input placeholder="新责任人姓名" />

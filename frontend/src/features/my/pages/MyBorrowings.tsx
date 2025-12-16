@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Button, Tag, Space, Modal, Form, Select, InputNumber, Input, message, Statistic, Row, Col, Typography, Progress } from 'antd'
+import { useState } from 'react'
+import { Card, Button, Tag, Space, Modal, Form, Select, InputNumber, Input, message, Statistic, Row, Col, Typography, Progress } from 'antd'
 import { PlusOutlined, BankOutlined } from '@ant-design/icons'
-import { api } from '../../../config/api'
-import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
+import { useMyBorrowings, useCreateMyBorrowing } from '../../../hooks'
+import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useFormModal } from '../../../hooks/forms/useFormModal'
+import { withErrorHandler } from '../../../utils/errorHandler'
+import { z } from 'zod'
 
 const { TextArea } = Input
 const { Title } = Typography
@@ -40,74 +43,70 @@ const statusLabels: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+
+const createBorrowingSchema = z.object({
+  amount: z.number().min(0.01, '金额必须大于0'),
+  currency: z.string().optional(),
+  memo: z.string().optional(),
+})
+
+type CreateBorrowingFormData = z.infer<typeof createBorrowingSchema>
 
 export function MyBorrowings() {
-  const [loading, setLoading] = useState(true)
-  const [borrowings, setBorrowings] = useState<Borrowing[]>([])
-  const [stats, setStats] = useState<Stats>({ totalBorrowedCents: 0, totalRepaidCents: 0, balanceCents: 0 })
-  const [modalVisible, setModalVisible] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [form] = Form.useForm()
+  const { data, isLoading: loading } = useMyBorrowings()
+  const { mutateAsync: createBorrowing } = useCreateMyBorrowing()
+  const { form, validateWithZod: validateCreate } = useZodForm(createBorrowingSchema)
+  
+  const {
+    isOpen: modalVisible,
+    openCreate,
+    close: closeModal,
+  } = useFormModal()
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  const borrowings = data?.borrowings || []
+  const stats = data?.stats || { totalBorrowedCents: 0, totalRepaidCents: 0, balanceCents: 0 }
 
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const result = await apiClient.get<any>(api.my.borrowings)
-      setBorrowings(result.borrowings || [])
-      setStats(result.stats || { totalBorrowedCents: 0, totalRepaidCents: 0, balanceCents: 0 })
-    } catch (error) {
-      console.error('Failed to load borrowings:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const handleSubmit = withErrorHandler(
+    async () => {
+      const values = await validateCreate()
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields()
-      setSubmitting(true)
-
-      await apiClient.post(api.my.borrowings, {
+      await createBorrowing({
         amountCents: Math.round(values.amount * 100),
         currency: values.currency || 'CNY',
         memo: values.memo,
       })
-
-      message.success('借支申请已提交')
-      setModalVisible(false)
-      form.resetFields()
-      loadData()
-    } catch (error: any) {
-      message.error(error.message || '提交失败')
-    } finally {
-      setSubmitting(false)
+    },
+    {
+      successMessage: '借支申请已提交',
+      onSuccess: () => {
+        closeModal()
+        form.resetFields()
+      }
     }
-  }
+  )
 
   const repaymentProgress = stats.totalBorrowedCents > 0
     ? Math.round((stats.totalRepaidCents / stats.totalBorrowedCents) * 100)
     : 100
 
-  const columns = [
-    { title: '借支日期', dataIndex: 'borrow_date' },
+  const columns: DataTableColumn<Borrowing>[] = [
+    { title: '借支日期', dataIndex: 'borrow_date', key: 'borrow_date' },
     {
       title: '金额',
-      dataIndex: 'amountCents',
-      render: (v: number, r: Borrowing) => `${r.currency_symbol || '¥'}${(v / 100).toFixed(2)}`
+      key: 'amount',
+      render: (_: unknown, r: Borrowing) => `${r.currency_symbol || '¥'}${(r.amountCents / 100).toFixed(2)}`
     },
     {
       title: '已还',
-      dataIndex: 'repaid_cents',
-      render: (v: number, r: Borrowing) => `${r.currency_symbol || '¥'}${(v / 100).toFixed(2)}`
+      key: 'repaid',
+      render: (_: unknown, r: Borrowing) => `${r.currency_symbol || '¥'}${((r.repaid_cents || 0) / 100).toFixed(2)}`
     },
     {
       title: '余额',
-      render: (_: any, r: Borrowing) => {
-        const balance = r.amountCents - r.repaid_cents
+      key: 'balance',
+      render: (_: unknown, r: Borrowing) => {
+        const balance = r.amountCents - (r.repaid_cents || 0)
         return <span style={{ color: balance > 0 ? '#cf1322' : '#3f8600' }}>
           {r.currency_symbol || '¥'}{(balance / 100).toFixed(2)}
         </span>
@@ -116,13 +115,15 @@ export function MyBorrowings() {
     {
       title: '状态',
       dataIndex: 'status',
-      render: (v: string) => <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag>
+      key: 'status',
+      render: (v: string | null) => v ? <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag> : '-'
     },
-    { title: '备注', dataIndex: 'memo', ellipsis: true },
+    { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
     {
       title: '申请时间',
       dataIndex: 'createdAt',
-      render: (v: number) => dayjs(v).format('YYYY-MM-DD HH:mm')
+      key: 'createdAt',
+      render: (v: number | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'
     },
   ]
 
@@ -179,18 +180,18 @@ export function MyBorrowings() {
         bordered={false}
         className="page-card"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
             申请借支
           </Button>
         }
       >
-        <Table
-          className="table-striped"
-          dataSource={borrowings}
+        <DataTable<any>
           columns={columns}
-          rowKey="id"
+          data={borrowings}
           loading={loading}
+          rowKey="id"
           pagination={{ pageSize: 10 }}
+          tableProps={{ className: 'table-striped' }}
         />
       </Card>
 
@@ -199,8 +200,7 @@ export function MyBorrowings() {
         title="申请借支"
         open={modalVisible}
         onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
-        confirmLoading={submitting}
+        onCancel={() => { closeModal(); form.resetFields() }}
         width={500}
       >
         <Form form={form} layout="vertical" initialValues={{ currency: 'CNY' }}>

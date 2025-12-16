@@ -8,31 +8,35 @@ import { uuidSchema, dateSchema, emailSchema } from './common.schema.js'
 /**
  * 创建现金流Schema
  */
-export const createCashFlowSchema = z.object({
-  accountId: uuidSchema,
-  categoryId: uuidSchema,
-  bizDate: dateSchema,
-  type: z.enum(['income', 'expense'], { errorMap: () => ({ message: 'type必须为income或expense' }) }),
-  amountCents: z.number().int().positive('amountCents必须大于0'),
-  voucherUrls: z.array(z.string().url('凭证URL格式不正确')).optional(),
-  voucherUrl: z.string().url().optional(), // 向后兼容
-  voucherNo: z.string().optional(),
-  method: z.string().optional(),
-  siteId: uuidSchema.optional(),
-  departmentId: uuidSchema.optional(),
-  ownerScope: z.enum(['hq', 'department']).optional(),
-  counterparty: z.string().optional(),
-  memo: z.string().optional(),
-  createdBy: uuidSchema.optional(),
-}).refine(
-  (data) => {
-    // 如果提供了voucherUrls，使用它；否则检查voucherUrl
-    if (data.voucherUrls && data.voucherUrls.length > 0) return true
-    if (data.voucherUrl) return true
-    return false
-  },
-  { message: 'voucherUrls参数必填（凭证上传是必填的）' }
-)
+export const createCashFlowSchema = z
+  .object({
+    accountId: uuidSchema,
+    categoryId: uuidSchema,
+    bizDate: dateSchema,
+    type: z.enum(['income', 'expense'], {
+      errorMap: () => ({ message: 'type必须为income或expense' }),
+    }),
+    amountCents: z.number().int().positive('amountCents必须大于0'),
+    voucherUrls: z.array(z.string().url('凭证URL格式不正确')).optional(),
+    voucherUrl: z.string().url().optional(), // 向后兼容
+    voucherNo: z.string().optional(),
+    method: z.string().optional(),
+    siteId: uuidSchema.optional(),
+    departmentId: uuidSchema.optional(),
+    ownerScope: z.enum(['hq', 'department']).optional(),
+    counterparty: z.string().optional(),
+    memo: z.string().optional(),
+    createdBy: uuidSchema.optional(),
+  })
+  .refine(
+    data => {
+      // 如果提供了voucherUrls，使用它；否则检查voucherUrl
+      if (data.voucherUrls && data.voucherUrls.length > 0) {return true}
+      if (data.voucherUrl) {return true}
+      return false
+    },
+    { message: 'voucherUrls参数必填（凭证上传是必填的）' }
+  )
 
 /**
  * 创建员工Schema
@@ -47,25 +51,35 @@ export const createEmployeeSchema = z.object({
   birthday: dateSchema,
   phone: z.string().optional(),
   // Salary data now managed via employee_salaries table
-  probationSalaries: z.array(z.object({
-    currencyId: z.string(),
-    amountCents: z.number().int().nonnegative(),
-  })).optional(),
-  regularSalaries: z.array(z.object({
-    currencyId: z.string(),
-    amountCents: z.number().int().nonnegative(),
-  })).optional(),
+  probationSalaries: z
+    .array(
+      z.object({
+        currencyId: z.string(),
+        amountCents: z.number().int().nonnegative(),
+      })
+    )
+    .optional(),
+  regularSalaries: z
+    .array(
+      z.object({
+        currencyId: z.string(),
+        amountCents: z.number().int().nonnegative(),
+      })
+    )
+    .optional(),
   // Allowance data now managed via employee_allowances table
   usdtAddress: z.string().optional(),
   emergencyContact: z.string().optional(),
   emergencyPhone: z.string().optional(),
   address: z.string().optional(),
   memo: z.string().optional(),
-  workSchedule: z.object({
-    days: z.array(z.number().int().min(1).max(7)),
-    start: z.string().regex(/^\d{2}:\d{2}$/),
-    end: z.string().regex(/^\d{2}:\d{2}$/),
-  }).optional(),
+  workSchedule: z
+    .object({
+      days: z.array(z.number().int().min(1).max(7)),
+      start: z.string().regex(/^\d{2}:\d{2}$/),
+      end: z.string().regex(/^\d{2}:\d{2}$/),
+    })
+    .optional(),
   annualLeaveCycleMonths: z.number().int().min(6).max(12).optional(),
   annualLeaveDays: z.number().int().min(0).max(365).optional(),
 })
@@ -73,54 +87,57 @@ export const createEmployeeSchema = z.object({
 /**
  * 创建租赁房屋Schema
  */
-export const createRentalPropertySchema = z.object({
-  propertyCode: z.string().min(1, 'propertyCode参数必填'),
-  name: z.string().min(1, 'name参数必填'),
-  propertyType: z.enum(['office', 'warehouse', 'dormitory', 'other']),
-  currency: z.string().length(3, 'currency必须是3位币种代码'),
-  rentType: z.enum(['monthly', 'yearly']),
-  monthlyRentCents: z.number().int().nonnegative().optional(),
-  yearlyRentCents: z.number().int().nonnegative().optional(),
-  departmentId: uuidSchema.optional(),
-  siteId: uuidSchema.optional(),
-  paymentAccountId: uuidSchema.optional(),
-  address: z.string().optional(),
-  areaSqm: z.number().positive().optional(),
-  paymentPeriodMonths: z.number().int().positive().optional(),
-  landlordName: z.string().optional(),
-  landlordContact: z.string().optional(),
-  leaseStartDate: dateSchema.optional(),
-  leaseEndDate: dateSchema.optional(),
-  depositCents: z.number().int().nonnegative().optional(),
-  paymentMethod: z.string().optional(),
-  paymentDay: z.number().int().min(1).max(31).optional(),
-  status: z.string().optional(),
-  contractFileUrl: z.string().url().optional(),
-  memo: z.string().optional(),
-}).refine(
-  (data) => {
-    if (data.rentType === 'yearly') {
-      return data.yearlyRentCents !== undefined && data.yearlyRentCents > 0
-    } else {
-      return data.monthlyRentCents !== undefined && data.monthlyRentCents > 0
+export const createRentalPropertySchema = z
+  .object({
+    propertyCode: z.string().min(1, 'propertyCode参数必填'),
+    name: z.string().min(1, 'name参数必填'),
+    propertyType: z.enum(['office', 'warehouse', 'dormitory', 'other']),
+    currency: z.string().length(3, 'currency必须是3位币种代码'),
+    rentType: z.enum(['monthly', 'yearly']),
+    monthlyRentCents: z.number().int().nonnegative().optional(),
+    yearlyRentCents: z.number().int().nonnegative().optional(),
+    departmentId: uuidSchema.optional(),
+    siteId: uuidSchema.optional(),
+    paymentAccountId: uuidSchema.optional(),
+    address: z.string().optional(),
+    areaSqm: z.number().positive().optional(),
+    paymentPeriodMonths: z.number().int().positive().optional(),
+    landlordName: z.string().optional(),
+    landlordContact: z.string().optional(),
+    leaseStartDate: dateSchema.optional(),
+    leaseEndDate: dateSchema.optional(),
+    depositCents: z.number().int().nonnegative().optional(),
+    paymentMethod: z.string().optional(),
+    paymentDay: z.number().int().min(1).max(31).optional(),
+    status: z.string().optional(),
+    contractFileUrl: z.string().url().optional(),
+    memo: z.string().optional(),
+  })
+  .refine(
+    data => {
+      if (data.rentType === 'yearly') {
+        return data.yearlyRentCents !== undefined && data.yearlyRentCents > 0
+      } else {
+        return data.monthlyRentCents !== undefined && data.monthlyRentCents > 0
+      }
+    },
+    {
+      message: '年租模式需要yearlyRentCents参数，月租模式需要monthlyRentCents参数',
+      path: ['rentType'],
     }
-  },
-  {
-    message: '年租模式需要yearlyRentCents参数，月租模式需要monthlyRentCents参数',
-    path: ['rentType'],
-  }
-).refine(
-  (data) => {
-    if (data.leaseStartDate && data.leaseEndDate) {
-      return data.leaseStartDate <= data.leaseEndDate
+  )
+  .refine(
+    data => {
+      if (data.leaseStartDate && data.leaseEndDate) {
+        return data.leaseStartDate <= data.leaseEndDate
+      }
+      return true
+    },
+    {
+      message: '租赁开始日期不能晚于结束日期',
+      path: ['leaseEndDate'],
     }
-    return true
-  },
-  {
-    message: '租赁开始日期不能晚于结束日期',
-    path: ['leaseEndDate'],
-  }
-)
+  )
 
 /**
  * 创建站点Schema
@@ -237,19 +254,21 @@ export const createBorrowingSchema = z.object({
 /**
  * 创建账户转账Schema
  */
-export const createAccountTransferSchema = z.object({
-  transferDate: dateSchema,
-  fromAccountId: uuidSchema,
-  toAccountId: uuidSchema,
-  fromAmountCents: z.number().int().positive('转出金额必须大于0'),
-  toAmountCents: z.number().int().positive('转入金额必须大于0'),
-  exchangeRate: z.number().positive().optional(),
-  memo: z.string().optional(),
-  voucherUrl: z.string().url().optional(),
-}).refine(
-  (data) => data.fromAccountId !== data.toAccountId,
-  { message: '转出账户和转入账户不能相同', path: ['toAccountId'] }
-)
+export const createAccountTransferSchema = z
+  .object({
+    transferDate: dateSchema,
+    fromAccountId: uuidSchema,
+    toAccountId: uuidSchema,
+    fromAmountCents: z.number().int().positive('转出金额必须大于0'),
+    toAmountCents: z.number().int().positive('转入金额必须大于0'),
+    exchangeRate: z.number().positive().optional(),
+    memo: z.string().optional(),
+    voucherUrl: z.string().url().optional(),
+  })
+  .refine(data => data.fromAccountId !== data.toAccountId, {
+    message: '转出账户和转入账户不能相同',
+    path: ['toAccountId'],
+  })
 
 /**
  * 创建固定资产Schema
@@ -329,10 +348,14 @@ export const createEmployeeAllowanceSchema = z.object({
 export const batchUpdateEmployeeAllowancesSchema = z.object({
   employeeId: uuidSchema,
   allowanceType: z.enum(['living', 'housing', 'transportation', 'meal', 'birthday']),
-  allowances: z.array(z.object({
-    currencyId: z.string().length(3, 'currencyId必须是3位币种代码'),
-    amountCents: z.number().int().nonnegative('amountCents必须大于等于0'),
-  })).min(0, 'allowances必须是数组'),
+  allowances: z
+    .array(
+      z.object({
+        currencyId: z.string().length(3, 'currencyId必须是3位币种代码'),
+        amountCents: z.number().int().nonnegative('amountCents必须大于等于0'),
+      })
+    )
+    .min(0, 'allowances必须是数组'),
 })
 
 export const employeeAllowanceResponseSchema = z.object({
@@ -344,11 +367,11 @@ export const employeeAllowanceResponseSchema = z.object({
   createdAt: z.number().nullable(),
   updatedAt: z.number().nullable(),
   currencyName: z.string().nullable(),
-  employeeName: z.string().nullable()
+  employeeName: z.string().nullable(),
 })
 
 export const listEmployeeAllowancesResponseSchema = z.object({
-  results: z.array(employeeAllowanceResponseSchema)
+  results: z.array(employeeAllowanceResponseSchema),
 })
 
 /**
@@ -357,7 +380,9 @@ export const listEmployeeAllowancesResponseSchema = z.object({
 export const createSiteBillSchema = z.object({
   siteId: uuidSchema,
   billDate: dateSchema,
-  billType: z.enum(['income', 'expense'], { errorMap: () => ({ message: 'billType必须为income或expense' }) }),
+  billType: z.enum(['income', 'expense'], {
+    errorMap: () => ({ message: 'billType必须为income或expense' }),
+  }),
   amountCents: z.number().int().positive('amountCents必须大于0'),
   currency: z.string().length(3, 'currency必须是3位币种代码'),
   description: z.string().optional(),
@@ -420,7 +445,9 @@ export const createPositionSchema = z.object({
   code: z.string().min(1, 'code参数必填'),
   name: z.string().min(1, 'name参数必填'),
   level: z.number().int('level必须是整数'),
-  functionRole: z.enum(['director', 'hr', 'finance', 'admin', 'developer', 'support', 'member'], { errorMap: () => ({ message: '无效的职能角色' }) }),
+  functionRole: z.enum(['director', 'hr', 'finance', 'admin', 'developer', 'support', 'member'], {
+    errorMap: () => ({ message: '无效的职能角色' }),
+  }),
   permissions: z.any(), // permissions可以是任意JSON对象
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
@@ -433,7 +460,9 @@ export const updatePositionSchema = z.object({
   code: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   level: z.number().int().optional(),
-  functionRole: z.enum(['director', 'hr', 'finance', 'admin', 'developer', 'support', 'member']).optional(),
+  functionRole: z
+    .enum(['director', 'hr', 'finance', 'admin', 'developer', 'support', 'member'])
+    .optional(),
   permissions: z.any().optional(),
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
@@ -461,11 +490,15 @@ export const batchCreateSalaryAllocationsSchema = z.object({
  * 员工申请薪资分配Schema（accountId可选）
  */
 export const requestSalaryAllocationsSchema = z.object({
-  allocations: z.array(z.object({
-    currencyId: z.string().length(3, 'currencyId必须是3位币种代码'),
-    accountId: uuidSchema.optional(),
-    amountCents: z.number().int().positive('amountCents必须大于0'),
-  })).min(1, 'allocations数组不能为空'),
+  allocations: z
+    .array(
+      z.object({
+        currencyId: z.string().length(3, 'currencyId必须是3位币种代码'),
+        accountId: uuidSchema.optional(),
+        amountCents: z.number().int().positive('amountCents必须大于0'),
+      })
+    )
+    .min(1, 'allocations数组不能为空'),
 })
 
 /**
@@ -513,11 +546,11 @@ export const allowancePaymentResponseSchema = z.object({
   employeeName: z.string().nullable(),
   departmentName: z.string().nullable(),
   currencyName: z.string().nullable(),
-  createdByName: z.string().nullable()
+  createdByName: z.string().nullable(),
 })
 
 export const listAllowancePaymentsResponseSchema = z.object({
-  results: z.array(allowancePaymentResponseSchema)
+  results: z.array(allowancePaymentResponseSchema),
 })
 
 /**
@@ -532,10 +565,14 @@ export const createIPWhitelistSchema = z.object({
  * 批量创建IP白名单Schema
  */
 export const batchCreateIPWhitelistSchema = z.object({
-  ips: z.array(z.object({
-    ip: z.string().min(1, 'ip地址不能为空'),
-    description: z.string().optional(),
-  })).min(1, 'ips数组必填且不能为空'),
+  ips: z
+    .array(
+      z.object({
+        ip: z.string().min(1, 'ip地址不能为空'),
+        description: z.string().optional(),
+      })
+    )
+    .min(1, 'ips数组必填且不能为空'),
 })
 
 /**
@@ -632,47 +669,53 @@ export const updateEmployeeSchema = z.object({
   joinDate: dateSchema.optional(),
   // Salary/allowance data now managed via employee_salaries and employee_allowances tables
   active: z.number().int().min(0).max(1).optional(),
-  phone: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
+  phone: z.preprocess(val => {
+    if (val === '' || val === undefined || val === null) {return null}
     // 如果只有区号（如 '+971'），也视为空
-    if (typeof val === 'string' && val.length <= 5) return null
+    if (typeof val === 'string' && val.length <= 5) {return null}
     return val
   }, z.string().nullable().optional()),
-  email: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
+  email: z.preprocess(val => {
+    if (val === '' || val === undefined || val === null) {return null}
     return val
   }, z.string().email('邮箱格式不正确').nullable().optional()),
-  usdtAddress: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
+  usdtAddress: z.preprocess(val => {
+    if (val === '' || val === undefined || val === null) {return null}
     return val
   }, z.string().nullable().optional()),
-  emergencyContact: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
+  emergencyContact: z.preprocess(val => {
+    if (val === '' || val === undefined || val === null) {return null}
     return val
   }, z.string().nullable().optional()),
-  emergencyPhone: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
+  emergencyPhone: z.preprocess(val => {
+    if (val === '' || val === undefined || val === null) {return null}
     // 如果只有区号（如 '+971'），也视为空
-    if (typeof val === 'string' && val.length <= 5) return null
+    if (typeof val === 'string' && val.length <= 5) {return null}
     return val
   }, z.string().nullable().optional()),
-  address: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
+  address: z.preprocess(val => {
+    if (val === '' || val === undefined || val === null) {return null}
     return val
   }, z.string().nullable().optional()),
-  memo: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
+  memo: z.preprocess(val => {
+    if (val === '' || val === undefined || val === null) {return null}
     return val
   }, z.string().nullable().optional()),
-  birthday: z.preprocess((val) => {
-    if (val === '' || val === undefined || val === null) return null
-    return val
-  }, z.union([dateSchema, z.null()]).optional()),
-  workSchedule: z.object({
-    days: z.array(z.number().int().min(1).max(7)),
-    start: z.string().regex(/^\d{2}:\d{2}$/),
-    end: z.string().regex(/^\d{2}:\d{2}$/),
-  }).optional().nullable(),
+  birthday: z.preprocess(
+    val => {
+      if (val === '' || val === undefined || val === null) {return null}
+      return val
+    },
+    z.union([dateSchema, z.null()]).optional()
+  ),
+  workSchedule: z
+    .object({
+      days: z.array(z.number().int().min(1).max(7)),
+      start: z.string().regex(/^\d{2}:\d{2}$/),
+      end: z.string().regex(/^\d{2}:\d{2}$/),
+    })
+    .optional()
+    .nullable(),
   annualLeaveCycleMonths: z.number().int().min(6).max(12).optional(),
   annualLeaveDays: z.number().int().min(0).max(365).optional(),
 })
@@ -801,25 +844,28 @@ export const leaveEmployeeSchema = z.object({
 /**
  * 创建请假Schema
  */
-export const createEmployeeLeaveSchema = z.object({
-  employeeId: uuidSchema,
-  leaveType: z.string().min(1, 'leaveType参数必填'),
-  startDate: dateSchema,
-  endDate: dateSchema,
-  days: z.number().int().positive('days必须为正数'),
-  reason: z.string().optional(),
-  memo: z.string().optional(),
-}).refine(data => data.startDate <= data.endDate, {
-  message: '开始日期不能晚于结束日期',
-  path: ['endDate']
-}).refine(
-  (data) => {
-    const start = new Date(data.startDate + 'T00:00:00Z')
-    const end = new Date(data.endDate + 'T00:00:00Z')
-    return start <= end
-  },
-  { message: '开始日期必须早于或等于结束日期', path: ['endDate'] }
-)
+export const createEmployeeLeaveSchema = z
+  .object({
+    employeeId: uuidSchema,
+    leaveType: z.string().min(1, 'leaveType参数必填'),
+    startDate: dateSchema,
+    endDate: dateSchema,
+    days: z.number().int().positive('days必须为正数'),
+    reason: z.string().optional(),
+    memo: z.string().optional(),
+  })
+  .refine(data => data.startDate <= data.endDate, {
+    message: '开始日期不能晚于结束日期',
+    path: ['endDate'],
+  })
+  .refine(
+    data => {
+      const start = new Date(data.startDate + 'T00:00:00Z')
+      const end = new Date(data.endDate + 'T00:00:00Z')
+      return start <= end
+    },
+    { message: '开始日期必须早于或等于结束日期', path: ['endDate'] }
+  )
 
 export const fixedAssetResponseSchema = z.object({
   id: z.string(),
@@ -847,11 +893,11 @@ export const fixedAssetResponseSchema = z.object({
   currencyName: z.string().nullable(),
   createdByName: z.string().nullable(),
   depreciations: z.array(z.any()).optional(),
-  changes: z.array(z.any()).optional()
+  changes: z.array(z.any()).optional(),
 })
 
 export const listFixedAssetsResponseSchema = z.object({
-  results: z.array(fixedAssetResponseSchema)
+  results: z.array(fixedAssetResponseSchema),
 })
 
 export const fixedAssetAllocationResponseSchema = z.object({
@@ -871,11 +917,11 @@ export const fixedAssetAllocationResponseSchema = z.object({
   employeeName: z.string().nullable(),
   employeeDepartmentId: z.string().nullable(),
   employeeDepartmentName: z.string().nullable(),
-  createdByName: z.string().nullable()
+  createdByName: z.string().nullable(),
 })
 
 export const listFixedAssetAllocationsResponseSchema = z.object({
-  results: z.array(fixedAssetAllocationResponseSchema)
+  results: z.array(fixedAssetAllocationResponseSchema),
 })
 
 /**
@@ -904,53 +950,61 @@ export const createExpenseSchema = z.object({
  * 创建币种Schema
  */
 export const createCurrencySchema = z.object({
-  code: z.string().min(1, 'code参数必填').transform(val => val.trim().toUpperCase()),
+  code: z
+    .string()
+    .min(1, 'code参数必填')
+    .transform(val => val.trim().toUpperCase()),
   name: z.string().min(1, 'name参数必填'),
 })
 
 /**
  * 更新币种Schema
  */
-export const updateCurrencySchema = z.object({
-  name: z.string().optional(),
-  active: z.boolean().optional(),
-}).refine(
-  (data) => data.name !== undefined || data.active !== undefined,
-  { message: '没有需要更新的字段' }
-)
+export const updateCurrencySchema = z
+  .object({
+    name: z.string().optional(),
+    active: z.boolean().optional(),
+  })
+  .refine(data => data.name !== undefined || data.active !== undefined, {
+    message: '没有需要更新的字段',
+  })
 
 /**
  * 创建类别Schema
  */
 export const createCategorySchema = z.object({
   name: z.string().min(1, 'name参数必填'),
-  kind: z.enum(['income', 'expense'], { errorMap: () => ({ message: 'kind必须为income或expense' }) }),
+  kind: z.enum(['income', 'expense'], {
+    errorMap: () => ({ message: 'kind必须为income或expense' }),
+  }),
   parentId: uuidSchema.optional().nullable(),
 })
 
 /**
  * 更新类别Schema
  */
-export const updateCategorySchema = z.object({
-  name: z.string().optional(),
-  kind: z.enum(['income', 'expense']).optional(),
-}).refine(
-  (data) => data.name !== undefined || data.kind !== undefined,
-  { message: '没有需要更新的字段' }
-)
+export const updateCategorySchema = z
+  .object({
+    name: z.string().optional(),
+    kind: z.enum(['income', 'expense']).optional(),
+  })
+  .refine(data => data.name !== undefined || data.kind !== undefined, {
+    message: '没有需要更新的字段',
+  })
 
 /**
  * 上传凭证Schema（用于文件上传验证）
  */
 export const uploadVoucherSchema = z.object({
-  file: z.instanceof(File, { message: '文件必填' })
-    .refine((file) => file.size > 0, { message: '文件不能为空' })
-    .refine((file) => file.size <= 10 * 1024 * 1024, { message: '文件过大（最大10MB）' })
-    .refine((file) => ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type), {
-      message: '只允许上传图片格式（JPEG、PNG、GIF、WebP）'
+  file: z
+    .instanceof(File, { message: '文件必填' })
+    .refine(file => file.size > 0, { message: '文件不能为空' })
+    .refine(file => file.size <= 10 * 1024 * 1024, { message: '文件过大（最大10MB）' })
+    .refine(file => ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type), {
+      message: '只允许上传图片格式（JPEG、PNG、GIF、WebP）',
     })
-    .refine((file) => file.type === 'image/webp', {
-      message: '请在前端将图片转换为WebP格式后上传'
+    .refine(file => file.type === 'image/webp', {
+      message: '请在前端将图片转换为WebP格式后上传',
     }),
 })
 
@@ -976,13 +1030,6 @@ export const purchaseFixedAssetWithFlowSchema = z.object({
   depreciationMethod: z.string().optional(),
   usefulLifeYears: z.number().int().positive().optional(),
 })
-
-
-
-
-
-
-
 
 /**
  * 更新租赁房屋Schema

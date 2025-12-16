@@ -63,51 +63,165 @@ import { Logger } from './logger.js'
 export async function errorHandler(err: Error, c: Context) {
   if (err instanceof AppError) {
     // 业务错误，使用 info 级别
-    Logger.info('Business Error', {
-      error: err.message,
-      code: err.code,
-      details: err.details,
-      stack: err.stack
-    }, c)
+    Logger.info(
+      'Business Error',
+      {
+        error: err.message,
+        code: err.code,
+        details: err.details,
+        stack: err.stack,
+      },
+      c
+    )
 
-    return c.json({
-      error: err.message,
-      code: err.code,
-      details: err.details
-    }, err.statusCode as any)
+    return c.json(
+      {
+        error: err.message,
+        code: err.code,
+        details: err.details,
+      },
+      err.statusCode as any
+    )
   }
 
   if (err instanceof ZodError) {
     // Zod 验证错误
-    Logger.info('Validation Error', {
-      error: '验证失败',
-      details: err.errors
-    }, c)
+    Logger.info(
+      'Validation Error',
+      {
+        error: '验证失败',
+        details: err.errors,
+      },
+      c
+    )
 
-    return c.json({
-      error: '验证失败',
-      code: ErrorCodes.VAL_BAD_REQUEST,
-      details: {
-        errors: err.errors.map(e => ({
-          path: e.path.join('.'),
-          message: e.message,
-          code: e.code
-        }))
-      }
-    }, 400)
+    return c.json(
+      {
+        error: '验证失败',
+        code: ErrorCodes.VAL_BAD_REQUEST,
+        details: {
+          errors: err.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message,
+            code: e.code,
+          })),
+        },
+      },
+      400
+    )
   }
 
   // 未预期的错误，使用 error 级别
-  Logger.error('Unexpected Error', {
-    error: err.message,
-    name: err.name,
-    stack: err.stack
-  }, c)
+  Logger.error(
+    'Unexpected Error',
+    {
+      error: err.message,
+      name: err.name,
+      stack: err.stack,
+    },
+    c
+  )
 
-  return c.json({
-    error: err.message,
-    code: ErrorCodes.SYS_INTERNAL_ERROR,
-    stack: err.stack
-  }, 500)
+  return c.json(
+    {
+      error: err.message,
+      code: ErrorCodes.SYS_INTERNAL_ERROR,
+      stack: err.stack,
+    },
+    500
+  )
 }
 
+/**
+ * V2 Unified Error Handler
+ */
+export async function errorHandlerV2(err: Error, c: Context) {
+  // 导入监控服务（延迟导入避免循环依赖）
+  const { getMonitoringService } = await import('./monitoring.js')
+  const monitoring = getMonitoringService()
+
+  if (err instanceof AppError) {
+    Logger.info(
+      'Business Error',
+      {
+        error: err.message,
+        code: err.code,
+        details: err.details,
+        stack: err.stack,
+      },
+      c
+    )
+
+    // 记录错误到监控服务
+    monitoring.recordError(err, monitoring.extractContext(c as any), 'medium')
+
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: err.code,
+          message: err.message,
+          details: err.details,
+        },
+      },
+      err.statusCode as any
+    )
+  }
+
+  if (err instanceof ZodError) {
+    Logger.info(
+      'Validation Error',
+      {
+        error: '验证失败',
+        details: err.errors,
+      },
+      c
+    )
+
+    // 验证错误通常是低严重程度
+    monitoring.recordError(err, monitoring.extractContext(c as any), 'low')
+
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: ErrorCodes.VAL_BAD_REQUEST,
+          message: '验证失败',
+          details: {
+            errors: err.errors.map(e => ({
+              path: e.path.join('.'),
+              message: e.message,
+              code: e.code,
+            })),
+          },
+        },
+      },
+      400
+    )
+  }
+
+  Logger.error(
+    'Unexpected Error',
+    {
+      error: err.message,
+      name: err.name,
+      stack: err.stack,
+    },
+    c
+  )
+
+  // 未预期的错误通常是高严重程度
+  monitoring.recordError(err, monitoring.extractContext(c as any), 'high')
+
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: ErrorCodes.SYS_INTERNAL_ERROR,
+        message: '系统内部错误',
+        details: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+      },
+    },
+    500
+  )
+}

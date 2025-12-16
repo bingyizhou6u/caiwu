@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Card, Table, Button, Modal, Form, Input, Space, message, Select, DatePicker } from 'antd'
+import { useState, useMemo } from 'react'
+import { Card, Button, Modal, Form, Input, Space, message, Select, DatePicker } from 'antd'
+import { Table } from 'antd'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
 import { useCurrencies, useAccounts, useEmployees } from '../../../hooks/useBusinessData'
@@ -7,12 +8,15 @@ import { useBorrowings, useCreateBorrowing } from '../../../hooks'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createBorrowingSchema } from '../../../validations/borrowing.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { DataTable } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { Borrowing } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
 
 export function BorrowingManagement() {
   const [open, setOpen] = useState(false)
+  const [searchParams, setSearchParams] = useState<{ borrower?: string; currency?: string }>({})
 
   const { form, validateWithZod } = useZodForm(createBorrowingSchema)
 
@@ -26,7 +30,7 @@ export function BorrowingManagement() {
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
   const { data: employees = [] } = useEmployees(true)
-  const { data: borrowings = { total: 0, list: [] }, isLoading: loading, refetch: load } = useBorrowings(page, pageSize)
+  const { data: borrowings = { total: 0, list: [] }, isLoading: loading, refetch } = useBorrowings(page, pageSize)
   const { mutateAsync: createBorrowing, isPending: isCreating } = useCreateBorrowing()
 
   // 筛选用户
@@ -51,7 +55,7 @@ export function BorrowingManagement() {
       })
       setOpen(false)
       form.resetFields()
-      load()
+      refetch()
     },
     { successMessage: '创建成功' }
   )
@@ -70,7 +74,7 @@ export function BorrowingManagement() {
               setOpen(true)
             }}>新建借款</Button>
           )}
-          <Button onClick={() => load()}>刷新</Button>
+          <Button onClick={() => refetch()}>刷新</Button>
         </Space>
         <Table
           className="table-striped"
@@ -118,14 +122,14 @@ export function BorrowingManagement() {
                 showSearch
                 placeholder="请选择借款人"
                 optionFilterProp="label"
-                options={users}
+                options={Array.isArray(users) ? users : []}
                 style={{ width: '100%' }}
               />
             </Form.Item>
             <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
               <Select
                 placeholder="请选择币种"
-                options={currencies}
+                options={Array.isArray(currencies) ? currencies : []}
                 style={{ width: '100%' }}
                 onChange={(value) => {
                   form.setFieldsValue({ accountId: undefined })
@@ -138,10 +142,10 @@ export function BorrowingManagement() {
                 showSearch
                 placeholder="请选择资金账户"
                 optionFilterProp="label"
-                options={accounts.filter((a: any) => {
+                options={Array.isArray(accounts) ? accounts.filter((a: any) => {
                   const currency = form.getFieldValue('currency')
                   return !currency || a.currency === currency
-                })}
+                }) : []}
                 style={{ width: '100%' }}
               />
             </Form.Item>
