@@ -18,7 +18,9 @@ export class VendorService {
 
   async getVendor(id: string) {
     const vendor = await this.db.query.vendors.findFirst({ where: eq(vendors.id, id) })
-    if (!vendor) {throw Errors.NOT_FOUND('供应商不存在')}
+    if (!vendor) {
+      throw Errors.NOT_FOUND('供应商不存在')
+    }
     return vendor
   }
 

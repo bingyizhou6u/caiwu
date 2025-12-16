@@ -92,16 +92,24 @@ export class DormitoryAllocationService {
       .from(rentalProperties)
       .where(eq(rentalProperties.id, data.propertyId))
       .get()
-    if (!property) {throw Errors.NOT_FOUND('物业')}
-    if (property.propertyType !== 'dormitory') {throw Errors.BUSINESS_ERROR('该物业不是宿舍')}
+    if (!property) {
+      throw Errors.NOT_FOUND('物业')
+    }
+    if (property.propertyType !== 'dormitory') {
+      throw Errors.BUSINESS_ERROR('该物业不是宿舍')
+    }
 
     const employee = await this.db
       .select()
       .from(schema.employees)
       .where(eq(schema.employees.id, data.employeeId))
       .get()
-    if (!employee) {throw Errors.NOT_FOUND('员工')}
-    if (employee.active === 0) {throw Errors.BUSINESS_ERROR('员工已停用')}
+    if (!employee) {
+      throw Errors.NOT_FOUND('员工')
+    }
+    if (employee.active === 0) {
+      throw Errors.BUSINESS_ERROR('员工已停用')
+    }
 
     const existing = await this.db
       .select()
@@ -114,7 +122,9 @@ export class DormitoryAllocationService {
         )
       )
       .get()
-    if (existing) {throw Errors.DUPLICATE('员工已分配到该宿舍')}
+    if (existing) {
+      throw Errors.DUPLICATE('员工已分配到该宿舍')
+    }
 
     const id = uuid()
     const now = Date.now()
@@ -145,8 +155,12 @@ export class DormitoryAllocationService {
       .from(dormitoryAllocations)
       .where(eq(dormitoryAllocations.id, id))
       .get()
-    if (!allocation) {throw Errors.NOT_FOUND('分配记录')}
-    if (allocation.returnDate) {throw Errors.BUSINESS_ERROR('已归还')}
+    if (!allocation) {
+      throw Errors.NOT_FOUND('分配记录')
+    }
+    if (allocation.returnDate) {
+      throw Errors.BUSINESS_ERROR('已归还')
+    }
 
     await this.db
       .update(dormitoryAllocations)

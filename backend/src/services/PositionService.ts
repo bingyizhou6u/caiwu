@@ -38,7 +38,9 @@ export class PositionService {
       )
       .get()
 
-    if (!dept) {throw Errors.NOT_FOUND('部门')}
+    if (!dept) {
+      throw Errors.NOT_FOUND('部门')
+    }
 
     const isHQ = dept.projectId === null
     const projectIdValue = isHQ ? 'hq' : dept.projectId

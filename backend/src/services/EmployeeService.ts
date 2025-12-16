@@ -268,7 +268,9 @@ export class EmployeeService {
 
   async resendActivationEmail(id: string, env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {
     const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
-    if (!employee) {throw Errors.NOT_FOUND('员工')}
+    if (!employee) {
+      throw Errors.NOT_FOUND('员工')
+    }
 
     if (employee.active === 1 && employee.passwordHash) {
       throw Errors.BUSINESS_ERROR('账号已激活，无需重新发送')
@@ -305,7 +307,9 @@ export class EmployeeService {
 
   async resetTotp(id: string) {
     const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
-    if (!employee) {throw Errors.NOT_FOUND('员工')}
+    if (!employee) {
+      throw Errors.NOT_FOUND('员工')
+    }
 
     await this.db.update(employees).set({ totpSecret: null }).where(eq(employees.id, id)).run()
 
@@ -592,7 +596,9 @@ export class EmployeeService {
 
   async regularize(id: string, date: string) {
     const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
-    if (!employee) {throw Errors.NOT_FOUND('员工')}
+    if (!employee) {
+      throw Errors.NOT_FOUND('员工')
+    }
 
     await this.db
       .update(employees)
@@ -609,7 +615,9 @@ export class EmployeeService {
 
   async leave(id: string, date: string, reason?: string) {
     const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
-    if (!employee) {throw Errors.NOT_FOUND('员工')}
+    if (!employee) {
+      throw Errors.NOT_FOUND('员工')
+    }
 
     await this.db
       .update(employees)
@@ -640,7 +648,9 @@ export class EmployeeService {
 
   async rejoin(id: string, date: string) {
     const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
-    if (!employee) {throw Errors.NOT_FOUND('员工')}
+    if (!employee) {
+      throw Errors.NOT_FOUND('员工')
+    }
 
     await this.db
       .update(employees)

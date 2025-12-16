@@ -74,7 +74,9 @@ export class AllowancePaymentService {
       )
       .get()
 
-    if (existing) {throw Errors.DUPLICATE('津贴支付记录')}
+    if (existing) {
+      throw Errors.DUPLICATE('津贴支付记录')
+    }
 
     const id = uuid()
     const now = Date.now()

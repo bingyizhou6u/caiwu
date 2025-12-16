@@ -93,7 +93,9 @@ export class AccountService {
     const cur = await this.db.query.currencies.findFirst({
       where: and(eq(currencies.code, currencyCode), eq(currencies.active, 1)),
     })
-    if (!cur) {throw Errors.NOT_FOUND(`币种 ${currencyCode}`)}
+    if (!cur) {
+      throw Errors.NOT_FOUND(`币种 ${currencyCode
+    }`)}
 
     const id = uuid()
     await this.db
@@ -132,7 +134,9 @@ export class AccountService {
       const cur = await this.db.query.currencies.findFirst({
         where: and(eq(currencies.code, code), eq(currencies.active, 1)),
       })
-      if (!cur) {throw Errors.NOT_FOUND(`币种 ${code}`)}
+      if (!cur) {
+        throw Errors.NOT_FOUND(`币种 ${code
+    }`)}
       updates.currency = code
     }
     if (data.alias !== undefined) {updates.alias = data.alias}
@@ -147,10 +151,14 @@ export class AccountService {
 
   async deleteAccount(id: string) {
     const account = await this.db.query.accounts.findFirst({ where: eq(accounts.id, id) })
-    if (!account) {throw Errors.NOT_FOUND('账户')}
+    if (!account) {
+      throw Errors.NOT_FOUND('账户')
+    }
 
     const flowCount = await this.db.$count(cashFlows, eq(cashFlows.accountId, id))
-    if (flowCount > 0) {throw Errors.BUSINESS_ERROR('无法删除，该账户还有流水记录')}
+    if (flowCount > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该账户还有流水记录')
+    }
 
     await this.db.delete(accounts).where(eq(accounts.id, id)).execute()
     return { ok: true, name: account.name }

@@ -177,11 +177,12 @@ const updatePositionRoute = createRoute({
 
 positionPermissionsRoutes.openapi(updatePositionRoute, createRouteHandler(async (c: any) => {
   if (!hasPermission(c, 'system', 'position', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
   const id = c.req.param('id') as any
   if (!id) {
-      throw Errors.VALIDATION_ERROR('Position ID is required')}
+    throw Errors.VALIDATION_ERROR('Position ID is required')
+  }
   const body = c.req.valid('json') as any
 
   // TODO: Implement updatePosition in PositionService
@@ -216,11 +217,12 @@ const deletePositionRoute = createRoute({
 
 positionPermissionsRoutes.openapi(deletePositionRoute, createRouteHandler(async (c: any) => {
   if (!hasPermission(c, 'system', 'position', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
   const id = c.req.param('id') as any
   if (!id) {
-      throw Errors.VALIDATION_ERROR('Position ID is required')}
+    throw Errors.VALIDATION_ERROR('Position ID is required')
+  }
 
   // TODO: Implement deletePosition in PositionService
   throw Errors.BUSINESS_ERROR('deletePosition not implemented yet')

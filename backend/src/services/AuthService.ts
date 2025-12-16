@@ -38,7 +38,9 @@ export class AuthService {
     deviceInfo?: { ip?: string; userAgent?: string }
   ) {
     const user = await this.userService.getUserByEmail(email)
-    if (!user) {throw Errors.UNAUTHORIZED('用户名或密码错误')}
+    if (!user) {
+      throw Errors.UNAUTHORIZED('用户名或密码错误')
+    }
 
     // 检查员工记录并获取姓名（由于登录使用个人邮箱，所以需要通过个人邮箱查询）
     const employee = await this.db
@@ -54,15 +56,23 @@ export class AuthService {
         .where(eq(employees.personalEmail, email))
         .get()
 
-      if (inactive) {throw Errors.FORBIDDEN('员工记录已停用，请联系管理员')}
+      if (inactive) {
+        throw Errors.FORBIDDEN('员工记录已停用，请联系管理员')
+      }
       throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')
     }
 
-    if (user.active === 0) {throw Errors.FORBIDDEN('账号已停用')}
-    if (!user.passwordHash) {throw Errors.FORBIDDEN('密码未设置')}
+    if (user.active === 0) {
+      throw Errors.FORBIDDEN('账号已停用')
+    }
+    if (!user.passwordHash) {
+      throw Errors.FORBIDDEN('密码未设置')
+    }
 
     const ok = await bcrypt.compare(password, user.passwordHash!)
-    if (!ok) {throw Errors.UNAUTHORIZED('用户名或密码错误')}
+    if (!ok) {
+      throw Errors.UNAUTHORIZED('用户名或密码错误')
+    }
 
     // 检查 2FA 配置
     const twoFaConfig = await this.systemConfigService.get('2fa_enabled')
@@ -105,7 +115,9 @@ export class AuthService {
       .run()
 
     const position = await this.userService.getUserPosition(user.id)
-    if (!position) {throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')}
+    if (!position) {
+      throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')
+    }
 
     const session = await this.createSession(user.id, deviceInfo)
 
@@ -248,7 +260,9 @@ export class AuthService {
   async verifyResetToken(token: string) {
     const user = await this.db.select().from(employees).where(eq(employees.resetToken, token)).get()
 
-    if (!user) {throw Errors.NOT_FOUND('无效的重置链接')}
+    if (!user) {
+      throw Errors.NOT_FOUND('无效的重置链接')
+    }
 
     if (user.resetExpiresAt && user.resetExpiresAt < Date.now()) {
       throw Errors.BUSINESS_ERROR('重置链接已过期，请重新请求')
@@ -267,7 +281,9 @@ export class AuthService {
   ) {
     const user = await this.db.select().from(employees).where(eq(employees.resetToken, token)).get()
 
-    if (!user) {throw Errors.NOT_FOUND('无效的重置链接')}
+    if (!user) {
+      throw Errors.NOT_FOUND('无效的重置链接')
+    }
 
     if (user.resetExpiresAt && user.resetExpiresAt < Date.now()) {
       throw Errors.BUSINESS_ERROR('重置链接已过期')
@@ -298,7 +314,9 @@ export class AuthService {
       deviceInfo?.ip
     )
 
-    if (!user.personalEmail) {throw Errors.BUSINESS_ERROR('用户未绑定个人邮箱')}
+    if (!user.personalEmail) {
+      throw Errors.BUSINESS_ERROR('用户未绑定个人邮箱')
+    }
     // 自动登录
     return this.login(user.personalEmail, password, undefined, undefined, deviceInfo)
   }
@@ -330,7 +348,9 @@ export class AuthService {
       .where(eq(employees.activationToken, token))
       .get()
 
-    if (!user) {throw Errors.NOT_FOUND('无效的激活链接')}
+    if (!user) {
+      throw Errors.NOT_FOUND('无效的激活链接')
+    }
 
     if (user.activationExpiresAt && user.activationExpiresAt < Date.now()) {
       throw Errors.BUSINESS_ERROR('激活链接已过期，请联系管理员重发')
@@ -360,7 +380,9 @@ export class AuthService {
       .where(eq(employees.activationToken, token))
       .get()
 
-    if (!user) {throw Errors.NOT_FOUND('无效的激活链接')}
+    if (!user) {
+      throw Errors.NOT_FOUND('无效的激活链接')
+    }
 
     if (user.activationExpiresAt && user.activationExpiresAt < Date.now()) {
       throw Errors.BUSINESS_ERROR('激活链接已过期')
@@ -408,7 +430,9 @@ export class AuthService {
       deviceInfo?.ip
     )
 
-    if (!user.personalEmail) {throw Errors.BUSINESS_ERROR('用户未绑定个人邮箱')}
+    if (!user.personalEmail) {
+      throw Errors.BUSINESS_ERROR('用户未绑定个人邮箱')
+    }
     // 自动登录 - 传递刚刚验证过的 TOTP 码
     return this.login(user.personalEmail, password, totpCode, undefined, deviceInfo)
   }

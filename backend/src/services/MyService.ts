@@ -38,7 +38,9 @@ export class MyService {
 
   async getDashboardData(userId: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const [empInfo, salary, pending, borrowingStats, annualLeaveStats] = await Promise.all([
       // 员工信息
@@ -134,7 +136,9 @@ export class MyService {
 
   async getLeaves(userId: string, year: string, status?: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const leaves = await this.employeeLeaveService.getLeavesWithApprover({
       employeeId,
@@ -151,7 +155,9 @@ export class MyService {
 
   async createLeave(userId: string, data: any) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const result = await this.employeeLeaveService.createLeave({
       ...data,
@@ -164,7 +170,9 @@ export class MyService {
 
   async getReimbursements(userId: string, status?: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const reimbursements = await this.expenseReimbursementService.getReimbursementsWithApprover({
       employeeId,
@@ -183,7 +191,9 @@ export class MyService {
 
   async createReimbursement(userId: string, data: any) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const result = await this.expenseReimbursementService.createReimbursement({
       ...data,
@@ -215,14 +225,18 @@ export class MyService {
 
   async getAllowances(userId: string, year: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     return await this.allowancePaymentService.getEmployeeYearlyStats(employeeId, parseInt(year))
   }
 
   async getAssets(userId: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const allAllocations = await this.fixedAssetAllocationService.listAllocations({ employeeId })
 
@@ -281,7 +295,9 @@ export class MyService {
 
   async getAttendanceToday(userId: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const today = new Date().toISOString().split('T')[0]
     const record = await this.attendanceService.getTodayRecord(employeeId)
@@ -305,7 +321,9 @@ export class MyService {
 
   async getAttendanceList(userId: string, year: string, month: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const records = await this.attendanceService.getMonthlyRecords(employeeId, year, month)
     return { records }
@@ -313,13 +331,17 @@ export class MyService {
 
   async clockIn(userId: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
     return await this.attendanceService.clockIn(employeeId)
   }
 
   async clockOut(userId: string) {
     const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {throw Errors.NOT_FOUND('未找到员工记录')}
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
     return await this.attendanceService.clockOut(employeeId)
   }
 }

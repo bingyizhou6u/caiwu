@@ -17,7 +17,9 @@ export class HeadquartersService {
 
   async updateHeadquarters(id: string, data: { name?: string; active?: number }) {
     const hq = await this.db.query.headquarters.findFirst({ where: eq(headquarters.id, id) })
-    if (!hq) {throw Errors.NOT_FOUND('总部')}
+    if (!hq) {
+      throw Errors.NOT_FOUND('总部')
+    }
 
     const updates: any = {}
     if (data.name !== undefined) {updates.name = data.name}
@@ -31,7 +33,9 @@ export class HeadquartersService {
 
   async deleteHeadquarters(id: string) {
     const hq = await this.db.query.headquarters.findFirst({ where: eq(headquarters.id, id) })
-    if (!hq) {throw Errors.NOT_FOUND('总部')}
+    if (!hq) {
+      throw Errors.NOT_FOUND('总部')
+    }
 
     await this.db.update(headquarters).set({ active: 0 }).where(eq(headquarters.id, id)).execute()
     return { ok: true, name: hq.name }

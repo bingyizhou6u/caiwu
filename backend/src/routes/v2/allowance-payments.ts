@@ -199,7 +199,9 @@ allowancePaymentsRoutes.openapi(generateAllowancePaymentsRoute, async (c: any) =
       userId
     )
 
-    if (!result) {throw new Error('empty')}
+    if (!result) {
+      throw Errors.INTERNAL_ERROR('生成津贴支付记录失败')
+    }
 
     for (const id of result.ids) {
       logAuditAction(
@@ -284,7 +286,9 @@ allowancePaymentsRoutes.openapi(
         createdBy: userId,
       })
 
-      if (!result) {throw new Error('empty')}
+      if (!result) {
+      throw Errors.INTERNAL_ERROR('生成津贴支付记录失败')
+    }
 
       logAuditAction(c, 'create', 'allowance_payment', result.payment.id, JSON.stringify(body))
 
@@ -362,7 +366,9 @@ allowancePaymentsRoutes.openapi(
         memo: body.memo,
       })
 
-      if (!result) {throw new Error('empty')}
+      if (!result) {
+      throw Errors.INTERNAL_ERROR('生成津贴支付记录失败')
+    }
 
       logAuditAction(c, 'update', 'allowance_payment', id, JSON.stringify(body))
 

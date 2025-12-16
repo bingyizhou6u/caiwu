@@ -193,8 +193,8 @@ const createArApDocRoute = createRoute({
 
 arApRoutes.openapi(createArApDocRoute, createRouteHandler(async (c: any) => {
   if (!hasPermission(c, 'finance', 'ar', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
   const body = c.req.valid('json') as any
 
   const result = await c.var.services.arAp.create({

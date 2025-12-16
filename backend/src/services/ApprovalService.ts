@@ -589,14 +589,18 @@ export class ApprovalService {
       .from(schema.employees)
       .where(eq(schema.employees.id, borrowerUserId))
       .get()
-    if (!borrowerUser) {throw Errors.FORBIDDEN('无法找到申请人信息')}
+    if (!borrowerUser) {
+      throw Errors.FORBIDDEN('无法找到申请人信息')
+    }
 
     const borrowerEmployee = await db
       .select({ id: schema.employees.id })
       .from(schema.employees)
       .where(eq(schema.employees.email, borrowerUser.email))
       .get()
-    if (!borrowerEmployee) {throw Errors.FORBIDDEN('无法找到申请人员工信息')}
+    if (!borrowerEmployee) {
+      throw Errors.FORBIDDEN('无法找到申请人员工信息')
+    }
 
     return borrowerEmployee.id
   }

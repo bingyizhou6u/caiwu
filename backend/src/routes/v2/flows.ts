@@ -269,7 +269,9 @@ flowsRoutes.openapi(
       const url = `/api/v2/vouchers/${key}`
       return { url, key }
     } catch (error: any) {
-      if (error && typeof error === 'object' && 'statusCode' in error) {throw error}
+      if (error && typeof error === 'object' && 'statusCode' in error) {
+        throw error
+      }
       throw Errors.INTERNAL_ERROR(`上传失败: ${error.message}`)
     }
   }) as any
@@ -302,7 +304,9 @@ flowsRoutes.get('/vouchers/*', async c => {
 
     return new Response(object.body as any, { headers })
   } catch (error: any) {
-    if (error && typeof error === 'object' && 'statusCode' in error) {throw error}
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error
+    }
     throw Errors.INTERNAL_ERROR(`下载失败: ${error.message}`)
   }
 })
