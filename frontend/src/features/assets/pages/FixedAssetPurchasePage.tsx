@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Card, Button, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload } from 'antd'
+import { Card, Button, Form, Input, Select, Space, message, DatePicker, Upload } from 'antd'
+import { AmountInput, CurrencySelect, AccountSelect } from '../../../components/form'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
@@ -187,24 +188,28 @@ export function FixedAssetPurchase() {
             <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
           </Form.Item>
           <Form.Item name="purchasePriceCents" label="购买价格" rules={[{ required: true }]}>
-            <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入购买价格" />
+            <AmountInput style={{ width: '100%' }} placeholder="请输入购买价格" currency={form.getFieldValue('currency')} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={safeCurrencies} showSearch optionFilterProp="label" placeholder="选择币种" />
+            <CurrencySelect placeholder="选择币种" />
           </Form.Item>
-          <Form.Item name="accountId" label="支出账户" rules={[{ required: true }]}>
-            <Select
-              options={safeAccounts as AccountOption[]}
-              showSearch
-              optionFilterProp="label"
-              placeholder="选择账户"
-              onChange={(value) => {
-                const account = (safeAccounts as AccountOption[]).find((a) => a.value === value)
-                if (account?.currency) {
-                  form.setFieldsValue({ currency: account.currency })
-                }
-              }}
-            />
+          <Form.Item 
+            name="accountId" 
+            label="支出账户" 
+            rules={[{ required: true }]}
+            dependencies={['currency']}
+          >
+            {({ getFieldValue }) => (
+              <AccountSelect
+                placeholder="选择账户"
+                filterByCurrency={getFieldValue('currency')}
+                onAccountChange={(accountId, account) => {
+                  if (account?.currency) {
+                    form.setFieldsValue({ currency: account.currency })
+                  }
+                }}
+              />
+            )}
           </Form.Item>
           <Form.Item name="categoryId" label="支出类别" rules={[{ required: true }]}>
             <Select options={safeCategories} showSearch optionFilterProp="label" placeholder="选择类别" />

@@ -203,6 +203,33 @@
   - ✅ 创建 Form 表单组件使用文档（README.md）
   - ✅ 添加字段关联最佳实践说明
   - ✅ 添加 Form.List 使用说明
+
+## 🚀 全面覆盖计划执行中
+
+### ✅ Phase 1: Form 表单组件推广（进行中）
+
+#### ✅ Task 1.1: 推广 AmountInput 和 CurrencySelect
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 部分完成
+- **已完成页面**:
+  - ✅ `FixedAssetPurchasePage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect
+  - ✅ `FixedAssetSalePage.tsx` - 已替换 AmountInput 和 AccountSelect
+  - ✅ `RentalManagementPage.tsx` - 已替换 AmountInput（年租金、月租金、押金）和 CurrencySelect（3处）
+  - ✅ `SiteBillsPage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect（2处表单）
+- **替换统计**:
+  - AmountInput: 8+ 处
+  - CurrencySelect: 5+ 处
+  - AccountSelect: 3+ 处
+- **已完成页面**:
+  - ✅ `FixedAssetPurchasePage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect
+  - ✅ `FixedAssetSalePage.tsx` - 已替换 AmountInput 和 AccountSelect
+  - ✅ `RentalManagementPage.tsx` - 已替换 AmountInput（年租金、月租金、押金、付款金额、员工月租金）和 CurrencySelect（4处）、AccountSelect（1处）
+  - ✅ `SiteBillsPage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect（新建和编辑表单）
+- **替换统计**:
+  - AmountInput: 12+ 处
+  - CurrencySelect: 7+ 处
+  - AccountSelect: 5+ 处
+- **待处理页面**: 11个页面（继续执行中）
 - **文档更新**:
   - ✅ 创建 `/workspace/frontend/src/components/form/README.md`
   - ✅ 包含所有组件的使用示例和最佳实践

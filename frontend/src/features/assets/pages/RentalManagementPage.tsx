@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Card, Button, Modal, Form, Input, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs, Select } from 'antd'
+import { AmountInput, CurrencySelect, AccountSelect } from '../../../components/form'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { FormInstance } from 'antd'
@@ -598,11 +599,11 @@ export function RentalManagement() {
               const rentType = getFieldValue('rentType')
               return rentType === 'yearly' ? (
                 <Form.Item name="yearlyRentCents" label="年租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="年租金" />
+                  <AmountInput style={{ width: '100%' }} placeholder="年租金" currency={createForm.getFieldValue('currency')} />
                 </Form.Item>
               ) : (
                 <Form.Item name="monthlyRentCents" label="月租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="月租金" />
+                  <AmountInput style={{ width: '100%' }} placeholder="月租金" currency={createForm.getFieldValue('currency')} />
                 </Form.Item>
               )
             }}
@@ -611,7 +612,7 @@ export function RentalManagement() {
             <Select options={PAYMENT_PERIOD_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencies} showSearch optionFilterProp="label" />
+            <CurrencySelect />
           </Form.Item>
 
           <Form.Item name="employeeId" label="员工" required className="form-no-margin-bottom">
@@ -642,7 +643,7 @@ export function RentalManagement() {
             <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
           </Form.Item>
           <Form.Item name="depositCents" label="押金">
-            <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="押金" />
+            <AmountInput style={{ width: '100%' }} placeholder="押金" currency={createForm.getFieldValue('currency')} />
           </Form.Item>
           <Form.Item name="paymentMethod" label="付款方式">
             <Select options={PAYMENT_METHOD_OPTIONS} allowClear />
@@ -735,11 +736,11 @@ export function RentalManagement() {
               const rentType = getFieldValue('rentType')
               return rentType === 'yearly' ? (
                 <Form.Item name="yearlyRentCents" label="年租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} />
+                  <AmountInput style={{ width: '100%' }} currency={editForm.getFieldValue('currency')} />
                 </Form.Item>
               ) : (
                 <Form.Item name="monthlyRentCents" label="月租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} />
+                  <AmountInput style={{ width: '100%' }} currency={editForm.getFieldValue('currency')} />
                 </Form.Item>
               )
             }}
@@ -748,7 +749,7 @@ export function RentalManagement() {
             <Select options={PAYMENT_PERIOD_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencies} showSearch optionFilterProp="label" />
+            <CurrencySelect />
           </Form.Item>
           <Form.Item name="landlordName" label="房东姓名">
             <Input />
@@ -763,7 +764,7 @@ export function RentalManagement() {
             <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
           </Form.Item>
           <Form.Item name="depositCents" label="押金">
-            <InputNumber style={{ width: '100%' }} min={0} precision={2} />
+            <AmountInput style={{ width: '100%' }} currency={editForm.getFieldValue('currency')} />
           </Form.Item>
           <Form.Item name="paymentMethod" label="付款方式">
             <Select options={PAYMENT_METHOD_OPTIONS} allowClear />
@@ -1048,14 +1049,33 @@ export function RentalManagement() {
             <Form.Item name="paymentDate" label="付款日期" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
-            <Form.Item name="amountCents" label="付款金额" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="付款金额" />
-            </Form.Item>
             <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-              <Select options={currencies} showSearch optionFilterProp="label" />
+              <CurrencySelect />
             </Form.Item>
-            <Form.Item name="accountId" label="付款账户" rules={[{ required: true }]}>
-              <Select
+            <Form.Item 
+              name="amountCents" 
+              label="付款金额" 
+              rules={[{ required: true }]}
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AmountInput style={{ width: '100%' }} placeholder="付款金额" currency={getFieldValue('currency')} />
+              )}
+            </Form.Item>
+            <Form.Item 
+              name="accountId" 
+              label="付款账户" 
+              rules={[{ required: true }]}
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AccountSelect
+                  placeholder="选择付款账户"
+                  filterByCurrency={getFieldValue('currency')}
+                  showCurrency
+                />
+              )}
+            </Form.Item>
                 options={accounts.filter((a) => a.currency === paymentProperty.currency)}
                 showSearch
                 optionFilterProp="label"
@@ -1117,8 +1137,14 @@ export function RentalManagement() {
             <Form.Item name="allocationDate" label="分配日期" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
-            <Form.Item name="monthlyRentCents" label="员工需支付月租金（如员工需要支付）">
-              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="员工月租金" />
+            <Form.Item 
+              name="monthlyRentCents" 
+              label="员工需支付月租金（如员工需要支付）"
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AmountInput style={{ width: '100%' }} placeholder="员工月租金" currency={allocateForm.getFieldValue('currency')} />
+              )}
             </Form.Item>
             <Form.Item name="memo" label="备注">
               <TextArea rows={3} placeholder="备注信息" />
