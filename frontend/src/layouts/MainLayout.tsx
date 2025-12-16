@@ -24,6 +24,7 @@ export function MainLayout() {
     } = useAppStore()
     
     const [hoverExpanded, setHoverExpanded] = useState(false)
+    const [hoverOverlayMounted, setHoverOverlayMounted] = useState(false)
     const siderRef = useRef<HTMLDivElement>(null)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -46,7 +47,19 @@ export function MainLayout() {
     
     // Hover expand handlers
     const handleSiderMouseEnter = () => {
-        if (collapsed && !hoverExpanded) {
+        if (!collapsed) return
+
+        // 折叠态：使用 overlay + transform 动画，避免 width/margin-left 触发布局抖动
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current)
+            hoverTimeoutRef.current = null
+        }
+
+        if (!hoverOverlayMounted) {
+            setHoverOverlayMounted(true)
+        }
+
+        if (!hoverExpanded) {
             if (hoverTimeoutRef.current) {
                 clearTimeout(hoverTimeoutRef.current)
                 hoverTimeoutRef.current = null
@@ -59,12 +72,14 @@ export function MainLayout() {
     }
     
     const handleSiderMouseLeave = () => {
-        if (hoverExpanded) {
-            // 减少延迟时间，配合更长的动画时间
-            hoverTimeoutRef.current = setTimeout(() => {
-                setHoverExpanded(false)
-            }, 150) // 150ms 延迟
-        }
+        if (!collapsed) return
+        if (!hoverOverlayMounted) return
+
+        // 先收起（transform），再卸载 overlay，保证动画完整
+        setHoverExpanded(false)
+        hoverTimeoutRef.current = setTimeout(() => {
+            setHoverOverlayMounted(false)
+        }, 240)
     }
     
     useEffect(() => {
@@ -197,7 +212,7 @@ export function MainLayout() {
                 ref={siderRef}
                 trigger={null}
                 collapsible
-                collapsed={collapsed && !hoverExpanded}
+                collapsed={collapsed}
                 width={240}
                 collapsedWidth={80}
                 theme="dark"
@@ -205,9 +220,9 @@ export function MainLayout() {
                 onMouseEnter={handleSiderMouseEnter}
                 onMouseLeave={handleSiderMouseLeave}
             >
-                <div className={`logo-container ${collapsed && !hoverExpanded ? 'collapsed' : ''}`}>
+                <div className={`logo-container ${collapsed ? 'collapsed' : ''}`}>
                     <ThunderboltFilled className="logo-icon" />
-                    {(!collapsed || hoverExpanded) && <span className="logo-text">AR管理系统</span>}
+                    {!collapsed && <span className="logo-text">AR管理系统</span>}
                 </div>
                 <Menu
                     theme="dark"
@@ -217,10 +232,35 @@ export function MainLayout() {
                     onOpenChange={onOpenChange}
                     items={menuItems}
                     onClick={onMenuClick}
-                    inlineCollapsed={collapsed && !hoverExpanded}
+                    inlineCollapsed={collapsed}
                     getPopupContainer={(node) => node.parentElement || document.body}
                 />
             </Sider>
+
+            {/* Hover 展开：使用 transform 滑出 overlay，提升流畅度（仅在折叠态渲染） */}
+            {collapsed && hoverOverlayMounted && (
+                <div
+                    className={`sider-hover-overlay ${hoverExpanded ? 'open' : ''}`}
+                    onMouseEnter={handleSiderMouseEnter}
+                    onMouseLeave={handleSiderMouseLeave}
+                >
+                    <div className="logo-container">
+                        <ThunderboltFilled className="logo-icon" />
+                        <span className="logo-text">AR管理系统</span>
+                    </div>
+                    <Menu
+                        theme="dark"
+                        mode="inline"
+                        selectedKeys={[selectedKey]}
+                        openKeys={openKeys}
+                        onOpenChange={onOpenChange}
+                        items={menuItems}
+                        onClick={onMenuClick}
+                        inlineCollapsed={false}
+                        getPopupContainer={(node) => node.parentElement || document.body}
+                    />
+                </div>
+            )}
             <Layout className="main-content-layout" style={{ marginLeft: collapsed ? 80 : 240 }}>
                 <Header className="main-header">
                     <div

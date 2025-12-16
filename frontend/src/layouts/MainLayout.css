@@ -26,6 +26,44 @@
     will-change: width;
 }
 
+/* Hover 展开 Overlay：只做 transform 动画（GPU 合成），避免 width 布局卡顿 */
+.sider-hover-overlay {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 240px;
+    z-index: 1200;
+    background: linear-gradient(165deg, 
+        #0c1929 0%, 
+        #0a1628 15%,
+        #0d1f3c 35%,
+        #162544 55%,
+        #1a2f55 75%,
+        #1e3a68 100%) !important;
+    border-right: 1px solid rgba(99, 179, 237, 0.12);
+    box-shadow: 8px 0 40px rgba(0, 0, 0, 0.35);
+    transform: translate3d(-100%, 0, 0);
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+    contain: layout paint style;
+    overflow: hidden;
+}
+
+.sider-hover-overlay.open {
+    transform: translate3d(0, 0, 0);
+}
+
+.sider-hover-overlay .ant-layout-sider-children {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100%;
+}
+
+.sider-hover-overlay .logo-container {
+    margin: 20px 16px 28px 16px;
+}
+
 /* 内部滚动容器 */
 .main-sider .ant-layout-sider-children {
     overflow-y: auto;
