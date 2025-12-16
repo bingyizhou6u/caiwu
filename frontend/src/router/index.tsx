@@ -199,6 +199,7 @@ export const router = createBrowserRouter([
 
             // Finance
             { path: 'finance/flows', element: <Suspense fallback={<Loading />}><Flows /></Suspense> },
+            { path: 'finance/flows/create', element: <Suspense fallback={<Loading />}><Flows autoCreate /></Suspense> },
             { path: 'finance/transfer', element: <Suspense fallback={<Loading />}><AccountTransfer /></Suspense> },
             { path: 'finance/transactions', element: <Suspense fallback={<Loading />}><AccountTransactions /></Suspense> },
             { path: 'finance/import', element: <Suspense fallback={<Loading />}><ImportCenter /></Suspense> },

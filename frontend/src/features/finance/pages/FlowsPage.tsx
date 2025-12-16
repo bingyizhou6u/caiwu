@@ -28,13 +28,24 @@ const TYPE_LABELS: Record<string, string> = {
   adjust: '调整',
 }
 
-export function Flows() {
+interface FlowsProps {
+  autoCreate?: boolean
+}
+
+export function Flows({ autoCreate }: FlowsProps) {
   // 权限
   const { hasPermission, isManager: _isManager } = usePermissions()
   const canDelete = hasPermission('finance', 'flow', 'delete') || _isManager()
 
   // 模态框
   const modals = useMultipleModals(['create', 'voucherUpload', 'preview'])
+  
+  // 自动打开新建模态框
+  useEffect(() => {
+    if (autoCreate) {
+      modals.open('create')
+    }
+  }, [autoCreate])
   const [searchParams, setSearchParams] = useState<{ type?: string; accountId?: string; categoryId?: string; dateRangeStart?: string; dateRangeEnd?: string }>({})
 
   const { form, validateWithZod } = useZodForm(createFlowSchema)
@@ -190,8 +201,8 @@ export function Flows() {
 
   return (
     <PageContainer
-      title="收支记账"
-      breadcrumb={[{ title: '财务管理' }, { title: '收支记账' }]}
+      title={autoCreate ? '新建记账' : '收支明细'}
+      breadcrumb={[{ title: '财务管理' }, { title: autoCreate ? '新建记账' : '收支明细' }]}
     >
       <Card bordered={false} className="page-card">
         <SearchFilters

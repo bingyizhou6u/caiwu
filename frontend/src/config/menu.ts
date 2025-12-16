@@ -11,7 +11,8 @@ export const pageTitles: Record<string, string> = {
     'company-policies': '公司制度',
     'my-approvals': '我的审批',
     // 财务管理
-    'flows': '收支记账',
+    'flow-create': '新建记账',
+    'flows': '收支明细',
     'account-transfer': '账户转账',
     'account-transactions': '账户明细',
     'import': '数据导入',
@@ -79,8 +80,11 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
 
     // 2. 财务管理
     const finance: MenuProps['items'] = []
+    if (hasPermission(userInfo, 'finance', 'flow', 'create')) {
+        finance.push({ key: 'flow-create', label: '新建记账' })
+    }
     if (hasPermission(userInfo, 'finance', 'flow', 'view')) {
-        finance.push({ key: 'flows', label: '收支记账' })
+        finance.push({ key: 'flows', label: '收支明细' })
     }
     if (hasPermission(userInfo, 'finance', 'transfer', 'view')) {
         finance.push({ key: 'account-transfer', label: '账户转账' })
@@ -251,6 +255,7 @@ export const KEY_TO_PATH: Record<string, string> = {
     'company-policies': '/my/policies',
     'my-approvals': '/my/approvals',
 
+    'flow-create': '/finance/flows/create',
     'flows': '/finance/flows',
     'account-transfer': '/finance/transfer',
     'account-transactions': '/finance/transactions',
