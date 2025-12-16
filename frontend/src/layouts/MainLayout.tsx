@@ -179,6 +179,8 @@ export function MainLayout() {
                     onOpenChange={onOpenChange}
                     items={menuItems}
                     onClick={onMenuClick}
+                    inlineCollapsed={collapsed}
+                    getPopupContainer={(node) => node.parentElement || document.body}
                 />
             </Sider>
             <Layout className="main-content-layout" style={{ marginLeft: collapsed ? 80 : 240 }}>

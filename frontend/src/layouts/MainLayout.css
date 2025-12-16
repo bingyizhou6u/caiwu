@@ -549,6 +549,34 @@
     border-radius: 8px;
     padding: 8px 16px;
     font-weight: 500;
+    font-size: 13px;
+    color: #ffffff;
+    max-width: 200px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.ant-menu-inline-collapsed-tooltip .ant-tooltip-arrow::before {
+    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+}
+
+/* Dark mode tooltip */
+[data-theme="dark"] .ant-menu-inline-collapsed-tooltip .ant-tooltip-inner {
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .ant-menu-inline-collapsed-tooltip .ant-tooltip-arrow::before {
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+}
+
+/* Ensure tooltip shows for submenu items */
+.main-sider.ant-layout-sider-collapsed .ant-menu-submenu-title {
+    overflow: visible !important;
+}
+
+.main-sider.ant-layout-sider-collapsed .ant-menu-item {
+    overflow: visible !important;
 }
 
 /* ========== DARK MODE ========== */
