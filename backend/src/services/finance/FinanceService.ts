@@ -16,6 +16,9 @@ import {
 import { uuid } from '../utils/db.js'
 import { Errors, createError } from '../utils/errors.js'
 import { ErrorCodes } from '../constants/errorCodes.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class FinanceService {
   constructor(private db: DrizzleD1Database<any>) {}
@@ -60,7 +63,12 @@ export class FinanceService {
       return lastTx.balanceAfterCents
     }
 
-    const account = await db.select().from(accounts).where(eq(accounts.id, accountId)).get()
+    const account = await query(
+      db as any,
+      'FinanceService.getAccountBalanceBefore.getAccount',
+      () => db.select().from(accounts).where(eq(accounts.id, accountId)).get(),
+      undefined // 方法签名中没有 Context
+    )
 
     return account?.openingCents ?? 0
   }

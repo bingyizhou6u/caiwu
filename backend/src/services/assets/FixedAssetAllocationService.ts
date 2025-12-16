@@ -16,6 +16,9 @@ import { eq, and, desc, sql, inArray, isNull, isNotNull } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
 import { QueryBuilder } from '../utils/query-builder.js'
+import { query, getByIds } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class FixedAssetAllocationService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
@@ -53,14 +56,17 @@ export class FixedAssetAllocationService {
       if (a.createdBy) employeeIds.add(a.createdBy)
     })
 
-    // 批量获取关联数据
+    // 批量获取关联数据 - 使用批量查询优化
     const [assetsList, relatedData] = await Promise.all([
       assetIds.size > 0
-        ? this.db
-            .select()
-            .from(fixedAssets)
-            .where(inArray(fixedAssets.id, Array.from(assetIds)))
-            .execute()
+        ? getByIds(
+            this.db,
+            fixedAssets,
+            Array.from(assetIds),
+            'FixedAssetAllocationService.list.getAssets',
+            { batchSize: 100, parallel: true },
+            undefined
+          )
         : [],
       QueryBuilder.fetchRelatedData(this.db, {
         employeeIds: Array.from(employeeIds),
@@ -115,9 +121,15 @@ export class FixedAssetAllocationService {
       expectedReturnDate?: string
       memo?: string
       createdBy?: string
-    }
+    },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
-    const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+    const asset = await query(
+      this.db,
+      'FixedAssetAllocationService.allocate.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!asset) {
       throw Errors.NOT_FOUND('asset')
     }
@@ -217,9 +229,15 @@ export class FixedAssetAllocationService {
       returnType?: string
       memo?: string
       createdBy?: string
-    }
+    },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
-    const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+    const asset = await query(
+      this.db,
+      'FixedAssetAllocationService.return.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!asset) {
       throw Errors.NOT_FOUND('asset')
     }

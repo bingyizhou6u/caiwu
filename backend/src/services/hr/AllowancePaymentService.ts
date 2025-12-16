@@ -153,15 +153,25 @@ export class AllowancePaymentService {
   }
 
   async generate(year: number, month: number, paymentDate: string, userId: string) {
-    // 1. 获取在职员工
-    const activeEmployees = await this.db
-      .select()
-      .from(employees)
-      .where(eq(employees.active, 1))
-      .execute()
+    // 1. 获取在职员工 - 使用性能监控
+    const activeEmployees = await query(
+      this.db,
+      'AllowancePaymentService.generate.getActiveEmployees',
+      () => this.db
+        .select()
+        .from(employees)
+        .where(eq(employees.active, 1))
+        .all(),
+      undefined
+    )
 
-    // 2. 获取所有津贴
-    const allAllowances = await this.db.select().from(schema.employeeAllowances).execute()
+    // 2. 获取所有津贴 - 使用性能监控
+    const allAllowances = await query(
+      this.db,
+      'AllowancePaymentService.generate.getAllAllowances',
+      () => this.db.select().from(schema.employeeAllowances).all(),
+      undefined
+    )
     const allowancesMap = new Map<string, typeof allAllowances>()
     allAllowances.forEach(a => {
       if (!allowancesMap.has(a.employeeId)) {allowancesMap.set(a.employeeId, [])}

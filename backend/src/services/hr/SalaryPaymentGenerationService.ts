@@ -20,8 +20,13 @@ export class SalaryPaymentGenerationService {
 
   async generate(year: number, month: number, userId: string) {
     return await this.db.transaction(async tx => {
-      // 1. 获取符合条件的员工（在职）
-      const activeEmployees = await tx.select().from(employees).where(eq(employees.active, 1)).all()
+      // 1. 获取符合条件的员工（在职）- 使用性能监控
+      const activeEmployees = await query(
+        tx as any,
+        'SalaryPaymentGenerationService.generate.getActiveEmployees',
+        () => tx.select().from(employees).where(eq(employees.active, 1)).all(),
+        undefined
+      )
 
       // 按入职日期过滤
       const eligibleEmployees = activeEmployees.filter(emp => {

@@ -1,9 +1,12 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, sql, inArray } from 'drizzle-orm'
-import { arApDocs, settlements, sites, accounts, cashFlows } from '../db/schema'
+import { arApDocs, settlements, sites, accounts, cashFlows } from '../db/schema.js'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors'
+import { Errors } from '../utils/errors.js'
 import { FinanceService } from './FinanceService.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class ArApService {
   constructor(
@@ -117,9 +120,14 @@ export class ArApService {
     return { id, docNo }
   }
 
-  async refreshStatus(docId: string, tx?: any) {
+  async refreshStatus(docId: string, tx?: any, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
     const db = tx || this.db
-    const doc = await db.select().from(arApDocs).where(eq(arApDocs.id, docId)).get()
+    const doc = await query(
+      db as any,
+      'ArApService.refreshStatus.getDoc',
+      () => db.select().from(arApDocs).where(eq(arApDocs.id, docId)).get(),
+      c
+    )
     if (!doc) {return}
 
     const result = await db
@@ -184,9 +192,14 @@ export class ArApService {
     voucherUrl?: string
     createdBy?: string
     memo?: string
-  }) {
+  }, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
     return await this.db.transaction(async tx => {
-      const doc = await tx.select().from(arApDocs).where(eq(arApDocs.id, data.docId)).get()
+      const doc = await query(
+        tx as any,
+        'ArApService.settle.getDoc',
+        () => tx.select().from(arApDocs).where(eq(arApDocs.id, data.docId)).get(),
+        c
+      )
       if (!doc) {
         throw Errors.NOT_FOUND('单据')
       }
@@ -194,7 +207,12 @@ export class ArApService {
         throw Errors.BUSINESS_ERROR('单据已确认')
       }
 
-      const account = await tx.select().from(accounts).where(eq(accounts.id, data.accountId)).get()
+      const account = await query(
+        tx as any,
+        'ArApService.settle.getAccount',
+        () => tx.select().from(accounts).where(eq(accounts.id, data.accountId)).get(),
+        c
+      )
       if (!account || !account.active) {
         throw Errors.BUSINESS_ERROR('账户不存在或已停用')
       }
@@ -242,8 +260,13 @@ export class ArApService {
     })
   }
 
-  async getById(id: string) {
-    return await this.db.select().from(arApDocs).where(eq(arApDocs.id, id)).get()
+  async getById(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    return await query(
+      this.db,
+      'ArApService.getById',
+      () => this.db.select().from(arApDocs).where(eq(arApDocs.id, id)).get(),
+      c
+    )
   }
 
   async update(id: string, data: Partial<typeof arApDocs.$inferInsert>) {

@@ -1,8 +1,11 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, desc, inArray } from 'drizzle-orm'
-import { accountTransfers, accounts, accountTransactions } from '../db/schema'
+import { accountTransfers, accounts, accountTransactions } from '../db/schema.js'
 import { v4 as uuid } from 'uuid'
-import { FinanceService } from './FinanceService'
+import { FinanceService } from './FinanceService.js'
+import { getByIds } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class AccountTransferService {
   constructor(
@@ -25,11 +28,15 @@ export class AccountTransferService {
       accountIds.add(t.toAccountId)
     })
 
-    const accountsList = await this.db
-      .select()
-      .from(accounts)
-      .where(inArray(accounts.id, Array.from(accountIds)))
-      .execute()
+    // 使用批量查询优化
+    const accountsList = await getByIds(
+      this.db,
+      accounts,
+      Array.from(accountIds),
+      'AccountTransferService.list.getAccounts',
+      { batchSize: 100, parallel: true },
+      undefined
+    )
     const accountMap = new Map(accountsList.map(a => [a.id, a]))
 
     return transfers.map(t => ({

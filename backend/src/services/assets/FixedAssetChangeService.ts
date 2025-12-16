@@ -9,6 +9,9 @@ import { fixedAssets, fixedAssetChanges } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class FixedAssetChangeService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
@@ -25,7 +28,8 @@ export class FixedAssetChangeService {
       toCustodian?: string
       memo?: string
       createdBy?: string
-    }
+    },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
     if (!data.toDepartmentId && !data.toSiteId && !data.toCustodian) {
       throw Errors.VALIDATION_ERROR(
@@ -33,7 +37,12 @@ export class FixedAssetChangeService {
       )
     }
 
-    const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+    const asset = await query(
+      this.db,
+      'FixedAssetChangeService.transfer.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!asset) {
       throw Errors.NOT_FOUND('asset')
     }

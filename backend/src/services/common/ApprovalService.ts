@@ -187,7 +187,12 @@ export class ApprovalService {
     } = params
 
     await this.db.transaction(async tx => {
-      const record = await tx.select().from(table).where(eq(table.id, id)).get()
+      const record = await query(
+        tx as any,
+        'ApprovalService.getApprovalRecord',
+        () => tx.select().from(table).where(eq(table.id, id)).get(),
+        c
+      )
       if (!record) {
         throw Errors.NOT_FOUND(entityName)
       }

@@ -201,7 +201,12 @@ export class AuthService {
     }
 
     // 降级到 D1
-    const s = await this.db.select().from(sessions).where(eq(sessions.id, sessionId)).get()
+    const s = await query(
+      this.db,
+      'AuthService.getSession.getSession',
+      () => this.db.select().from(sessions).where(eq(sessions.id, sessionId)).get(),
+      undefined // getSession 方法没有 Context
+    )
 
     if (!s) {return null}
     if (s.expiresAt && s.expiresAt < Date.now()) {return null}
@@ -258,8 +263,13 @@ export class AuthService {
     return { status: 'success' }
   }
 
-  async verifyResetToken(token: string) {
-    const user = await this.db.select().from(employees).where(eq(employees.resetToken, token)).get()
+  async verifyResetToken(token: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const user = await query(
+      this.db,
+      'AuthService.verifyResetToken.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.resetToken, token)).get(),
+      c
+    )
 
     if (!user) {
       throw Errors.NOT_FOUND('无效的重置链接')
@@ -278,9 +288,15 @@ export class AuthService {
   async resetPassword(
     token: string,
     password: string,
-    deviceInfo?: { ip?: string; userAgent?: string }
+    deviceInfo?: { ip?: string; userAgent?: string },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
-    const user = await this.db.select().from(employees).where(eq(employees.resetToken, token)).get()
+    const user = await query(
+      this.db,
+      'AuthService.resetPassword.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.resetToken, token)).get(),
+      c
+    )
 
     if (!user) {
       throw Errors.NOT_FOUND('无效的重置链接')

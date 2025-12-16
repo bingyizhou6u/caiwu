@@ -2,12 +2,20 @@ import { eq } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { systemConfig } from '../db/schema.js'
 import * as schema from '../db/schema.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class SystemConfigService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
 
-  async get(key: string) {
-    const result = await this.db.select().from(systemConfig).where(eq(systemConfig.key, key)).get()
+  async get(key: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const result = await query(
+      this.db,
+      'SystemConfigService.get',
+      () => this.db.select().from(systemConfig).where(eq(systemConfig.key, key)).get(),
+      c
+    )
     if (!result) {return null}
 
     try {
@@ -20,8 +28,13 @@ export class SystemConfigService {
     }
   }
 
-  async getAll() {
-    const results = await this.db.select().from(systemConfig).all()
+  async getAll(c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const results = await query(
+      this.db,
+      'SystemConfigService.getAll',
+      () => this.db.select().from(systemConfig).all(),
+      c
+    )
     return results.map(row => {
       try {
         return {

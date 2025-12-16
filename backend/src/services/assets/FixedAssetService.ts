@@ -16,8 +16,11 @@ import {
 import { eq, and, like, or, desc, sql, inArray } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
-import { FinanceService } from './FinanceService.js'
+import { FinanceService } from '../finance/FinanceService.js'
 import { QueryBuilder } from '../utils/query-builder.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class FixedAssetService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
@@ -103,24 +106,56 @@ export class FixedAssetService {
   }
 
 
-  async get(id: string) {
-    const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+  async get(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const asset = await query(
+      this.db,
+      'FixedAssetService.get.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!asset) {return null}
 
     const [dept, site, vendor, currency, user] = await Promise.all([
       asset.departmentId
-        ? this.db.select().from(departments).where(eq(departments.id, asset.departmentId)).get()
-        : null,
-      asset.siteId ? this.db.select().from(sites).where(eq(sites.id, asset.siteId)).get() : null,
+        ? query(
+            this.db,
+            'FixedAssetService.get.getDepartment',
+            () => this.db.select().from(departments).where(eq(departments.id, asset.departmentId)).get(),
+            c
+          )
+        : Promise.resolve(null),
+      asset.siteId
+        ? query(
+            this.db,
+            'FixedAssetService.get.getSite',
+            () => this.db.select().from(sites).where(eq(sites.id, asset.siteId)).get(),
+            c
+          )
+        : Promise.resolve(null),
       asset.vendorId
-        ? this.db.select().from(vendors).where(eq(vendors.id, asset.vendorId)).get()
-        : null,
+        ? query(
+            this.db,
+            'FixedAssetService.get.getVendor',
+            () => this.db.select().from(vendors).where(eq(vendors.id, asset.vendorId)).get(),
+            c
+          )
+        : Promise.resolve(null),
       asset.currency
-        ? this.db.select().from(currencies).where(eq(currencies.code, asset.currency)).get()
-        : null,
+        ? query(
+            this.db,
+            'FixedAssetService.get.getCurrency',
+            () => this.db.select().from(currencies).where(eq(currencies.code, asset.currency)).get(),
+            c
+          )
+        : Promise.resolve(null),
       asset.createdBy
-        ? this.db.select().from(employees).where(eq(employees.id, asset.createdBy)).get()
-        : null,
+        ? query(
+            this.db,
+            'FixedAssetService.get.getEmployee',
+            () => this.db.select().from(employees).where(eq(employees.id, asset.createdBy)).get(),
+            c
+          )
+        : Promise.resolve(null),
     ])
 
     const depreciations = await this.db
@@ -241,8 +276,13 @@ export class FixedAssetService {
       memo?: string
       createdBy?: string // 用于变更日志
     }
-  ) {
-    const existing = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+  ), c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const existing = await query(
+      this.db,
+      'FixedAssetService.update.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!existing) {
       throw Errors.NOT_FOUND()
     }
@@ -285,8 +325,13 @@ export class FixedAssetService {
     return { ok: true }
   }
 
-  async delete(id: string) {
-    const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+  async delete(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const asset = await query(
+      this.db,
+      'FixedAssetService.delete.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!asset) {
       throw Errors.NOT_FOUND()
     }
@@ -329,20 +374,30 @@ export class FixedAssetService {
     voucherUrl?: string
     createdBy?: string
   }) {
-    const existing = await this.db
-      .select()
-      .from(fixedAssets)
-      .where(eq(fixedAssets.assetCode, data.assetCode))
-      .get()
+    const existing = await query(
+      this.db,
+      'FixedAssetService.create.checkAssetCode',
+      () => this.db
+        .select()
+        .from(fixedAssets)
+        .where(eq(fixedAssets.assetCode, data.assetCode))
+        .get(),
+      undefined
+    )
     if (existing) {
       throw Errors.DUPLICATE('资产代码')
     }
 
-    const account = await this.db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.id, data.accountId))
-      .get()
+    const account = await query(
+      this.db,
+      'FixedAssetService.create.getAccount',
+      () => this.db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.id, data.accountId))
+        .get(),
+      undefined
+    )
     if (!account) {
       throw Errors.NOT_FOUND('账户')
     }
@@ -380,7 +435,12 @@ export class FixedAssetService {
 
     let vendorName: string | null = null
     if (data.vendorId) {
-      const vendor = await this.db.select().from(vendors).where(eq(vendors.id, data.vendorId)).get()
+      const vendor = await query(
+        this.db,
+        'FixedAssetService.create.getVendor',
+        () => this.db.select().from(vendors).where(eq(vendors.id, data.vendorId)).get(),
+        undefined
+      )
       vendorName = vendor?.name || null
     }
 
@@ -480,9 +540,15 @@ export class FixedAssetService {
       voucherUrl?: string
       memo?: string
       createdBy?: string
-    }
+    },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
-    const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+    const asset = await query(
+      this.db,
+      'FixedAssetService.sell.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!asset) {
       throw Errors.NOT_FOUND('asset')
     }

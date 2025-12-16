@@ -7,6 +7,9 @@ import { Errors } from '../utils/errors.js'
 import { Logger } from '../utils/logger.js'
 import { EmailRoutingService } from '../common/EmailRoutingService.js'
 import { EmailService } from '../common/EmailService.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class EmployeeService {
   constructor(
@@ -58,7 +61,12 @@ export class EmployeeService {
     // 我们改用顺序查询。对于原子性，D1 提供 batch() API，但在复杂逻辑中较难应用。
 
     // 1. 根据员工姓名生成公司邮箱
-    const allEmployees = await this.db.select({ email: employees.email }).from(employees)
+    const allEmployees = await query(
+      this.db,
+      'EmployeeService.create.getAllEmails',
+      () => this.db.select({ email: employees.email }).from(employees).all(),
+      undefined // create 方法没有 Context
+    )
     const existingEmails = allEmployees.map(e => e.email.toLowerCase())
 
     const emailRoutingService = new EmailRoutingService({
@@ -70,21 +78,31 @@ export class EmployeeService {
     const companyEmail = await emailRoutingService.generateCompanyEmail(data.name, existingEmails)
 
     // 2. 检查个人邮箱是否已被使用
-    const existingByPersonalEmail = await this.db
-      .select()
-      .from(employees)
-      .where(eq(employees.personalEmail, data.personalEmail))
-      .get()
+    const existingByPersonalEmail = await query(
+      this.db,
+      'EmployeeService.create.checkPersonalEmail',
+      () => this.db
+        .select()
+        .from(employees)
+        .where(eq(employees.personalEmail, data.personalEmail))
+        .get(),
+      undefined
+    )
     if (existingByPersonalEmail) {
       throw Errors.DUPLICATE('个人邮箱')
     }
 
     // 3. 获取组织部门以确定项目/部门
-    const orgDept = await this.db
-      .select()
-      .from(orgDepartments)
-      .where(eq(orgDepartments.id, data.orgDepartmentId))
-      .get()
+    const orgDept = await query(
+      this.db,
+      'EmployeeService.create.getOrgDepartment',
+      () => this.db
+        .select()
+        .from(orgDepartments)
+        .where(eq(orgDepartments.id, data.orgDepartmentId))
+        .get(),
+      undefined
+    )
     if (!orgDept) {
       throw Errors.NOT_FOUND('组织部门')
     }
@@ -104,11 +122,16 @@ export class EmployeeService {
     }
 
     // 5. 获取职位以确定用户角色
-    const position = await this.db
-      .select()
-      .from(positions)
-      .where(eq(positions.id, data.positionId))
-      .get()
+    const position = await query(
+      this.db,
+      'EmployeeService.create.getPosition',
+      () => this.db
+        .select()
+        .from(positions)
+        .where(eq(positions.id, data.positionId))
+        .get(),
+      undefined
+    )
     if (!position) {
       throw Errors.NOT_FOUND('职位')
     }
@@ -267,8 +290,13 @@ export class EmployeeService {
     }
   }
 
-  async resendActivationEmail(id: string, env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {
-    const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
+  async resendActivationEmail(id: string, env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const employee = await query(
+      this.db,
+      'EmployeeService.resendActivationEmail.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+      c
+    )
     if (!employee) {
       throw Errors.NOT_FOUND('员工')
     }
@@ -306,8 +334,13 @@ export class EmployeeService {
     }
   }
 
-  async resetTotp(id: string) {
-    const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
+  async resetTotp(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const employee = await query(
+      this.db,
+      'EmployeeService.resetTotp.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+      c
+    )
     if (!employee) {
       throw Errors.NOT_FOUND('员工')
     }
@@ -402,10 +435,15 @@ export class EmployeeService {
       .offset(filters.offset || 0)
   }
 
-  async getById(id: string) {
-    return await this.buildEmployeeQuery()
-      .where(eq(employees.id, id))
-      .get()
+  async getById(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    return await query(
+      this.db,
+      'EmployeeService.getById',
+      () => this.buildEmployeeQuery()
+        .where(eq(employees.id, id))
+        .get(),
+      c
+    )
   }
 
   async migrateFromUser(
@@ -415,32 +453,48 @@ export class EmployeeService {
       positionId: string
       joinDate: string
       birthday?: string
-    }
+    },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
     return await this.db.transaction(async tx => {
       // 1. 检查用户是否存在
-      const user = await tx.select().from(employees).where(eq(employees.id, userId)).get()
+      const user = await query(
+        tx as any,
+        'EmployeeService.migrateFromUser.getUser',
+        () => tx.select().from(employees).where(eq(employees.id, userId)).get(),
+        c
+      )
       if (!user) {
         throw new Error('User not found')
       }
 
       // 2. 检查员工是否已存在（合并 users 表后允许同一记录继续补全）
       // 如果存在同邮箱但不同ID则视为冲突
-      const existingEmployee = await tx
-        .select()
-        .from(employees)
-        .where(eq(employees.email, user.email))
-        .get()
+      const existingEmployee = await query(
+        tx as any,
+        'EmployeeService.migrateFromUser.checkExistingEmployee',
+        () => tx
+          .select()
+          .from(employees)
+          .where(eq(employees.email, user.email))
+          .get(),
+        c
+      )
       if (existingEmployee && existingEmployee.id !== userId) {
         throw new Error('Employee already exists')
       }
 
       // 3. 获取组织部门
-      const orgDept = await tx
-        .select()
-        .from(orgDepartments)
-        .where(eq(orgDepartments.id, data.orgDepartmentId))
-        .get()
+      const orgDept = await query(
+        tx as any,
+        'EmployeeService.migrateFromUser.getOrgDepartment',
+        () => tx
+          .select()
+          .from(orgDepartments)
+          .where(eq(orgDepartments.id, data.orgDepartmentId))
+          .get(),
+        c
+      )
       if (!orgDept) {
         throw new Error('Org Department not found')
       }
@@ -450,7 +504,12 @@ export class EmployeeService {
       if (!actualDepartmentId) {
         // 如果没有 project_id，假设是总部。查找或创建 '总部' 部门。
         // 为简单起见，假设 '总部' 部门存在，或者我们能找到名为 '总部' 的部门
-        const hqDept = await tx.select().from(departments).where(eq(departments.name, '总部')).get()
+        const hqDept = await query(
+          tx as any,
+          'EmployeeService.migrateFromUser.getHQDepartment',
+          () => tx.select().from(departments).where(eq(departments.name, '总部')).get(),
+          c
+        )
         if (hqDept) {
           actualDepartmentId = hqDept.id
         } else {
@@ -460,11 +519,16 @@ export class EmployeeService {
       }
 
       // 5. 获取职位
-      const position = await tx
-        .select()
-        .from(positions)
-        .where(eq(positions.id, data.positionId))
-        .get()
+      const position = await query(
+        tx as any,
+        'EmployeeService.migrateFromUser.getPosition',
+        () => tx
+          .select()
+          .from(positions)
+          .where(eq(positions.id, data.positionId))
+          .get(),
+        c
+      )
       if (!position) {
         throw new Error('Position not found')
       }
@@ -535,10 +599,16 @@ export class EmployeeService {
       workSchedule?: any
       annualLeaveCycleMonths?: number
       annualLeaveDays?: number
-    }
+    },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
     // D1 不支持 begin/transaction，这里改为顺序执行
-    const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
+    const employee = await query(
+      this.db,
+      'EmployeeService.update.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+      c
+    )
     if (!employee) {
       throw new Error('Employee not found')
     }
@@ -572,13 +642,18 @@ export class EmployeeService {
     await this.db.update(employees).set(updateData).where(eq(employees.id, id)).run()
 
     if (data.departmentId) {
-      const existingUd = await this.db
-        .select()
-        .from(userDepartments)
-        .where(
-          and(eq(userDepartments.userId, id), eq(userDepartments.departmentId, data.departmentId))
-        )
-        .get()
+      const existingUd = await query(
+        this.db,
+        'EmployeeService.update.checkUserDepartment',
+        () => this.db
+          .select()
+          .from(userDepartments)
+          .where(
+            and(eq(userDepartments.userId, id), eq(userDepartments.departmentId, data.departmentId))
+          )
+          .get(),
+        c
+      )
       if (!existingUd) {
         await this.db
           .insert(userDepartments)
@@ -595,8 +670,13 @@ export class EmployeeService {
     return { id }
   }
 
-  async regularize(id: string, date: string) {
-    const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
+  async regularize(id: string, date: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const employee = await query(
+      this.db,
+      'EmployeeService.regularize.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+      c
+    )
     if (!employee) {
       throw Errors.NOT_FOUND('员工')
     }
@@ -614,8 +694,13 @@ export class EmployeeService {
     return { id }
   }
 
-  async leave(id: string, date: string, reason?: string) {
-    const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
+  async leave(id: string, date: string, reason?: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const employee = await query(
+      this.db,
+      'EmployeeService.leave.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+      c
+    )
     if (!employee) {
       throw Errors.NOT_FOUND('员工')
     }
@@ -647,8 +732,13 @@ export class EmployeeService {
     return { id }
   }
 
-  async rejoin(id: string, date: string) {
-    const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
+  async rejoin(id: string, date: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const employee = await query(
+      this.db,
+      'EmployeeService.rejoin.getEmployee',
+      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+      c
+    )
     if (!employee) {
       throw Errors.NOT_FOUND('员工')
     }
@@ -746,43 +836,58 @@ export class EmployeeService {
   /**
    * 根据邮箱获取员工信息（兼容 UserService）
    */
-  async getUserByEmail(email: string) {
-    const user = await this.db
-      .select()
-      .from(employees)
-      .where(eq(employees.personalEmail, email))
-      .get()
+  async getUserByEmail(email: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const user = await query(
+      this.db,
+      'EmployeeService.getUserByEmail',
+      () => this.db
+        .select()
+        .from(employees)
+        .where(eq(employees.personalEmail, email))
+        .get(),
+      c
+    )
     return user || null
   }
 
   /**
    * 获取用户职位信息（包含权限）
    */
-  async getUserPosition(userId: string) {
-    const employee = await this.db
-      .select({
-        positionId: employees.positionId,
-      })
-      .from(employees)
-      .where(and(eq(employees.id, userId), eq(employees.active, 1)))
-      .get()
+  async getUserPosition(userId: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    const employee = await query(
+      this.db,
+      'EmployeeService.getUserPosition.getEmployee',
+      () => this.db
+        .select({
+          positionId: employees.positionId,
+        })
+        .from(employees)
+        .where(and(eq(employees.id, userId), eq(employees.active, 1)))
+        .get(),
+      c
+    )
 
     if (!employee?.positionId) {return null}
 
     const { positions } = await import('../db/schema.js')
-    const result = await this.db
-      .select({
-        id: positions.id,
-        code: positions.code,
-        name: positions.name,
-        level: positions.level,
-        functionRole: positions.functionRole,
-        canManageSubordinates: positions.canManageSubordinates,
-        permissions: positions.permissions,
-      })
-      .from(positions)
-      .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
-      .get()
+    const result = await query(
+      this.db,
+      'EmployeeService.getUserPosition.getPosition',
+      () => this.db
+        .select({
+          id: positions.id,
+          code: positions.code,
+          name: positions.name,
+          level: positions.level,
+          functionRole: positions.functionRole,
+          canManageSubordinates: positions.canManageSubordinates,
+          permissions: positions.permissions,
+        })
+        .from(positions)
+        .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
+        .get(),
+      c
+    )
 
     if (!result) {return null}
 

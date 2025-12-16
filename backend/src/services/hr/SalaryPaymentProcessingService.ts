@@ -27,9 +27,14 @@ export class SalaryPaymentProcessingService {
     private salaryPaymentService?: SalaryPaymentService
   ) {}
 
-  async paymentTransfer(id: string, accountId: string, userId: string, expectedVersion?: number | null) {
+  async paymentTransfer(id: string, accountId: string, userId: string, expectedVersion?: number | null, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
     // 验证账户
-    const account = await this.db.select().from(accounts).where(eq(accounts.id, accountId)).get()
+    const account = await query(
+      this.db,
+      'SalaryPaymentProcessingService.paymentTransfer.getAccount',
+      () => this.db.select().from(accounts).where(eq(accounts.id, accountId)).get(),
+      c
+    )
     if (!account) {
       throw Errors.NOT_FOUND('账户')
     }
@@ -243,7 +248,12 @@ export class SalaryPaymentProcessingService {
 
         // 如果提供了账户，则进行验证
         if (alloc.accountId) {
-          const account = await tx.select().from(accounts).where(eq(accounts.id, alloc.accountId)).get()
+          const account = await query(
+            tx as any,
+            'SalaryPaymentProcessingService.confirmPayment.getAccount',
+            () => tx.select().from(accounts).where(eq(accounts.id, alloc.accountId)).get(),
+            undefined // 事务中暂时不传递 Context
+          )
           if (!account) {
             throw Errors.NOT_FOUND('账户')
           }

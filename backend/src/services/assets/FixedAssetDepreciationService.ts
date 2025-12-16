@@ -10,6 +10,9 @@ import { eq } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class FixedAssetDepreciationService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
@@ -24,9 +27,15 @@ export class FixedAssetDepreciationService {
       depreciationDate: string
       memo?: string
       createdBy?: string
-    }
+    },
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
-    const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
+    const asset = await query(
+      this.db,
+      'FixedAssetDepreciationService.createDepreciation.getAsset',
+      () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
+      c
+    )
     if (!asset) {
       throw Errors.NOT_FOUND('asset')
     }
