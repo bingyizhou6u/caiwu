@@ -73,12 +73,45 @@
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* Dark Mode Overrides (if we decide to support it fully later) */
+/* Dark Mode */
 [data-theme='dark'] {
-    --color-text-primary: rgba(255, 255, 255, 0.85);
-    --color-text-secondary: rgba(255, 255, 255, 0.45);
-    --color-bg-base: #000000;
-    --color-bg-container: #141414;
-    --color-bg-layout: #000000;
-    --header-bg: rgba(20, 20, 20, 0.8);
+    /* Brand Colors - 暗色下稍亮 */
+    --color-primary: #818cf8;
+    --color-primary-hover: #a5b4fc;
+    --color-primary-active: #6366f1;
+    --color-primary-bg: rgba(99, 102, 241, 0.15);
+    
+    /* Functional Colors - 暗色下稍亮 */
+    --color-success: #34d399;
+    --color-warning: #fbbf24;
+    --color-error: #f87171;
+    --color-info: #60a5fa;
+    
+    /* Neutral Colors */
+    --color-text-primary: #f1f5f9;      /* Slate 100 */
+    --color-text-secondary: #94a3b8;    /* Slate 400 */
+    --color-text-tertiary: #64748b;     /* Slate 500 */
+    --color-border: #475569;            /* Slate 600 */
+    --color-divider: #334155;           /* Slate 700 */
+    --color-bg-base: #0f172a;           /* Slate 900 */
+    --color-bg-container: #1e293b;      /* Slate 800 */
+    --color-bg-elevated: #334155;       /* Slate 700 */
+    --color-bg-layout: #0f172a;         /* Slate 900 */
+    
+    /* Header */
+    --header-bg: rgba(30, 41, 59, 0.95);
+    
+    /* Shadows - 暗色下更深 */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-glow: 0 0 20px rgba(129, 140, 248, 0.3);
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    
+    /* Glassmorphism */
+    --glass-bg: rgba(30, 41, 59, 0.5);
+    --glass-border: rgba(71, 85, 105, 0.5);
 }

@@ -1,5 +1,5 @@
 import { Layout, Menu, Dropdown, Avatar, Button, theme, MenuProps } from 'antd'
-import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled } from '@ant-design/icons'
+import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled, SunOutlined, MoonOutlined } from '@ant-design/icons'
 import { useState, useEffect, useMemo } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NProgress from 'nprogress'
@@ -18,7 +18,9 @@ export function MainLayout() {
         userInfo,
         collapsed,
         toggleCollapsed,
-        logout
+        logout,
+        themeMode,
+        toggleTheme
     } = useAppStore()
 
     const {
@@ -188,6 +190,13 @@ export function MainLayout() {
                         {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                     </div>
                     <div className="header-right">
+                        <div
+                            className="theme-toggle-btn"
+                            onClick={toggleTheme}
+                            title={themeMode === 'light' ? '切换到暗色模式' : '切换到亮色模式'}
+                        >
+                            {themeMode === 'light' ? <MoonOutlined /> : <SunOutlined />}
+                        </div>
                         <Dropdown menu={{ items: userMenu }} placement="bottomRight">
                             <div className="user-dropdown">
                                 <Avatar icon={<UserOutlined />} className="user-avatar" />

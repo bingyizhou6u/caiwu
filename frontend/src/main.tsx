@@ -1,6 +1,5 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
@@ -8,12 +7,12 @@ import { router } from './router'
 import 'antd/dist/reset.css'
 import './index.css'
 
-
-
-import { theme } from './config/theme'
+import { getTheme } from './config/theme'
+import { useAppStore } from './store/useAppStore'
 
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { QueryClient } from '@tanstack/react-query'
 
 // 配置 React Query
 const queryClient = new QueryClient({
@@ -34,11 +33,19 @@ const persister = createSyncStoragePersister({
 
 import { ErrorBoundary } from './components/ErrorBoundary'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+// App 组件 - 响应主题变化
+function App() {
+  const themeMode = useAppStore((state) => state.themeMode)
+  
+  // 同步主题到 document，便于 CSS 变量使用
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', themeMode)
+  }, [themeMode])
+  
+  return (
     <ConfigProvider
       locale={zhCN}
-      theme={theme}
+      theme={getTheme(themeMode)}
     >
       <PersistQueryClientProvider
         client={queryClient}
@@ -49,7 +56,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </ErrorBoundary>
       </PersistQueryClientProvider>
     </ConfigProvider>
-  </React.StrictMode >
+  )
+}
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 )
 
 // 注册 Service Worker

@@ -17,11 +17,18 @@ interface UserInfo {
   [key: string]: any
 }
 
+type ThemeMode = 'light' | 'dark'
+
 interface AppState {
   // UI State
   collapsed: boolean
   toggleCollapsed: () => void
   setCollapsed: (collapsed: boolean) => void
+  
+  // Theme State
+  themeMode: ThemeMode
+  toggleTheme: () => void
+  setThemeMode: (mode: ThemeMode) => void
 
   // Auth/User State
   userInfo: UserInfo | null
@@ -39,6 +46,13 @@ export const useAppStore = create<AppState>()(
       collapsed: false,
       toggleCollapsed: () => set((state) => ({ collapsed: !state.collapsed })),
       setCollapsed: (collapsed) => set({ collapsed }),
+      
+      // Theme State
+      themeMode: 'light',
+      toggleTheme: () => set((state) => ({ 
+        themeMode: state.themeMode === 'light' ? 'dark' : 'light' 
+      })),
+      setThemeMode: (themeMode) => set({ themeMode }),
 
       // Auth/User State
       userInfo: null,
@@ -58,6 +72,7 @@ export const useAppStore = create<AppState>()(
       name: 'caiwu-app-storage',
       partialize: (state) => ({
         collapsed: state.collapsed,
+        themeMode: state.themeMode,
         userInfo: state.userInfo,
         token: state.token,
         isAuthenticated: state.isAuthenticated,

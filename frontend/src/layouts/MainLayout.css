@@ -390,6 +390,29 @@
     gap: 16px;
 }
 
+.theme-toggle-btn {
+    font-size: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+}
+
+.theme-toggle-btn:hover {
+    color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.08);
+    transform: scale(1.05);
+}
+
+.theme-toggle-btn:active {
+    transform: scale(0.95);
+}
+
 .user-dropdown {
     cursor: pointer;
     display: flex;
@@ -526,4 +549,51 @@
     border-radius: 8px;
     padding: 8px 16px;
     font-weight: 500;
+}
+
+/* ========== DARK MODE ========== */
+[data-theme="dark"] .main-header {
+    background: rgba(30, 41, 59, 0.95) !important;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+}
+
+[data-theme="dark"] .trigger-btn {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .trigger-btn:hover {
+    color: #818cf8;
+    background: rgba(129, 140, 248, 0.15);
+}
+
+[data-theme="dark"] .theme-toggle-btn {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.15);
+}
+
+[data-theme="dark"] .user-dropdown:hover {
+    background: #334155;
+    border-color: rgba(129, 140, 248, 0.3);
+}
+
+[data-theme="dark"] .user-name {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .content-wrapper {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .user-menu-name {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .user-menu-email {
+    color: #94a3b8;
 }
