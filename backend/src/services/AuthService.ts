@@ -4,9 +4,9 @@ import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
 import { generateTotpSecret, verifyTotp } from '../utils/auth.js'
 // import { logAudit } from '../utils/audit.js' // Removed
-import { UserService } from './UserService.js'
 import { SystemConfigService } from './SystemConfigService.js'
 import { TrustedDeviceService } from './TrustedDeviceService.js'
+import { EmployeeService } from './EmployeeService.js'
 import { getUserFullContext } from '../utils/db.js'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
@@ -16,7 +16,7 @@ import { AuditService } from './AuditService.js'
 import { EmailService } from './EmailService.js'
 
 export class AuthService {
-  private userService: UserService
+  private employeeService: EmployeeService
   private trustedDeviceService: TrustedDeviceService
 
   constructor(
@@ -24,9 +24,10 @@ export class AuthService {
     private kv: KVNamespace,
     private systemConfigService: SystemConfigService,
     private auditService: AuditService,
-    private emailService: EmailService
+    private emailService: EmailService,
+    employeeService: EmployeeService
   ) {
-    this.userService = new UserService(db)
+    this.employeeService = employeeService
     this.trustedDeviceService = new TrustedDeviceService(db)
   }
 
@@ -37,7 +38,7 @@ export class AuthService {
     context?: any,
     deviceInfo?: { ip?: string; userAgent?: string }
   ) {
-    const user = await this.userService.getUserByEmail(email)
+    const user = await this.employeeService.getUserByEmail(email)
     if (!user) {throw Errors.UNAUTHORIZED('用户名或密码错误')}
 
     // 检查员工记录并获取姓名（由于登录使用个人邮箱，所以需要通过个人邮箱查询）
@@ -104,7 +105,7 @@ export class AuthService {
       .where(eq(employees.id, user.id))
       .run()
 
-    const position = await this.userService.getUserPosition(user.id)
+    const position = await this.employeeService.getUserPosition(user.id)
     if (!position) {throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')}
 
     const session = await this.createSession(user.id, deviceInfo)
@@ -213,7 +214,7 @@ export class AuthService {
     email: string,
     env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }
   ) {
-    const user = await this.userService.getUserByEmail(email)
+    const user = await this.employeeService.getUserByEmail(email)
     const employee = await this.db
       .select({ name: employees.name })
       .from(employees)
@@ -413,7 +414,7 @@ export class AuthService {
     return this.login(user.personalEmail, password, totpCode, undefined, deviceInfo)
   }
   async requestTotpReset(email: string, env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {
-    const user = await this.userService.getUserByEmail(email)
+    const user = await this.employeeService.getUserByEmail(email)
     // 检查 `email` (公司邮箱) 和 `personalEmail` (个人邮箱)
     const employee = await this.db
       .select({ id: employees.id, name: employees.name, personalEmail: employees.personalEmail })

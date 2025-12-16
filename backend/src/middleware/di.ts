@@ -2,7 +2,6 @@ import { Context, Next } from 'hono'
 import { createDb } from '../db/index.js'
 import { SystemConfigService } from '../services/SystemConfigService.js'
 import { EmployeeService } from '../services/EmployeeService.js'
-import { UserService } from '../services/UserService.js'
 import { FinanceService } from '../services/FinanceService.js'
 import { ImportService } from '../services/ImportService.js'
 import { SalaryPaymentService } from '../services/SalaryPaymentService.js'
@@ -12,9 +11,6 @@ import { ReportService } from '../services/ReportService.js'
 import { AuthService } from '../services/AuthService.js'
 import { MasterDataService } from '../services/MasterDataService.js'
 import { FixedAssetService } from '../services/FixedAssetService.js'
-import { FixedAssetAllocationService } from '../services/FixedAssetAllocationService.js'
-import { FixedAssetChangeService } from '../services/FixedAssetChangeService.js'
-import { FixedAssetDepreciationService } from '../services/FixedAssetDepreciationService.js'
 import { FixedAssetAllocationService } from '../services/FixedAssetAllocationService.js'
 import { FixedAssetChangeService } from '../services/FixedAssetChangeService.js'
 import { FixedAssetDepreciationService } from '../services/FixedAssetDepreciationService.js'
@@ -52,7 +48,6 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
   const permissionService = new PermissionService(db)
   const emailService = new EmailService(c.env as any)
 
-  const userService = new UserService(db) // Updated to use Drizzle db
   const employeeService = new EmployeeService(db, emailService)
   const financeService = new FinanceService(db)
   const siteBillService = new SiteBillService(db)
@@ -70,8 +65,9 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     c.env.SESSIONS_KV,
     systemConfigService,
     auditService,
-    emailService
-  ) // Updated
+    emailService,
+    employeeService
+  )
   const masterDataService = new MasterDataService(db) // Updated to use Drizzle db
   const fixedAssetService = new FixedAssetService(db)
   const fixedAssetAllocationService = new FixedAssetAllocationService(db)
@@ -120,7 +116,6 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
   c.set('services', {
     systemConfig: systemConfigService,
     finance: financeService,
-    user: userService,
     employee: employeeService,
     import: importService,
     salaryPayment: salaryPaymentService,

@@ -1,4 +1,4 @@
-import { eq, and, like, or, inArray, desc, sql } from 'drizzle-orm'
+import { eq, and, like, or, inArray, desc, sql, isNotNull } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { employees, departments, orgDepartments, positions, userDepartments } from '../db/schema.js'
 import * as schema from '../db/schema.js'
@@ -720,5 +720,141 @@ export class EmployeeService {
     }
 
     return []
+  }
+
+  // ========== UserService 方法（已合并，users 表已废弃） ==========
+
+  /**
+   * 根据 ID 获取员工信息（兼容 UserService）
+   * @deprecated 使用 getById 代替
+   */
+  async getUserById(id: string) {
+    return this.getById(id)
+  }
+
+  /**
+   * 根据邮箱获取员工信息（兼容 UserService）
+   */
+  async getUserByEmail(email: string) {
+    const user = await this.db
+      .select()
+      .from(employees)
+      .where(eq(employees.personalEmail, email))
+      .get()
+    return user || null
+  }
+
+  /**
+   * 获取用户职位信息（包含权限）
+   */
+  async getUserPosition(userId: string) {
+    const employee = await this.db
+      .select({
+        positionId: employees.positionId,
+      })
+      .from(employees)
+      .where(and(eq(employees.id, userId), eq(employees.active, 1)))
+      .get()
+
+    if (!employee?.positionId) {return null}
+
+    const { positions } = await import('../db/schema.js')
+    const result = await this.db
+      .select({
+        id: positions.id,
+        code: positions.code,
+        name: positions.name,
+        level: positions.level,
+        functionRole: positions.functionRole,
+        canManageSubordinates: positions.canManageSubordinates,
+        permissions: positions.permissions,
+      })
+      .from(positions)
+      .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
+      .get()
+
+    if (!result) {return null}
+
+    let permissions = {}
+    try {
+      permissions = JSON.parse(result.permissions || '{}')
+    } catch (err) {
+      console.error('Failed to parse permissions JSON:', err)
+    }
+
+    return {
+      id: result.id,
+      code: result.code,
+      name: result.name,
+      level: result.level,
+      functionRole: result.functionRole,
+      canManageSubordinates: result.canManageSubordinates,
+      permissions,
+    }
+  }
+
+  /**
+   * 检查用户是否为总部用户
+   */
+  async isHQUser(userId: string): Promise<boolean> {
+    const { userDepartments, departments } = await import('../db/schema.js')
+    const result = await this.db
+      .select({ isHq: departments.name })
+      .from(userDepartments)
+      .innerJoin(departments, eq(departments.id, userDepartments.departmentId))
+      .where(and(eq(userDepartments.userId, userId), eq(departments.name, '总部')))
+      .get()
+
+    return !!result
+  }
+
+  /**
+   * 获取用户组 ID（组织部门）
+   */
+  async getUserGroupId(userId: string): Promise<string | null> {
+    const employee = await this.getUserById(userId)
+    if (!employee?.orgDepartmentId) {return null}
+
+    const { orgDepartments } = await import('../db/schema.js')
+    const { isNotNull } = await import('drizzle-orm')
+    const group = await this.db
+      .select({ id: orgDepartments.id })
+      .from(orgDepartments)
+      .where(
+        and(eq(orgDepartments.id, employee.orgDepartmentId), isNotNull(orgDepartments.parentId))
+      )
+      .get()
+
+    return group?.id || null
+  }
+
+  /**
+   * 获取用户组织部门 ID
+   */
+  async getUserOrgDepartmentId(userId: string): Promise<string | null> {
+    const employee = await this.getUserById(userId)
+    return employee?.orgDepartmentId || null
+  }
+
+  /**
+   * 获取用户部门 ID 列表
+   */
+  async getUserDepartmentIds(userId: string): Promise<string[]> {
+    const { userDepartments } = await import('../db/schema.js')
+    const userDepts = await this.db
+      .select({ departmentId: userDepartments.departmentId })
+      .from(userDepartments)
+      .where(eq(userDepartments.userId, userId))
+      .all()
+
+    return userDepts.map(r => r.departmentId)
+  }
+
+  /**
+   * 获取用户主部门 ID
+   */
+  async getUserDepartmentId(userId: string): Promise<string | null> {
+    const ids = await this.getUserDepartmentIds(userId)
+    return ids.length > 0 ? ids[0] : null
   }
 }
