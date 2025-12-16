@@ -59,3 +59,5 @@ Even if routes pass filters, does the Service apply them?
 3.  **Secure `reports.ts`**: Add a mandatory lookup to verify `department_id` in query is within user's scope using `getDataAccessFilter` or manual checks.
 
 
+
+
