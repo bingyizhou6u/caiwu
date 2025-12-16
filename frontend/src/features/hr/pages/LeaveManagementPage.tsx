@@ -77,6 +77,22 @@ export function LeaveManagement() {
     }))
   }, [employeesData])
 
+  // 过滤请假记录
+  const filteredLeaves = React.useMemo(() => {
+    return leaves.filter((leave) => {
+      if (searchParams.employee && !leave.employeeName?.toLowerCase().includes(searchParams.employee.toLowerCase())) {
+        return false
+      }
+      if (searchParams.leaveType && leave.leave_type !== searchParams.leaveType) {
+        return false
+      }
+      if (searchParams.status && leave.status !== searchParams.status) {
+        return false
+      }
+      return true
+    })
+  }, [leaves, searchParams])
+
   const handleCreate = withErrorHandler(
     async () => {
       const values = await validateCreate()
@@ -235,8 +251,6 @@ export function LeaveManagement() {
       width: 100,
       render: (status: string) => (
         <StatusTag status={status} statusMap={LEAVE_STATUS} />
-          {STATUS_LABELS[status] || status}
-        </Tag>
       ),
     },
     {
@@ -250,7 +264,7 @@ export function LeaveManagement() {
       dataIndex: 'approver_name',
       key: 'approver_name',
       width: 100,
-      render: (name: string) => <EmptyText value={name} />,
+      render: (name: string) => name || '-',
     },
     {
       title: '操作',
