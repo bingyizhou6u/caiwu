@@ -3,10 +3,11 @@
  * 统一的搜索表单布局和过滤条件
  */
 
-import { Form, Input, InputNumber, Select, DatePicker, Button, Space, Card } from 'antd'
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
-import { ReactNode, useState } from 'react'
+import { Form, Input, InputNumber, Select, DatePicker, Button, Space, Card, Dropdown } from 'antd'
+import { SearchOutlined, ReloadOutlined, SaveOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ReactNode, useState, useEffect } from 'react'
 import dayjs, { Dayjs } from 'dayjs'
+import type { MenuProps } from 'antd'
 
 // 快捷日期范围选择器（内嵌版本）
 function QuickDateRangePicker({
@@ -115,6 +116,12 @@ export interface SearchFiltersProps {
   initialValues?: Record<string, string | number | string[] | undefined>
   layout?: 'horizontal' | 'vertical' | 'inline'
   showCard?: boolean
+  /** 是否启用保存搜索条件功能 */
+  enableSaveSearch?: boolean
+  /** 保存搜索条件的唯一标识（用于 localStorage key） */
+  saveSearchKey?: string
+  /** 搜索条件变化回调 */
+  onValuesChange?: (values: Record<string, any>) => void
 }
 
 export function SearchFilters({
@@ -124,8 +131,73 @@ export function SearchFilters({
   initialValues,
   layout = 'inline',
   showCard = true,
+  enableSaveSearch = false,
+  saveSearchKey,
+  onValuesChange,
 }: SearchFiltersProps) {
   const [form] = Form.useForm()
+  const [savedSearches, setSavedSearches] = useState<Array<{ name: string; values: Record<string, any> }>>([])
+
+  // 加载保存的搜索条件
+  useEffect(() => {
+    if (enableSaveSearch && saveSearchKey) {
+      try {
+        const saved = localStorage.getItem(`searchFilters_${saveSearchKey}`)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          setSavedSearches(parsed.savedSearches || [])
+          // 如果有默认保存的搜索条件，自动加载
+          if (parsed.default && !initialValues) {
+            form.setFieldsValue(parsed.default)
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load saved searches:', e)
+      }
+    }
+  }, [enableSaveSearch, saveSearchKey, form, initialValues])
+
+  // 保存当前搜索条件
+  const handleSaveSearch = () => {
+    if (!enableSaveSearch || !saveSearchKey) return
+    
+    const values = form.getFieldsValue()
+    const name = prompt('请输入搜索条件名称：')
+    if (!name) return
+
+    const newSavedSearches = [...savedSearches, { name, values }]
+    setSavedSearches(newSavedSearches)
+    
+    try {
+      localStorage.setItem(
+        `searchFilters_${saveSearchKey}`,
+        JSON.stringify({ savedSearches: newSavedSearches })
+      )
+    } catch (e) {
+      console.error('Failed to save search:', e)
+    }
+  }
+
+  // 加载保存的搜索条件
+  const handleLoadSearch = (values: Record<string, any>) => {
+    form.setFieldsValue(values)
+    handleSearch()
+  }
+
+  // 删除保存的搜索条件
+  const handleDeleteSearch = (index: number) => {
+    const newSavedSearches = savedSearches.filter((_, i) => i !== index)
+    setSavedSearches(newSavedSearches)
+    
+    try {
+      localStorage.setItem(
+        `searchFilters_${saveSearchKey}`,
+        JSON.stringify({ savedSearches: newSavedSearches })
+      )
+    } catch (e) {
+      console.error('Failed to delete search:', e)
+    }
+  }
 
   const handleSearch = () => {
     const values = form.getFieldsValue()
@@ -175,6 +247,14 @@ export function SearchFilters({
     })
     
     onSearch(cleanedValues)
+  }
+
+  // 表单值变化回调
+  const handleValuesChange = () => {
+    if (onValuesChange) {
+      const values = form.getFieldsValue()
+      onValuesChange(values)
+    }
   }
 
   const handleReset = () => {
@@ -290,8 +370,33 @@ export function SearchFilters({
     }
   }
 
+  // 保存的搜索条件菜单
+  const savedSearchMenuItems: MenuProps['items'] = savedSearches.map((search, index) => ({
+    key: index.toString(),
+    label: (
+      <Space>
+        <span onClick={() => handleLoadSearch(search.values)}>{search.name}</span>
+        <Button
+          type="text"
+          size="small"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleDeleteSearch(index)
+          }}
+        />
+      </Space>
+    ),
+  }))
+
   const formContent = (
-    <Form form={form} layout={layout} initialValues={initialValues}>
+    <Form 
+      form={form} 
+      layout={layout} 
+      initialValues={initialValues}
+      onValuesChange={handleValuesChange}
+    >
       <Space wrap>
         {fields.map(renderField)}
         <Form.Item>
@@ -302,6 +407,18 @@ export function SearchFilters({
             <Button icon={<ReloadOutlined />} onClick={handleReset}>
               重置
             </Button>
+            {enableSaveSearch && (
+              <>
+                <Button icon={<SaveOutlined />} onClick={handleSaveSearch}>
+                  保存搜索
+                </Button>
+                {savedSearches.length > 0 && (
+                  <Dropdown menu={{ items: savedSearchMenuItems }} trigger={['click']}>
+                    <Button>已保存的搜索</Button>
+                  </Dropdown>
+                )}
+              </>
+            )}
           </Space>
         </Form.Item>
       </Space>

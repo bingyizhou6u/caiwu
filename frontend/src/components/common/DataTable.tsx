@@ -26,13 +26,21 @@ export interface DataTableProps<T> {
   onEdit?: (record: T) => void
   onDelete?: (record: T) => void
   onRefresh?: () => void
+  /** 表格变化回调（排序、筛选、分页等） */
+  onChange?: (
+    pagination: { current?: number; pageSize?: number },
+    filters: Record<string, any>,
+    sorter: any
+  ) => void
   rowKey?: string | ((record: T) => string)
   rowSelection?: TableProps<T>['rowSelection']
   actions?: (record: T) => ReactNode
   showActions?: boolean
   actionColumnTitle?: string
   actionColumnWidth?: number
-  tableProps?: Omit<TableProps<T>, 'columns' | 'dataSource' | 'loading' | 'pagination' | 'rowSelection'>
+  /** 是否启用虚拟滚动（大数据量时使用） */
+  virtual?: boolean
+  tableProps?: Omit<TableProps<T>, 'columns' | 'dataSource' | 'loading' | 'pagination' | 'rowSelection' | 'onChange'>
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -43,12 +51,14 @@ export function DataTable<T extends Record<string, any>>({
   onEdit,
   onDelete,
   onRefresh,
+  onChange,
   rowKey = 'id',
   rowSelection,
   actions,
   showActions = true,
   actionColumnTitle = '操作',
   actionColumnWidth = 150,
+  virtual = false,
   tableProps = {},
 }: DataTableProps<T>) {
   // 构建操作列（使用 useMemo 缓存）
@@ -122,6 +132,36 @@ export function DataTable<T extends Record<string, any>>({
   // 确保 dataSource 始终是数组，防止 Ant Design 内部调用 .some() 时出错
   const safeData = Array.isArray(data) ? data : []
 
+  // 处理表格变化（排序、筛选、分页）
+  const handleTableChange = (
+    paginationInfo: any,
+    filters: Record<string, any>,
+    sorter: any
+  ) => {
+    if (onChange) {
+      onChange(
+        {
+          current: paginationInfo.current,
+          pageSize: paginationInfo.pageSize,
+        },
+        filters,
+        sorter
+      )
+    }
+  }
+
+  // 虚拟滚动配置（大数据量优化）
+  const scrollConfig = useMemo(() => {
+    const baseScroll = { x: 'max-content' }
+    if (virtual && safeData.length > 100) {
+      return {
+        ...baseScroll,
+        y: 600, // 固定高度，启用虚拟滚动
+      }
+    }
+    return baseScroll
+  }, [virtual, safeData.length])
+
   return (
     <div>
       {onRefresh && (
@@ -138,7 +178,8 @@ export function DataTable<T extends Record<string, any>>({
         rowKey={rowKey}
         rowSelection={rowSelection}
         pagination={paginationConfig}
-        scroll={{ x: 'max-content' }}
+        scroll={scrollConfig}
+        onChange={onChange ? handleTableChange : undefined}
         {...tableProps}
       />
     </div>
