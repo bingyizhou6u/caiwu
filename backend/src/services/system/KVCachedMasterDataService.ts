@@ -129,6 +129,161 @@ export class KVCachedMasterDataService extends MasterDataService {
     return result
   }
 
+  // ========== Departments ==========
+
+  async createDepartment(data: { name: string; hqId?: string; code?: string }) {
+    const result = await super.createDepartment(data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async updateDepartment(id: string, data: { name?: string; hqId?: string; active?: number }) {
+    const result = await super.updateDepartment(id, data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async deleteDepartment(id: string) {
+    const result = await super.deleteDepartment(id)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  // ========== Sites ==========
+
+  async createSite(data: { name: string; departmentId: string }) {
+    const result = await super.createSite(data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async updateSite(id: string, data: { name?: string; departmentId?: string; active?: number }) {
+    const result = await super.updateSite(id, data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async deleteSite(id: string) {
+    const result = await super.deleteSite(id)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  // ========== Accounts ==========
+
+  async createAccount(data: {
+    name: string
+    type: string
+    currency?: string
+    alias?: string
+    accountNumber?: string
+    openingCents?: number
+  }) {
+    const result = await super.createAccount(data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async updateAccount(
+    id: string,
+    data: {
+      name?: string
+      type?: string
+      currency?: string
+      alias?: string
+      accountNumber?: string
+      active?: number
+    }
+  ) {
+    const result = await super.updateAccount(id, data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async deleteAccount(id: string) {
+    const result = await super.deleteAccount(id)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  // ========== Vendors ==========
+
+  async createVendor(data: {
+    name: string
+    contact?: string
+    phone?: string
+    email?: string
+    address?: string
+    memo?: string
+  }) {
+    const result = await super.createVendor(data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async updateVendor(
+    id: string,
+    data: {
+      name?: string
+      contact?: string
+      phone?: string
+      email?: string
+      address?: string
+      memo?: string
+      active?: number
+    }
+  ) {
+    const result = await super.updateVendor(id, data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async deleteVendor(id: string) {
+    const result = await super.deleteVendor(id)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  // ========== Currencies ==========
+
+  async createCurrency(data: { code: string; name: string }) {
+    const result = await super.createCurrency(data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async updateCurrency(code: string, data: { name?: string; active?: number }) {
+    const result = await super.updateCurrency(code, data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async deleteCurrency(code: string) {
+    const result = await super.deleteCurrency(code)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  // ========== Categories ==========
+
+  async createCategory(data: { name: string; kind: string; parentId?: string }) {
+    const result = await super.createCategory(data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async updateCategory(id: string, data: { name?: string; kind?: string }) {
+    const result = await super.updateCategory(id, data)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
+  async deleteCategory(id: string) {
+    const result = await super.deleteCategory(id)
+    await this.invalidateMasterDataCache()
+    return result
+  }
+
   /**
    * 使主数据缓存失效
    * 在创建/更新/删除主数据后调用

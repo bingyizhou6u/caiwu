@@ -8,6 +8,8 @@ import { FinanceService } from '../finance/FinanceService.js'
 import { PermissionService } from '../hr/PermissionService.js'
 import { NotificationService } from './NotificationService.js'
 import type { OperationHistoryService } from '../system/OperationHistoryService.js'
+import { BatchQuery } from '../utils/batch-query.js'
+import { DBPerformanceTracker } from '../utils/db-performance.js'
 import {
   borrowingStateMachine,
   leaveStateMachine,
@@ -91,12 +93,22 @@ export class ApprovalService {
       .orderBy(desc(schema.expenseReimbursements.createdAt))
       .execute()
 
-    // 待审批借款
-    const users = await this.db
-      .select({ id: schema.employees.id })
-      .from(schema.employees)
-      .where(inArray(schema.employees.id, subordinateIds))
-      .execute()
+    // 待审批借款 - 使用批量查询优化
+    const users = await DBPerformanceTracker.track(
+      'ApprovalService.getPendingApprovals.getEmployees',
+      () =>
+        BatchQuery.getByIds(
+          this.db,
+          schema.employees,
+          subordinateIds,
+          {
+            batchSize: 100,
+            parallel: true,
+            queryName: 'getEmployeesForApproval',
+          }
+        ).then((employees) => employees.map((e) => ({ id: e.id }))),
+      undefined // Context 可选
+    )
 
     const userIds = users.map(u => u.id)
 

@@ -45,15 +45,21 @@ export class MasterDataService {
   }
 
   async createDepartment(data: { name: string; hqId?: string; code?: string }) {
-    return this.projectDepartmentService.createDepartment(data)
+    const result = await this.projectDepartmentService.createDepartment(data)
+    // 注意：如果使用缓存版本，需要在子类中重写此方法以失效缓存
+    return result
   }
 
   async updateDepartment(id: string, data: { name?: string; hqId?: string; active?: number }) {
-    return this.projectDepartmentService.updateDepartment(id, data)
+    const result = await this.projectDepartmentService.updateDepartment(id, data)
+    // 注意：如果使用缓存版本，需要在子类中重写此方法以失效缓存
+    return result
   }
 
   async deleteDepartment(id: string) {
-    return this.projectDepartmentService.deleteDepartment(id)
+    const result = await this.projectDepartmentService.deleteDepartment(id)
+    // 注意：如果使用缓存版本，需要在子类中重写此方法以失效缓存
+    return result
   }
 
   // ========== Sites ==========

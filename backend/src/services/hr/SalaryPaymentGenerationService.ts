@@ -217,12 +217,20 @@ export class SalaryPaymentGenerationService {
     userId: string
   ): Promise<{ created: number; ids: string[] }> {
     return await this.db.transaction(async tx => {
-      // 只生成指定员工的薪资
-      const eligibleEmployees = await tx
-        .select()
-        .from(employees)
-        .where(and(eq(employees.active, 1), inArray(employees.id, employeeIds)))
-        .all()
+      // 只生成指定员工的薪资 - 使用批量查询优化
+      const allEmployees = await DBPerformanceTracker.track(
+        'SalaryPaymentGenerationService.generatePayments.getEmployees',
+        () =>
+          BatchQuery.getByIds(tx as any, employees, employeeIds, {
+            batchSize: 100,
+            parallel: true,
+            queryName: 'getEmployeesForSalaryGeneration',
+          }),
+        undefined // Context 可选
+      )
+      
+      // 过滤活跃员工
+      const eligibleEmployees = allEmployees.filter((emp) => emp.active === 1)
 
       // 按入职日期过滤
       const filteredEmployees = eligibleEmployees.filter(emp => {

@@ -12,6 +12,8 @@ import {
 } from '../db/schema.js'
 import { uuid } from '../utils/db.js'
 import { Errors } from '../utils/errors.js'
+import { BatchQuery } from '../utils/batch-query.js'
+import { DBPerformanceTracker } from '../utils/db-performance.js'
 
 export class BorrowingService {
   constructor(private db: DrizzleD1Database<any>) {}
@@ -44,22 +46,29 @@ export class BorrowingService {
       accountIds.add(b.accountId)
     })
 
-    const [usersList, accountsList] = await Promise.all([
-      userIds.size > 0
-        ? this.db
-            .select()
-            .from(employees)
-            .where(inArray(employees.id, Array.from(userIds)))
-            .execute()
-        : [],
-      accountIds.size > 0
-        ? this.db
-            .select()
-            .from(accounts)
-            .where(inArray(accounts.id, Array.from(accountIds)))
-            .execute()
-        : [],
-    ])
+    // 使用批量查询优化 - 并行获取员工和账户数据
+    const [usersList, accountsList] = await DBPerformanceTracker.trackBatch(
+      'BorrowingService.listBorrowings.batchGet',
+      [
+        async () =>
+          userIds.size > 0
+            ? BatchQuery.getByIds(this.db, employees, Array.from(userIds), {
+                batchSize: 100,
+                parallel: true,
+                queryName: 'getEmployeesForBorrowings',
+              })
+            : [],
+        async () =>
+          accountIds.size > 0
+            ? BatchQuery.getByIds(this.db, accounts, Array.from(accountIds), {
+                batchSize: 100,
+                parallel: true,
+                queryName: 'getAccountsForBorrowings',
+              })
+            : [],
+      ],
+      undefined // Context 可选
+    )
 
     const userMap = new Map(usersList.map(u => [u.id, u]))
     const accountMap = new Map(accountsList.map(a => [a.id, a]))

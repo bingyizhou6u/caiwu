@@ -3,6 +3,7 @@ import { createDb } from '../db/index.js'
 // System services
 import { SystemConfigService } from '../services/system/SystemConfigService.js'
 import { MasterDataService } from '../services/system/MasterDataService.js'
+import { KVCachedMasterDataService } from '../services/system/KVCachedMasterDataService.js'
 import { AuditService } from '../services/system/AuditService.js'
 import { OperationHistoryService } from '../services/system/OperationHistoryService.js'
 import { IPWhitelistService } from '../services/system/IPWhitelistService.js'
@@ -75,7 +76,9 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     emailService,
     employeeService
   )
-  const masterDataService = new MasterDataService(db) // Updated to use Drizzle db
+  // 使用 KV 缓存的主数据服务（提升性能）
+  // 如需禁用缓存，可切换为: new MasterDataService(db)
+  const masterDataService = new KVCachedMasterDataService(db, c.env.SESSIONS_KV)
   const fixedAssetService = new FixedAssetService(db)
   const fixedAssetAllocationService = new FixedAssetAllocationService(db)
   const fixedAssetChangeService = new FixedAssetChangeService(db)
