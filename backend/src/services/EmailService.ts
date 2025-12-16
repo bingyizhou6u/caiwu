@@ -96,6 +96,8 @@ const primaryButton = (text: string, url: string) => `
   ${text}
 </a>`
 
+import { Logger } from '../utils/logger.js'
+
 export class EmailService {
   constructor(private env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {}
 
@@ -110,7 +112,7 @@ export class EmailService {
   ): Promise<{ success: boolean; error?: string }> {
     if (!this.env.EMAIL_SERVICE) {
       const errorMsg = 'EMAIL_SERVICE not configured'
-      console.error('[EmailService] ' + errorMsg)
+      Logger.error('[EmailService] ' + errorMsg)
       return { success: false, error: errorMsg }
     }
 
@@ -133,11 +135,11 @@ export class EmailService {
       if (res.ok && data?.success) {return { success: true }}
 
       const errorMsg = data?.error || `Email worker failed with status ${res.status}`
-      console.error('[EmailService] Service send failed:', errorMsg)
+      Logger.error('[EmailService] Service send failed', { error: errorMsg })
       return { success: false, error: errorMsg }
     } catch (error: any) {
       const errorMsg = error?.message || 'Failed to send via email worker'
-      console.error('[EmailService] Service send error:', errorMsg)
+      Logger.error('[EmailService] Service send error', { error: errorMsg })
       return { success: false, error: errorMsg }
     }
   }

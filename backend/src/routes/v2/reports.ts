@@ -23,10 +23,14 @@ function validateScope(
   const position = getUserPosition(c)
   const employee = c.get('userEmployee')
 
-  if (!position) {return '00000000-0000-0000-0000-000000000000'}
+  if (!position) {
+    return '00000000-0000-0000-0000-000000000000'
+  }
 
   // 1级：总部 - 无限制
-  if (position.level === 1) {return requestedDepartmentId}
+  if (position.level === 1) {
+    return requestedDepartmentId
+  }
 
   // 2级及以上：项目/团队 - 必须限制在本部门
   const userDepartmentId = employee?.departmentId

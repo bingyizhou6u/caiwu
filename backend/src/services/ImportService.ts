@@ -5,13 +5,16 @@ import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { parseCsv } from '../utils/csv.js'
 import { FinanceService } from './FinanceService.js'
+import { Errors } from '../utils/errors.js'
 
 export class ImportService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
 
   async importFlows(csvContent: string, userId: string) {
     const rows = parseCsv(csvContent)
-    if (rows.length < 2) {throw new Error('没有数据行')}
+    if (rows.length < 2) {
+      throw Errors.VALIDATION_ERROR('CSV文件没有数据行')
+    }
 
     const header = rows[0].map(h => h.toLowerCase())
     const data = rows.slice(1)

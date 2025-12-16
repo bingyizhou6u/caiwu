@@ -222,7 +222,9 @@ siteBillsRoutes.openapi(
 
       const created = await c.var.services.siteBill.getById(result.id)
 
-      if (!created) {throw new Error('Failed to fetch created record')}
+      if (!created) {
+        throw Errors.INTERNAL_ERROR('获取创建的记录失败')
+      }
 
       const sb = created.bill
       return {
@@ -336,7 +338,9 @@ siteBillsRoutes.openapi(
     logAuditAction(c, 'update', 'site_bill', id, JSON.stringify(body))
 
     const updated = await c.var.services.siteBill.getById(id)
-    if (!updated) {throw new Error('Failed to fetch updated record')}
+    if (!updated) {
+      throw Errors.INTERNAL_ERROR('获取更新的记录失败')
+    }
 
     const sb = updated.bill
     return {

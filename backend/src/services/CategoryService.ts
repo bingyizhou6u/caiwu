@@ -20,7 +20,9 @@ export class CategoryService {
     const existing = await this.db.query.categories.findFirst({
       where: eq(categories.name, data.name),
     })
-    if (existing) {throw Errors.DUPLICATE('类别名称')}
+    if (existing) {
+      throw Errors.DUPLICATE('类别名称')
+    }
 
     const id = uuid()
     await this.db
@@ -42,7 +44,9 @@ export class CategoryService {
       const existing = await this.db.query.categories.findFirst({
         where: and(eq(categories.name, data.name), ne(categories.id, id)),
       })
-      if (existing) {throw Errors.DUPLICATE('类别名称')}
+      if (existing) {
+        throw Errors.DUPLICATE('类别名称')
+      }
     }
 
     const updates: any = {}
@@ -57,10 +61,14 @@ export class CategoryService {
 
   async deleteCategory(id: string) {
     const category = await this.db.query.categories.findFirst({ where: eq(categories.id, id) })
-    if (!category) {throw Errors.NOT_FOUND('类别')}
+    if (!category) {
+      throw Errors.NOT_FOUND('类别')
+    }
 
     const flowCount = await this.db.$count(cashFlows, eq(cashFlows.categoryId, id))
-    if (flowCount > 0) {throw Errors.BUSINESS_ERROR('无法删除，该类别还有流水记录')}
+    if (flowCount > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该类别还有流水记录')
+    }
 
     await this.db.delete(categories).where(eq(categories.id, id)).execute()
     return { ok: true, name: category.name }

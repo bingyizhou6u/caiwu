@@ -2,6 +2,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, inArray, sql } from 'drizzle-orm'
 import * as schema from '../db/schema.js'
 import { Errors } from '../utils/errors.js'
+import { Logger } from '../utils/logger.js'
 import { EmployeeService } from './EmployeeService.js'
 import { FinanceService } from './FinanceService.js'
 import { PermissionService } from './PermissionService.js'
@@ -217,13 +218,13 @@ export class ApprovalService {
       if (this.operationHistoryService) {
         this.operationHistoryService
           .recordOperation(entityType, id, newStatus, userId, beforeData, { status: newStatus }, memo)
-          .catch(err => console.error('Failed to record operation history:', err))
+          .catch(err => Logger.error('Failed to record operation history', { error: err }))
       }
 
       // 发送审批通知（异步，不阻塞审批流程）
       this.notificationService
         .notifyApprovalResult(entityType, id, newStatus, userId)
-        .catch(err => console.error(`Failed to send ${entityType} ${newStatus} notification:`, err))
+        .catch(err => Logger.error(`Failed to send ${entityType} ${newStatus} notification`, { error: err }))
     })
   }
 
@@ -406,7 +407,7 @@ export class ApprovalService {
             )
           } catch (error: any) {
             // 如果创建现金流失败，记录错误但不影响审批流程
-            console.error('Failed to create cash flow for borrowing:', error)
+            Logger.error('Failed to create cash flow for borrowing', { error })
           }
         }
       },
@@ -589,14 +590,18 @@ export class ApprovalService {
       .from(schema.employees)
       .where(eq(schema.employees.id, borrowerUserId))
       .get()
-    if (!borrowerUser) {throw Errors.FORBIDDEN('无法找到申请人信息')}
+    if (!borrowerUser) {
+      throw Errors.FORBIDDEN('无法找到申请人信息')
+    }
 
     const borrowerEmployee = await db
       .select({ id: schema.employees.id })
       .from(schema.employees)
       .where(eq(schema.employees.email, borrowerUser.email))
       .get()
-    if (!borrowerEmployee) {throw Errors.FORBIDDEN('无法找到申请人员工信息')}
+    if (!borrowerEmployee) {
+      throw Errors.FORBIDDEN('无法找到申请人员工信息')
+    }
 
     return borrowerEmployee.id
   }

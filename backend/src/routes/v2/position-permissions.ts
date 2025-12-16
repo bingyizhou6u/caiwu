@@ -88,7 +88,7 @@ positionPermissionsRoutes.openapi(getPositionRoute, createRouteHandler(async (c:
   if (!hasPermission(c, 'system', 'position', 'view')) {
       throw Errors.FORBIDDEN()
     }
-  const id = c.req.param('id') as any
+  const id = c.req.param('id')
   if (!id) {
       throw Errors.VALIDATION_ERROR('Position ID is required')}
   const positions = await c.var.services.position.getPositions()
@@ -129,17 +129,24 @@ const createPositionRoute = createRoute({
 })
 
 positionPermissionsRoutes.openapi(createPositionRoute, createRouteHandler(async (c: any) => {
-  const body = c.req.valid('json') as any
-  const mapped = {
+  if (!hasPermission(c, 'system', 'position', 'create')) {
+    throw Errors.FORBIDDEN()
+  }
+  const body = c.req.valid('json')
+  
+  const result = await c.var.services.position.createPosition({
     code: body.code,
     name: body.name,
     level: body.level,
     functionRole: body.functionRole ?? body.function_role ?? '',
-    permissions: body.permissions ?? {},
-  }
+    canManageSubordinates: body.canManageSubordinates ?? body.can_manage_subordinates,
+    description: body.description,
+    permissions: typeof body.permissions === 'string' ? body.permissions : JSON.stringify(body.permissions ?? {}),
+    sortOrder: body.sortOrder ?? body.sort_order,
+  })
 
-  // TODO: Implement createPosition in PositionService
-  throw Errors.BUSINESS_ERROR('createPosition not implemented yet')
+  logAuditAction(c, 'create', 'position', result.id, JSON.stringify({ code: result.code, name: result.name }))
+  return { id: result.id, ...result }
 }) as any)
 
 // Update Position
@@ -177,15 +184,30 @@ const updatePositionRoute = createRoute({
 
 positionPermissionsRoutes.openapi(updatePositionRoute, createRouteHandler(async (c: any) => {
   if (!hasPermission(c, 'system', 'position', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
-  const id = c.req.param('id') as any
+    throw Errors.FORBIDDEN()
+  }
+  const id = c.req.param('id')
   if (!id) {
-      throw Errors.VALIDATION_ERROR('Position ID is required')}
-  const body = c.req.valid('json') as any
+    throw Errors.VALIDATION_ERROR('Position ID is required')
+  }
+  const body = c.req.valid('json')
 
-  // TODO: Implement updatePosition in PositionService
-  throw Errors.BUSINESS_ERROR('updatePosition not implemented yet')
+  await c.var.services.position.updatePosition(id, {
+    code: body.code,
+    name: body.name,
+    level: body.level,
+    functionRole: body.functionRole ?? body.function_role,
+    canManageSubordinates: body.canManageSubordinates ?? body.can_manage_subordinates,
+    description: body.description,
+    permissions: typeof body.permissions === 'string' ? body.permissions : JSON.stringify(body.permissions),
+    sortOrder: body.sortOrder ?? body.sort_order,
+    active: body.active,
+  })
+
+  logAuditAction(c, 'update', 'position', id, JSON.stringify({ code: body.code, name: body.name }))
+  const updated = await c.var.services.position.getPositions()
+  const position = updated.find((p: any) => p.id === id)
+  return position || { id }
 }) as any)
 
 // Delete Position
@@ -216,12 +238,14 @@ const deletePositionRoute = createRoute({
 
 positionPermissionsRoutes.openapi(deletePositionRoute, createRouteHandler(async (c: any) => {
   if (!hasPermission(c, 'system', 'position', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
-  const id = c.req.param('id') as any
+    throw Errors.FORBIDDEN()
+  }
+  const id = c.req.param('id')
   if (!id) {
-      throw Errors.VALIDATION_ERROR('Position ID is required')}
+    throw Errors.VALIDATION_ERROR('Position ID is required')
+  }
 
-  // TODO: Implement deletePosition in PositionService
-  throw Errors.BUSINESS_ERROR('deletePosition not implemented yet')
+  const result = await c.var.services.position.deletePosition(id)
+  logAuditAction(c, 'delete', 'position', id, JSON.stringify({ name: result.name }))
+  return { success: true }
 }) as any)

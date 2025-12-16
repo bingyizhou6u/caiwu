@@ -3,6 +3,7 @@ import type { Env, AppVariables } from '../../types.js'
 import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
@@ -147,7 +148,7 @@ employeeSalariesRoutes.openapi(
         employeeName: result.employeeName,
       }
     } catch {
-      console.error('Failed to create salary')
+      Logger.error('Failed to create salary', {}, c as any)
       throw Errors.INTERNAL_ERROR('Failed to create salary')
     }
   }) as any
@@ -213,7 +214,7 @@ employeeSalariesRoutes.openapi(
 
       return { results }
     } catch {
-      console.error('Failed to batch update salaries')
+      Logger.error('Failed to batch update salaries', {}, c as any)
       throw Errors.INTERNAL_ERROR('Failed to batch update salaries')
     }
   }) as any

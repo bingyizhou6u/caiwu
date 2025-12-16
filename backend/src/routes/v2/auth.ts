@@ -3,6 +3,7 @@ import { deleteCookie, getCookie } from 'hono/cookie'
 import type { Env, AppVariables } from '../../types.js'
 import { loginSchema } from '../../schemas/business.schema.js'
 import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
 import {
   AUTH_COOKIE_NAME,
   AUTH_TOKEN_TTL,
@@ -117,7 +118,7 @@ async function handleLogin(c: Context<{ Bindings: Env; Variables: AppVariables }
                 )
               }
             } catch (emailError) {
-              console.error('Failed to send login notification email:', emailError)
+              Logger.error('Failed to send login notification email', { error: emailError }, c)
             }
           })()
         )
@@ -203,7 +204,7 @@ authRoutes.openapi(logoutRoute, createRouteHandler(async c => {
       const payload = await verifyAuthToken(token, c.env.AUTH_JWT_SECRET)
       await authService.logout(payload.sid)
     } catch (error) {
-      console.warn('Failed to logout session:', error)
+      Logger.warn('Failed to logout session', { error }, c)
     }
   }
 
@@ -242,7 +243,7 @@ async function handleGetMe(c: Context<{ Bindings: Env; Variables: AppVariables }
   try {
     payload = await verifyAuthToken(token, c.env.AUTH_JWT_SECRET)
   } catch (error) {
-    console.warn('Token decode failed:', error)
+    Logger.warn('Token decode failed', { error }, c)
     return jsonResponse(c, apiSuccess({ user: null }))
   }
 

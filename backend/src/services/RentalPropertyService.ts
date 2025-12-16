@@ -59,7 +59,9 @@ export class RentalPropertyService {
       .where(eq(rentalProperties.id, id))
       .get()
 
-    if (!property) {throw Errors.NOT_FOUND('物业')}
+    if (!property) {
+      throw Errors.NOT_FOUND('物业')
+    }
 
     // 并行获取相关数据
     const [changes] = await Promise.all([
@@ -111,7 +113,9 @@ export class RentalPropertyService {
       .from(rentalProperties)
       .where(eq(rentalProperties.propertyCode, data.propertyCode))
       .get()
-    if (existing) {throw Errors.DUPLICATE('物业代码')}
+    if (existing) {
+      throw Errors.DUPLICATE('物业代码')
+    }
 
     const id = uuid()
     const now = Date.now()
@@ -160,7 +164,9 @@ export class RentalPropertyService {
       .from(rentalProperties)
       .where(eq(rentalProperties.id, id))
       .get()
-    if (!existing) {throw Errors.NOT_FOUND('物业')}
+    if (!existing) {
+      throw Errors.NOT_FOUND('物业')
+    }
 
     const now = Date.now()
     await this.db
@@ -210,15 +216,18 @@ export class RentalPropertyService {
       .from(rentalProperties)
       .where(eq(rentalProperties.id, id))
       .get()
-    if (!property) {throw Errors.NOT_FOUND('物业')}
+    if (!property) {
+      throw Errors.NOT_FOUND('物业')
+    }
 
     const paymentCount = await this.db
       .select({ count: sql<number>`count(*)` })
       .from(schema.rentalPayments)
       .where(eq(schema.rentalPayments.propertyId, id))
       .get()
-    if (paymentCount && paymentCount.count > 0)
-      {throw Errors.BUSINESS_ERROR('无法删除，该物业还有付款记录')}
+    if (paymentCount && paymentCount.count > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该物业还有付款记录')
+    }
 
     await this.db.transaction(async tx => {
       await tx.delete(rentalChanges).where(eq(rentalChanges.propertyId, id)).execute()

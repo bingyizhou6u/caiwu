@@ -203,7 +203,9 @@ export class FixedAssetService {
       .from(fixedAssets)
       .where(eq(fixedAssets.assetCode, data.assetCode))
       .get()
-    if (existing) {throw Errors.DUPLICATE('资产代码')}
+    if (existing) {
+      throw Errors.DUPLICATE('资产代码')
+    }
 
     const id = uuid()
     const now = Date.now()
@@ -241,7 +243,9 @@ export class FixedAssetService {
     }
   ) {
     const existing = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
-    if (!existing) {throw Errors.NOT_FOUND()}
+    if (!existing) {
+      throw Errors.NOT_FOUND()
+    }
 
     const now = Date.now()
     await this.db
@@ -283,7 +287,9 @@ export class FixedAssetService {
 
   async delete(id: string) {
     const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
-    if (!asset) {throw Errors.NOT_FOUND()}
+    if (!asset) {
+      throw Errors.NOT_FOUND()
+    }
 
     const depCount = await this.db
       .select({ count: sql<number>`count(*)` })
@@ -328,16 +334,24 @@ export class FixedAssetService {
       .from(fixedAssets)
       .where(eq(fixedAssets.assetCode, data.assetCode))
       .get()
-    if (existing) {throw Errors.DUPLICATE('资产代码')}
+    if (existing) {
+      throw Errors.DUPLICATE('资产代码')
+    }
 
     const account = await this.db
       .select()
       .from(accounts)
       .where(eq(accounts.id, data.accountId))
       .get()
-    if (!account) {throw Errors.NOT_FOUND('账户')}
-    if (account.active === 0) {throw Errors.BUSINESS_ERROR('账户已停用')}
-    if (account.currency !== data.currency) {throw Errors.BUSINESS_ERROR('账户币种不匹配')}
+    if (!account) {
+      throw Errors.NOT_FOUND('账户')
+    }
+    if (account.active === 0) {
+      throw Errors.BUSINESS_ERROR('账户已停用')
+    }
+    if (account.currency !== data.currency) {
+      throw Errors.BUSINESS_ERROR('账户币种不匹配')
+    }
 
     const assetId = uuid()
     const flowId = uuid()
@@ -469,7 +483,9 @@ export class FixedAssetService {
     }
   ) {
     const asset = await this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get()
-    if (!asset) {throw Errors.NOT_FOUND('asset')}
+    if (!asset) {
+      throw Errors.NOT_FOUND('asset')
+    }
 
     if (asset.status === 'sold') {
       throw Errors.BUSINESS_ERROR('资产已出售')
@@ -480,9 +496,15 @@ export class FixedAssetService {
       .from(accounts)
       .where(eq(accounts.id, data.accountId))
       .get()
-    if (!account) {throw Errors.NOT_FOUND('账户')}
-    if (account.active === 0) {throw Errors.BUSINESS_ERROR('账户已停用')}
-    if (account.currency !== data.currency) {throw Errors.BUSINESS_ERROR('账户币种不匹配')}
+    if (!account) {
+      throw Errors.NOT_FOUND('账户')
+    }
+    if (account.active === 0) {
+      throw Errors.BUSINESS_ERROR('账户已停用')
+    }
+    if (account.currency !== data.currency) {
+      throw Errors.BUSINESS_ERROR('账户币种不匹配')
+    }
 
     const flowId = uuid()
     const transactionId = uuid()

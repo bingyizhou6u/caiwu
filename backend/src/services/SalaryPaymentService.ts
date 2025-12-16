@@ -13,6 +13,7 @@ import {
 } from '../db/schema.js'
 import { eq, and, sql, inArray, desc } from 'drizzle-orm'
 import { Errors } from '../utils/errors.js'
+import { Logger } from '../utils/logger.js'
 import { salaryPaymentStateMachine } from '../utils/state-machine.js'
 import { validateVersion, incrementVersion } from '../utils/optimistic-lock.js'
 import type { OperationHistoryService } from './OperationHistoryService.js'
@@ -163,7 +164,7 @@ export class SalaryPaymentService {
           beforeData,
           { status: 'pending_finance_approval' }
         )
-        .catch(err => console.error('Failed to record operation history:', err))
+        .catch(err => Logger.error('Failed to record operation history', { error: err }))
     }
 
     return this.get(id)
@@ -228,7 +229,7 @@ export class SalaryPaymentService {
           beforeData,
           { status: 'pending_payment' }
         )
-        .catch(err => console.error('Failed to record operation history:', err))
+        .catch(err => Logger.error('Failed to record operation history', { error: err }))
     }
 
     return this.get(id)
@@ -316,7 +317,7 @@ export class SalaryPaymentService {
           { status: targetStatus },
           reason
         )
-        .catch(err => console.error('Failed to record operation history:', err))
+        .catch(err => Logger.error('Failed to record operation history', { error: err }))
     }
 
     return this.get(id)

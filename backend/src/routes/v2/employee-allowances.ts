@@ -3,6 +3,7 @@ import type { Env, AppVariables } from '../../types.js'
 import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
@@ -149,8 +150,8 @@ employeeAllowancesRoutes.openapi(
         currencyName: result.currencyName,
         employeeName: result.employeeName,
       }
-    } catch {
-      console.error('Failed to create allowance')
+    } catch (error: any) {
+      Logger.error('Failed to create allowance', { error: error?.message }, c as any)
       throw Errors.INTERNAL_ERROR('Failed to create allowance')
     }
   }) as any
@@ -195,7 +196,7 @@ employeeAllowancesRoutes.openapi(
     try {
       const rows = await c.var.services.allowance.batchUpdate(
         body.employeeId,
-        body.allowanceType ?? (body as any).allowance_type,
+        body.allowanceType ?? (body as { allowance_type?: string }).allowance_type,
         (body.allowances || []).map((s: any) => ({
           currencyId: s.currencyId,
           amountCents: s.amountCents,
@@ -216,7 +217,7 @@ employeeAllowancesRoutes.openapi(
 
       return { results }
     } catch {
-      console.error('Failed to batch update allowances')
+      Logger.error('Failed to batch update allowances', {}, c as any)
       throw Errors.INTERNAL_ERROR('Failed to batch update allowances')
     }
   }) as any

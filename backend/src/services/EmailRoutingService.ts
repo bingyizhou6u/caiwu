@@ -3,6 +3,8 @@
  * 用于管理员工邮箱路由
  */
 
+import { Logger } from '../utils/logger.js'
+
 interface EmailRoutingEnv {
   CF_ACCOUNT_ID: string
   CF_ZONE_ID: string
@@ -102,10 +104,10 @@ export class EmailRoutingService {
       }
 
       const errorMsg = result?.errors?.[0]?.message || `HTTP ${resp.status}`
-      console.error('[EmailRouting] ensureDestinationAddress failed:', errorMsg)
+      Logger.error('[EmailRouting] ensureDestinationAddress failed', { error: errorMsg })
       return { success: false, error: errorMsg }
     } catch (error: any) {
-      console.error('[EmailRouting] ensureDestinationAddress error:', error)
+      Logger.error('[EmailRouting] ensureDestinationAddress error', { error })
       return { success: false, error: error?.message || 'unknown error' }
     }
   }
@@ -154,14 +156,14 @@ export class EmailRoutingService {
       const result = (await response.json()) as any
 
       if (result.success) {
-        console.log(`[EmailRouting] Created rule for ${companyEmail} -> ${personalEmail}`)
+        Logger.info(`[EmailRouting] Created rule for ${companyEmail} -> ${personalEmail}`)
         return { success: true, ruleId: result.result.id }
       } else {
-        console.error('[EmailRouting] Failed to create rule:', result.errors)
+        Logger.error('[EmailRouting] Failed to create rule', { errors: result.errors })
         return { success: false, error: result.errors?.[0]?.message || 'Unknown error' }
       }
     } catch (error: any) {
-      console.error('[EmailRouting] Error creating rule:', error)
+      Logger.error('[EmailRouting] Error creating rule', { error })
       return { success: false, error: error.message }
     }
   }
@@ -184,7 +186,7 @@ export class EmailRoutingService {
       const result = (await response.json()) as any
       return result.success
     } catch (error) {
-      console.error('[EmailRouting] Error deleting rule:', error)
+      Logger.error('[EmailRouting] Error deleting rule', { error })
       return false
     }
   }
@@ -210,7 +212,7 @@ export class EmailRoutingService {
       }
       return []
     } catch (error) {
-      console.error('[EmailRouting] Error listing rules:', error)
+      Logger.error('[EmailRouting] Error listing rules', { error })
       return []
     }
   }

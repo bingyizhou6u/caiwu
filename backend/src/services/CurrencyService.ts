@@ -28,7 +28,9 @@ export class CurrencyService {
   async createCurrency(data: { code: string; name: string }) {
     const code = data.code.toUpperCase()
     const existing = await this.db.query.currencies.findFirst({ where: eq(currencies.code, code) })
-    if (existing) {throw Errors.DUPLICATE('币种代码')}
+    if (existing) {
+      throw Errors.DUPLICATE('币种代码')
+    }
 
     await this.db
       .insert(currencies)
@@ -59,10 +61,14 @@ export class CurrencyService {
     const currency = await this.db.query.currencies.findFirst({
       where: eq(currencies.code, codeUpper),
     })
-    if (!currency) {throw Errors.NOT_FOUND('币种')}
+    if (!currency) {
+      throw Errors.NOT_FOUND('币种')
+    }
 
     const accountCount = await this.db.$count(accounts, eq(accounts.currency, codeUpper))
-    if (accountCount > 0) {throw Errors.BUSINESS_ERROR('无法删除，该币种还有账户使用')}
+    if (accountCount > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该币种还有账户使用')
+    }
 
     await this.db.delete(currencies).where(eq(currencies.code, codeUpper)).execute()
     return { ok: true, name: currency.name }
