@@ -15,8 +15,11 @@ import {
   currencies,
 } from '../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
-import { AnnualLeaveService } from './AnnualLeaveService.js'
+import { AnnualLeaveService } from '../hr/AnnualLeaveService.js'
 import { Logger } from '../utils/logger.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class BusinessReportService {
   constructor(
@@ -64,7 +67,12 @@ export class BusinessReportService {
       deptQuery = deptQuery.where(inArray(departments.id, departmentIds))
     }
 
-    const rows = await deptQuery.groupBy(departments.id, departments.name).orderBy(departments.name).all()
+    const rows = await query(
+      this.db,
+      'BusinessReportService.getDepartmentCashFlowReport.getRows',
+      () => deptQuery.groupBy(departments.id, departments.name).orderBy(departments.name).all(),
+      undefined
+    )
 
     const result = rows.map(r => ({
       departmentId: r.id,
@@ -194,24 +202,31 @@ export class BusinessReportService {
       return { rows: [] }
     }
 
-    const rows = await this.db
-      .select({
-        site_id: sites.id,
-        site_name: sites.name,
-        income_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='income' then ${cashFlows.amountCents} end), 0)`,
-      })
-      .from(sites)
-      .leftJoin(
-        cashFlows,
-        and(
-          eq(cashFlows.siteId, sites.id),
-          gte(cashFlows.bizDate, start),
-          lte(cashFlows.bizDate, end)
+    const rows = await query(
+      this.db,
+      'BusinessReportService.getSiteGrowthReport.getRows',
+      () => this.db
+        .select({
+          site_id: sites.id,
+          site_name: sites.name,
+          income_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='income' then ${cashFlows.amountCents} end), 0)`,
+        })
+        .from(sites)
+        .leftJoin(
+          cashFlows,
+          and(
+            eq(cashFlows.siteId, sites.id),
+            gte(cashFlows.bizDate, start),
+            lte(cashFlows.bizDate, end)
+          )
         )
-      )
-      .where(inArray(sites.id, newSiteIds))
-      .groupBy(sites.id, sites.name)
-      .all()
+        .where(inArray(sites.id, newSiteIds))
+        .groupBy(sites.id, sites.name)
+        .all(),
+      undefined
+    ),
+      undefined
+    )
 
     return {
       rows: rows.map(r => ({
@@ -302,35 +317,16 @@ export class BusinessReportService {
     if (empIds.length > 0) {
       // 检查 effectiveDate 字段是否存在（兼容旧数据库）
       try {
-        allSalaries = await this.db
-          .select({
-            employeeId: employeeSalaries.employeeId,
-            salaryType: employeeSalaries.salaryType,
-            currencyId: employeeSalaries.currencyId,
-            amountCents: employeeSalaries.amountCents,
-            effectiveDate: employeeSalaries.effectiveDate,
-            currencyCode: currencies.code,
-          })
-          .from(employeeSalaries)
-          .leftJoin(currencies, eq(currencies.code, employeeSalaries.currencyId))
-          .where(inArray(employeeSalaries.employeeId, empIds))
-          .orderBy(
-            employeeSalaries.employeeId,
-            employeeSalaries.effectiveDate,
-            sql`case when ${currencies.code} = 'USDT' then 0 else 1 end`,
-            currencies.code
-          )
-          .all()
-      } catch (error: any) {
-        // 如果 effectiveDate 字段不存在，使用简化查询
-        if (error?.message?.includes('effective_date') || error?.message?.includes('no such column')) {
-          allSalaries = await this.db
+        allSalaries = await query(
+          this.db,
+          'BusinessReportService.getEmployeeSalaryReport.getSalaries',
+          () => this.db
             .select({
               employeeId: employeeSalaries.employeeId,
               salaryType: employeeSalaries.salaryType,
               currencyId: employeeSalaries.currencyId,
               amountCents: employeeSalaries.amountCents,
-              effectiveDate: sql<string | null>`NULL`.as('effectiveDate'),
+              effectiveDate: employeeSalaries.effectiveDate,
               currencyCode: currencies.code,
             })
             .from(employeeSalaries)
@@ -338,10 +334,39 @@ export class BusinessReportService {
             .where(inArray(employeeSalaries.employeeId, empIds))
             .orderBy(
               employeeSalaries.employeeId,
+              employeeSalaries.effectiveDate,
               sql`case when ${currencies.code} = 'USDT' then 0 else 1 end`,
               currencies.code
             )
-            .all()
+            .all(),
+          undefined
+        )
+      } catch (error: any) {
+        // 如果 effectiveDate 字段不存在，使用简化查询
+        if (error?.message?.includes('effective_date') || error?.message?.includes('no such column')) {
+          allSalaries = await query(
+            this.db,
+            'BusinessReportService.getEmployeeSalaryReport.getSalariesFallback',
+            () => this.db
+              .select({
+                employeeId: employeeSalaries.employeeId,
+                salaryType: employeeSalaries.salaryType,
+                currencyId: employeeSalaries.currencyId,
+                amountCents: employeeSalaries.amountCents,
+                effectiveDate: sql<string | null>`NULL`.as('effectiveDate'),
+                currencyCode: currencies.code,
+              })
+              .from(employeeSalaries)
+              .leftJoin(currencies, eq(currencies.code, employeeSalaries.currencyId))
+              .where(inArray(employeeSalaries.employeeId, empIds))
+              .orderBy(
+                employeeSalaries.employeeId,
+                sql`case when ${currencies.code} = 'USDT' then 0 else 1 end`,
+                currencies.code
+              )
+              .all(),
+            undefined
+          )
         } else {
           throw error
         }

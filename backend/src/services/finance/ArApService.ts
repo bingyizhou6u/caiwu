@@ -4,7 +4,7 @@ import { arApDocs, settlements, sites, accounts, cashFlows } from '../db/schema.
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
 import { FinanceService } from './FinanceService.js'
-import { query } from '../utils/query-helpers.js'
+import { query, getByIds } from '../utils/query-helpers.js'
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 
@@ -53,22 +53,30 @@ export class ArApService {
 
     const [settlementsList, sitesList] = await Promise.all([
       docIds.length > 0
-        ? this.db
-            .select({
-              docId: settlements.docId,
-              sumSettle: sql<number>`sum(${settlements.settleAmountCents})`,
-            })
-            .from(settlements)
-            .where(inArray(settlements.docId, docIds))
-            .groupBy(settlements.docId)
-            .execute()
+        ? query(
+            this.db,
+            'ArApService.list.getSettlements',
+            () => this.db
+              .select({
+                docId: settlements.docId,
+                sumSettle: sql<number>`sum(${settlements.settleAmountCents})`,
+              })
+              .from(settlements)
+              .where(inArray(settlements.docId, docIds))
+              .groupBy(settlements.docId)
+              .all(),
+            undefined
+          )
         : [],
       siteIds.size > 0
-        ? this.db
-            .select()
-            .from(sites)
-            .where(inArray(sites.id, Array.from(siteIds)))
-            .execute()
+        ? getByIds(
+            this.db,
+            sites,
+            Array.from(siteIds),
+            'ArApService.list.getSites',
+            { batchSize: 100, parallel: true },
+            undefined
+          )
         : [],
     ])
 

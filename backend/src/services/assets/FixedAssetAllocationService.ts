@@ -77,17 +77,20 @@ export class FixedAssetAllocationService {
     const empMap = QueryBuilder.createMaps(relatedData.employees)
     const userMap = QueryBuilder.createMaps(relatedData.employees) // createdBy 也是员工
 
-    // 获取员工的部门
+    // 获取员工的部门 - 使用批量查询优化
     const deptIds = new Set(
       relatedData.employees.map(e => e.departmentId).filter(Boolean) as string[]
     )
     const depts =
       deptIds.size > 0
-        ? await this.db
-            .select()
-            .from(departments)
-            .where(inArray(departments.id, Array.from(deptIds)))
-            .execute()
+        ? await getByIds(
+            this.db,
+            departments,
+            Array.from(deptIds),
+            'FixedAssetAllocationService.list.getDepartments',
+            { batchSize: 100, parallel: true },
+            undefined
+          )
         : []
     const deptMap = QueryBuilder.createMaps(depts)
 

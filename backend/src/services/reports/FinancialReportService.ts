@@ -18,6 +18,9 @@ import {
 } from '../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
 import { Logger } from '../utils/logger.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class FinancialReportService {
   constructor(
@@ -207,26 +210,36 @@ export class FinancialReportService {
       .groupBy(schema.openingBalances.refId)
       .all()
 
-    const priorFlows = await this.db
-      .select({
-        account_id: cashFlows.accountId,
-        prior_net: sql<number>`coalesce(sum(case when ${cashFlows.type}='income' then ${cashFlows.amountCents} when ${cashFlows.type}='expense' then -${cashFlows.amountCents} else 0 end), 0)`,
-      })
-      .from(cashFlows)
-      .where(and(inArray(cashFlows.accountId, accountIds), sql`${cashFlows.bizDate} < ${asOf}`))
-      .groupBy(cashFlows.accountId)
-      .all()
+    const priorFlows = await query(
+      this.db,
+      'FinancialReportService.getAccountBalanceReport.getPriorFlows',
+      () => this.db
+        .select({
+          account_id: cashFlows.accountId,
+          prior_net: sql<number>`coalesce(sum(case when ${cashFlows.type}='income' then ${cashFlows.amountCents} when ${cashFlows.type}='expense' then -${cashFlows.amountCents} else 0 end), 0)`,
+        })
+        .from(cashFlows)
+        .where(and(inArray(cashFlows.accountId, accountIds), sql`${cashFlows.bizDate} < ${asOf}`))
+        .groupBy(cashFlows.accountId)
+        .all(),
+      undefined
+    )
 
-    const periodFlows = await this.db
-      .select({
-        account_id: cashFlows.accountId,
-        income_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='income' then ${cashFlows.amountCents} else 0 end), 0)`,
-        expense_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='expense' then ${cashFlows.amountCents} else 0 end), 0)`,
-      })
-      .from(cashFlows)
-      .where(and(inArray(cashFlows.accountId, accountIds), eq(cashFlows.bizDate, asOf)))
-      .groupBy(cashFlows.accountId)
-      .all()
+    const periodFlows = await query(
+      this.db,
+      'FinancialReportService.getAccountBalanceReport.getPeriodFlows',
+      () => this.db
+        .select({
+          account_id: cashFlows.accountId,
+          income_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='income' then ${cashFlows.amountCents} else 0 end), 0)`,
+          expense_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='expense' then ${cashFlows.amountCents} else 0 end), 0)`,
+        })
+        .from(cashFlows)
+        .where(and(inArray(cashFlows.accountId, accountIds), eq(cashFlows.bizDate, asOf)))
+        .groupBy(cashFlows.accountId)
+        .all(),
+      undefined
+    )
 
     const obMap = new Map(openingBalances.map(r => [r.account_id, r.ob]))
     const priorMap = new Map(priorFlows.map(r => [r.account_id, r.prior_net]))
@@ -325,12 +338,17 @@ export class FinancialReportService {
     let repaymentRows: any[] = []
 
     if (borrowingIds.length > 0) {
-      repaymentRows = await this.db
-        .select()
-        .from(repayments)
-        .where(inArray(repayments.borrowingId, borrowingIds))
-        .orderBy(desc(repayments.createdAt))
-        .all()
+      repaymentRows = await query(
+        this.db,
+        'FinancialReportService.getBorrowingReport.getRepayments',
+        () => this.db
+          .select()
+          .from(repayments)
+          .where(inArray(repayments.borrowingId, borrowingIds))
+          .orderBy(desc(repayments.createdAt))
+          .all(),
+        undefined
+      )
     }
 
     const user = await this.db

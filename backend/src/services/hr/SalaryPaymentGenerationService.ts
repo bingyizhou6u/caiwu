@@ -70,25 +70,30 @@ export class SalaryPaymentGenerationService {
         return { created: 0, ids: [] }
       }
 
-      // 3. 批量获取薪资和请假记录
+      // 3. 批量获取薪资和请假记录 - 添加性能监控
       const processIds = employeesToProcess.map(e => e.id)
-      const allSalaries = await tx
-        .select({
-          employeeId: employeeSalaries.employeeId,
-          salaryType: employeeSalaries.salaryType,
-          currencyId: employeeSalaries.currencyId,
-          amountCents: employeeSalaries.amountCents,
-          currencyCode: currencies.code,
-        })
-        .from(employeeSalaries)
-        .leftJoin(currencies, eq(currencies.code, employeeSalaries.currencyId))
-        .where(inArray(employeeSalaries.employeeId, processIds))
-        .orderBy(
-          employeeSalaries.employeeId,
-          sql`case when ${currencies.code} = 'USDT' then 0 else 1 end`,
-          currencies.code
-        )
-        .all()
+      const allSalaries = await query(
+        tx as any,
+        'SalaryPaymentGenerationService.generate.getSalaries',
+        () => tx
+          .select({
+            employeeId: employeeSalaries.employeeId,
+            salaryType: employeeSalaries.salaryType,
+            currencyId: employeeSalaries.currencyId,
+            amountCents: employeeSalaries.amountCents,
+            currencyCode: currencies.code,
+          })
+          .from(employeeSalaries)
+          .leftJoin(currencies, eq(currencies.code, employeeSalaries.currencyId))
+          .where(inArray(employeeSalaries.employeeId, processIds))
+          .orderBy(
+            employeeSalaries.employeeId,
+            sql`case when ${currencies.code} = 'USDT' then 0 else 1 end`,
+            currencies.code
+          )
+          .all(),
+        undefined
+      )
 
       const daysInMonth = new Date(year, month, 0).getDate()
       const monthStart = `${year}-${String(month).padStart(2, '0')}-01`

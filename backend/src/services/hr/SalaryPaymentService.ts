@@ -16,8 +16,11 @@ import { Errors } from '../utils/errors.js'
 import { Logger } from '../utils/logger.js'
 import { salaryPaymentStateMachine } from '../utils/state-machine.js'
 import { validateVersion, incrementVersion } from '../utils/optimistic-lock.js'
-import type { OperationHistoryService } from './OperationHistoryService.js'
+import type { OperationHistoryService } from '../system/OperationHistoryService.js'
 import { QueryBuilder } from '../utils/query-builder.js'
+import { query } from '../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../types.js'
 
 export class SalaryPaymentService {
   constructor(
@@ -56,15 +59,20 @@ export class SalaryPaymentService {
       .orderBy(desc(salaryPayments.year), desc(salaryPayments.month))
       .all()
 
-    // 获取分配情况
+    // 获取分配情况 - 添加性能监控
     const paymentIds = payments.map((p: any) => p.payment.id)
     let allocations: any[] = []
     if (paymentIds.length > 0) {
-      allocations = await this.db
-        .select()
-        .from(salaryPaymentAllocations)
-        .where(inArray(salaryPaymentAllocations.salaryPaymentId, paymentIds))
-        .all()
+      allocations = await query(
+        this.db,
+        'SalaryPaymentService.list.getAllocations',
+        () => this.db
+          .select()
+          .from(salaryPaymentAllocations)
+          .where(inArray(salaryPaymentAllocations.salaryPaymentId, paymentIds))
+          .all(),
+        undefined
+      )
     }
 
     const allocationsMap = new Map()
