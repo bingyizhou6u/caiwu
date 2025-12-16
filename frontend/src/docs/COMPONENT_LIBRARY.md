@@ -328,18 +328,7 @@ import { FormModal } from '@/components/FormModal'
 
 ### MultiTabs
 
-多标签页组件（用于页面内标签切换）。
-
-```tsx
-import { MultiTabs } from '@/components/MultiTabs'
-
-<MultiTabs
-  items={[
-    { key: 'tab1', label: '标签1', children: <div>内容1</div> },
-    { key: 'tab2', label: '标签2', children: <div>内容2</div> },
-  ]}
-/>
-```
+~~多标签页组件（已移除）~~ - 该组件已被移除，如需多标签功能请使用 Ant Design 的 Tabs 组件。
 
 ## 最佳实践
 

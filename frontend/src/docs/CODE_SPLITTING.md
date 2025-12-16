@@ -207,7 +207,7 @@ export default defineConfig({
 ✅ **推荐**：所有 lazy 组件都应该有 Suspense fallback
 
 ```tsx
-<Suspense fallback={<SkeletonLoading />}>
+<Suspense fallback={<Spin size="large" />}>
   <LazyComponent />
 </Suspense>
 ```

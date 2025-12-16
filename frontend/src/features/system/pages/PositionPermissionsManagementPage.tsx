@@ -4,7 +4,7 @@ import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { DataTable, PageToolbar } from '../../../components/common'
 import type { DataTableColumn } from '../../../components/common/DataTable'
-import { ActionColumn } from '../../../components/ActionColumn'
+// ActionColumn removed - using DataTable's built-in onEdit instead
 import { FormModal } from '../../../components/FormModal'
 import { usePositions, useUpdatePosition, useFormModal } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
@@ -383,19 +383,7 @@ export function PositionPermissionsManagement() {
         )
       )
     },
-    {
-      title: '操作',
-      width: 100,
-      render: (_: any, record: Position) => (
-        <ActionColumn
-          record={record}
-          canEdit={canEdit}
-          canDelete={false}
-          onEdit={() => modal.openEdit(record)}
-          editText="编辑权限"
-        />
-      )
-    }
+    // 操作列由 DataTable 的 onEdit 属性处理
   ]
 
   return (
@@ -420,6 +408,9 @@ export function PositionPermissionsManagement() {
           loading={isLoading}
           rowKey="id"
           pagination={{ pageSize: 20 }}
+          onEdit={canEdit ? (record) => modal.openEdit(record) : undefined}
+          showActions={canEdit}
+          actionColumnTitle="操作"
           tableProps={{
             className: 'table-striped',
             scroll: { x: 1100 },
