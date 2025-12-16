@@ -54,6 +54,23 @@
     transform: translate3d(0, 0, 0);
 }
 
+.sider-hover-overlay .ant-menu,
+.sider-hover-overlay .ant-menu * {
+    /* overlay 模式优先保证流畅，禁用我们自定义的“all”过渡，避免大量节点同时 transition */
+    transition: none !important;
+}
+
+.sider-hover-overlay .ant-menu-dark .ant-menu-item:hover,
+.sider-hover-overlay .ant-menu-dark .ant-menu-submenu-title:hover {
+    /* 保留轻量 hover 反馈（不做 transform） */
+    background: rgba(96, 165, 250, 0.12) !important;
+}
+
+.sider-hover-overlay .ant-menu-dark .ant-menu-item:hover .anticon,
+.sider-hover-overlay .ant-menu-dark .ant-menu-submenu-title:hover .anticon {
+    transform: none !important;
+}
+
 .sider-hover-overlay .ant-layout-sider-children {
     overflow-y: auto;
     overflow-x: hidden;

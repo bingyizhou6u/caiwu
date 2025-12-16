@@ -201,10 +201,12 @@ export function MainLayout() {
         })
     }
 
+    // 原始菜单（不带预加载包装），用于 hover overlay，减少事件/DOM 开销
+    const baseMenuItems = useMemo(() => buildMenuItems(userInfo), [userInfo])
+
     const menuItems = useMemo(() => {
-        const items = buildMenuItems(userInfo)
-        return wrapMenuItemsWithPreload(items)
-    }, [userInfo])
+        return wrapMenuItemsWithPreload(baseMenuItems)
+    }, [baseMenuItems])
 
     return (
         <Layout className="main-layout">
@@ -252,9 +254,8 @@ export function MainLayout() {
                         theme="dark"
                         mode="inline"
                         selectedKeys={[selectedKey]}
-                        openKeys={openKeys}
-                        onOpenChange={onOpenChange}
-                        items={menuItems}
+                        // overlay 使用非受控 openKeys，避免每次展开触发 React 状态更新导致卡顿
+                        items={baseMenuItems}
                         onClick={onMenuClick}
                         inlineCollapsed={false}
                         getPopupContainer={(node) => node.parentElement || document.body}
