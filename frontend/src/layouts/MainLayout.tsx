@@ -5,7 +5,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH } from '../config/menu'
-// MultiTabs and GlobalSearch removed - not actively used
+import { MultiTabs } from '../components/MultiTabs'
 import { preloadRoute } from '../router'
 import './MainLayout.css'
 
@@ -194,6 +194,7 @@ export function MainLayout() {
                         </Dropdown>
                     </div>
                 </Header>
+                <MultiTabs />
                 <Content className="main-content">
                     <div className="content-wrapper">
                         <Outlet />
