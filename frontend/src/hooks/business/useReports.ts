@@ -353,7 +353,7 @@ export interface AccountBalanceResponse {
 
 export function useAccountBalance(params: { asOf: string }) {
   const queryParams = new URLSearchParams()
-  queryParams.append('as_of', params.asOf)
+  queryParams.append('asOf', params.asOf)
 
   return useApiQuery<AccountBalanceResponse>(
     ['reports', 'accountBalance', params],
