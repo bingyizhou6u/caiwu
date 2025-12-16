@@ -13,10 +13,12 @@ function QuickDateRangePicker({
   value,
   onChange,
   allowClear = true,
+  showTime = false,
 }: {
   value?: [Dayjs, Dayjs] | null
   onChange?: (value: [Dayjs, Dayjs] | null) => void
   allowClear?: boolean
+  showTime?: boolean
 }) {
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(value || null)
 
@@ -74,8 +76,9 @@ function QuickDateRangePicker({
         value={range}
         onChange={handleChange}
         allowClear={allowClear}
-        format="YYYY-MM-DD"
-        style={{ width: 240 }}
+        showTime={showTime}
+        format={showTime ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'}
+        style={{ width: showTime ? 380 : 240 }}
       />
       <Button size="small" onClick={() => quickSelect('today')}>今天</Button>
       <Button size="small" onClick={() => quickSelect('thisWeek')}>本周</Button>
@@ -101,6 +104,8 @@ export interface SearchFilterField {
   precision?: number
   /** dateRange 类型专用：是否显示快捷选择按钮 */
   showQuickSelect?: boolean
+  /** dateRange/date 类型专用：是否显示时分秒 */
+  showTime?: boolean
 }
 
 export interface SearchFiltersProps {
@@ -127,6 +132,12 @@ export function SearchFilters({
     // 清理空值
     const cleanedValues: Record<string, string | number | string[] | undefined> = {}
     
+    // 获取字段配置的 showTime
+    const getFieldShowTime = (name: string) => {
+      const field = fields.find(f => f.name === name)
+      return field?.showTime
+    }
+    
     Object.keys(values).forEach((key) => {
       const value = values[key]
       
@@ -139,15 +150,17 @@ export function SearchFilters({
       if (Array.isArray(value) && value.length === 2) {
         const [start, end] = value as [Dayjs, Dayjs]
         if (dayjs.isDayjs(start) && dayjs.isDayjs(end)) {
-          cleanedValues[`${key}Start`] = start.format('YYYY-MM-DD')
-          cleanedValues[`${key}End`] = end.format('YYYY-MM-DD')
+          const format = getFieldShowTime(key) ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'
+          cleanedValues[`${key}Start`] = start.format(format)
+          cleanedValues[`${key}End`] = end.format(format)
           return
         }
       }
       
       // 处理单个日期
       if (dayjs.isDayjs(value)) {
-        cleanedValues[key] = value.format('YYYY-MM-DD')
+        const format = getFieldShowTime(key) ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'
+        cleanedValues[key] = value.format(format)
         return
       }
       
@@ -215,12 +228,16 @@ export function SearchFilters({
         return (
           <Form.Item {...commonProps}>
             {field.showQuickSelect ? (
-              <QuickDateRangePicker allowClear={field.allowClear !== false} />
+              <QuickDateRangePicker
+                allowClear={field.allowClear !== false}
+                showTime={field.showTime}
+              />
             ) : (
               <DatePicker.RangePicker
                 allowClear={field.allowClear !== false}
-                format="YYYY-MM-DD"
-                style={{ width: 240 }}
+                showTime={field.showTime}
+                format={field.showTime ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'}
+                style={{ width: field.showTime ? 380 : 240 }}
               />
             )}
           </Form.Item>
