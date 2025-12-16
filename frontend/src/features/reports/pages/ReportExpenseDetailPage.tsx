@@ -1,24 +1,24 @@
-import React, { useState } from 'react'
-import { Card, Button, Space, Select } from 'antd'
-import dayjs, { Dayjs } from 'dayjs'
-import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
+import React, { useState, useMemo } from 'react'
+import { Card } from 'antd'
+import dayjs from 'dayjs'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { useExpenseDetail, useExpenseCategories } from '../../../hooks'
-import { withErrorHandler } from '../../../utils/errorHandler'
 import type { SelectOption } from '../../../types/business'
 import type { ExpenseDetailResponse } from '../../../hooks/business/useReports'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportExpenseDetail() {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>()
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
-  const start = range[0].format('YYYY-MM-DD')
-  const end = range[1].format('YYYY-MM-DD')
+  const [searchParams, setSearchParams] = useState<{ start: string; end: string; categoryId?: string }>({
+    start: dayjs().startOf('month').format('YYYY-MM-DD'),
+    end: dayjs().format('YYYY-MM-DD'),
+  })
 
-  const { data, isLoading, refetch } = useExpenseDetail({ start, end, categoryId: selectedCategoryId })
+  const { data, isLoading } = useExpenseDetail(searchParams)
   const { data: categoriesData = [] } = useExpenseCategories()
+  
   // 确保 categories 始终是数组
-  const categories = React.useMemo(() => {
+  const categories = useMemo(() => {
     if (!Array.isArray(categoriesData)) return []
     return categoriesData.map((c: SelectOption) => ({ 
       value: c.value, 
@@ -28,14 +28,12 @@ export function ReportExpenseDetail() {
 
   const rows: ExpenseDetailResponse['rows'] = data?.rows || []
 
-  const handleQuery = withErrorHandler(
-    async () => {
-      await refetch()
-    },
-    {
-      errorMessage: '日常支出明细失败',
-    }
-  )
+  const handleSearch = (values: Record<string, string | number | string[] | undefined>) => {
+    const start = (values.dateRangeStart as string) || dayjs().startOf('month').format('YYYY-MM-DD')
+    const end = (values.dateRangeEnd as string) || dayjs().format('YYYY-MM-DD')
+    const categoryId = values.categoryId as string | undefined
+    setSearchParams({ start, end, categoryId })
+  }
 
   return (
     <PageContainer
@@ -43,26 +41,27 @@ export function ReportExpenseDetail() {
       breadcrumb={[{ title: '报表中心' }, { title: '日常支出明细' }]}
     >
       <Card bordered={false} className="page-card">
-        <PageToolbar
-          actions={[
+        <SearchFilters
+          fields={[
             {
-              label: '查询',
-              type: 'primary',
-              onClick: handleQuery
-            }
+              name: 'dateRange',
+              label: '日期范围',
+              type: 'dateRange',
+              showQuickSelect: true,
+            },
+            {
+              name: 'categoryId',
+              label: '类别',
+              type: 'select',
+              options: categories,
+              allowClear: true,
+            },
           ]}
-          wrap
-        >
-          <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          <Select
-            style={{ width: 200 }}
-            placeholder="筛选类别"
-            allowClear
-            options={categories}
-            value={selectedCategoryId}
-            onChange={(v) => setSelectedCategoryId(v)}
-          />
-        </PageToolbar>
+          onSearch={handleSearch}
+          initialValues={{
+            dateRange: [dayjs().startOf('month'), dayjs()],
+          }}
+        />
         <DataTable<ExpenseDetailResponse['rows'][number]>
           columns={[
             { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo' },

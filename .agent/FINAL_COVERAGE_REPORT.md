@@ -26,7 +26,7 @@
 | 组件名 | 使用次数 | 覆盖率 | 目标 | 状态 |
 |--------|---------|--------|------|------|
 | **StatusTag** | 32+ | **48%** | 50% | ✅ 接近目标 |
-| **SearchFilters** | 28+ | **42%** | 55% | ✅ 良好 |
+| **SearchFilters** | 30+ | **45%** | 55% | ✅ 良好 |
 | **EmptyText** | 51+ | **76%** | 50% | ✅ 超额完成 |
 | **SensitiveField** | 19+ | **28%** | 15% | ✅ 超额完成 |
 
@@ -65,9 +65,10 @@
 ### Phase 3: SearchFilters 推广 ✅
 
 #### Task 3.1: 推广 SearchFilters 到所有列表页面
-- **完成页面**: FixedAssetAllocationPage, ReportARDetailPage, ReportAPDetailPage, ReportDepartmentCashPage, ReportSiteGrowthPage
-- **替换统计**: SearchFilters 5+ 处
+- **完成页面**: FixedAssetAllocationPage, ReportARDetailPage, ReportAPDetailPage, ReportDepartmentCashPage, ReportSiteGrowthPage, ReportExpenseDetailPage, ReportExpenseSummaryPage
+- **替换统计**: SearchFilters 7+ 处
 - **说明**: 其他页面（AccountTransactionsPage、FlowsPage、FixedAssetsManagementPage、FixedAssetSalePage、SiteBillsPage、VendorManagementPage、ReportARSummaryPage、ReportAPSummaryPage、ReportEmployeeSalaryPage 等）已经使用了 SearchFilters
+- **重要成果**: 所有使用 DateRangePicker 的报表页面已全部替换为 SearchFilters
 
 ### Phase 4: SensitiveField 推广 ✅
 
@@ -114,7 +115,7 @@
 - ✅ EmptyText 覆盖率: 34% → 76% (目标: 50%，超额完成)
 
 ### ⚠️ 接近目标
-- ✅ SearchFilters 覆盖率: 39% → 42% (目标: 55%，良好进展)
+- ✅ SearchFilters 覆盖率: 39% → 45% (目标: 55%，良好进展)
 
 ---
 
@@ -155,7 +156,7 @@
 - **总计**: 63+ 处组件替换和优化
 - **Form 组件**: 37+ 处
 - **StatusTag**: 5+ 处
-- **SearchFilters**: 5+ 处
+- **SearchFilters**: 7+ 处
 - **SensitiveField**: 4+ 处
 - **EmptyText**: 15+ 处
 
@@ -182,8 +183,9 @@
    - 当前覆盖率: 48% (目标: 50%+)
 
 2. **继续推广 SearchFilters** ✅ 已完成
-   - ✅ 已完成: ReportARDetailPage, ReportAPDetailPage, ReportDepartmentCashPage, ReportSiteGrowthPage
-   - 当前覆盖率: 42% (目标: 55%+)
+   - ✅ 已完成: ReportARDetailPage, ReportAPDetailPage, ReportDepartmentCashPage, ReportSiteGrowthPage, ReportExpenseDetailPage, ReportExpenseSummaryPage
+   - **重要成果**: 所有使用 DateRangePicker 的报表页面已全部替换为 SearchFilters
+   - 当前覆盖率: 45% (目标: 55%+)
 
 3. **优化 Form 组件使用**
    - 检查模态框中的金额输入
