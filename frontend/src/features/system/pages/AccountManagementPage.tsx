@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useState } from 'react'
 import { Card, Button, Form, Input, Select, Space, message, Switch, Popconfirm } from 'antd'
+import { CurrencySelect } from '../../../components/form'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
@@ -299,7 +300,7 @@ export function AccountManagement() {
             <Select options={TYPE_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencyOptions} showSearch optionFilterProp="label" placeholder="选择币种" />
+            <CurrencySelect placeholder="选择币种" />
           </Form.Item>
           <Form.Item name="manager" label="管理人员">
             <Input placeholder="可选，填写管理人员姓名" />
@@ -329,7 +330,7 @@ export function AccountManagement() {
             <Select options={TYPE_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencyOptions} showSearch optionFilterProp="label" placeholder="选择币种" />
+            <CurrencySelect placeholder="选择币种" />
           </Form.Item>
           <Form.Item name="manager" label="管理人员">
             <Input placeholder="可选，填写管理人员姓名" />

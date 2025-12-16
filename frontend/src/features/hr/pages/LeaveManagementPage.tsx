@@ -1,4 +1,5 @@
 import { Card, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, DatePicker, InputNumber } from 'antd'
+import { EmployeeSelect } from '../../../components/form'
 import { ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
@@ -474,13 +475,7 @@ export function LeaveManagement() {
               name="employeeId"
               label="员工"
             >
-              <Select placeholder="请选择员工" showSearch optionFilterProp="children">
-                {employees.map((emp) => (
-                  <Option key={emp.id} value={emp.id}>
-                    {emp.name} ({emp.departmentName})
-                  </Option>
-                ))}
-              </Select>
+              <EmployeeSelect placeholder="请选择员工" />
             </Form.Item>
             {renderFormFields()}
           </Form>

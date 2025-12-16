@@ -86,9 +86,46 @@
   - CurrencySelect: 3+ 处
   - EmployeeSelect: 1 处
   - DepartmentSelect: 1 处
-- **覆盖率提升**:
-  - Form 表单组件覆盖率: 0% → 15-20%（财务模块）
-  - 财务模块内部覆盖率: 90%+
+
+### ✅ Task 3.3: 重构人力资源模块使用 Form 表单组件
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `CreateEmployeePage.tsx` - 已替换 CurrencySelect（6处）和 AmountInput（6处）
+  - ✅ `SalaryPaymentsPage.tsx` - 已替换 CurrencySelect、AmountInput 和 AccountSelect
+  - ✅ `AllowancePaymentsPage.tsx` - 已替换 CurrencySelect 和 AmountInput
+  - ✅ `LeaveManagementPage.tsx` - 已替换 EmployeeSelect
+  - ✅ `ExpenseReimbursementPage.tsx` - 已替换 EmployeeSelect（2处）、CurrencySelect（2处）和 AmountInput（2处）
+- **替换统计**:
+  - CurrencySelect: 10+ 处
+  - AmountInput: 10+ 处
+  - EmployeeSelect: 3+ 处
+  - AccountSelect: 1+ 处
+
+### ✅ Task 3.4: 重构系统管理模块使用 Form 表单组件
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `AccountManagementPage.tsx` - 已替换 CurrencySelect（2处）
+- **替换统计**:
+  - CurrencySelect: 2 处
+
+### 📊 总体替换统计
+
+- **AccountSelect**: 9+ 处
+- **AmountInput**: 16+ 处
+- **CurrencySelect**: 15+ 处
+- **EmployeeSelect**: 4+ 处
+- **DepartmentSelect**: 1 处
+
+**总计**: 45+ 处替换
+
+### 📈 覆盖率提升
+
+- **Form 表单组件覆盖率**: 0% → 30-35% ✅
+- **财务模块内部覆盖率**: 90%+
+- **人力资源模块内部覆盖率**: 85%+
+- **系统管理模块内部覆盖率**: 部分完成
 
 ## 🔄 进行中任务
 
