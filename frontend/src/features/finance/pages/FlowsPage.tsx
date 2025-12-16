@@ -1,20 +1,17 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Popconfirm, Card } from 'antd'
-import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button, Modal, Space, message, Upload, Card } from 'antd'
+import { UploadOutlined, EyeOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../../config/api'
 import { isSupportedImageType, uploadImageAsWebP } from '../../../utils/image'
-import { useFlows, useCreateFlow, useUpdateFlowVoucher } from '../../../hooks'
+import { useFlows, useUpdateFlowVoucher } from '../../../hooks'
 import { useBatchDeleteFlow } from '../../../hooks/business/useFlows'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
-import { DeleteOutlined } from '@ant-design/icons'
-import { useDepartments, useAccounts, useAllCategories, useSites } from '../../../hooks/useBusinessData'
-import { useZodForm } from '../../../hooks/forms/useZodForm'
+import { useAccounts, useAllCategories } from '../../../hooks/useBusinessData'
 import { useMultipleModals } from '../../../hooks/forms/useFormModal'
-import { createFlowSchema } from '../../../validations/flow.schema'
-import { withErrorHandler } from '../../../utils/errorHandler'
 import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar, BatchActionButton } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { Flow } from '../../../types/business'
@@ -28,33 +25,21 @@ const TYPE_LABELS: Record<string, string> = {
   adjust: '调整',
 }
 
-interface FlowsProps {
-  autoCreate?: boolean
-}
-
-export function Flows({ autoCreate }: FlowsProps) {
+export function Flows() {
+  const navigate = useNavigate()
+  
   // 权限
   const { hasPermission, isManager: _isManager } = usePermissions()
+  const canCreate = hasPermission('finance', 'flow', 'create')
   const canDelete = hasPermission('finance', 'flow', 'delete') || _isManager()
 
   // 模态框
-  const modals = useMultipleModals(['create', 'voucherUpload', 'preview'])
-  
-  // 自动打开新建模态框
-  useEffect(() => {
-    if (autoCreate) {
-      modals.open('create')
-    }
-  }, [autoCreate])
+  const modals = useMultipleModals(['voucherUpload', 'preview'])
   const [searchParams, setSearchParams] = useState<{ type?: string; accountId?: string; categoryId?: string; dateRangeStart?: string; dateRangeEnd?: string }>({})
 
-  const { form, validateWithZod } = useZodForm(createFlowSchema)
-
   // 数据 Hook
-  const { data: departments = [] } = useDepartments()
   const { data: accounts = [] } = useAccounts()
   const { data: allCategories = [] } = useAllCategories()
-  const { data: sites = [] } = useSites()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
 
@@ -62,7 +47,6 @@ export function Flows({ autoCreate }: FlowsProps) {
   const flows = flowsData?.list || []
   const total = flowsData?.total || 0
 
-  const { mutateAsync: createFlow, isPending: isCreating } = useCreateFlow()
   const { mutateAsync: updateVoucher, isPending: isUpdatingVoucher } = useUpdateFlowVoucher()
   const { mutateAsync: batchDeleteFlow } = useBatchDeleteFlow()
 
@@ -81,14 +65,6 @@ export function Flows({ autoCreate }: FlowsProps) {
     }
   )
 
-  // 本地状态
-  const [categories, setCategories] = useState<{ value: string, label: string, kind: string }[]>([])
-  const [selectedType, setSelectedType] = useState<string>('income')
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>()
-  const [uploading, setUploading] = useState(false)
-  const [fileList, setFileList] = useState<UploadFile[]>([])
-  const [voucherUrls, setVoucherUrls] = useState<string[]>([])
-
   // 预览状态
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [previewIndex, setPreviewIndex] = useState(0)
@@ -98,78 +74,28 @@ export function Flows({ autoCreate }: FlowsProps) {
   const [voucherUploadUrls, setVoucherUploadUrls] = useState<string[]>([])
   const [voucherUploading, setVoucherUploading] = useState(false)
 
-  // 处理函数
-  const onCreate = withErrorHandler(
-    async () => {
-      if (voucherUrls.length === 0) {
-        message.error('请至少上传一张凭证')
-        return
-      }
-      const values = await validateWithZod()
+  const onUpdateVoucher = async () => {
+    if (voucherUploadUrls.length === 0) {
+      message.error('请至少上传一张凭证')
+      return
+    }
+    const currentFlow = modals.getData('voucherUpload')
+    if (!currentFlow) return
 
-      // 根据选择的项目判断 owner_scope
-      const selectedDept = Array.isArray(departments) ? departments.find((d: any) => d.value === values.departmentId) : null
-      const ownerScope = selectedDept?.label === '总部' ? 'hq' : 'department'
-      
-      await createFlow({
-        ...values,
-        bizDate: values.bizDate.format('YYYY-MM-DD HH:mm:ss'),
-        amountCents: Math.round(values.amount * 100),
-        owner_scope: ownerScope,
-        voucherUrls: voucherUrls
-      })
-
-      modals.close('create')
-      form.resetFields()
-      setFileList([])
-      setVoucherUrls([])
-      refetch()
-    },
-    { successMessage: '已新增' }
-  )
-
-  const onUpdateVoucher = withErrorHandler(
-    async () => {
-      if (voucherUploadUrls.length === 0) {
-        message.error('请至少上传一张凭证')
-        return
-      }
-      const currentFlow = modals.getData('voucherUpload')
-      if (!currentFlow) return
-
+    try {
       await updateVoucher({
         id: currentFlow.id,
         voucherUrls: voucherUploadUrls
       })
-
+      message.success('凭证更新成功')
       modals.close('voucherUpload')
       setVoucherUploadUrls([])
       setVoucherUploadFileList([])
       refetch()
-    },
-    { successMessage: '凭证更新成功' }
-  )
-
-  // 副作用
-  useEffect(() => {
-    form.setFieldValue('voucherUrls', voucherUrls)
-  }, [voucherUrls, form])
-
-  useEffect(() => {
-    if (modals.isOpen('create') && allCategories.length > 0) {
-      if (selectedType === 'income') {
-        setCategories(allCategories.filter((c: any) => c.kind === 'income'))
-      } else {
-        const type = form.getFieldValue('type') || 'income'
-        setSelectedType(type)
-        if (type === 'income' || type === 'expense') {
-          setCategories(allCategories.filter((c: any) => c.kind === type))
-        } else {
-          setCategories(allCategories)
-        }
-      }
+    } catch (error: any) {
+      message.error('凭证更新失败: ' + (error.message || '未知错误'))
     }
-  }, [modals.isOpen('create'), allCategories, selectedType, form])
+  }
 
   const showPreview = (urls: string[], index: number = 0) => {
     setPreviewUrls(urls)
@@ -177,32 +103,10 @@ export function Flows({ autoCreate }: FlowsProps) {
     modals.open('preview')
   }
 
-  const handleUpload = async (file: File) => {
-    setUploading(true)
-    try {
-      if (!isSupportedImageType(file)) {
-        message.error('只允许上传图片格式（JPEG、PNG、GIF、WebP）')
-        setUploading(false)
-        return false
-      }
-
-      const url = await uploadImageAsWebP(file, api.upload.voucher)
-      setVoucherUrls([...voucherUrls, url])
-      message.success('凭证上传成功（已转换为WebP格式）')
-      setUploading(false)
-      return false
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误'
-      message.error('上传失败: ' + errorMessage)
-      setUploading(false)
-      return false
-    }
-  }
-
   return (
     <PageContainer
-      title={autoCreate ? '新建记账' : '收支明细'}
-      breadcrumb={[{ title: '财务管理' }, { title: autoCreate ? '新建记账' : '收支明细' }]}
+      title="收支明细"
+      breadcrumb={[{ title: '财务管理' }, { title: '收支明细' }]}
     >
       <Card bordered={false} className="page-card">
         <SearchFilters
@@ -261,17 +165,12 @@ export function Flows({ autoCreate }: FlowsProps) {
 
         <PageToolbar
           actions={[
-            {
+            ...(canCreate ? [{
               label: '新建记账',
-              type: 'primary',
-              onClick: () => {
-                modals.open('create')
-                setSelectedType('income')
-                setCategories(allCategories.filter((c: any) => c.kind === 'income'))
-                form.resetFields()
-                form.setFieldsValue({ type: 'income', bizDate: dayjs(), method: 'cash' })
-              }
-            },
+              type: 'primary' as const,
+              icon: <PlusOutlined />,
+              onClick: () => navigate('/finance/flows/create')
+            }] : []),
             {
               label: '刷新',
               onClick: () => refetch()
@@ -378,143 +277,6 @@ export function Flows({ autoCreate }: FlowsProps) {
             />
           )
         })()}
-
-        <Modal title="新建记账" open={modals.isOpen('create')} onOk={onCreate} confirmLoading={isCreating} onCancel={() => {
-          modals.close('create')
-          setSelectedType('income')
-          setSelectedDepartmentId(undefined)
-          setFileList([])
-          setVoucherUrls([])
-          form.resetFields()
-        }} destroyOnClose>
-          <Form form={form} layout="vertical">
-            <Form.Item name="bizDate" label="日期时间" rules={[{ required: true, message: '请选择日期时间' }]}>
-              <DatePicker 
-                showTime={{ format: 'HH:mm:ss' }}
-                format="YYYY-MM-DD HH:mm:ss"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item name="voucherUrls" hidden>
-              <Input />
-            </Form.Item>
-            <Form.Item name="departmentId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>
-              <Select
-                placeholder="请选择归属项目"
-                options={Array.isArray(departments) ? departments : []}
-                onChange={(value) => {
-                  setSelectedDepartmentId(value)
-                  form.setFieldsValue({ siteId: undefined })
-                }}
-              />
-            </Form.Item>
-            <Form.Item name="siteId" label="站点（可选）">
-              <Select
-                placeholder="请选择站点"
-                options={Array.isArray(sites) ? sites
-                  .filter((s: any) => !selectedDepartmentId || s.departmentId === selectedDepartmentId)
-                  .map((s: any) => ({ value: s.value, label: s.label })) : []}
-                allowClear
-                onChange={(value) => {
-                  if (value) {
-                    const site = Array.isArray(sites) ? sites.find((s: any) => s.value === value) : undefined
-                    if (site) {
-                      form.setFieldsValue({ departmentId: site.departmentId })
-                      setSelectedDepartmentId(site.departmentId)
-                    }
-                  }
-                }}
-              />
-            </Form.Item>
-            <Form.Item name="type" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
-              <Select
-                options={[
-                  { value: 'income', label: '收入' },
-                  { value: 'expense', label: '支出' },
-                  { value: 'transfer', label: '转账' },
-                  { value: 'adjust', label: '调整' },
-                ]}
-                onChange={(value) => {
-                  setSelectedType(value)
-                  if (value === 'income') {
-                    setCategories(allCategories.filter((c: any) => c.kind === 'income'))
-                  } else if (value === 'expense') {
-                    setCategories(allCategories.filter((c: any) => c.kind === 'expense'))
-                  } else {
-                    setCategories(allCategories)
-                  }
-                  form.setFieldValue('categoryId', undefined)
-                }}
-              />
-            </Form.Item>
-            <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>
-              <InputNumber min={0.01} step={0.01} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]}>
-              <Select
-                showSearch
-                placeholder="选择账户"
-                options={Array.isArray(accounts) ? accounts : []}
-                filterOption={(input, option) => (option?.search || '').includes(input.toLowerCase())}
-              />
-            </Form.Item>
-            <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
-              <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" showSearch optionFilterProp="label" />
-            </Form.Item>
-            <Form.Item name="counterparty" label="对方">
-              <Input />
-            </Form.Item>
-            <Form.Item name="memo" label="备注">
-              <Input />
-            </Form.Item>
-            <Form.Item
-              label="凭证"
-              required
-              help={voucherUrls.length > 0 ? `已上传 ${voucherUrls.length} 张凭证（已转换为WebP格式）` : '请上传图片文件（JPEG、PNG、GIF），系统会自动转换为WebP格式，可上传多张'}
-            >
-              <Upload
-                beforeUpload={handleUpload}
-                fileList={fileList}
-                onChange={({ fileList }) => setFileList(fileList)}
-                multiple
-                accept="image/*"
-              >
-                <Button icon={<UploadOutlined />} loading={uploading}>上传凭证</Button>
-              </Upload>
-              {voucherUrls.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ marginBottom: 8 }}>
-                    {voucherUrls.map((url, index) => (
-                      <span key={index} style={{ marginRight: 8 }}>
-                        <Button
-                          size="small"
-                          icon={<EyeOutlined />}
-                          onClick={() => showPreview(voucherUrls, index)}
-                        >
-                          查看 {index + 1}
-                        </Button>
-                        <Button
-                          size="small"
-                          danger
-                          style={{ marginLeft: 4 }}
-                          onClick={() => {
-                            setVoucherUrls(voucherUrls.filter((_, i) => i !== index))
-                            setFileList(fileList.filter((_, i) => i !== index))
-                          }}
-                        >
-                          删除
-                        </Button>
-                      </span>
-                    ))}
-                  </div>
-                  <Button size="small" onClick={() => showPreview(voucherUrls, 0)}>
-                    查看所有凭证 ({voucherUrls.length})
-                  </Button>
-                </div>
-              )}
-            </Form.Item>
-          </Form>
-        </Modal>
 
         {/* 补充/重新上传凭证模态框 */}
         <Modal

@@ -19,6 +19,7 @@ const loaders: Record<string, () => Promise<any>> = {
 
     // Finance
     'finance/flows': () => import('../features/finance/pages/FlowsPage').then(m => ({ default: m.Flows })),
+    'finance/flows/create': () => import('../features/finance/pages/FlowCreatePage').then(m => ({ default: m.FlowCreate })),
     'finance/transfer': () => import('../features/finance/pages/AccountTransferPage').then(m => ({ default: m.AccountTransfer })),
     'finance/transactions': () => import('../features/finance/pages/AccountTransactionsPage').then(m => ({ default: m.AccountTransactions })),
     'finance/import': () => import('../features/finance/pages/ImportCenterPage').then(m => ({ default: m.ImportCenter })),
@@ -88,6 +89,7 @@ const AuditLogs = lazy(loaders['system/audit'])
 
 // Finance
 const Flows = lazy(loaders['finance/flows'])
+const FlowCreate = lazy(loaders['finance/flows/create'])
 const AccountTransfer = lazy(loaders['finance/transfer'])
 const AccountTransactions = lazy(loaders['finance/transactions'])
 const ImportCenter = lazy(loaders['finance/import'])
@@ -199,7 +201,7 @@ export const router = createBrowserRouter([
 
             // Finance
             { path: 'finance/flows', element: <Suspense fallback={<Loading />}><Flows /></Suspense> },
-            { path: 'finance/flows/create', element: <Suspense fallback={<Loading />}><Flows autoCreate /></Suspense> },
+            { path: 'finance/flows/create', element: <Suspense fallback={<Loading />}><FlowCreate /></Suspense> },
             { path: 'finance/transfer', element: <Suspense fallback={<Loading />}><AccountTransfer /></Suspense> },
             { path: 'finance/transactions', element: <Suspense fallback={<Loading />}><AccountTransactions /></Suspense> },
             { path: 'finance/import', element: <Suspense fallback={<Loading />}><ImportCenter /></Suspense> },
