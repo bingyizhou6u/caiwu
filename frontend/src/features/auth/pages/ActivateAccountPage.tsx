@@ -44,13 +44,15 @@ export function ActivateAccount() {
     const verifyToken = async (t: string) => {
         try {
             const res = await fetch(`${api.auth.verifyActivation}?token=${t}`)
-            const data = await res.json()
+            const json = await res.json()
+            // V2 API 响应格式: { success: true, data: { valid: true, email: "..." } }
+            const data = json.data || json
             if (res.ok && data.valid) {
                 setValid(true)
                 setEmail(data.email)
             } else {
                 setValid(false)
-                setErrorMsg(data.error?.message || data.message || '激活链接无效或已过期')
+                setErrorMsg(json.error?.message || json.message || '激活链接无效或已过期')
             }
         } catch (error) {
             console.error('Verify error:', error)
@@ -71,7 +73,9 @@ export function ActivateAccount() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
             })
-            const data = await res.json()
+            const json = await res.json()
+            // V2 API 响应格式: { success: true, data: { secret: "...", qrCode: "..." } }
+            const data = json.data || json
 
             if (data.secret && data.qrCode) {
                 setTotpData(data)
@@ -101,9 +105,11 @@ export function ActivateAccount() {
                     password: pwd
                 })
             })
-            const data = await res.json()
+            const json = await res.json()
+            // V2 API 响应格式: { success: true, data: { ok: true, user: {...}, token: "..." } }
+            const data = json.data || json
 
-            if (res.ok && data.ok) {
+            if (res.ok && (data.ok || json.success)) {
                 setUserInfo(data.user)
                 setToken(data.token)
                 message.success('账号激活成功！正在跳转...')
@@ -111,7 +117,7 @@ export function ActivateAccount() {
                     navigate('/dashboard')
                 }, 1500)
             } else {
-                const msg = data.error || '激活失败，请联系管理员'
+                const msg = json.error?.message || json.message || data.error || '激活失败，请联系管理员'
                 message.error(msg)
             }
         } catch (error) {
@@ -135,9 +141,11 @@ export function ActivateAccount() {
                     totpCode: values.totpCode
                 })
             })
-            const data = await res.json()
+            const json = await res.json()
+            // V2 API 响应格式: { success: true, data: { ok: true, user: {...}, token: "..." } }
+            const data = json.data || json
 
-            if (res.ok && data.ok) {
+            if (res.ok && (data.ok || json.success)) {
                 setUserInfo(data.user)
                 setToken(data.token)
                 message.success('账号激活成功！正在跳转...')
@@ -145,7 +153,7 @@ export function ActivateAccount() {
                     navigate('/dashboard')
                 }, 1500)
             } else {
-                const msg = data.error || '激活失败，请联系管理员'
+                const msg = json.error?.message || json.message || data.error || '激活失败，请联系管理员'
                 message.error(msg)
             }
         } catch (error) {

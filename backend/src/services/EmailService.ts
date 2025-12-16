@@ -400,7 +400,7 @@ export class EmailService {
       days?: number
       memo?: string
     }
-  }): Promise<void> {
+  }): Promise<{ success: boolean; error?: string }> {
     const { to, applicantName, type, typeLabel, status, approverName, details } = data
 
     const statusText = status === 'approved' ? '已批准' : '已拒绝'
