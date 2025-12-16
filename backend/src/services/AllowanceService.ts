@@ -3,6 +3,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { employees } from '../db/schema.js'
 import * as schema from '../db/schema.js'
 import { v4 as uuid } from 'uuid'
+import { Logger } from '../utils/logger.js'
 
 export class AllowanceService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
@@ -168,7 +169,7 @@ export class AllowanceService {
         .orderBy(schema.currencies.code)
         .execute()
     } catch (e) {
-      console.error('batchUpdate allowances error:', e)
+      Logger.error('batchUpdate allowances error', { error: e })
       throw e
     }
   }

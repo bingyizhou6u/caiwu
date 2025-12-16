@@ -3,6 +3,7 @@ import * as schema from '../db/schema.js'
 import { eq, and, desc, inArray } from 'drizzle-orm'
 import { businessOperationHistory, employees } from '../db/schema.js'
 import { uuid } from '../utils/db.js'
+import { Logger } from '../utils/logger.js'
 
 export class OperationHistoryService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
@@ -30,7 +31,7 @@ export class OperationHistoryService {
       operatorName = operator?.name || null
     } catch (error) {
       // 忽略错误，继续记录
-      console.warn('Failed to get operator name:', error)
+      Logger.warn('Failed to get operator name', { error })
     }
 
     await this.db.insert(businessOperationHistory).values({

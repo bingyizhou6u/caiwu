@@ -790,7 +790,7 @@ export class EmployeeService {
     try {
       permissions = JSON.parse(result.permissions || '{}')
     } catch (err) {
-      console.error('Failed to parse permissions JSON:', err)
+      Logger.error('Failed to parse permissions JSON', { error: err })
     }
 
     return {

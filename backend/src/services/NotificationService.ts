@@ -3,6 +3,7 @@ import * as schema from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { EmailService } from './EmailService.js'
 import { SystemConfigService } from './SystemConfigService.js'
+import { Logger } from '../utils/logger.js'
 
 export class NotificationService {
   constructor(
@@ -30,19 +31,19 @@ export class NotificationService {
       // 获取申请人和申请详情
       const application = await this.getApplication(type, id)
       if (!application) {
-        console.warn(`Application not found: ${type} ${id}`)
+        Logger.warn(`Application not found: ${type} ${id}`)
         return
       }
 
       const applicant = await this.getEmployee(application.employeeId)
       if (!applicant || !applicant.email) {
-        console.warn(`Applicant not found or no email: ${application.employeeId}`)
+        Logger.warn(`Applicant not found or no email: ${application.employeeId}`)
         return
       }
 
       const approver = await this.getEmployee(approverId)
       if (!approver) {
-        console.warn(`Approver not found: ${approverId}`)
+        Logger.warn(`Approver not found: ${approverId}`)
         return
       }
 
@@ -69,7 +70,7 @@ export class NotificationService {
       })
     } catch (error: any) {
       // 通知失败不应影响审批流程，仅记录错误
-      console.error('Failed to send approval notification:', error)
+      Logger.error('Failed to send approval notification', { error })
     }
   }
 

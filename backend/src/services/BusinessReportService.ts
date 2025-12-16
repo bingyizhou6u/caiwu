@@ -16,6 +16,7 @@ import {
 } from '../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
 import { AnnualLeaveService } from './AnnualLeaveService.js'
+import { Logger } from '../utils/logger.js'
 
 export class BusinessReportService {
   constructor(
@@ -33,7 +34,7 @@ export class BusinessReportService {
         return cached
       }
     } catch (e) {
-      console.warn('Cache read failed', e)
+      Logger.warn('Cache read failed', { error: e })
     }
 
     const conditions = [gte(cashFlows.bizDate, start), lte(cashFlows.bizDate, end)]
@@ -78,7 +79,7 @@ export class BusinessReportService {
     try {
       await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 300 })
     } catch (e) {
-      console.warn('Cache write failed', e)
+      Logger.warn('Cache write failed', { error: e })
     }
 
     return result
@@ -235,7 +236,7 @@ export class BusinessReportService {
           return cached
         }
       } catch (e) {
-        console.warn('Cache read failed for salary report:', e)
+        Logger.warn('Cache read failed for salary report', { error: e })
       }
     }
 
@@ -486,7 +487,7 @@ export class BusinessReportService {
       try {
         await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 3600 })
       } catch (e) {
-        console.warn('Cache write failed for salary report:', e)
+        Logger.warn('Cache write failed for salary report', { error: e })
       }
     }
 

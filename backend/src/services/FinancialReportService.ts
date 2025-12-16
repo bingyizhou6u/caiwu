@@ -17,6 +17,7 @@ import {
   employees,
 } from '../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
+import { Logger } from '../utils/logger.js'
 
 export class FinancialReportService {
   constructor(
@@ -170,7 +171,7 @@ export class FinancialReportService {
         return cached
       }
     } catch (e) {
-      console.warn('Cache read failed', e)
+      Logger.warn('Cache read failed', { error: e })
     }
 
     const activeAccounts = await this.db
@@ -258,7 +259,7 @@ export class FinancialReportService {
     try {
       await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 })
     } catch (e) {
-      console.warn('Cache write failed', e)
+      Logger.warn('Cache write failed', { error: e })
     }
 
     return result

@@ -3,6 +3,7 @@ import { eq, and, lt } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import * as schema from '../db/schema.js'
 import { trustedDevices } from '../db/schema.js'
+import { Logger } from '../utils/logger.js'
 
 // 设备信任有效期：90天（毫秒）
 const DEVICE_TRUST_TTL = 90 * 24 * 60 * 60 * 1000
@@ -91,7 +92,7 @@ export class TrustedDeviceService {
     } catch (error: any) {
       // 忽略唯一约束冲突（设备已存在）
       if (error.message?.includes('UNIQUE constraint failed')) {
-        console.log('Device already trusted')
+        Logger.info('Device already trusted')
         return
       }
       throw error

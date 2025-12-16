@@ -15,6 +15,7 @@ import {
   categories,
 } from '../db/schema.js'
 import { sql, eq, and, gte, lte, desc } from 'drizzle-orm'
+import { Logger } from '../utils/logger.js'
 
 export class DashboardReportService {
   constructor(
@@ -32,7 +33,7 @@ export class DashboardReportService {
         return cached
       }
     } catch (e) {
-      console.warn('Cache read failed', e)
+      Logger.warn('Cache read failed', { error: e })
     }
 
     const today = new Date().toISOString().slice(0, 10)
@@ -182,7 +183,7 @@ export class DashboardReportService {
     try {
       await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 300 })
     } catch (e) {
-      console.warn('Cache write failed', e)
+      Logger.warn('Cache write failed', { error: e })
     }
 
     return result
