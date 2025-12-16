@@ -19,6 +19,7 @@ import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar,
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { Flow } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
+import { usePermissions } from '../../../utils/permissions'
 
 const TYPE_LABELS: Record<string, string> = {
   income: '收入',
@@ -28,6 +29,10 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 export function Flows() {
+  // 权限
+  const { hasPermission, isManager: _isManager } = usePermissions()
+  const canDelete = hasPermission('finance', 'flow', 'delete') || _isManager()
+
   // 模态框
   const modals = useMultipleModals(['create', 'voucherUpload', 'preview'])
   const [searchParams, setSearchParams] = useState<{ type?: string; accountId?: string; categoryId?: string; dateRangeStart?: string; dateRangeEnd?: string }>({})
