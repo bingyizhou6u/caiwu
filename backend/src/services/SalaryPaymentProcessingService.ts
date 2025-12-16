@@ -14,6 +14,7 @@ import {
 import { eq, and, sql, inArray } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
+import { Logger } from '../utils/logger.js'
 import { salaryPaymentStateMachine } from '../utils/state-machine.js'
 import { validateVersion, incrementVersion } from '../utils/optimistic-lock.js'
 import type { OperationHistoryService } from './OperationHistoryService.js'
@@ -104,7 +105,7 @@ export class SalaryPaymentProcessingService {
           beforeData,
           { status: 'pending_payment_confirmation', accountId }
         )
-        .catch(err => console.error('Failed to record operation history:', err))
+        .catch(err => Logger.error('Failed to record operation history', { error: err }))
     }
 
     // 返回完整信息
@@ -165,7 +166,7 @@ export class SalaryPaymentProcessingService {
           beforeData,
           { status: 'completed', paymentVoucherPath: voucherPath }
         )
-        .catch(err => console.error('Failed to record operation history:', err))
+        .catch(err => Logger.error('Failed to record operation history', { error: err }))
     }
 
     // 返回完整信息
@@ -205,7 +206,7 @@ export class SalaryPaymentProcessingService {
           // 如果没有提供汇率，尝试从系统配置获取
           // 简化实现：如果没有汇率，使用默认值 1（实际应该从配置获取）
           exchangeRate = 1
-          console.warn(`No exchange rate provided for ${alloc.currencyId}, using default 1`)
+          Logger.warn(`No exchange rate provided for ${alloc.currencyId}, using default 1`)
         }
         // 将其他币种转换为基准币种
         const amountInBase = Math.round(alloc.amountCents * exchangeRate)

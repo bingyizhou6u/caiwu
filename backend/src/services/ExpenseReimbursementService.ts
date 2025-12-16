@@ -147,9 +147,13 @@ export class ExpenseReimbursementService {
       .from(expenseReimbursements)
       .where(eq(expenseReimbursements.id, id))
       .get()
-    if (!reimbursement) {throw Errors.NOT_FOUND('报销单')}
+    if (!reimbursement) {
+      throw Errors.NOT_FOUND('报销单')
+    }
 
-    if (reimbursement.status !== 'approved') {throw Errors.BUSINESS_ERROR('报销单未审批通过或已支付')}
+    if (reimbursement.status !== 'approved') {
+      throw Errors.BUSINESS_ERROR('报销单未审批通过或已支付')
+    }
 
     await this.db
       .update(expenseReimbursements)

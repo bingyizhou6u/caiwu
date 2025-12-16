@@ -4,9 +4,10 @@
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
-import { positions, orgDepartments, departments } from '../db/schema.js'
+import { positions, orgDepartments, departments, employees } from '../db/schema.js'
 import { eq, and, or } from 'drizzle-orm'
 import { Errors } from '../utils/errors.js'
+import { v4 as uuid } from 'uuid'
 
 export class PositionService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
@@ -38,7 +39,9 @@ export class PositionService {
       )
       .get()
 
-    if (!dept) {throw Errors.NOT_FOUND('部门')}
+    if (!dept) {
+      throw Errors.NOT_FOUND('部门')
+    }
 
     const isHQ = dept.projectId === null
     const projectIdValue = isHQ ? 'hq' : dept.projectId
@@ -97,5 +100,123 @@ export class PositionService {
         is_hq: isHQ,
       },
     }
+  }
+
+  async createPosition(data: {
+    code: string
+    name: string
+    level: number
+    functionRole: string
+    canManageSubordinates?: number
+    description?: string
+    permissions?: string
+    sortOrder?: number
+  }) {
+    // 检查 code 是否已存在
+    const existing = await this.db.query.positions.findFirst({
+      where: eq(positions.code, data.code),
+    })
+    if (existing) {
+      throw Errors.DUPLICATE('职位代码')
+    }
+
+    const id = uuid()
+    const now = Date.now()
+    await this.db
+      .insert(positions)
+      .values({
+        id,
+        code: data.code,
+        name: data.name,
+        level: data.level,
+        functionRole: data.functionRole,
+        canManageSubordinates: data.canManageSubordinates ?? 0,
+        description: data.description,
+        permissions: data.permissions || '{}',
+        sortOrder: data.sortOrder ?? 0,
+        active: 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute()
+
+    return { id, ...data }
+  }
+
+  async updatePosition(
+    id: string,
+    data: {
+      code?: string
+      name?: string
+      level?: number
+      functionRole?: string
+      canManageSubordinates?: number
+      description?: string
+      permissions?: string
+      sortOrder?: number
+      active?: number
+    }
+  ) {
+    const position = await this.db.query.positions.findFirst({
+      where: eq(positions.id, id),
+    })
+    if (!position) {
+      throw Errors.NOT_FOUND('职位')
+    }
+
+    // 如果更新 code，检查是否与其他职位冲突
+    if (data.code && data.code !== position.code) {
+      const existing = await this.db.query.positions.findFirst({
+        where: eq(positions.code, data.code),
+      })
+      if (existing) {
+        throw Errors.DUPLICATE('职位代码')
+      }
+    }
+
+    const updates: any = { updatedAt: Date.now() }
+    if (data.code !== undefined) updates.code = data.code
+    if (data.name !== undefined) updates.name = data.name
+    if (data.level !== undefined) updates.level = data.level
+    if (data.functionRole !== undefined) updates.functionRole = data.functionRole
+    if (data.canManageSubordinates !== undefined)
+      updates.canManageSubordinates = data.canManageSubordinates
+    if (data.description !== undefined) updates.description = data.description
+    if (data.permissions !== undefined) updates.permissions = data.permissions
+    if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder
+    if (data.active !== undefined) updates.active = data.active
+
+    await this.db.update(positions).set(updates).where(eq(positions.id, id)).execute()
+    return { ok: true }
+  }
+
+  async deletePosition(id: string) {
+    const position = await this.db.query.positions.findFirst({
+      where: eq(positions.id, id),
+    })
+    if (!position) {
+      throw Errors.NOT_FOUND('职位')
+    }
+
+    // 检查是否有员工使用此职位
+    const employeeCount = await this.db
+      .select()
+      .from(employees)
+      .where(eq(employees.positionId, id))
+      .limit(1)
+      .all()
+
+    if (employeeCount.length > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该职位还有员工使用')
+    }
+
+    // 软删除：设置为 inactive
+    await this.db
+      .update(positions)
+      .set({ active: 0, updatedAt: Date.now() })
+      .where(eq(positions.id, id))
+      .execute()
+
+    return { ok: true, name: position.name }
   }
 }

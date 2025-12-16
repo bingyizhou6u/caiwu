@@ -69,7 +69,9 @@ export class RentalPaymentService {
       .from(rentalProperties)
       .where(eq(rentalProperties.id, data.propertyId))
       .get()
-    if (!property) {throw Errors.NOT_FOUND('物业')}
+    if (!property) {
+      throw Errors.NOT_FOUND('物业')
+    }
 
     const existing = await this.db
       .select()
@@ -82,16 +84,24 @@ export class RentalPaymentService {
         )
       )
       .get()
-    if (existing) {throw Errors.DUPLICATE('该月的付款记录')}
+    if (existing) {
+      throw Errors.DUPLICATE('该月的付款记录')
+    }
 
     const account = await this.db
       .select()
       .from(schema.accounts)
       .where(eq(schema.accounts.id, data.accountId))
       .get()
-    if (!account) {throw Errors.NOT_FOUND('账户')}
-    if (account.active === 0) {throw Errors.BUSINESS_ERROR('账户已停用')}
-    if (account.currency !== data.currency) {throw Errors.BUSINESS_ERROR('账户币种不匹配')}
+    if (!account) {
+      throw Errors.NOT_FOUND('账户')
+    }
+    if (account.active === 0) {
+      throw Errors.BUSINESS_ERROR('账户已停用')
+    }
+    if (account.currency !== data.currency) {
+      throw Errors.BUSINESS_ERROR('账户币种不匹配')
+    }
 
     const paymentId = uuid()
     const now = Date.now()
@@ -206,7 +216,9 @@ export class RentalPaymentService {
       .from(rentalPayments)
       .where(eq(rentalPayments.id, id))
       .get()
-    if (!existing) {throw Errors.NOT_FOUND('付款记录')}
+    if (!existing) {
+      throw Errors.NOT_FOUND('付款记录')
+    }
 
     await this.db
       .update(rentalPayments)
@@ -221,7 +233,9 @@ export class RentalPaymentService {
       .from(rentalPayments)
       .where(eq(rentalPayments.id, id))
       .get()
-    if (!payment) {throw Errors.NOT_FOUND('付款记录')}
+    if (!payment) {
+      throw Errors.NOT_FOUND('付款记录')
+    }
 
     await this.db.delete(rentalPayments).where(eq(rentalPayments.id, id)).execute()
     return payment
@@ -362,8 +376,12 @@ export class RentalPaymentService {
       .from(rentalPayableBills)
       .where(eq(rentalPayableBills.id, id))
       .get()
-    if (!bill) {throw Errors.NOT_FOUND('账单')}
-    if (bill.status === 'paid') {throw Errors.BUSINESS_ERROR('账单已支付')}
+    if (!bill) {
+      throw Errors.NOT_FOUND('账单')
+    }
+    if (bill.status === 'paid') {
+      throw Errors.BUSINESS_ERROR('账单已支付')
+    }
 
     await this.db
       .update(rentalPayableBills)

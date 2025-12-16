@@ -20,7 +20,9 @@ export class ProjectDepartmentService {
     const existing = await this.db.query.departments.findFirst({
       where: eq(departments.name, data.name),
     })
-    if (existing) {throw Errors.DUPLICATE('部门名称')}
+    if (existing) {
+      throw Errors.DUPLICATE('部门名称')
+    }
 
     const id = uuid()
     // 如果未提供 hqId，尝试查找默认总部或创建一个
@@ -61,11 +63,15 @@ export class ProjectDepartmentService {
       const existing = await this.db.query.departments.findFirst({
         where: and(eq(departments.name, data.name), ne(departments.id, id)),
       })
-      if (existing) {throw Errors.DUPLICATE('部门名称')}
+      if (existing) {
+        throw Errors.DUPLICATE('部门名称')
+      }
     }
 
     const dept = await this.db.query.departments.findFirst({ where: eq(departments.id, id) })
-    if (!dept) {throw Errors.NOT_FOUND('部门')}
+    if (!dept) {
+      throw Errors.NOT_FOUND('部门')
+    }
 
     const updates: any = { updatedAt: Date.now() }
     if (data.name !== undefined) {updates.name = data.name}
@@ -78,23 +84,31 @@ export class ProjectDepartmentService {
 
   async deleteDepartment(id: string) {
     const dept = await this.db.query.departments.findFirst({ where: eq(departments.id, id) })
-    if (!dept) {throw Errors.NOT_FOUND('部门')}
+    if (!dept) {
+      throw Errors.NOT_FOUND('部门')
+    }
 
     // 检查依赖关系
     const siteCount = await this.db.$count(sites, eq(sites.departmentId, id))
-    if (siteCount > 0) {throw Errors.BUSINESS_ERROR('无法删除，该项目下还有站点')}
+    if (siteCount > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该项目下还有站点')
+    }
 
     const employeeCount = await this.db.$count(
       schema.employees,
       eq(schema.employees.departmentId, id)
     )
-    if (employeeCount > 0) {throw Errors.BUSINESS_ERROR('无法删除，该项目下还有员工')}
+    if (employeeCount > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该项目下还有员工')
+    }
 
     const orgDeptCount = await this.db.$count(
       schema.orgDepartments,
       eq(schema.orgDepartments.projectId, id)
     )
-    if (orgDeptCount > 0) {throw Errors.BUSINESS_ERROR('无法删除，该项目下还有组织部门')}
+    if (orgDeptCount > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该项目下还有组织部门')
+    }
 
     await this.db.delete(departments).where(eq(departments.id, id)).execute()
     return { ok: true, name: dept.name }

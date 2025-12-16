@@ -95,7 +95,9 @@ export async function signAuthToken(
 
 export async function verifyAuthToken(token: string, secret: string): Promise<AuthTokenPayload> {
   const parts = token.split('.')
-  if (parts.length !== 3) {throw new Error('Invalid token format')}
+  if (parts.length !== 3) {
+    throw new Error('Invalid token format')
+  }
 
   const [encodedHeader, encodedPayload, encodedSignature] = parts
   const data = `${encodedHeader}.${encodedPayload}`
@@ -107,7 +109,9 @@ export async function verifyAuthToken(token: string, secret: string): Promise<Au
     base64UrlDecode(encodedSignature),
     encoder.encode(data)
   )
-  if (!isValid) {throw new Error('Invalid token signature')}
+  if (!isValid) {
+    throw new Error('Invalid token signature')
+  }
 
   const payloadJson = decoder.decode(base64UrlDecode(encodedPayload))
   const payload = JSON.parse(payloadJson)

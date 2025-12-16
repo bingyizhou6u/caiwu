@@ -1,0 +1,635 @@
+import { env } from 'cloudflare:test'
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { drizzle } from 'drizzle-orm/d1'
+import { FixedAssetService } from '../../src/services/FixedAssetService.js'
+import {
+  fixedAssets,
+  fixedAssetDepreciations,
+  fixedAssetChanges,
+  departments,
+  sites,
+  vendors,
+  currencies,
+  employees,
+  accounts,
+  cashFlows,
+} from '../../src/db/schema.js'
+import { eq } from 'drizzle-orm'
+import { v4 as uuid } from 'uuid'
+import schemaSql from '../../src/db/schema.sql?raw'
+import * as schema from '../../src/db/schema.js'
+import { Errors } from '../../src/utils/errors.js'
+
+describe('FixedAssetService', () => {
+  let service: FixedAssetService
+  let db: ReturnType<typeof drizzle<typeof schema>>
+
+  beforeAll(async () => {
+    const statements = schemaSql.split(';').filter(s => s.trim().length > 0)
+    for (const statement of statements) {
+      await env.DB.prepare(statement).run()
+    }
+    db = drizzle(env.DB, { schema })
+    service = new FixedAssetService(db)
+  })
+
+  beforeEach(async () => {
+    await db.delete(fixedAssetDepreciations).execute()
+    await db.delete(fixedAssetChanges).execute()
+    await db.delete(cashFlows).execute()
+    await db.delete(fixedAssets).execute()
+    await db.delete(accounts).execute()
+    await db.delete(employees).execute()
+    await db.delete(sites).execute()
+    await db.delete(vendors).execute()
+    await db.delete(departments).execute()
+    await db.delete(currencies).execute()
+  })
+
+  describe('list', () => {
+    it('应该返回资产列表', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const dept = {
+        id: uuid(),
+        hqId: 'hq',
+        name: '测试部门',
+        active: 1,
+      }
+      await db.insert(departments).values(dept).execute()
+
+      const asset1 = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '资产1',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        departmentId: dept.id,
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const asset2 = {
+        id: uuid(),
+        assetCode: 'ASSET002',
+        name: '资产2',
+        category: '设备',
+        purchaseDate: '2024-01-02',
+        purchasePriceCents: 200000,
+        currency: 'CNY',
+        departmentId: dept.id,
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values([asset1, asset2]).execute()
+
+      const result = await service.list({})
+
+      expect(result).toHaveLength(2)
+      expect(result[0].asset.name).toBe('资产2') // 按创建时间倒序
+      expect(result[1].asset.name).toBe('资产1')
+    })
+
+    it('应该支持搜索功能', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset1 = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '笔记本电脑',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const asset2 = {
+        id: uuid(),
+        assetCode: 'ASSET002',
+        name: '办公桌',
+        category: '家具',
+        purchaseDate: '2024-01-02',
+        purchasePriceCents: 50000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values([asset1, asset2]).execute()
+
+      const result = await service.list({ search: '电脑' })
+
+      expect(result).toHaveLength(1)
+      expect(result[0].asset.name).toBe('笔记本电脑')
+    })
+
+    it('应该支持按状态筛选', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset1 = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '资产1',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const asset2 = {
+        id: uuid(),
+        assetCode: 'ASSET002',
+        name: '资产2',
+        category: '设备',
+        purchaseDate: '2024-01-02',
+        purchasePriceCents: 200000,
+        currency: 'CNY',
+        status: 'scrapped',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values([asset1, asset2]).execute()
+
+      const result = await service.list({ status: 'in_use' })
+
+      expect(result).toHaveLength(1)
+      expect(result[0].asset.status).toBe('in_use')
+    })
+
+    it('应该支持按部门筛选', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const dept1 = {
+        id: uuid(),
+        hqId: 'hq',
+        name: '部门1',
+        active: 1,
+      }
+      const dept2 = {
+        id: uuid(),
+        hqId: 'hq',
+        name: '部门2',
+        active: 1,
+      }
+      await db.insert(departments).values([dept1, dept2]).execute()
+
+      const asset1 = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '资产1',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        departmentId: dept1.id,
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const asset2 = {
+        id: uuid(),
+        assetCode: 'ASSET002',
+        name: '资产2',
+        category: '设备',
+        purchaseDate: '2024-01-02',
+        purchasePriceCents: 200000,
+        currency: 'CNY',
+        departmentId: dept2.id,
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values([asset1, asset2]).execute()
+
+      const result = await service.list({ departmentId: dept1.id })
+
+      expect(result).toHaveLength(1)
+      expect(result[0].asset.departmentId).toBe(dept1.id)
+    })
+
+    it('应该支持分页', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const assets = []
+      for (let i = 0; i < 25; i++) {
+        assets.push({
+          id: uuid(),
+          assetCode: `ASSET${String(i + 1).padStart(3, '0')}`,
+          name: `资产${i + 1}`,
+          category: '设备',
+          purchaseDate: '2024-01-01',
+          purchasePriceCents: 100000,
+          currency: 'CNY',
+          status: 'in_use',
+          createdAt: Date.now() + i,
+          updatedAt: Date.now() + i,
+        })
+      }
+      await db.insert(fixedAssets).values(assets).execute()
+
+      const result = await service.list({ limit: 10, offset: 0 })
+
+      expect(result).toHaveLength(10)
+    })
+  })
+
+  describe('getCategories', () => {
+    it('应该返回所有类别', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset1 = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '资产1',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const asset2 = {
+        id: uuid(),
+        assetCode: 'ASSET002',
+        name: '资产2',
+        category: '家具',
+        purchaseDate: '2024-01-02',
+        purchasePriceCents: 200000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values([asset1, asset2]).execute()
+
+      const result = await service.getCategories()
+
+      expect(result).toHaveLength(2)
+      expect(result.map(c => c.name)).toContain('设备')
+      expect(result.map(c => c.name)).toContain('家具')
+    })
+
+    it('应该排除空类别', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset1 = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '资产1',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const asset2 = {
+        id: uuid(),
+        assetCode: 'ASSET002',
+        name: '资产2',
+        category: null,
+        purchaseDate: '2024-01-02',
+        purchasePriceCents: 200000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values([asset1, asset2]).execute()
+
+      const result = await service.getCategories()
+
+      expect(result).toHaveLength(1)
+      expect(result[0].name).toBe('设备')
+    })
+  })
+
+  describe('get', () => {
+    it('应该返回资产详情', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const dept = {
+        id: uuid(),
+        hqId: 'hq',
+        name: '测试部门',
+        active: 1,
+      }
+      await db.insert(departments).values(dept).execute()
+
+      const asset = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '资产',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        departmentId: dept.id,
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values(asset).execute()
+
+      const result = await service.get(asset.id)
+
+      expect(result.asset.id).toBe(asset.id)
+      expect(result.asset.name).toBe('资产')
+      expect(result.departmentName).toBe('测试部门')
+    })
+
+    it('应该抛出错误当资产不存在', async () => {
+      await expect(service.get('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+    })
+  })
+
+  describe('create', () => {
+    it('应该创建新资产', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const result = await service.create({
+        assetCode: 'ASSET001',
+        name: '新资产',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+      })
+
+      expect(result.id).toBeDefined()
+      expect(result.assetCode).toBe('ASSET001')
+
+      const asset = await db.query.fixedAssets.findFirst({
+        where: eq(fixedAssets.id, result.id),
+      })
+      expect(asset).toBeDefined()
+      expect(asset?.status).toBe('in_use')
+      expect(asset?.currentValueCents).toBe(100000)
+    })
+
+    it('应该设置默认状态和当前价值', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const result = await service.create({
+        assetCode: 'ASSET001',
+        name: '新资产',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+      })
+
+      const asset = await db.query.fixedAssets.findFirst({
+        where: eq(fixedAssets.id, result.id),
+      })
+      expect(asset?.status).toBe('in_use')
+      expect(asset?.currentValueCents).toBe(100000)
+    })
+
+    it('应该拒绝重复的资产代码', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const existing = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '已存在',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values(existing).execute()
+
+      await expect(
+        service.create({
+          assetCode: 'ASSET001',
+          name: '重复资产',
+          category: '设备',
+          purchaseDate: '2024-01-01',
+          purchasePriceCents: 100000,
+          currency: 'CNY',
+        })
+      ).rejects.toThrow(Errors.DUPLICATE)
+    })
+  })
+
+  describe('update', () => {
+    it('应该更新资产信息', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '原名称',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values(asset).execute()
+
+      await service.update(asset.id, {
+        name: '新名称',
+        category: '家具',
+      })
+
+      const updated = await db.query.fixedAssets.findFirst({
+        where: eq(fixedAssets.id, asset.id),
+      })
+      expect(updated?.name).toBe('新名称')
+      expect(updated?.category).toBe('家具')
+      expect(updated?.updatedAt).toBeGreaterThan(asset.updatedAt)
+    })
+
+    it('应该记录状态变更日志', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '资产',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values(asset).execute()
+
+      await service.update(asset.id, {
+        status: 'scrapped',
+        createdBy: 'user123',
+      })
+
+      const changes = await db.query.fixedAssetChanges.findMany({
+        where: eq(fixedAssetChanges.assetId, asset.id),
+      })
+      expect(changes).toHaveLength(1)
+      expect(changes[0].fromStatus).toBe('in_use')
+      expect(changes[0].toStatus).toBe('scrapped')
+    })
+
+    it('应该抛出错误当资产不存在', async () => {
+      await expect(
+        service.update('non-existent', {
+          name: '新名称',
+        })
+      ).rejects.toThrow(Errors.NOT_FOUND)
+    })
+  })
+
+  describe('delete', () => {
+    it('应该删除资产', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '删除资产',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values(asset).execute()
+
+      const result = await service.delete(asset.id)
+
+      expect(result.ok).toBe(true)
+      expect(result.name).toBe('删除资产')
+
+      const deleted = await db.query.fixedAssets.findFirst({
+        where: eq(fixedAssets.id, asset.id),
+      })
+      expect(deleted).toBeUndefined()
+    })
+
+    it('应该拒绝删除有折旧记录的资产', async () => {
+      const currency = {
+        code: 'CNY',
+        name: '人民币',
+        active: 1,
+      }
+      await db.insert(currencies).values(currency).execute()
+
+      const asset = {
+        id: uuid(),
+        assetCode: 'ASSET001',
+        name: '有折旧的资产',
+        category: '设备',
+        purchaseDate: '2024-01-01',
+        purchasePriceCents: 100000,
+        currency: 'CNY',
+        status: 'in_use',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(fixedAssets).values(asset).execute()
+
+      const depreciation = {
+        id: uuid(),
+        assetId: asset.id,
+        depreciationDate: '2024-01-01',
+        depreciationAmountCents: 1000,
+        createdAt: Date.now(),
+      }
+      await db.insert(fixedAssetDepreciations).values(depreciation).execute()
+
+      await expect(service.delete(asset.id)).rejects.toThrow(Errors.BUSINESS_ERROR)
+    })
+
+    it('应该抛出错误当资产不存在', async () => {
+      await expect(service.delete('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+    })
+  })
+})

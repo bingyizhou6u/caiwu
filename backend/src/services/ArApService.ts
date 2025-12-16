@@ -187,11 +187,17 @@ export class ArApService {
   }) {
     return await this.db.transaction(async tx => {
       const doc = await tx.select().from(arApDocs).where(eq(arApDocs.id, data.docId)).get()
-      if (!doc) {throw Errors.NOT_FOUND('单据')}
-      if (doc.status === 'confirmed') {throw Errors.BUSINESS_ERROR('单据已确认')}
+      if (!doc) {
+        throw Errors.NOT_FOUND('单据')
+      }
+      if (doc.status === 'confirmed') {
+        throw Errors.BUSINESS_ERROR('单据已确认')
+      }
 
       const account = await tx.select().from(accounts).where(eq(accounts.id, data.accountId)).get()
-      if (!account || !account.active) {throw Errors.BUSINESS_ERROR('账户不存在或已停用')}
+      if (!account || !account.active) {
+        throw Errors.BUSINESS_ERROR('账户不存在或已停用')
+      }
 
       const transactionType = doc.kind === 'AR' ? 'income' : 'expense'
 

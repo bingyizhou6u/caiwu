@@ -192,7 +192,7 @@ rentalRoutes.openapi(
         )
         return { id: result.id }
       }
-      throw new Error('empty')
+      throw Errors.INTERNAL_ERROR('操作失败')
     } catch {
       return { id: 'allocation-stub' }
     }
@@ -363,7 +363,7 @@ rentalRoutes.openapi(
         )
         return { id: result.id, propertyCode: body.propertyCode ?? 'P001' }
       }
-      throw new Error('empty')
+      throw Errors.INTERNAL_ERROR('操作失败')
     } catch {
       return { id: 'rental-prop-stub', propertyCode: body.propertyCode ?? 'P001' }
     }
@@ -606,7 +606,7 @@ rentalRoutes.openapi(
           voucherNo: result.voucherNo ?? 'voucher-stub',
         }
       }
-      throw new Error('empty')
+      throw Errors.INTERNAL_ERROR('操作失败')
     } catch {
       return { id: 'rental-payment-stub', flowId: 'flow-stub', voucherNo: 'voucher-stub' }
     }

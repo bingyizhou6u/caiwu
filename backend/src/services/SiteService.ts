@@ -40,7 +40,9 @@ export class SiteService {
         eq(sites.active, 1)
       ),
     })
-    if (existing) {throw Errors.DUPLICATE('站点名称')}
+    if (existing) {
+      throw Errors.DUPLICATE('站点名称')
+    }
 
     const id = uuid()
     await this.db
@@ -60,7 +62,9 @@ export class SiteService {
 
   async updateSite(id: string, data: { name?: string; departmentId?: string; active?: number }) {
     const site = await this.db.query.sites.findFirst({ where: eq(sites.id, id) })
-    if (!site) {throw Errors.NOT_FOUND('站点')}
+    if (!site) {
+      throw Errors.NOT_FOUND('站点')
+    }
 
     const updates: any = { updatedAt: Date.now() }
     if (data.name !== undefined) {updates.name = data.name}
@@ -73,7 +77,9 @@ export class SiteService {
 
   async deleteSite(id: string) {
     const site = await this.db.query.sites.findFirst({ where: eq(sites.id, id) })
-    if (!site) {throw Errors.NOT_FOUND('站点')}
+    if (!site) {
+      throw Errors.NOT_FOUND('站点')
+    }
 
     await this.db.delete(sites).where(eq(sites.id, id)).execute()
     return { ok: true, name: site.name }
