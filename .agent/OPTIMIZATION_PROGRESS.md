@@ -305,6 +305,22 @@
   - SensitiveField: 4+ 处
 - **说明**: 其他页面（如 EmployeeManagementPage、MyProfilePage 等）已经使用了 SensitiveField。CreateEmployeePage 是创建页面，不需要显示敏感信息。MyAssetsPage 没有敏感信息需要保护
 
+### Phase 5: EmptyText 推广（Week 9-10）
+
+#### ✅ Task 5.1: 推广 EmptyText 到所有列表页面
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `AccountTransactionsPage.tsx` - 已为凭证号、类别、摘要、交易对手列添加 EmptyText（4处）
+  - ✅ `FixedAssetPurchasePage.tsx` - 已为项目、位置、责任人列添加 EmptyText（3处）
+  - ✅ `SiteManagementPage.tsx` - 已为主题色列添加 EmptyText
+  - ✅ `SiteBillsPage.tsx` - 已为描述、账户、类别、备注、创建人列添加 EmptyText（5处）
+  - ✅ `VendorManagementPage.tsx` - 已为联系方式列添加 EmptyText
+  - ✅ `IPWhitelistManagementPage.tsx` - 已为描述列添加 EmptyText
+- **替换统计**:
+  - EmptyText: 15+ 处
+- **说明**: 其他页面（如 FlowsPage、FixedAssetAllocationPage 等）已经使用了 EmptyText。FixedAssetSalePage 和 ReportSiteGrowthPage 等页面没有需要处理的空值字段
+
 #### ✅ Task 1.4: 推广 VendorSelect
 - **完成时间**: 2024-12-19
 - **状态**: ✅ 已完成

@@ -8,7 +8,7 @@ import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 import { DeleteOutlined } from '@ant-design/icons'
 import { vendorSchema } from '../../../validations/vendor.schema'
 import { FormModal } from '../../../components/FormModal'
-import { DataTable, type DataTableColumn, PageToolbar, BatchActionButton } from '../../../components/common'
+import { DataTable, type DataTableColumn, PageToolbar, BatchActionButton, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import type { Vendor } from '../../../types'
@@ -103,7 +103,7 @@ export function VendorManagement() {
 
   const columns: DataTableColumn<Vendor>[] = [
     { title: '供应商名称', dataIndex: 'name', key: 'name' },
-    { title: '联系方式', dataIndex: 'contact', key: 'contact' },
+    { title: '联系方式', dataIndex: 'contact', key: 'contact', render: (v: string) => <EmptyText value={v} /> },
   ]
 
   return (

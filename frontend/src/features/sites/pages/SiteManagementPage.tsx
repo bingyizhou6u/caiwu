@@ -124,12 +124,12 @@ export function SiteManagement() {
                   <div style={{ width: 16, height: 16, borderRadius: 4, background: v }} />
                   {v}
                 </div>
-              ) : '-'
+              ) : <EmptyText value={v} />
             },
             {
               title: '前台网址', dataIndex: 'frontendUrl', key: 'frontendUrl', width: 200, render: (v: string) => v ? (
                 <a href={v} target="_blank" rel="noopener noreferrer">{v}</a>
-              ) : '-'
+              ) : <EmptyText value={v} />
             },
             {
               title: '所属项目', dataIndex: 'departmentId', key: 'departmentId', width: 120, render: (v: string) => {

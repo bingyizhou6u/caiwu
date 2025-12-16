@@ -9,7 +9,7 @@ import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { ipWhitelistSchema, ipBatchSchema } from '../../../validations/ipWhitelist.schema'
 import type { IPWhitelist } from '../../../hooks/business/useIPWhitelist'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
-import { DataTable, PageToolbar, BatchActionButton } from '../../../components/common'
+import { DataTable, PageToolbar, BatchActionButton, EmptyText } from '../../../components/common'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 import { PageContainer } from '../../../components/PageContainer'
 
@@ -156,7 +156,7 @@ const IPWhitelistManagement: React.FC = () => {
       title: '描述',
       dataIndex: 'description',
       key: 'description',
-      render: (text: string) => text || '-',
+      render: (text: string) => <EmptyText value={text} />,
     },
     {
       title: '创建时间',

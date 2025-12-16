@@ -11,7 +11,7 @@ import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { AmountDisplay, PageToolbar } from '../../../components/common'
+import { AmountDisplay, PageToolbar, EmptyText } from '../../../components/common'
 
 const { TextArea } = Input
 
@@ -155,9 +155,9 @@ export function FixedAssetPurchase() {
               }
             },
             { title: '购买日期', dataIndex: 'purchaseDate', key: 'purchaseDate', width: 120 },
-            { title: '项目', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
-            { title: '位置', dataIndex: 'siteName', key: 'siteName', width: 120 },
-            { title: '责任人', dataIndex: 'custodian', key: 'custodian', width: 100 },
+            { title: '项目', dataIndex: 'departmentName', key: 'departmentName', width: 120, render: (v: string) => <EmptyText value={v} /> },
+            { title: '位置', dataIndex: 'siteName', key: 'siteName', width: 120, render: (v: string) => <EmptyText value={v} /> },
+            { title: '责任人', dataIndex: 'custodian', key: 'custodian', width: 100, render: (v: string) => <EmptyText value={v} /> },
           ] satisfies DataTableColumn<FixedAsset>[]}
           data={assets}
           loading={isLoading}

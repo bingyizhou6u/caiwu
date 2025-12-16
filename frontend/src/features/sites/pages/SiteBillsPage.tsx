@@ -275,13 +275,13 @@ export function SiteBills() {
               align: 'right',
               render: (_: any, r: any) => <AmountDisplay cents={r.amountCents} currency={r.currency} />
             },
-            { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-            { title: '账户', dataIndex: 'accountName', key: 'accountName', width: 120 },
-            { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
+            { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true, render: (v: string) => <EmptyText value={v} /> },
+            { title: '账户', dataIndex: 'accountName', key: 'accountName', width: 120, render: (v: string) => <EmptyText value={v} /> },
+            { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120, render: (v: string) => <EmptyText value={v} /> },
             { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => <StatusTag status={v} statusMap={SITE_BILL_STATUS} /> },
             { title: '支付日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120, render: (v: string) => <EmptyText value={v} /> },
-            { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
-            { title: '创建人', dataIndex: 'creator_name', key: 'creator_name', width: 100 },
+            { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true, render: (v: string) => <EmptyText value={v} /> },
+            { title: '创建人', dataIndex: 'creator_name', key: 'creator_name', width: 100, render: (v: string) => <EmptyText value={v} /> },
           ] as DataTableColumn<any>[]}
           data={billsData}
           loading={loading}
