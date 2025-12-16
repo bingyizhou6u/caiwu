@@ -255,16 +255,16 @@ export function ReportAccountBalance() {
                   dataIndex: 'openingCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => ((v || 0) / 100).toFixed(2)
+                  render: (v: number, r: AccountSummary) => <AmountDisplay cents={v || 0} currency={r.currency} showSymbol={false} />
                 },
                 {
                   title: '当日收入',
                   dataIndex: 'incomeCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => (
+                  render: (v: number, r: AccountSummary) => (
                     <span style={{ color: v > 0 ? '#52c41a' : '#999' }}>
-                      {((v || 0) / 100).toFixed(2)}
+                      <AmountDisplay cents={v || 0} currency={r.currency} showSymbol={false} />
                     </span>
                   )
                 },
@@ -273,9 +273,9 @@ export function ReportAccountBalance() {
                   dataIndex: 'expenseCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => (
+                  render: (v: number, r: AccountSummary) => (
                     <span style={{ color: v > 0 ? '#ff4d4f' : '#999' }}>
-                      {((v || 0) / 100).toFixed(2)}
+                      <AmountDisplay cents={v || 0} currency={r.currency} showSymbol={false} />
                     </span>
                   )
                 },
@@ -284,9 +284,9 @@ export function ReportAccountBalance() {
                   dataIndex: 'closingCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => (
+                  render: (v: number, r: AccountSummary) => (
                     <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                      {((v || 0) / 100).toFixed(2)}
+                      <AmountDisplay cents={v || 0} currency={r.currency} showSymbol={false} />
                     </span>
                   )
                 },

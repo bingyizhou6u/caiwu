@@ -20,6 +20,7 @@ import { renderStatus, renderText } from '../../../utils/renderers'
 import { DataTable } from '../../../components/common/DataTable'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 import { useQueryClient } from '@tanstack/react-query'
+import { formatAmountWithCurrency } from '../../../utils/amount'
 
 import { useNavigate } from 'react-router-dom'
 
@@ -399,26 +400,26 @@ export function EmployeeManagement() {
               expandedRowRender: (record) => (
                 <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
                   <Descriptions.Item label="试用期工资">
-                    <SensitiveField value={((record.probationSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                    <SensitiveField value={formatAmountWithCurrency(record.probationSalaryCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
                   <Descriptions.Item label="转正工资">
-                    <SensitiveField value={((record.regularSalaryCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                    <SensitiveField value={formatAmountWithCurrency(record.regularSalaryCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
                   <Descriptions.Item label="转正日期">{record.regularDate || '-'}</Descriptions.Item>
                   <Descriptions.Item label="生活补贴">
-                    <SensitiveField value={((record.livingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                    <SensitiveField value={formatAmountWithCurrency(record.livingAllowanceCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
                   <Descriptions.Item label="住房补贴">
-                    <SensitiveField value={((record.housingAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                    <SensitiveField value={formatAmountWithCurrency(record.housingAllowanceCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
                   <Descriptions.Item label="交通补贴">
-                    <SensitiveField value={((record.transportationAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                    <SensitiveField value={formatAmountWithCurrency(record.transportationAllowanceCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
                   <Descriptions.Item label="伙食补贴">
-                    <SensitiveField value={((record.mealAllowanceCents || 0) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                    <SensitiveField value={formatAmountWithCurrency(record.mealAllowanceCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
                   <Descriptions.Item label="补贴合计">
-                    <SensitiveField value={(((record.livingAllowanceCents || 0) + (record.housingAllowanceCents || 0) + (record.transportationAllowanceCents || 0) + (record.mealAllowanceCents || 0)) / 100).toFixed(2)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
+                    <SensitiveField value={formatAmountWithCurrency((record.livingAllowanceCents || 0) + (record.housingAllowanceCents || 0) + (record.transportationAllowanceCents || 0) + (record.mealAllowanceCents || 0), 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
                   {record.status === 'resigned' && (
                     <>

@@ -4,6 +4,7 @@ import { api as apiClient } from '../../api/http'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ARAP } from '../../types/business'
 import type { CreateARDocDTO, ConfirmARDocDTO, SettleARDocDTO } from '../../types'
+import { formatAmountWithCurrency } from '../../utils/amount'
 
 import { keepPreviousData } from '@tanstack/react-query'
 
@@ -29,7 +30,7 @@ export function useSettlementFlowOptions() {
         {
             select: (data: any) => (data.results ?? []).map((r: any) => ({
                 value: r.id,
-                label: `${r.bizDate} ${r.voucherNo ?? ''} ${(r.amountCents / 100).toFixed(2)} ${r.type}`
+                label: `${r.bizDate} ${r.voucherNo ?? ''} ${formatAmountWithCurrency(r.amountCents, r.currency || 'CNY', false)} ${r.type}`
             })),
             staleTime: 5 * 60 * 1000,
         }

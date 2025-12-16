@@ -315,7 +315,7 @@ export function AR() {
                 columns={[
                   { title: '日期', dataIndex: 'settle_date' },
                   { title: '流水ID', dataIndex: 'flowId', render: (v: string) => v ? v.slice(0, 8) + '...' : '-' },
-                  { title: '核销金额', dataIndex: 'settleAmountCents', render: (v: number) => (v / 100).toFixed(2) },
+                  { title: '核销金额', dataIndex: 'settleAmountCents', render: (v: number) => <AmountDisplay cents={v} currency={detail.doc?.currency} /> },
                 ]}
               />
               <div style={{ height: 12 }} />

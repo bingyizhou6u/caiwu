@@ -267,11 +267,11 @@ export function AP() {
             loading={isConfirming}
           >
             <Form.Item label="金额">
-              {confirmingDoc.amountCents / 100}
+              <AmountDisplay cents={confirmingDoc.amountCents} currency={confirmingDoc.currency} showSymbol={false} />
               {confirmingDoc.settledCents !== undefined && (
                 <>
                   {' '}
-                  已结: {(confirmingDoc.settledCents / 100).toFixed(2)}
+                  已结: <AmountDisplay cents={confirmingDoc.settledCents} currency={confirmingDoc.currency} showSymbol={false} />
                 </>
               )}
             </Form.Item>

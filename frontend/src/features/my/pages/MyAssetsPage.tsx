@@ -20,7 +20,7 @@ interface Asset {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay } from '../../../components/common'
 
 export function MyAssets() {
   const { data, isLoading: loading } = useMyAssets()
@@ -37,7 +37,7 @@ export function MyAssets() {
     {
       title: '原值',
       dataIndex: 'original_value_cents',
-      render: (v: number) => v ? `¥${(v / 100).toFixed(2)}` : '-'
+      render: (v: number) => <AmountDisplay cents={v} currency="CNY" />
     },
     { title: '领用日期', dataIndex: 'allocationDate' },
     { title: '备注', dataIndex: 'memo', ellipsis: true },

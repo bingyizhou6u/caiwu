@@ -1,15 +1,16 @@
 import { Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
-import { formatAmount } from './formatters'
+import { formatAmountWithCurrency } from './amount'
 
 /**
  * 渲染金额 (分 -> 元)
  * @param cents 金额（分）
+ * @param currency 币种代码，默认 'CNY'
  * @param emptyText 空值显示文本
  */
-export const renderCurrency = (cents: number | null | undefined, emptyText = '-') => {
+export const renderCurrency = (cents: number | null | undefined, currency: string = 'CNY', emptyText = '-') => {
     if (cents == null) return <span style={{ color: '#999' }}>{emptyText}</span>
-    return <span>{formatAmount(cents)}</span>
+    return <span>{formatAmountWithCurrency(cents, currency)}</span>
 }
 
 /**

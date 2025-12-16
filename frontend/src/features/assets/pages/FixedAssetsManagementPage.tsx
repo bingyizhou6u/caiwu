@@ -10,7 +10,7 @@ import { useMultipleModals } from '../../../hooks/forms/useFormModal'
 import { useDepartments, useSites, useVendors, useCurrencies } from '../../../hooks'
 import { VirtualTable } from '../../../components/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton } from '../../../components/common'
+import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton, AmountDisplay } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FIXED_ASSET_STATUS } from '../../../utils/status'
 import type { FixedAsset } from '../../../types'
@@ -302,18 +302,20 @@ export function FixedAssetsManagement() {
             {
               title: '购买价格',
               width: 120,
-              render: (_: unknown, r: FixedAsset) => {
-                const price = r.purchasePriceCents ? (r.purchasePriceCents / 100).toFixed(2) : '0.00'
-                return `${price} ${r.currency || ''}`
-              }
+              render: (_: unknown, r: FixedAsset) => (
+                <span>
+                  <AmountDisplay cents={r.purchasePriceCents || 0} currency={r.currency || 'CNY'} showSymbol={false} /> {r.currency || ''}
+                </span>
+              )
             },
             {
               title: '当前净值',
               width: 120,
-              render: (_: unknown, r: FixedAsset) => {
-                const value = r.currentValueCents ? (r.currentValueCents / 100).toFixed(2) : '0.00'
-                return `${value} ${r.currency || ''}`
-              }
+              render: (_: unknown, r: FixedAsset) => (
+                <span>
+                  <AmountDisplay cents={r.currentValueCents || 0} currency={r.currency || 'CNY'} showSymbol={false} /> {r.currency || ''}
+                </span>
+              )
             },
             { title: '项目', dataIndex: 'departmentName', width: 120 },
             { title: '位置', dataIndex: 'siteName', width: 120 },
@@ -468,8 +470,8 @@ export function FixedAssetsManagement() {
                   <p><strong>资产名称：</strong>{detailData.name}</p>
                   <p><strong>类别：</strong>{detailData.category || '-'}</p>
                   <p><strong>购买日期：</strong>{detailData.purchaseDate || '-'}</p>
-                  <p><strong>购买价格：</strong>{(detailData.purchasePriceCents / 100).toFixed(2)} {detailData.currency}</p>
-                  <p><strong>当前净值：</strong>{(detailData.currentValueCents / 100).toFixed(2)} {detailData.currency}</p>
+                  <p><strong>购买价格：</strong><AmountDisplay cents={detailData.purchasePriceCents} currency={detailData.currency} /> {detailData.currency}</p>
+                  <p><strong>当前净值：</strong><AmountDisplay cents={detailData.currentValueCents} currency={detailData.currency} /> {detailData.currency}</p>
                   <p><strong>供应商：</strong>{detailData.vendorName || '-'}</p>
                   <p><strong>使用项目：</strong>{detailData.departmentName || '-'}</p>
                   <p><strong>资产位置：</strong>{detailData.siteName || '-'}</p>
@@ -484,9 +486,9 @@ export function FixedAssetsManagement() {
                 <DataTable<DepreciationRecord>
                   columns={[
                     { title: '折旧日期', dataIndex: 'depreciationDate', key: 'depreciationDate', width: 120 },
-                    { title: '折旧金额', key: 'depreciationAmount', render: (_: unknown, r: DepreciationRecord) => `${((r.depreciationAmountCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
-                    { title: '累计折旧', key: 'accumulatedDepreciation', render: (_: unknown, r: DepreciationRecord) => `${((r.accumulatedDepreciationCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
-                    { title: '剩余价值', key: 'remainingValue', render: (_: unknown, r: DepreciationRecord) => `${((r.remainingValueCents || 0) / 100).toFixed(2)} ${detailData.currency}`, width: 120 },
+                    { title: '折旧金额', key: 'depreciationAmount', render: (_: unknown, r: DepreciationRecord) => <span><AmountDisplay cents={r.depreciationAmountCents || 0} currency={detailData.currency} showSymbol={false} /> {detailData.currency}</span>, width: 120 },
+                    { title: '累计折旧', key: 'accumulatedDepreciation', render: (_: unknown, r: DepreciationRecord) => <span><AmountDisplay cents={r.accumulatedDepreciationCents || 0} currency={detailData.currency} showSymbol={false} /> {detailData.currency}</span>, width: 120 },
+                    { title: '剩余价值', key: 'remainingValue', render: (_: unknown, r: DepreciationRecord) => <span><AmountDisplay cents={r.remainingValueCents || 0} currency={detailData.currency} showSymbol={false} /> {detailData.currency}</span>, width: 120 },
                     { title: '备注', dataIndex: 'memo', key: 'memo' },
                   ] satisfies DataTableColumn<DepreciationRecord>[]}
                   data={(detailData.depreciations || []) as DepreciationRecord[]}

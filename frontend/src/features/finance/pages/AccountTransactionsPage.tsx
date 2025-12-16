@@ -5,7 +5,7 @@ import { api } from '../../../config/api'
 import { useAccounts } from '../../../hooks/useBusinessData'
 import { useAccountTransactions } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, PageToolbar } from '../../../components/common'
+import { DataTable, type DataTableColumn, PageToolbar, AmountDisplay } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { AccountTransaction } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
@@ -59,7 +59,7 @@ export function AccountTransactions() {
       key: 'balanceBeforeCents',
       width: 130,
       align: 'right',
-      render: (v: number) => (v / 100).toFixed(2)
+      render: (v: number) => <AmountDisplay cents={v} currency="CNY" showSymbol={false} />
     },
     {
       title: '账变金额',
@@ -68,14 +68,13 @@ export function AccountTransactions() {
       width: 120,
       align: 'right',
       render: (v: number, r: AccountTransaction) => {
-        const amount = (v / 100).toFixed(2)
         const type = r.transactionType || r.type
         if (type === 'income') {
-          return <span style={{ color: '#52c41a' }}>+{amount}</span>
+          return <span style={{ color: '#52c41a' }}>+<AmountDisplay cents={v} currency="CNY" showSymbol={false} /></span>
         } else if (type === 'expense') {
-          return <span style={{ color: '#ff4d4f' }}>-{amount}</span>
+          return <span style={{ color: '#ff4d4f' }}>-<AmountDisplay cents={v} currency="CNY" showSymbol={false} /></span>
         }
-        return amount
+        return <AmountDisplay cents={v} currency="CNY" showSymbol={false} />
       }
     },
     {
@@ -84,7 +83,7 @@ export function AccountTransactions() {
       key: 'balanceAfterCents',
       width: 130,
       align: 'right',
-      render: (v: number) => <strong>{(v / 100).toFixed(2)}</strong>
+      render: (v: number) => <strong><AmountDisplay cents={v} currency="CNY" showSymbol={false} /></strong>
     },
   ], [])
 
