@@ -14,7 +14,7 @@
 
 ### ⚠️ 接近目标
 - **StatusTag**: 29% → 48% (目标: 50%) ✅ 接近目标
-- **SearchFilters**: 39% → 36% (目标: 55%)
+- **SearchFilters**: 39% → 42% (目标: 55%) ✅ 良好进展
 
 ### 📈 整体覆盖率
 - **当前**: 55%+
@@ -38,12 +38,12 @@
 ### 2. 继续推广 SearchFilters（优先级：中）
 
 **剩余机会**:
-- `reports/pages/ReportARDetailPage.tsx` - 替换 DateRangePicker + PageToolbar
-- `reports/pages/ReportAPDetailPage.tsx` - 替换 DateRangePicker + PageToolbar
-- `reports/pages/ReportDepartmentCashPage.tsx` - 替换 DateRangePicker + PageToolbar
-- `reports/pages/ReportSiteGrowthPage.tsx` - 替换 DateRangePicker + PageToolbar
+- ✅ `reports/pages/ReportARDetailPage.tsx` - 已完成
+- ✅ `reports/pages/ReportAPDetailPage.tsx` - 已完成
+- ✅ `reports/pages/ReportDepartmentCashPage.tsx` - 已完成
+- ✅ `reports/pages/ReportSiteGrowthPage.tsx` - 已完成
 
-**预计提升**: 36% → 45%+
+**当前覆盖率**: 42% (目标: 55%+)
 
 ### 3. 优化 Form 组件使用（优先级：中）
 
@@ -78,14 +78,14 @@
 
 ### 中优先级任务
 
-#### Task B: 推广 SearchFilters 到报表页面
-- [ ] `reports/pages/ReportARDetailPage.tsx`
-- [ ] `reports/pages/ReportAPDetailPage.tsx`
-- [ ] `reports/pages/ReportDepartmentCashPage.tsx`
-- [ ] `reports/pages/ReportSiteGrowthPage.tsx`
+#### Task B: 推广 SearchFilters 到报表页面 ✅ 已完成
+- [x] `reports/pages/ReportARDetailPage.tsx` ✅
+- [x] `reports/pages/ReportAPDetailPage.tsx` ✅
+- [x] `reports/pages/ReportDepartmentCashPage.tsx` ✅
+- [x] `reports/pages/ReportSiteGrowthPage.tsx` ✅
 
-**预计时间**: 2-3 小时  
-**预计提升**: SearchFilters 覆盖率 36% → 45%+
+**预计时间**: 已完成  
+**当前覆盖率**: SearchFilters 覆盖率 42% (目标: 55%+)
 
 #### Task C: 优化 Form 组件使用
 - [ ] 检查 `employees/components/modals/*.tsx` 中的金额输入
@@ -109,7 +109,7 @@
 ## 🎯 短期目标（1-2周）
 
 1. **StatusTag 覆盖率**: 48% → 50%+ ✅ 接近目标
-2. **SearchFilters 覆盖率**: 36% → 45%+
+2. **SearchFilters 覆盖率**: 42% ✅ 已完成部分
 3. **整体覆盖率**: 55%+ → 60%+
 
 ---

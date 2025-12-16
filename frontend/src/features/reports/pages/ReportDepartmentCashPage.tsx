@@ -1,28 +1,25 @@
 import { useState } from 'react'
-import { Card, Button, Space } from 'antd'
-import dayjs, { Dayjs } from 'dayjs'
-import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
+import { Card } from 'antd'
+import dayjs from 'dayjs'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { useDepartmentCash } from '../../../hooks'
-import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportDepartmentCash() {
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
-  const start = range[0].format('YYYY-MM-DD')
-  const end = range[1].format('YYYY-MM-DD')
+  const [searchParams, setSearchParams] = useState<{ start: string; end: string }>({
+    start: dayjs().startOf('month').format('YYYY-MM-DD'),
+    end: dayjs().format('YYYY-MM-DD'),
+  })
 
-  const { data, isLoading, refetch } = useDepartmentCash({ start, end })
+  const { data, isLoading, refetch } = useDepartmentCash(searchParams)
   const rows = data?.rows || []
 
-  const handleQuery = withErrorHandler(
-    async () => {
-      await refetch()
-    },
-    {
-      errorMessage: '项目汇总失败',
-    }
-  )
+  const handleSearch = (values: Record<string, string | number | string[] | undefined>) => {
+    const start = (values.dateRangeStart as string) || dayjs().startOf('month').format('YYYY-MM-DD')
+    const end = (values.dateRangeEnd as string) || dayjs().format('YYYY-MM-DD')
+    setSearchParams({ start, end })
+  }
 
   return (
     <PageContainer
@@ -30,18 +27,20 @@ export function ReportDepartmentCash() {
       breadcrumb={[{ title: '报表中心' }, { title: '项目汇总报表' }]}
     >
       <Card bordered={false} className="page-card">
-        <PageToolbar
-          actions={[
+        <SearchFilters
+          fields={[
             {
-              label: '查询',
-              type: 'primary',
-              onClick: handleQuery
-            }
+              name: 'dateRange',
+              label: '日期范围',
+              type: 'dateRange',
+              showQuickSelect: true,
+            },
           ]}
-          wrap
-        >
-          <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-        </PageToolbar>
+          onSearch={handleSearch}
+          initialValues={{
+            dateRange: [dayjs().startOf('month'), dayjs()],
+          }}
+        />
         <DataTable<any>
           columns={[
             { title: '项目', dataIndex: 'departmentName', key: 'departmentName' },
