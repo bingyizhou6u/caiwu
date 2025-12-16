@@ -1,39 +1,64 @@
 # 文档整理变更日志
 
-## 2025-01-XX - 文档整理
+## 2025-01-XX - 文档整理（统一管理）
 
 ### 新增文档
-- `docs/README.md` - 文档索引，统一管理所有文档
-- `docs/RBAC_AUDIT.md` - RBAC 合规性审计报告（从根目录移动）
-- `docs/NAMING_AUDIT.md` - API 命名规范审计报告（从根目录移动）
-- `docs/archive/README.md` - 归档文档说明
+- `DOCS_INDEX.md` - 文档总索引，统一管理所有重要文档
+- `docs/archive/audit-reports/README.md` - 审计报告归档说明
 
-### 归档文档
-以下文档已移动到 `docs/archive/` 目录：
-- `FRONTEND_REFACTOR_NEXT_STEPS.md` - 前端重构后续任务清单（已完成）
-- `FRONTEND_REFACTOR_AUDIT.md` - 前端重构完成质量评估报告（已完成）
-- `CODE_OPTIMIZATION_PLAN.md` - 代码精简优化方案（部分已完成）
-- `BUSINESS_IMPROVEMENTS.md` - 业务功能改进建议（部分已完成）
-- `PROJECT_RECOMMENDATIONS.md` - 项目改进建议（部分已完成）
+### 文档整理
 
-### 删除文件
-- `projects.txt` - 临时文件（wrangler 输出）
-- `MESSAGE_DRAFT.md` - 已重命名为 `RBAC_AUDIT.md` 并移动到 docs 目录
+#### 归档已完成的任务报告
+以下审计和状态报告已移动到 `docs/archive/audit-reports/` 目录：
+- `BACKEND_REFACTOR_STATUS.md` - 后端重构完成度报告（85%完成）
+- `CODE_AUDIT_COMPLETION.md` - 代码审计完成报告
+- `CODE_AUDIT_REPORT.md` - 代码审计报告
+- `CODE_STANDARDS_AUDIT.md` - 代码规范性检查报告
+- `HIGH_PRIORITY_TESTS_COMPLETION.md` - 高优先级服务测试补充完成报告
+- `TEST_COVERAGE_REPORT.md` - 测试用例完善报告
+- `RBAC_AUDIT.md` - RBAC 合规性审计报告
+- `NAMING_AUDIT.md` - 命名规范审计报告
 
-### 保留文件
-- `GEMINI.md` - AI 助手配置文档（保留在根目录）
-- `backend/README.md` - 后端项目说明
-- `frontend/README.md` - 前端项目说明
-- `frontend/src/docs/` - 前端开发文档
-- `docs/adr/` - 架构决策记录
-- `docs/DEPLOYMENT.md` - 部署指南
-- `docs/ERROR_CODES.md` - 错误码参考
+#### 文档移动
+- `frontend/src/features/assets/components/COMPONENT_SPLIT_GUIDE.md` → `frontend/src/docs/COMPONENT_SPLIT_GUIDE.md`
 
 ### 文档结构优化
-1. 统一文档目录结构
-2. 创建文档索引便于查找
-3. 归档过时文档保留历史记录
-4. 删除临时和无用文件
+
+#### 核心文档（保留）
+- `GEMINI.md` - AI 助手配置文档（根目录）
+- `.agent/` - AI助手相关文档（知识索引、工作流、RAG计划）
+- `.qoder/repowiki/` - 完整文档库（173个文件）
+- `docs/adr/` - 架构决策记录（3个文件）
+- `docs/DEPLOYMENT.md` - 部署指南
+- `docs/ERROR_CODES.md` - 错误码参考
+- `docs/CHANGELOG.md` - 变更日志
+- `frontend/src/docs/` - 前端开发文档（8个文件）
+
+#### 归档文档结构
+```
+docs/archive/
+├── audit-reports/          # 审计报告归档
+│   ├── README.md
+│   └── [8个审计报告文件]
+└── [其他归档文档]
+```
+
+### 文档索引更新
+- 更新 `docs/README.md`，移除已归档文档的引用
+- 创建 `DOCS_INDEX.md` 作为文档总索引
+
+### 文档分类原则
+1. **核心配置** - 根目录和 `.agent/` 目录
+2. **系统文档** - `.qoder/repowiki/` 目录（完整文档库）
+3. **项目文档** - `docs/` 目录（项目级文档）
+4. **开发文档** - `frontend/src/docs/` 和 `backend/` 目录
+5. **归档文档** - `docs/archive/` 目录
+
+### 文档维护规范
+- ✅ 核心文档随代码更新及时维护
+- ✅ 重大架构变更需更新 ADR
+- ✅ 新增功能需更新相关开发文档
+- ✅ 已完成的任务报告归档到 `archive/` 目录
 
 ---
 

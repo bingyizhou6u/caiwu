@@ -31,21 +31,17 @@
 #### 后端开发
 - [测试迁移指南](../backend/test/V2_MIGRATION_GUIDE.md) - V2 API 测试迁移说明
 
-#### 代码审计
-- [RBAC 合规性审计](./RBAC_AUDIT.md) - 权限系统审计报告
-- [命名规范审计](./NAMING_AUDIT.md) - API 命名规范审计报告
-
 ### 项目文档
 
 - [后端 README](../backend/README.md) - 后端项目说明
 - [前端 README](../frontend/README.md) - 前端项目说明
+- [变更日志](./CHANGELOG.md) - 项目变更历史记录
 
 ### 归档文档
 
 历史文档已归档至 [archive](./archive/) 目录，包括：
-- 前端重构相关文档
-- 代码优化计划
-- 业务改进建议
+- **审计报告** (`archive/audit-reports/`) - 代码审计、规范检查、测试报告等
+- **业务改进** (`archive/`) - 前端重构、代码优化、业务改进建议等
 
 **注意**: 归档文档可能包含过时信息，仅供参考。
 
