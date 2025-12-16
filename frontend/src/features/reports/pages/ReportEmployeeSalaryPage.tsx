@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Card, Space, Select, Statistic, Row, Col } from 'antd'
-import { DataTable, AmountDisplay } from '../../../components/common'
+import { DataTable, AmountDisplay, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { useEmployeeSalary } from '../../../hooks'
 import type { ColumnsType } from 'antd/es/table'
