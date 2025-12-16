@@ -24,7 +24,6 @@ export function MainLayout() {
     } = useAppStore()
     
     const [hoverExpanded, setHoverExpanded] = useState(false)
-    const [hoverOverlayMounted, setHoverOverlayMounted] = useState(false)
     const siderRef = useRef<HTMLDivElement>(null)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -48,35 +47,23 @@ export function MainLayout() {
     // Hover expand handlers
     const handleSiderMouseEnter = () => {
         if (!collapsed) return
-
-        // 折叠态：使用 overlay + transform 动画，避免 width/margin-left 触发布局抖动
         if (hoverTimeoutRef.current) {
             clearTimeout(hoverTimeoutRef.current)
             hoverTimeoutRef.current = null
         }
-
-        // 确保 overlay 已挂载
-        if (!hoverOverlayMounted) {
-            setHoverOverlayMounted(true)
-            // overlay 挂载后立即展开
-            requestAnimationFrame(() => {
-                setHoverExpanded(true)
-            })
-        } else if (!hoverExpanded) {
-            // overlay 已挂载但未展开，立即展开
-            setHoverExpanded(true)
-        }
+        // 始终保留 overlay，直接开动画
+        setHoverExpanded(true)
     }
     
     const handleSiderMouseLeave = () => {
         if (!collapsed) return
-        if (!hoverOverlayMounted) return
-
-        // 先收起（transform），再卸载 overlay，保证动画完整
-        setHoverExpanded(false)
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current)
+            hoverTimeoutRef.current = null
+        }
         hoverTimeoutRef.current = setTimeout(() => {
-            setHoverOverlayMounted(false)
-        }, 240)
+            setHoverExpanded(false)
+        }, 150)
     }
     
     useEffect(() => {
@@ -237,7 +224,7 @@ export function MainLayout() {
             </Sider>
 
             {/* Hover 展开：使用 transform 滑出 overlay，提升流畅度（仅在折叠态渲染） */}
-            {collapsed && hoverOverlayMounted && (
+            {collapsed && (
                 <div
                     className={`sider-hover-overlay ${hoverExpanded ? 'open' : ''}`}
                     onMouseEnter={handleSiderMouseEnter}

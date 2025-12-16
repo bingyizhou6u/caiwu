@@ -48,10 +48,12 @@
     will-change: transform;
     contain: layout paint style;
     overflow: hidden;
+    pointer-events: none;
 }
 
 .sider-hover-overlay.open {
     transform: translate3d(0, 0, 0);
+    pointer-events: auto;
 }
 
 .sider-hover-overlay .ant-menu,
