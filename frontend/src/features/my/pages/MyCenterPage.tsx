@@ -74,7 +74,7 @@ export function MyCenter() {
   // const { data: attendanceToday, isLoading: attendanceLoading } = useAttendanceToday()
   // const { mutateAsync: clockIn, isPending: clockingIn } = useClockIn()
   // const { mutateAsync: clockOut, isPending: clockingOut } = useClockOut()
-  const attendanceToday = null
+  const attendanceToday: { today: string; record: AttendanceRecord | null; workSchedule: WorkSchedule | null } | null = null
   const attendanceLoading = false
   const clockingIn = false
   const clockingOut = false
@@ -103,9 +103,6 @@ export function MyCenter() {
 
   if (loading) return <div style={{ textAlign: 'center', padding: 100 }}><Spin size="large" /></div>
 
-  const workSchedule = attendanceToday?.workSchedule || profile?.workSchedule
-  const isWorkingDay = isWorkDay(workSchedule)
-
   // 转换数据格式以兼容现有代码
   const dashboardData: DashboardData | null = dashboard ? {
     employee: dashboard.employee,
@@ -123,27 +120,30 @@ export function MyCenter() {
 
   const profileData: ProfileData | null = profile ? {
     ...profile,
-    workSchedule: profile.workSchedule || null,
+    workSchedule: (profile as any)?.workSchedule || null,
   } : null
 
   const attendanceData: { today: string; record: AttendanceRecord | null; workSchedule: WorkSchedule | null } | null = attendanceToday ? {
-    today: attendanceToday.today,
-    record: attendanceToday.record,
-    workSchedule: attendanceToday.workSchedule,
+    today: (attendanceToday as any).today,
+    record: (attendanceToday as any).record,
+    workSchedule: (attendanceToday as any).workSchedule,
   } : null
+
+  const workSchedule = attendanceData?.workSchedule || profileData?.workSchedule
+  const isWorkingDay = isWorkDay(workSchedule)
 
   return (
     <PageContainer
       title="工作台"
       breadcrumb={[{ title: '个人中心' }, { title: '工作台' }]}
     >
-      <Card bordered={false} className="page-card">
+      <Card bordered className="page-card page-card-outer">
         <Tabs defaultActiveKey="dashboard" items={[
           {
             key: 'dashboard', label: <span><ClockCircleOutlined /> 工作台</span>, children: (
               <Row gutter={[24, 24]}>
                 <Col xs={24} lg={12}>
-                  <Card title={<><ClockCircleOutlined /> 今日打卡</>} extra={<span style={{ fontSize: 24, fontWeight: 'bold' }}>{currentTime.toLocaleTimeString('zh-CN')}</span>}>
+                  <Card title={<><ClockCircleOutlined /> 今日打卡</>} extra={<span style={{ fontSize: 24, fontWeight: 'bold' }}>{currentTime.toLocaleTimeString('zh-CN')}</span>} className="page-card-inner">
                     <Alert type={isWorkingDay ? 'info' : 'warning'} message={<Space direction="vertical" size={4} style={{ width: '100%' }}><div><strong>排班时间：</strong>{getWorkScheduleText(workSchedule)}</div>{!isWorkingDay && <div style={{ color: '#fa8c16' }}>今天不是工作日</div>}</Space>} style={{ marginBottom: 16 }} />
                     <Row gutter={16} style={{ marginBottom: 24 }}>
                       <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceData?.record?.clockInTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签到时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceData?.record?.clockInTime ? '#52c41a' : '#999' }}>{attendanceData?.record?.clockInTime ? formatTime(attendanceData.record.clockInTime) : '--:--:--'}</div></Card></Col>
@@ -161,17 +161,17 @@ export function MyCenter() {
                   </Card>
                 </Col>
                 <Col xs={24} lg={12}>
-                  <Card title={<><CalendarOutlined /> 本期年假</>}>
+                  <Card title={<><CalendarOutlined /> 本期年假</>} className="page-card-inner">
                     {dashboardData?.stats.annualLeave ? (<><Progress percent={dashboardData.stats.annualLeave.total > 0 ? Math.round((dashboardData.stats.annualLeave.used / dashboardData.stats.annualLeave.total) * 100) : 0} status={dashboardData.stats.annualLeave.remaining > 0 ? 'active' : 'exception'} strokeColor={dashboardData.stats.annualLeave.remaining > 0 ? '#1890ff' : '#ff4d4f'} />
                       <Row gutter={16} style={{ marginTop: 16 }}><Col span={8}><Statistic title="本期天数" value={dashboardData.stats.annualLeave.total} suffix="天" /></Col><Col span={8}><Statistic title="已使用" value={dashboardData.stats.annualLeave.used} suffix="天" valueStyle={{ color: '#ff4d4f' }} /></Col><Col span={8}><Statistic title="剩余" value={dashboardData.stats.annualLeave.remaining} suffix="天" valueStyle={{ color: '#52c41a' }} /></Col></Row>
                       <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>周期：{dashboardData.stats.annualLeave.cycleMonths === 6 ? '半年制' : '年制'} | 第 {dashboardData.stats.annualLeave.cycleNumber} 周期{dashboardData.stats.annualLeave.cycleStart && ` (${dashboardData.stats.annualLeave.cycleStart} - ${dashboardData.stats.annualLeave.cycleEnd})`}</div></>) : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无年假数据</div>}
                   </Card>
-                  <Card title={<><WalletOutlined /> 财务概览</>} style={{ marginTop: 16 }}>
+                  <Card title={<><WalletOutlined /> 财务概览</>} style={{ marginTop: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                     <Row gutter={16}><Col span={12}><Statistic title="待报销" value={formatCents(dashboardData?.stats.pendingReimbursementCents || 0)} prefix="¥" valueStyle={{ color: '#faad14' }} /></Col><Col span={12}><Statistic title="借支余额" value={formatCents(dashboardData?.stats.borrowingBalanceCents || 0)} prefix="¥" valueStyle={{ color: dashboardData?.stats.borrowingBalanceCents ? '#ff4d4f' : '#52c41a' }} /></Col></Row>
                   </Card>
                 </Col>
                 <Col span={24}>
-                  <Card title={<><FileTextOutlined /> 最近申请</>}>
+                  <Card title={<><FileTextOutlined /> 最近申请</>} className="page-card-inner">
                     {dashboardData?.recentApplications && dashboardData.recentApplications.length > 0 ? <Timeline items={dashboardData.recentApplications.map(app => ({ color: getTimelineColor(app.status, app.type === 'leave' ? LEAVE_STATUS : REIMBURSEMENT_STATUS), children: <div><Tag>{typeTextMap[app.type] || app.type}</Tag><Tag color="blue">{typeTextMap[app.sub_type] || app.sub_type}</Tag><StatusTag status={app.status || ''} statusMap={app.type === 'leave' ? LEAVE_STATUS : REIMBURSEMENT_STATUS} /><span style={{ marginLeft: 8, color: '#999' }}>{app.createdAt ? new Date(app.createdAt).toLocaleDateString('zh-CN') : ''}</span></div> }))} /> : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无申请记录</div>}
                   </Card>
                 </Col>
@@ -182,7 +182,7 @@ export function MyCenter() {
             key: 'profile', label: <span><UserOutlined /> 个人信息</span>, children: (
               <Row gutter={[24, 24]}>
                 <Col xs={24} lg={12}>
-                  <Card title={<><UserOutlined /> 基本信息</>}>
+                  <Card title={<><UserOutlined /> 基本信息</>} className="page-card-inner">
                     <Descriptions column={1} bordered size="small">
                       <Descriptions.Item label="姓名">{profileData?.name || '-'}</Descriptions.Item>
                       <Descriptions.Item label="邮箱">{profileData?.email || '-'}</Descriptions.Item>
@@ -197,14 +197,14 @@ export function MyCenter() {
                   </Card>
                 </Col>
                 <Col xs={24} lg={12}>
-                  <Card title={<><CalendarOutlined /> 工作安排</>}>
+                  <Card title={<><CalendarOutlined /> 工作安排</>} className="page-card-inner">
                     <Descriptions column={1} bordered size="small">
                       <Descriptions.Item label="排班时间">{getWorkScheduleText(profileData?.workSchedule)}</Descriptions.Item>
                       <Descriptions.Item label="年假周期">{profileData?.annualLeaveCycleMonths === 6 ? '半年制（6个月）' : '年制（12个月）'}</Descriptions.Item>
                       <Descriptions.Item label="年假天数">{profileData?.annualLeaveDays || 0} 天/周期</Descriptions.Item>
                     </Descriptions>
                   </Card>
-                  <Card title={<><SafetyCertificateOutlined /> 紧急联系人</>} style={{ marginTop: 16 }}>
+                  <Card title={<><SafetyCertificateOutlined /> 紧急联系人</>} style={{ marginTop: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                     <Descriptions column={1} bordered size="small">
                       <Descriptions.Item label="紧急联系人">{profileData?.emergencyContact || '-'}</Descriptions.Item>
                       <Descriptions.Item label="紧急联系电话">{profileData?.emergencyPhone || '-'}</Descriptions.Item>
@@ -212,7 +212,7 @@ export function MyCenter() {
                   </Card>
                 </Col>
                 <Col span={24}>
-                  <Card title={<><DollarOutlined /> 薪资福利</>}>
+                  <Card title={<><DollarOutlined /> 薪资福利</>} className="page-card-inner">
                     <Row gutter={[16, 16]}>
                       <Col xs={12} sm={8} md={6}><Statistic title="试用期薪资" value={profileData?.probationSalaryCents ? formatCents(profileData.probationSalaryCents) : '-'} prefix={profileData?.probationSalaryCents ? '¥' : ''} /></Col>
                       <Col xs={12} sm={8} md={6}><Statistic title="正式薪资" value={profileData?.regularSalaryCents ? formatCents(profileData.regularSalaryCents) : '-'} prefix={profileData?.regularSalaryCents ? '¥' : ''} /></Col>
@@ -224,7 +224,7 @@ export function MyCenter() {
                   </Card>
                 </Col>
                 <Col span={24}>
-                  <Card title="银行信息">
+                  <Card title="银行信息" className="page-card-inner">
                     <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small">
                       <Descriptions.Item label="身份证号">{profileData?.idCard || '-'}</Descriptions.Item>
                       <Descriptions.Item label="银行名称">{profileData?.bankName || '-'}</Descriptions.Item>

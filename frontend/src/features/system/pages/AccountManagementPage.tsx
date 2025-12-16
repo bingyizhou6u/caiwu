@@ -174,7 +174,7 @@ export function AccountManagement() {
   return (
     <PageContainer
       title="账户管理"
-      breadcrumb={[{ title: '系统设置' }, { title: '账户管理' }]}
+      breadcrumb={[{ title: '财务管理' }, { title: '账户管理' }]}
     >
       <Card bordered={false} className="page-card">
         <SearchFilters

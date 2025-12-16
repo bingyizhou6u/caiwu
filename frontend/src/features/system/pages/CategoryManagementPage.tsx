@@ -93,7 +93,7 @@ export function CategoryManagement() {
   return (
     <PageContainer
       title="类别管理"
-      breadcrumb={[{ title: '系统设置' }, { title: '类别管理' }]}
+      breadcrumb={[{ title: '财务管理' }, { title: '类别管理' }]}
     >
       <Card bordered={false} className="page-card">
         <SearchFilters

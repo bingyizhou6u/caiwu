@@ -86,10 +86,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         finance.push({ key: 'account-transfer', label: '账户转账' })
         finance.push({ key: 'account-transactions', label: '账户明细' })
     }
-    // 数据导入需要财务或负责人权限
-    if (hasPermission(userInfo, 'finance') && (userInfo.position?.functionRole === 'finance' || userInfo.position?.functionRole === 'director')) {
-        finance.push({ key: 'import', label: '数据导入' })
-    }
     if (hasPermission(userInfo, 'finance', 'borrowing', 'view')) {
         finance.push({ key: 'borrowings', label: '借款管理' })
         finance.push({ key: 'repayments', label: '还款管理' })
@@ -100,43 +96,28 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     if (hasPermission(userInfo, 'finance', 'ap', 'view')) {
         finance.push({ key: 'ap', label: '应付账款' })
     }
+    // 数据导入需要财务或负责人权限
+    if (hasPermission(userInfo, 'finance') && (userInfo.position?.functionRole === 'finance' || userInfo.position?.functionRole === 'director')) {
+        finance.push({ key: 'import', label: '数据导入' })
+    }
+    // 财务基础数据管理 - 整合为财务设置菜单
+    if (hasPermission(userInfo, 'system', 'department', 'view')) {
+        finance.push({
+            key: 'finance-settings',
+            label: '财务设置',
+            children: [
+                { key: 'category', label: '类别管理' },
+                { key: 'account', label: '账户管理' },
+                { key: 'currency', label: '币种管理' },
+                { key: 'vendor', label: '供应商管理' },
+            ]
+        })
+    }
     if (finance.length > 0) {
         items.push({ key: 'finance', label: '财务管理', children: finance })
     }
 
-    // 3. 站点管理
-    const sites: MenuProps['items'] = []
-    if (hasPermission(userInfo, 'site', 'info', 'view')) {
-        sites.push({ key: 'site-management', label: '站点管理' })
-    }
-    if (hasPermission(userInfo, 'site', 'bill', 'view')) {
-        sites.push({ key: 'site-bills', label: '站点账单' })
-    }
-    if (sites.length > 0) {
-        items.push({ key: 'sites', label: '站点管理', children: sites })
-    }
-
-    // 4. 资产管理
-    const fixedAssets: MenuProps['items'] = []
-    if (hasPermission(userInfo, 'asset', 'fixed', 'view')) {
-        fixedAssets.push({ key: 'fixed-assets', label: '资产列表' })
-        // 隐藏买入/卖出/分配菜单，统一在列表页操作
-        // if (hasPermission(userInfo, 'asset', 'fixed', 'create')) {
-        //     fixedAssets.push({ key: 'fixed-asset-purchase', label: '资产买入' })
-        //     fixedAssets.push({ key: 'fixed-asset-sale', label: '资产卖出' })
-        // }
-        // if (hasPermission(userInfo, 'asset', 'fixed', 'allocate')) {
-        //     fixedAssets.push({ key: 'fixed-asset-allocation', label: '资产分配' })
-        // }
-    }
-    if (hasPermission(userInfo, 'asset', 'rental', 'view')) {
-        fixedAssets.push({ key: 'rental-management', label: '租房管理' })
-    }
-    if (fixedAssets.length > 0) {
-        items.push({ key: 'fixed-assets-menu', label: '资产管理', children: fixedAssets })
-    }
-
-    // 5. 人力资源
+    // 3. 人力资源
     const employees: MenuProps['items'] = []
     // 组员只能看到自己的请假报销
     if (userInfo?.position?.code === 'team_engineer') {
@@ -166,6 +147,38 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         items.push({ key: 'employees', label: '人力资源', children: employees })
     }
 
+    // 4. 站点管理
+    const sites: MenuProps['items'] = []
+    if (hasPermission(userInfo, 'site', 'info', 'view')) {
+        sites.push({ key: 'site-management', label: '站点管理' })
+    }
+    if (hasPermission(userInfo, 'site', 'bill', 'view')) {
+        sites.push({ key: 'site-bills', label: '站点账单' })
+    }
+    if (sites.length > 0) {
+        items.push({ key: 'sites', label: '站点管理', children: sites })
+    }
+
+    // 5. 资产管理
+    const fixedAssets: MenuProps['items'] = []
+    if (hasPermission(userInfo, 'asset', 'fixed', 'view')) {
+        fixedAssets.push({ key: 'fixed-assets', label: '资产列表' })
+        // 隐藏买入/卖出/分配菜单，统一在列表页操作
+        // if (hasPermission(userInfo, 'asset', 'fixed', 'create')) {
+        //     fixedAssets.push({ key: 'fixed-asset-purchase', label: '资产买入' })
+        //     fixedAssets.push({ key: 'fixed-asset-sale', label: '资产卖出' })
+        // }
+        // if (hasPermission(userInfo, 'asset', 'fixed', 'allocate')) {
+        //     fixedAssets.push({ key: 'fixed-asset-allocation', label: '资产分配' })
+        // }
+    }
+    if (hasPermission(userInfo, 'asset', 'rental', 'view')) {
+        fixedAssets.push({ key: 'rental-management', label: '租房管理' })
+    }
+    if (fixedAssets.length > 0) {
+        items.push({ key: 'fixed-assets-menu', label: '资产管理', children: fixedAssets })
+    }
+
     // 6. 报表中心
     const reports: MenuProps['items'] = []
     // 检查是否有报表查看权限
@@ -174,7 +187,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         reports.push({
             key: 'report-finance',
             label: '财务报表',
-            type: 'group',
             children: [
                 { key: 'report-dept-cash', label: '项目汇总报表' },
                 { key: 'report-account-balance', label: '账户余额报表' },
@@ -188,7 +200,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         reports.push({
             key: 'report-arap',
             label: '往来报表',
-            type: 'group',
             children: [
                 { key: 'report-ar-summary', label: '应收账款汇总' },
                 { key: 'report-ar-detail', label: '应收账款明细' },
@@ -201,7 +212,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         reports.push({
             key: 'report-operation',
             label: '运营报表',
-            type: 'group',
             children: [
                 { key: 'report-site-growth', label: '站点增长报表' },
             ]
@@ -216,10 +226,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     // 基础数据管理
     if (hasPermission(userInfo, 'system', 'department', 'view')) {
         system.push({ key: 'department', label: '项目管理' })
-        system.push({ key: 'category', label: '类别管理' })
-        system.push({ key: 'account', label: '账户管理' })
-        system.push({ key: 'currency', label: '币种管理' })
-        system.push({ key: 'vendor', label: '供应商管理' })
     }
     // 系统管理：只有总部主管可见
     if (userInfo?.position?.code === 'hq_manager') {

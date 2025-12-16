@@ -119,7 +119,7 @@ export function CurrencyManagement() {
   return (
     <PageContainer
       title="币种管理"
-      breadcrumb={[{ title: '系统设置' }, { title: '币种管理' }]}
+      breadcrumb={[{ title: '财务管理' }, { title: '币种管理' }]}
     >
       <Card bordered={false} className="page-card">
         <SearchFilters

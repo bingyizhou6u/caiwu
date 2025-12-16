@@ -144,45 +144,52 @@ export function ReportAnnualLeave() {
         />
       )}
 
-      <Card style={{ marginBottom: 24 }} bordered={false} className="page-card">
-        <Row gutter={24}>
-          <Col span={6}>
-            <Statistic
-              title="员工总数"
-              value={summary?.totalEmployees || 0}
-              prefix={<TeamOutlined />}
-              suffix="人"
-            />
+      <Card bordered className="page-card page-card-outer">
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="员工总数"
+                value={summary?.totalEmployees || 0}
+                prefix={<TeamOutlined />}
+                suffix="人"
+              />
+            </Card>
           </Col>
-          <Col span={6}>
-            <Statistic
-              title="总应得年假"
-              value={summary?.totalEntitled || 0}
-              prefix={<CalendarOutlined />}
-              suffix="天"
-            />
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="总应得年假"
+                value={summary?.totalEntitled || 0}
+                prefix={<CalendarOutlined />}
+                suffix="天"
+              />
+            </Card>
           </Col>
-          <Col span={6}>
-            <Statistic
-              title="已使用年假"
-              value={summary?.totalUsed || 0}
-              prefix={<CheckCircleOutlined />}
-              suffix="天"
-              valueStyle={{ color: '#52c41a' }}
-            />
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="已使用年假"
+                value={summary?.totalUsed || 0}
+                prefix={<CheckCircleOutlined />}
+                suffix="天"
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
           </Col>
-          <Col span={6}>
-            <Statistic
-              title="平均使用率"
-              value={summary?.avgUsageRate || 0}
-              suffix="%"
-              precision={0}
-            />
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="平均使用率"
+                value={summary?.avgUsageRate || 0}
+                suffix="%"
+                precision={0}
+              />
+            </Card>
           </Col>
         </Row>
-      </Card>
 
-      <Card bordered={false} className="page-card">
+        <Card bordered={false} className="page-card-inner">
         <PageToolbar style={{ marginBottom: 16 }}>
           <Text>筛选项目：</Text>
           <Select
@@ -206,6 +213,7 @@ export function ReportAnnualLeave() {
           pagination={{ pageSize: 20 }}
           tableProps={{ scroll: { x: 1000 }, size: 'small' }}
         />
+        </Card>
       </Card>
     </PageContainer>
   )

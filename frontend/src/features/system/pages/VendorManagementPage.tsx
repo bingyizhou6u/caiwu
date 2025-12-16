@@ -109,7 +109,7 @@ export function VendorManagement() {
   return (
     <PageContainer
       title="供应商管理"
-      breadcrumb={[{ title: '系统设置' }, { title: '供应商管理' }]}
+      breadcrumb={[{ title: '财务管理' }, { title: '供应商管理' }]}
     >
       <Card bordered={false} className="page-card">
         <SearchFilters

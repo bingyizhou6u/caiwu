@@ -123,63 +123,64 @@ export function MyReimbursements() {
       title="我的报销"
       breadcrumb={[{ title: '个人中心' }, { title: '我的报销' }]}
     >
-      {/* 报销统计 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="待审批"
-              value={getStatValue('pending') / 100}
-              suffix="元"
-              prefix={<FileTextOutlined />}
-              precision={2}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="已通过"
-              value={getStatValue('approved') / 100}
-              suffix="元"
-              precision={2}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="已驳回"
-              value={getStatValue('rejected') / 100}
-              suffix="元"
-              precision={2}
-              valueStyle={{ color: '#ff4d4f' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic
-              title="已支付"
-              value={getStatValue('paid') / 100}
-              suffix="元"
-              precision={2}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <Card bordered className="page-card page-card-outer">
+        {/* 报销统计 */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="待审批"
+                value={getStatValue('pending') / 100}
+                suffix="元"
+                prefix={<FileTextOutlined />}
+                precision={2}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="已通过"
+                value={getStatValue('approved') / 100}
+                suffix="元"
+                precision={2}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="已驳回"
+                value={getStatValue('rejected') / 100}
+                suffix="元"
+                precision={2}
+                valueStyle={{ color: '#ff4d4f' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="已支付"
+                value={getStatValue('paid') / 100}
+                suffix="元"
+                precision={2}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      <Card
-        title="报销记录"
-        bordered={false}
-        className="page-card"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
-            发起报销
-          </Button>
-        }
-      >
+        <Card
+          title="报销记录"
+          bordered={false}
+          className="page-card-inner"
+          extra={
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
+              发起报销
+            </Button>
+          }
+        >
         <DataTable<Reimbursement>
           columns={columns}
           data={reimbursements}
@@ -188,6 +189,7 @@ export function MyReimbursements() {
           pagination={{ pageSize: 10 }}
           tableProps={{ className: 'table-striped' }}
         />
+        </Card>
       </Card>
 
       {/* 报销表单 */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, Button, Modal, Form, Input, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs } from 'antd'
+import { Card, Button, Modal, Form, Input, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs, Select } from 'antd'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { FormInstance } from 'antd'
@@ -105,8 +105,8 @@ export function RentalManagement() {
 
   // React Query hooks for data
   const { data = [], isLoading: loading, refetch } = useRentalProperties({
-    propertyType: propertyTypeFilter,
-    status: statusFilter
+    propertyType: searchParams.propertyType,
+    status: searchParams.status
   })
   
   // Business data hooks

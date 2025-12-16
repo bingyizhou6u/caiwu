@@ -382,8 +382,11 @@ export class EmployeeService {
       conditions.push(eq(employees.positionId, filters.positionId))
     }
 
-    return await this.buildEmployeeQuery()
-      .where(and(...conditions))
+    let query = this.buildEmployeeQuery()
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions))
+    }
+    return await query
       .orderBy(desc(employees.createdAt))
       .limit(filters.limit || 100)
       .offset(filters.offset || 0)

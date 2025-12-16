@@ -47,7 +47,7 @@ vendorsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const { activeOnly, search } = c.req.valid('query') as { activeOnly?: string; search?: string }
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     let results = await service.getVendors()
 
     // 后端过滤
@@ -99,7 +99,7 @@ vendorsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     const result = await service.getVendor(id)
     return {
       ...result,
@@ -143,7 +143,7 @@ vendorsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const body = c.req.valid('json') as { name: string; contact?: string; phone?: string; email?: string; address?: string; memo?: string }
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.createVendor({
       name: body.name,
@@ -201,7 +201,7 @@ vendorsRoutes.openapi(
     }
     const id = c.req.param('id')
     const body = c.req.valid('json') as any
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     await service.updateVendor(id, {
       ...body,
@@ -249,7 +249,7 @@ vendorsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.deleteVendor(id)
 

@@ -48,82 +48,83 @@ export function MyDashboard() {
   }
 
   const { employee, stats, recentApplications } = data
-  const mainSalary = stats.salary.find((s) => s.currencyId === 'CNY')
+  const mainSalary = stats.salary.find((s: { currencyId: string }) => s.currencyId === 'CNY')
 
   return (
     <PageContainer
       title="个人首页"
       breadcrumb={[{ title: '个人中心' }, { title: '首页' }]}
     >
-      {/* 用户信息卡片 */}
-      <Card style={{ marginBottom: 24 }} bordered={false} className="page-card">
-        <Space size="large">
-          <Avatar size={64} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
-          <div>
-            <Title level={4} style={{ margin: 0 }}>{employee.name}</Title>
-            <Text type="secondary">{employee.position} · {employee.orgDepartment || employee.department}</Text>
-            <br />
-            <Text type="secondary">{employee.email}</Text>
-          </div>
-        </Space>
-      </Card>
+      <Card bordered className="page-card page-card-outer">
+        {/* 用户信息卡片 */}
+        <Card className="page-card-inner" style={{ marginBottom: 24 }} bordered={false}>
+          <Space size="large">
+            <Avatar size={64} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+            <div>
+              <Title level={4} style={{ margin: 0 }}>{employee.name}</Title>
+              <Text type="secondary">{employee.position} · {employee.orgDepartment || employee.department}</Text>
+              <br />
+              <Text type="secondary">{employee.email}</Text>
+            </div>
+          </Space>
+        </Card>
 
-      {/* 统计卡片 */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="page-card">
-            <Statistic
-              title="本月薪资"
-              value={mainSalary ? mainSalary.totalCents / 100 : 0}
-              prefix={<DollarOutlined />}
-              suffix="元"
-              precision={2}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="page-card">
-            <Statistic
-              title={stats.annualLeave.isFirstCycle ? "年假（试用期）" : `年假（第${stats.annualLeave.cycleNumber}周期）`}
-              value={stats.annualLeave.remaining}
-              prefix={<CalendarOutlined />}
-              suffix={stats.annualLeave.isFirstCycle ? "暂无" : `/ ${stats.annualLeave.total} 天`}
-              valueStyle={stats.annualLeave.isFirstCycle ? { color: '#999' } : undefined}
-            />
-            {!stats.annualLeave.isFirstCycle && stats.annualLeave.cycleEnd && (
-              <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                周期：{stats.annualLeave.cycleStart} 至 {stats.annualLeave.cycleEnd}
-              </div>
-            )}
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="page-card">
-            <Statistic
-              title="待报销"
-              value={stats.pendingReimbursementCents / 100}
-              prefix={<FileTextOutlined />}
-              suffix="元"
-              precision={2}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="page-card">
-            <Statistic
-              title="借支余额"
-              value={stats.borrowingBalanceCents / 100}
-              prefix={<BankOutlined />}
-              suffix="元"
-              precision={2}
-              valueStyle={{ color: stats.borrowingBalanceCents > 0 ? '#cf1322' : '#3f8600' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+        {/* 统计卡片 */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} className="page-card-inner">
+              <Statistic
+                title="本月薪资"
+                value={mainSalary ? mainSalary.totalCents / 100 : 0}
+                prefix={<DollarOutlined />}
+                suffix="元"
+                precision={2}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} className="page-card-inner">
+              <Statistic
+                title={stats.annualLeave.isFirstCycle ? "年假（试用期）" : `年假（第${stats.annualLeave.cycleNumber}周期）`}
+                value={stats.annualLeave.remaining}
+                prefix={<CalendarOutlined />}
+                suffix={stats.annualLeave.isFirstCycle ? "暂无" : `/ ${stats.annualLeave.total} 天`}
+                valueStyle={stats.annualLeave.isFirstCycle ? { color: '#999' } : undefined}
+              />
+              {!stats.annualLeave.isFirstCycle && stats.annualLeave.cycleEnd && (
+                <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                  周期：{stats.annualLeave.cycleStart} 至 {stats.annualLeave.cycleEnd}
+                </div>
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} className="page-card-inner">
+              <Statistic
+                title="待报销"
+                value={stats.pendingReimbursementCents / 100}
+                prefix={<FileTextOutlined />}
+                suffix="元"
+                precision={2}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} className="page-card-inner">
+              <Statistic
+                title="借支余额"
+                value={stats.borrowingBalanceCents / 100}
+                prefix={<BankOutlined />}
+                suffix="元"
+                precision={2}
+                valueStyle={{ color: stats.borrowingBalanceCents > 0 ? '#cf1322' : '#3f8600' }}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      {/* 最近申请 */}
-      <Card title="最近申请" style={{ marginTop: 24 }} bordered={false} className="page-card">
+        {/* 最近申请 */}
+        <Card title="最近申请" className="page-card-inner" style={{ marginTop: 24 }} bordered={false}>
         <List
           dataSource={recentApplications}
           locale={{ emptyText: '暂无申请记录' }}
@@ -168,6 +169,7 @@ export function MyDashboard() {
             </List.Item>
           )}
         />
+        </Card>
       </Card>
     </PageContainer>
   )

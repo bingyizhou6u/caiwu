@@ -1,5 +1,5 @@
-const CACHE_NAME = 'caiwu-v1';
-const RUNTIME_CACHE = 'runtime-caiwu-v1';
+const CACHE_NAME = 'caiwu-v2';
+const RUNTIME_CACHE = 'runtime-caiwu-v2';
 
 // 预缓存资源
 const PRECACHE_URLS = [

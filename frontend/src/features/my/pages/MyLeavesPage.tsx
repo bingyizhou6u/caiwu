@@ -101,41 +101,41 @@ export function MyLeaves() {
       title="我的请假"
       breadcrumb={[{ title: '个人中心' }, { title: '我的请假' }]}
     >
+      <Card bordered className="page-card page-card-outer">
+        {/* 假期统计 */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic title="年假已用" value={getUsedDays('annual')} suffix="天" prefix={<CalendarOutlined />} />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic title="病假已用" value={getUsedDays('sick')} suffix="天" />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic title="事假已用" value={getUsedDays('personal')} suffix="天" />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="page-card-inner">
+              <Statistic title="其他已用" value={getUsedDays('other')} suffix="天" />
+            </Card>
+          </Col>
+        </Row>
 
-      {/* 假期统计 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title="年假已用" value={getUsedDays('annual')} suffix="天" prefix={<CalendarOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title="病假已用" value={getUsedDays('sick')} suffix="天" />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title="事假已用" value={getUsedDays('personal')} suffix="天" />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card>
-            <Statistic title="其他已用" value={getUsedDays('other')} suffix="天" />
-          </Card>
-        </Col>
-      </Row>
-
-      <Card
-        title="请假记录"
-        bordered={false}
-        className="page-card"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
-            发起请假
-          </Button>
-        }
-      >
+        <Card
+          title="请假记录"
+          bordered={false}
+          className="page-card-inner"
+          extra={
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
+              发起请假
+            </Button>
+          }
+        >
         <DataTable<any>
           columns={columns}
           data={leaves}
@@ -144,6 +144,7 @@ export function MyLeaves() {
           pagination={{ pageSize: 10 }}
           tableProps={{ className: 'table-striped' }}
         />
+        </Card>
       </Card>
 
       {/* 请假表单 */}

@@ -34,33 +34,37 @@ export function ReportExpenseSummary() {
       title="日常支出汇总"
       breadcrumb={[{ title: '报表中心' }, { title: '日常支出汇总' }]}
     >
-      <Card bordered={false} className="page-card">
-        <PageToolbar
-          actions={[
-            {
-              label: '查询',
-              type: 'primary',
-              onClick: handleQuery
-            }
-          ]}
-          wrap
-        >
-          <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-        </PageToolbar>
-        <Space style={{ marginBottom: 12 }}>
-          <Statistic title="支出总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
-        </Space>
-        <DataTable<{ categoryId: string; categoryName: string; totalCents: number; count: number }>
-          columns={[
-            { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
-            { title: '金额', dataIndex: 'totalCents', key: 'totalCents', render: (v: number) => <AmountDisplay cents={v} currency="CNY" /> },
-            { title: '笔数', dataIndex: 'count', key: 'count' },
-          ]}
-          data={rows}
-          loading={isLoading}
-          rowKey="categoryId"
-          tableProps={{ className: 'table-striped' }}
-        />
+      <Card bordered className="page-card page-card-outer">
+        <Card bordered={false} className="page-card-inner" style={{ marginBottom: 16 }}>
+          <PageToolbar
+            actions={[
+              {
+                label: '查询',
+                type: 'primary',
+                onClick: handleQuery
+              }
+            ]}
+            wrap
+          >
+            <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
+          </PageToolbar>
+          <Space style={{ marginTop: 12 }}>
+            <Statistic title="支出总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
+          </Space>
+        </Card>
+        <Card bordered={false} className="page-card-inner">
+          <DataTable<{ categoryId: string; categoryName: string; totalCents: number; count: number }>
+            columns={[
+              { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
+              { title: '金额', dataIndex: 'totalCents', key: 'totalCents', render: (v: number) => <AmountDisplay cents={v} currency="CNY" /> },
+              { title: '笔数', dataIndex: 'count', key: 'count' },
+            ]}
+            data={rows}
+            loading={isLoading}
+            rowKey="categoryId"
+            tableProps={{ className: 'table-striped' }}
+          />
+        </Card>
       </Card>
     </PageContainer>
   )

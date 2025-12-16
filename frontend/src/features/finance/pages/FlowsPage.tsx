@@ -378,7 +378,11 @@ export function Flows() {
         }} destroyOnClose>
           <Form form={form} layout="vertical">
             <Form.Item name="bizDate" label="日期时间" rules={[{ required: true, message: '请选择日期时间' }]}>
-              <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" />
+              <DatePicker 
+                showTime={{ format: 'HH:mm:ss' }}
+                format="YYYY-MM-DD HH:mm:ss"
+                style={{ width: '100%' }}
+              />
             </Form.Item>
             <Form.Item name="voucherUrls" hidden>
               <Input />

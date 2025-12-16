@@ -64,49 +64,51 @@ export function MyProfile() {
       title="个人信息"
       breadcrumb={[{ title: '个人中心' }, { title: '个人信息' }]}
     >
-      {/* 基本信息卡片 */}
-      <Card style={{ marginBottom: 24 }} bordered={false} className="page-card">
-        <Space size="large" align="start">
-          <Avatar size={80} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
-          <div>
-            <Title level={3} style={{ margin: 0 }}>{profileData.name || '-'}</Title>
-            <Space style={{ marginTop: 8 }}>
-              <TeamOutlined /> {profileData.position || '-'}
-              {profileData.orgDepartment && <span>· {profileData.orgDepartment}</span>}
-              {profileData.department && <span>· {profileData.department}</span>}
-            </Space>
-          </div>
-        </Space>
-      </Card>
+      <Card bordered className="page-card page-card-outer">
+        {/* 基本信息卡片 */}
+        <Card className="page-card-inner" style={{ marginBottom: 24 }} bordered={false}>
+          <Space size="large" align="start">
+            <Avatar size={80} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+            <div>
+              <Title level={3} style={{ margin: 0 }}>{profile.name || '-'}</Title>
+              <Space style={{ marginTop: 8 }}>
+                <TeamOutlined /> {profile.position || '-'}
+                {profile.orgDepartment && <span>· {profile.orgDepartment}</span>}
+                {profile.department && <span>· {profile.department}</span>}
+              </Space>
+            </div>
+          </Space>
+        </Card>
 
-      {/* 详细信息 */}
-      <Card
-        title="详细信息"
-        bordered={false}
-        className="page-card"
-        extra={
-          <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
-            编辑
-          </Button>
-        }
-      >
-        <Descriptions column={{ xs: 1, sm: 2, md: 2 }} bordered>
-          <Descriptions.Item label={<><MailOutlined /> 邮箱</>}>{profileData.email}</Descriptions.Item>
-          <Descriptions.Item label={<><PhoneOutlined /> 手机</>}>{profileData.phone || '-'}</Descriptions.Item>
-          <Descriptions.Item label={<><IdcardOutlined /> 身份证</>}>{profileData.idCard || '-'}</Descriptions.Item>
-          <Descriptions.Item label={<><BankOutlined /> 银行账户</>}>{profileData.bankAccount || '-'}</Descriptions.Item>
-          <Descriptions.Item label="开户行">{profileData.bankName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="职位代码">{profileData.positionCode || '-'}</Descriptions.Item>
-          <Descriptions.Item label="入职日期">{profileData.entryDate || '-'}</Descriptions.Item>
-          <Descriptions.Item label="合同到期">{profileData.contractEndDate || '-'}</Descriptions.Item>
-        </Descriptions>
+        {/* 详细信息 */}
+        <Card
+          title="详细信息"
+          bordered={false}
+          className="page-card-inner"
+          extra={
+            <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
+              编辑
+            </Button>
+          }
+        >
+          <Descriptions column={{ xs: 1, sm: 2, md: 2 }} bordered>
+            <Descriptions.Item label={<><MailOutlined /> 邮箱</>}>{profile.email}</Descriptions.Item>
+            <Descriptions.Item label={<><PhoneOutlined /> 手机</>}>{profile.phone || '-'}</Descriptions.Item>
+            <Descriptions.Item label={<><IdcardOutlined /> 身份证</>}>{profile.idCard || '-'}</Descriptions.Item>
+            <Descriptions.Item label={<><BankOutlined /> 银行账户</>}>{profile.bankAccount || '-'}</Descriptions.Item>
+            <Descriptions.Item label="开户行">{profile.bankName || '-'}</Descriptions.Item>
+            <Descriptions.Item label="职位代码">{profile.positionCode || '-'}</Descriptions.Item>
+            <Descriptions.Item label="入职日期">{profile.entryDate || '-'}</Descriptions.Item>
+            <Descriptions.Item label="合同到期">{profile.contractEndDate || '-'}</Descriptions.Item>
+          </Descriptions>
 
-        <Divider>紧急联系人</Divider>
+          <Divider>紧急联系人</Divider>
 
-        <Descriptions column={{ xs: 1, sm: 2 }} bordered>
-          <Descriptions.Item label="联系人">{profileData.emergencyContact || '-'}</Descriptions.Item>
-          <Descriptions.Item label="联系电话">{profileData.emergencyPhone || '-'}</Descriptions.Item>
-        </Descriptions>
+          <Descriptions column={{ xs: 1, sm: 2 }} bordered>
+            <Descriptions.Item label="联系人">{profile.emergencyContact || '-'}</Descriptions.Item>
+            <Descriptions.Item label="联系电话">{profile.emergencyPhone || '-'}</Descriptions.Item>
+          </Descriptions>
+        </Card>
       </Card>
 
       {/* 编辑表单 */}

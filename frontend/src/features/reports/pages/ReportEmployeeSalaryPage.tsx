@@ -165,70 +165,74 @@ export function ReportEmployeeSalary() {
       title="员工薪资报表"
       breadcrumb={[{ title: '报表中心' }, { title: '员工薪资报表' }]}
     >
-      <Card bordered={false} className="page-card">
-        <SearchFilters
-          fields={[
-            {
-              name: 'year',
-              label: '年份',
-              type: 'select',
-              placeholder: '请选择年份',
-              options: yearOptions,
-            },
-            {
-              name: 'month',
-              label: '月份',
-              type: 'select',
-              placeholder: '全部月份',
-              options: [{ label: '全部月份', value: '' }, ...monthOptions],
-            },
-          ]}
-          onSearch={(values) => {
-            setYear((values.year as number) || new Date().getFullYear())
-            setMonth(values.month ? (values.month as number) : undefined)
-          }}
-          onReset={() => {
-            setYear(new Date().getFullYear())
-            setMonth(undefined)
-          }}
-          initialValues={{ year, month }}
-        />
+      <Card bordered className="page-card page-card-outer">
+        <Card bordered={false} className="page-card-inner" style={{ marginBottom: 16 }}>
+          <SearchFilters
+            fields={[
+              {
+                name: 'year',
+                label: '年份',
+                type: 'select',
+                placeholder: '请选择年份',
+                options: yearOptions,
+              },
+              {
+                name: 'month',
+                label: '月份',
+                type: 'select',
+                placeholder: '全部月份',
+                options: [{ label: '全部月份', value: '' }, ...monthOptions],
+              },
+            ]}
+            onSearch={(values) => {
+              setYear((values.year as number) || new Date().getFullYear())
+              setMonth(values.month ? (values.month as number) : undefined)
+            }}
+            onReset={() => {
+              setYear(new Date().getFullYear())
+              setMonth(undefined)
+            }}
+            initialValues={{ year, month }}
+          />
 
-        <Row gutter={16} style={{ marginBottom: 16, marginTop: 16 }}>
-          <Col span={8}>
-            <Statistic
-              title="员工总数"
-              value={employeeCount}
-              suffix="人"
-            />
-          </Col>
-          <Col span={8}>
-            <Statistic
-              title="工资总额"
-              value={summary.totalSalary / 100}
-              precision={2}
-            />
-          </Col>
-          <Col span={8}>
-            <Statistic
-              title="平均工资"
-              value={employeeCount > 0 ? (summary.totalSalary / employeeCount) / 100 : 0}
-              precision={2}
-            />
-          </Col>
-        </Row>
+          <Row gutter={16} style={{ marginTop: 16 }}>
+            <Col span={8}>
+              <Statistic
+                title="员工总数"
+                value={employeeCount}
+                suffix="人"
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="工资总额"
+                value={summary.totalSalary / 100}
+                precision={2}
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="平均工资"
+                value={employeeCount > 0 ? (summary.totalSalary / employeeCount) / 100 : 0}
+                precision={2}
+              />
+            </Col>
+          </Row>
+        </Card>
 
-        <DataTable<EmployeeSalaryRow>
-          columns={columns}
-          data={dataRows}
-          loading={loading}
-          rowKey={(record) => `${record.employeeId}-${record.year}-${record.month}`}
-          pagination={{ pageSize: 20 }}
-          tableProps={{
-            className: 'table-striped',
-            scroll: { x: 1200 },
-          }}
-        />
+        <Card bordered={false} className="page-card-inner">
+          <DataTable<EmployeeSalaryRow>
+            columns={columns}
+            data={dataRows}
+            loading={loading}
+            rowKey={(record) => `${record.employeeId}-${record.year}-${record.month}`}
+            pagination={{ pageSize: 20 }}
+            tableProps={{
+              className: 'table-striped',
+              scroll: { x: 1200 },
+            }}
+          />
+        </Card>
       </Card>
     </PageContainer>
   )

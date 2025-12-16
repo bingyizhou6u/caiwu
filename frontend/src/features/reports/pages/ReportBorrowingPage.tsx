@@ -277,59 +277,61 @@ export function ReportBorrowing() {
           { title: '借款明细' }
         ]}
       >
-        <Card size="small" style={{ marginBottom: 16 }} bordered={false} className="page-card">
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-            <div><strong>借款人：</strong>{detail.user.name}</div>
-            {detail.user.email && <div><strong>邮箱：</strong>{detail.user.email}</div>}
+        <Card bordered className="page-card page-card-outer">
+          <Card size="small" style={{ marginBottom: 16 }} bordered={false} className="page-card-inner">
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <div><strong>借款人：</strong>{detail.user.name}</div>
+              {detail.user.email && <div><strong>邮箱：</strong>{detail.user.email}</div>}
+            </Space>
+          </Card>
+
+          <Space direction="vertical" size="large" style={{ width: '100%', marginBottom: 16 }}>
+            {Object.values(borrowerCurrencyStats).map((stat) => (
+              <Card key={stat.currency} title={`${stat.currency} 币种统计`} size="small" bordered={false} className="page-card-inner">
+                <Space size="large">
+                  <Statistic
+                    title="借款总额"
+                    value={stat.borrowed / 100}
+                    precision={2}
+                    suffix={stat.currency}
+                  />
+                  <Statistic
+                    title="还款总额"
+                    value={stat.repaid / 100}
+                    precision={2}
+                    suffix={stat.currency}
+                  />
+                  <Statistic
+                    title="余额"
+                    value={(stat.borrowed - stat.repaid) / 100}
+                    precision={2}
+                    suffix={stat.currency}
+                    valueStyle={{ color: (stat.borrowed - stat.repaid) > 0 ? '#ff4d4f' : '#52c41a' }}
+                  />
+                </Space>
+              </Card>
+            ))}
           </Space>
-        </Card>
 
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {Object.values(borrowerCurrencyStats).map((stat) => (
-            <Card key={stat.currency} title={`${stat.currency} 币种统计`} size="small" bordered={false} className="page-card">
-              <Space size="large">
-                <Statistic
-                  title="借款总额"
-                  value={stat.borrowed / 100}
-                  precision={2}
-                  suffix={stat.currency}
-                />
-                <Statistic
-                  title="还款总额"
-                  value={stat.repaid / 100}
-                  precision={2}
-                  suffix={stat.currency}
-                />
-                <Statistic
-                  title="余额"
-                  value={(stat.borrowed - stat.repaid) / 100}
-                  precision={2}
-                  suffix={stat.currency}
-                  valueStyle={{ color: (stat.borrowed - stat.repaid) > 0 ? '#ff4d4f' : '#52c41a' }}
-                />
-              </Space>
-            </Card>
-          ))}
-        </Space>
+          <Card title="借款记录" style={{ marginBottom: 16 }} bordered={false} className="page-card-inner">
+            <DataTable<BorrowingRecord>
+              columns={borrowingColumns}
+              data={detail.borrowings}
+              rowKey="id"
+              pagination={{ pageSize: 20 }}
+              tableProps={{ size: 'small' }}
+            />
+          </Card>
 
-        <Card title="借款记录" style={{ marginTop: 16 }} bordered={false} className="page-card">
-          <DataTable<BorrowingRecord>
-            columns={borrowingColumns}
-            data={detail.borrowings}
-            rowKey="id"
-            pagination={{ pageSize: 20 }}
-            tableProps={{ size: 'small' }}
-          />
-        </Card>
-
-        <Card title="还款记录" style={{ marginTop: 16 }} bordered={false} className="page-card">
-          <DataTable<RepaymentRecord>
-            columns={repaymentColumns}
-            data={detail.repayments}
-            rowKey="id"
-            pagination={{ pageSize: 20 }}
-            tableProps={{ size: 'small' }}
-          />
+          <Card title="还款记录" bordered={false} className="page-card-inner">
+            <DataTable<RepaymentRecord>
+              columns={repaymentColumns}
+              data={detail.repayments}
+              rowKey="id"
+              pagination={{ pageSize: 20 }}
+              tableProps={{ size: 'small' }}
+            />
+          </Card>
         </Card>
       </PageContainer>
     )
@@ -340,50 +342,52 @@ export function ReportBorrowing() {
       title="借款统计报表"
       breadcrumb={[{ title: '报表中心' }, { title: '借款统计报表' }]}
     >
-      <Card title="借款概览" style={{ marginBottom: 16 }} bordered={false} className="page-card">
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {Object.values(currencyStats).map((stat) => (
-            <Card key={stat.currency} title={`${stat.currency} 币种汇总`} size="small">
-              <Space size="large">
-                <Statistic
-                  title="借款人数"
-                  value={stat.count}
-                  suffix="人"
-                />
-                <Statistic
-                  title="借款总额"
-                  value={stat.total_borrowed / 100}
-                  precision={2}
-                  suffix={stat.currency}
-                />
-                <Statistic
-                  title="还款总额"
-                  value={stat.total_repaid / 100}
-                  precision={2}
-                  suffix={stat.currency}
-                />
-                <Statistic
-                  title="总余额"
-                  value={stat.balance / 100}
-                  precision={2}
-                  suffix={stat.currency}
-                  valueStyle={{ color: stat.balance > 0 ? '#ff4d4f' : '#52c41a' }}
-                />
-              </Space>
-            </Card>
-          ))}
-        </Space>
-      </Card>
+      <Card bordered className="page-card page-card-outer">
+        <Card title="借款概览" style={{ marginBottom: 16 }} bordered={false} className="page-card-inner">
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {Object.values(currencyStats).map((stat) => (
+              <Card key={stat.currency} title={`${stat.currency} 币种汇总`} size="small">
+                <Space size="large">
+                  <Statistic
+                    title="借款人数"
+                    value={stat.count}
+                    suffix="人"
+                  />
+                  <Statistic
+                    title="借款总额"
+                    value={stat.total_borrowed / 100}
+                    precision={2}
+                    suffix={stat.currency}
+                  />
+                  <Statistic
+                    title="还款总额"
+                    value={stat.total_repaid / 100}
+                    precision={2}
+                    suffix={stat.currency}
+                  />
+                  <Statistic
+                    title="总余额"
+                    value={stat.balance / 100}
+                    precision={2}
+                    suffix={stat.currency}
+                    valueStyle={{ color: stat.balance > 0 ? '#ff4d4f' : '#52c41a' }}
+                  />
+                </Space>
+              </Card>
+            ))}
+          </Space>
+        </Card>
 
-      <Card title="个人借款汇总" bordered={false} className="page-card">
-        <DataTable<BorrowerSummary>
-          columns={summaryColumns}
-          data={summaries}
-          rowKey={(record) => `${record.userId}-${record.currency}`}
-          loading={loading}
-          pagination={{ pageSize: 20 }}
-          tableProps={{ scroll: { x: 800 } }}
-        />
+        <Card title="个人借款汇总" bordered={false} className="page-card-inner">
+          <DataTable<BorrowerSummary>
+            columns={summaryColumns}
+            data={summaries}
+            rowKey={(record) => `${record.userId}-${record.currency}`}
+            loading={loading}
+            pagination={{ pageSize: 20 }}
+            tableProps={{ scroll: { x: 800 } }}
+          />
+        </Card>
       </Card>
     </PageContainer>
   )

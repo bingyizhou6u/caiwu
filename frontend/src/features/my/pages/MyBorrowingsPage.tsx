@@ -127,56 +127,57 @@ export function MyBorrowings() {
       title="我的借支"
       breadcrumb={[{ title: '个人中心' }, { title: '我的借支' }]}
     >
-      {/* 借支统计 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="累计借支"
-              value={stats.totalBorrowedCents / 100}
-              suffix="元"
-              prefix={<BankOutlined />}
-              precision={2}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="累计还款"
-              value={stats.totalRepaidCents / 100}
-              suffix="元"
-              precision={2}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="待还余额"
-              value={stats.balanceCents / 100}
-              suffix="元"
-              precision={2}
-              valueStyle={{ color: stats.balanceCents > 0 ? '#cf1322' : '#3f8600' }}
-            />
-            <Progress
-              percent={repaymentProgress}
-              size="small"
-              status={repaymentProgress === 100 ? 'success' : 'active'}
-              format={() => `已还 ${repaymentProgress}%`}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <Card bordered className="page-card page-card-outer">
+        {/* 借支统计 */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={24} sm={8}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="累计借支"
+                value={stats.totalBorrowedCents / 100}
+                suffix="元"
+                prefix={<BankOutlined />}
+                precision={2}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="累计还款"
+                value={stats.totalRepaidCents / 100}
+                suffix="元"
+                precision={2}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="page-card-inner">
+              <Statistic
+                title="待还余额"
+                value={stats.balanceCents / 100}
+                suffix="元"
+                precision={2}
+                valueStyle={{ color: stats.balanceCents > 0 ? '#cf1322' : '#3f8600' }}
+              />
+              <Progress
+                percent={repaymentProgress}
+                size="small"
+                status={repaymentProgress === 100 ? 'success' : 'active'}
+                format={() => `已还 ${repaymentProgress}%`}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      <Card
-        title="借支记录"
-        bordered={false}
-        className="page-card"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
-            申请借支
+        <Card
+          title="借支记录"
+          bordered={false}
+          className="page-card-inner"
+          extra={
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { openCreate(); form.resetFields() }}>
+              申请借支
           </Button>
         }
       >
@@ -188,6 +189,7 @@ export function MyBorrowings() {
           pagination={{ pageSize: 10 }}
           tableProps={{ className: 'table-striped' }}
         />
+        </Card>
       </Card>
 
       {/* 借支表单 */}
