@@ -1,9 +1,6 @@
-import { v4 as uuid } from 'uuid'
 import { getCookie } from 'hono/cookie'
 import { getSession, createDb } from './db.js'
-// import { DrizzleD1Database } from 'drizzle-orm/d1' // Unused
-// import { auditLogs } from '../db/schema.js' // Unused
-import * as schema from '../db/schema.js'
+import { Logger } from './logger.js'
 
 // 从Cloudflare请求头获取IP和IP归属地信息
 function getIPInfo(c: any): { ip: string | null; ipLocation: string | null } {
@@ -28,7 +25,7 @@ function getIPInfo(c: any): { ip: string | null; ipLocation: string | null } {
     return { ip, ipLocation }
   } catch (err) {
     // 如果获取IP信息失败，返回null，不影响主流程
-    console.error('Failed to get IP info:', err)
+    Logger.error('Failed to get IP info', { error: err })
     return { ip: null, ipLocation: null }
   }
 }
@@ -57,7 +54,7 @@ export function logAuditAction(
             auditService
               .log(s.userId, action, entity, entityId, detail, ip, ipLocation)
               .catch((err: any) => {
-                console.error('Audit log error:', err)
+                Logger.error('Audit log error', { error: err })
               })
           }
         })
@@ -67,7 +64,7 @@ export function logAuditAction(
   }
 
   if (!auditService) {
-    console.error('AuditService not found in context')
+    Logger.error('AuditService not found in context')
     return
   }
 
@@ -75,7 +72,7 @@ export function logAuditAction(
   const promise = auditService
     .log(userId, action, entity, entityId, detail, ip, ipLocation)
     .catch((err: any) => {
-      console.error('Audit log error:', err, { action, entity, entityId, userId })
+      Logger.error('Audit log error', { error: err, action, entity, entityId, userId })
     })
   try {
     const ctx = (c as any).executionCtx

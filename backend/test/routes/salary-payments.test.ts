@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { salaryPaymentsRoutes } from '../../src/routes/v2/salary-payments.js'
-import { Errors } from '../../src/utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
 // Mock audit utils
@@ -23,11 +22,6 @@ const mockSalaryPaymentService = {
   get: vi.fn(),
   employeeConfirm: vi.fn(),
   financeApprove: vi.fn(),
-  paymentTransfer: vi.fn(),
-  paymentConfirm: vi.fn(),
-  requestAllocation: vi.fn(),
-  approveAllocation: vi.fn(),
-  rejectAllocation: vi.fn(),
   delete: vi.fn(),
 }
 
@@ -49,6 +43,7 @@ describe('Salary Payments Routes', () => {
   const validEmpId = uuid()
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new Hono()
 
     // Mock middleware
@@ -70,6 +65,19 @@ describe('Salary Payments Routes', () => {
     })
 
     app.route('/', salaryPaymentsRoutes)
+
+    // 默认 mock 返回，避免未设置时抛错
+    mockSalaryPaymentService.list.mockResolvedValue([])
+    mockSalaryPaymentService.get.mockResolvedValue(null)
+    mockSalaryPaymentService.employeeConfirm.mockResolvedValue({ id: validId, status: 'pending_finance_approval' })
+    mockSalaryPaymentService.financeApprove.mockResolvedValue({ id: validId, status: 'pending_payment' })
+    mockSalaryPaymentService.delete.mockResolvedValue(undefined)
+    mockSalaryPaymentGenerationService.generate.mockResolvedValue({ created: 0, ids: [] })
+    mockSalaryPaymentProcessingService.paymentTransfer.mockResolvedValue({ id: validId, status: 'pending_payment_confirmation' })
+    mockSalaryPaymentProcessingService.paymentConfirm.mockResolvedValue({ id: validId, status: 'completed' })
+    mockSalaryPaymentProcessingService.requestAllocation.mockResolvedValue({ id: validId, allocationStatus: 'requested' })
+    mockSalaryPaymentProcessingService.approveAllocation.mockResolvedValue({ id: validId, allocationStatus: 'approved' })
+    mockSalaryPaymentProcessingService.rejectAllocation.mockResolvedValue({ id: validId, allocationStatus: 'rejected' })
   })
 
   it('should list salary payments', async () => {

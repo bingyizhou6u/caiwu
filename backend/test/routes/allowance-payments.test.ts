@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { allowancePaymentsRoutes } from '../../src/routes/v2/allowance-payments.js'
-import { Errors } from '../../src/utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
 // Mock audit utils
@@ -32,18 +31,15 @@ describe('Allowance Payments Routes', () => {
   const validEmpId = uuid()
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new Hono()
 
     // Mock middleware
     app.use('*', async (c, next) => {
       c.set('userId', 'user123')
-      // 设置 services 到 c.var 以匹配路由实现
-      const services = {
+      c.set('services', {
         allowancePayment: mockAllowancePaymentService,
-      } as any
-      c.set('services', services)
-      // 同时设置到 c.var 以确保路由可以访问
-      ;(c as any).var = { ...(c as any).var, services }
+      } as any)
       await next()
     })
 
@@ -56,7 +52,6 @@ describe('Allowance Payments Routes', () => {
 
     app.route('/', allowancePaymentsRoutes)
 
-    // 默认 mock 返回，避免未设置时抛错
     // 默认 mock 返回，避免未设置时抛错
     mockAllowancePaymentService.list.mockResolvedValue([])
     mockAllowancePaymentService.create.mockResolvedValue({
@@ -249,14 +244,8 @@ describe('Allowance Payments Routes', () => {
 
     expect(res.status).toBe(200)
     const generateData = (await res.json()) as any
-    // 生成路由没有使用 createRouteHandler，但 OpenAPIHono 应该会自动包装
-    // 如果返回的是原始数据，检查是否包装了
-    if (generateData.success !== undefined) {
-      expect(generateData.success).toBe(true)
-      expect(generateData.data).toEqual(mockResult)
-    } else {
-      // 如果没有包装，直接检查数据
-      expect(generateData).toEqual(mockResult)
-    }
+    // V2 响应格式
+    expect(generateData.success).toBe(true)
+    expect(generateData.data).toEqual(mockResult)
   })
 })

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { rentalRoutes } from '../../src/routes/v2/rental.js'
-import { Errors } from '../../src/utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
 // Mock audit utils
@@ -40,6 +39,7 @@ describe('Rental Routes', () => {
   const validAccId = uuid()
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new Hono()
 
     // Mock middleware

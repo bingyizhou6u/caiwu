@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { ipWhitelistRoutes } from '../../src/routes/v2/ip-whitelist.js'
-import { Errors } from '../../src/utils/errors.js'
 
 // Mock audit utils
 vi.mock('../../src/utils/audit.js', () => ({
@@ -27,6 +26,7 @@ describe('IP Whitelist Routes', () => {
   let app: Hono
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new Hono()
 
     // Mock middleware

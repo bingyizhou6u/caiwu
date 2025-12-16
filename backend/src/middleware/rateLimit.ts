@@ -5,6 +5,7 @@
 import { Context, MiddlewareHandler } from 'hono'
 import { RATE_LIMITS } from '../services/RateLimitService.js'
 import type { Env, AppVariables } from '../types.js'
+import { Logger } from '../utils/logger.js'
 
 // 获取客户端 IP
 function getClientIP(c: Context): string {
@@ -28,7 +29,7 @@ function createRateLimitMiddleware(
 
     // 如果服务不可用，放行请求
     if (!rateLimitService) {
-      console.warn('[RateLimit] Service not available, skipping')
+      Logger.warn('[RateLimit] Service not available, skipping', undefined, c)
       return next()
     }
 

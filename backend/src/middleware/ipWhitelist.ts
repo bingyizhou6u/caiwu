@@ -1,6 +1,7 @@
 import { Context } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { IPWhitelistService } from '../services/IPWhitelistService.js'
+import { Logger } from '../utils/logger.js'
 
 // Simple in-memory cache for hot workers
 let cachedIPs: Set<string> | null = null
@@ -46,7 +47,7 @@ export function createIPWhitelistMiddleware() {
 
           lastCacheTime = now
         } catch (e) {
-          console.error('Failed to refresh IP whitelist cache', e)
+          Logger.error('Failed to refresh IP whitelist cache', { error: e }, c)
           // If cache is missing (first run failed), we might have to fail open or closed.
           // Here we choose to fail open (allow) if we can't check, but log it.
           // OR best effort: if we have stale cache, use it?
@@ -61,11 +62,11 @@ export function createIPWhitelistMiddleware() {
       }
 
       if (cachedIPs && !cachedIPs.has(clientIP)) {
-        console.warn(`Blocked IP: ${clientIP}`)
+        Logger.warn(`Blocked IP: ${clientIP}`, { ip: clientIP }, c)
         return c.json({ error: 'Access denied: IP not whitelisted', ip: clientIP }, 403)
       }
     } catch (error) {
-      console.error('IP Whitelist Middleware Error', error)
+      Logger.error('IP Whitelist Middleware Error', { error }, c)
       return c.json({ error: 'Security check error' }, 500)
     }
 

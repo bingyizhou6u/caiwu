@@ -2,6 +2,7 @@
  * 数据库查询缓存工具
  * 使用 Cloudflare Cache API 缓存数据库查询结果，减少数据库负载
  */
+import { Logger } from './logger.js'
 
 /**
  * 查询缓存类
@@ -62,7 +63,7 @@ export class QueryCache {
       await cache.put(request, response)
     } catch (error) {
       // 如果缓存不可用，静默失败，不影响主流程
-      console.warn('[QueryCache] Cache set failed:', error)
+      Logger.warn('[QueryCache] Cache set failed', { error })
     }
   }
 
@@ -91,9 +92,7 @@ export class QueryCache {
     // Cloudflare Cache API 不支持按前缀删除
     // 需要在应用层面维护缓存键列表，或使用 KV 存储缓存键
     // 这里提供一个占位实现，实际使用时需要结合 KV 或内存存储
-    console.warn(
-      '[QueryCache] invalidatePrefix not fully supported, consider using KV for key tracking'
-    )
+    Logger.warn('[QueryCache] invalidatePrefix not fully supported, consider using KV for key tracking')
   }
 }
 

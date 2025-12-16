@@ -9,6 +9,7 @@ import {
   ALT_AUTH_HEADER,
 } from './utils/jwt.js'
 import { isPublicPath } from './config/paths.js'
+import { Logger } from './utils/logger.js'
 
 // Auth middleware
 // 使用 JWT + 数据库 session 组合的方式校验用户身份
@@ -32,7 +33,7 @@ export function createAuthMiddleware() {
     try {
       payload = await verifyAuthToken(token, c.env.AUTH_JWT_SECRET)
     } catch (error) {
-      console.error('Auth token verification failed:', error)
+      Logger.error('Auth token verification failed', { error }, c)
       return c.json({ error: 'unauthorized' }, 401)
     }
 

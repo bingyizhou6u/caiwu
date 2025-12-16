@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { positionPermissionsRoutes } from '../../src/routes/v2/position-permissions.js'
-import { Errors, AppError } from '../../src/utils/errors.js'
+import { AppError } from '../../src/utils/errors.js'
 import { ErrorCodes } from '../../src/constants/errorCodes.js'
 
 // Mock audit utils
@@ -30,6 +30,7 @@ describe('Position Permissions Routes', () => {
   let app: Hono
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new Hono()
 
     // Mock middleware

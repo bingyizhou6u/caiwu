@@ -29,6 +29,7 @@ describe('Approval Routes', () => {
   let app: OpenAPIHono<any>
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new OpenAPIHono()
     app.onError((err, c) => {
       console.error('Test Error:', err)

@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { auditRoutes } from '../../src/routes/v2/audit.js'
-import { Errors } from '../../src/utils/errors.js'
-import { logAuditAction } from '../../src/utils/audit.js'
 
 // Mock audit utils
 vi.mock('../../src/utils/audit.js', () => ({
@@ -23,6 +21,7 @@ describe('Audit Routes', () => {
   let app: Hono
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new Hono()
 
     // Mock middleware

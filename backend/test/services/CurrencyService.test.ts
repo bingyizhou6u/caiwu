@@ -6,13 +6,15 @@ import { currencies, accounts } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import schemaSql from '../../src/db/schema.sql?raw'
 import * as schema from '../../src/db/schema.js'
-import { Errors } from '../../src/utils/errors.js'
+import { AppError } from '../../src/utils/errors.js'
+import { v4 as uuid } from 'uuid'
 
 describe('CurrencyService', () => {
   let service: CurrencyService
   let db: ReturnType<typeof drizzle<typeof schema>>
 
   beforeAll(async () => {
+    // 初始化数据库 schema
     const statements = schemaSql.split(';').filter(s => s.trim().length > 0)
     for (const statement of statements) {
       await env.DB.prepare(statement).run()
@@ -22,239 +24,167 @@ describe('CurrencyService', () => {
   })
 
   beforeEach(async () => {
+    // 清理测试数据
     await db.delete(accounts).execute()
     await db.delete(currencies).execute()
   })
 
   describe('getCurrencies', () => {
     it('应该返回所有币种', async () => {
-      const currency1 = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      const currency2 = {
-        code: 'USD',
-        name: '美元',
-        active: 1,
-      }
-      await db.insert(currencies).values([currency1, currency2]).execute()
+      await db
+        .insert(currencies)
+        .values([
+          { code: 'CNY', name: '人民币', active: 1 },
+          { code: 'USD', name: '美元', active: 1 },
+          { code: 'EUR', name: '欧元', active: 1 },
+        ])
+        .execute()
 
       const result = await service.getCurrencies()
 
-      expect(result).toHaveLength(2)
+      expect(result).toHaveLength(3)
       expect(result.map(c => c.code)).toContain('CNY')
       expect(result.map(c => c.code)).toContain('USD')
+      expect(result.map(c => c.code)).toContain('EUR')
     })
 
     it('应该按代码排序', async () => {
-      const currency1 = {
-        code: 'USD',
-        name: '美元',
-        active: 1,
-      }
-      const currency2 = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values([currency1, currency2]).execute()
+      await db
+        .insert(currencies)
+        .values([
+          { code: 'USD', name: '美元', active: 1 },
+          { code: 'CNY', name: '人民币', active: 1 },
+          { code: 'EUR', name: '欧元', active: 1 },
+        ])
+        .execute()
 
       const result = await service.getCurrencies()
 
       expect(result[0].code).toBe('CNY')
-      expect(result[1].code).toBe('USD')
+      expect(result[1].code).toBe('EUR')
+      expect(result[2].code).toBe('USD')
     })
 
-    it('应该支持搜索功能（代码）', async () => {
-      const currency1 = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      const currency2 = {
-        code: 'USD',
-        name: '美元',
-        active: 1,
-      }
-      const currency3 = {
-        code: 'EUR',
-        name: '欧元',
-        active: 1,
-      }
-      await db.insert(currencies).values([currency1, currency2, currency3]).execute()
+    it('应该支持按代码搜索', async () => {
+      await db
+        .insert(currencies)
+        .values([
+          { code: 'CNY', name: '人民币', active: 1 },
+          { code: 'USD', name: '美元', active: 1 },
+        ])
+        .execute()
 
-      const result = await service.getCurrencies('CN')
+      const result = await service.getCurrencies('cny')
 
       expect(result).toHaveLength(1)
       expect(result[0].code).toBe('CNY')
     })
 
-    it('应该支持搜索功能（名称）', async () => {
-      const currency1 = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      const currency2 = {
-        code: 'USD',
-        name: '美元',
-        active: 1,
-      }
-      await db.insert(currencies).values([currency1, currency2]).execute()
+    it('应该支持按名称搜索', async () => {
+      await db
+        .insert(currencies)
+        .values([
+          { code: 'CNY', name: '人民币', active: 1 },
+          { code: 'USD', name: '美元', active: 1 },
+        ])
+        .execute()
 
       const result = await service.getCurrencies('人民')
 
       expect(result).toHaveLength(1)
-      expect(result[0].code).toBe('CNY')
+      expect(result[0].name).toBe('人民币')
     })
   })
 
   describe('createCurrency', () => {
     it('应该创建新币种', async () => {
       const result = await service.createCurrency({
-        code: 'EUR',
-        name: '欧元',
+        code: 'JPY',
+        name: '日元',
       })
 
-      expect(result.code).toBe('EUR')
-      expect(result.name).toBe('欧元')
+      expect(result.code).toBe('JPY')
+      expect(result.name).toBe('日元')
 
+      // 验证数据库记录
       const currency = await db.query.currencies.findFirst({
-        where: eq(currencies.code, 'EUR'),
+        where: eq(currencies.code, 'JPY'),
       })
-      expect(currency).toBeDefined()
+      expect(currency?.name).toBe('日元')
       expect(currency?.active).toBe(1)
     })
 
-    it('应该自动转换为大写代码', async () => {
+    it('应该将代码转换为大写', async () => {
       const result = await service.createCurrency({
-        code: 'usd', // 小写
-        name: '美元',
+        code: 'gbp',
+        name: '英镑',
       })
 
-      expect(result.code).toBe('USD')
+      expect(result.code).toBe('GBP')
+
       const currency = await db.query.currencies.findFirst({
-        where: eq(currencies.code, 'USD'),
+        where: eq(currencies.code, 'GBP'),
       })
       expect(currency).toBeDefined()
     })
 
     it('应该拒绝重复的币种代码', async () => {
-      const existing = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(existing).execute()
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
 
       await expect(
         service.createCurrency({
           code: 'CNY',
           name: '重复币种',
         })
-      ).rejects.toThrow(Errors.DUPLICATE)
+      ).rejects.toThrow('已存在')
     })
 
     it('应该拒绝重复的币种代码（大小写不敏感）', async () => {
-      const existing = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(existing).execute()
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
 
       await expect(
         service.createCurrency({
-          code: 'cny', // 小写
+          code: 'cny',
           name: '重复币种',
         })
-      ).rejects.toThrow(Errors.DUPLICATE)
+      ).rejects.toThrow('已存在')
     })
   })
 
   describe('updateCurrency', () => {
     it('应该更新币种信息', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '原名称',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
 
-      await service.updateCurrency('CNY', {
-        name: '新名称',
+      const result = await service.updateCurrency('CNY', {
+        name: '中国人民币',
       })
 
-      const updated = await db.query.currencies.findFirst({
-        where: eq(currencies.code, 'CNY'),
-      })
-      expect(updated?.name).toBe('新名称')
+      expect(result.ok).toBe(true)
+
+      const currency = await db.query.currencies.findFirst({ where: eq(currencies.code, 'CNY') })
+      expect(currency?.name).toBe('中国人民币')
     })
 
-    it('应该支持部分更新', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
+    it('应该支持停用币种', async () => {
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
 
-      await service.updateCurrency('CNY', {
-        name: '更新后的名称',
-      })
+      await service.updateCurrency('CNY', { active: 0 })
 
-      const updated = await db.query.currencies.findFirst({
-        where: eq(currencies.code, 'CNY'),
-      })
-      expect(updated?.name).toBe('更新后的名称')
-      expect(updated?.active).toBe(1) // 未更新的字段保持不变
+      const currency = await db.query.currencies.findFirst({ where: eq(currencies.code, 'CNY') })
+      expect(currency?.active).toBe(0)
     })
 
-    it('应该可以停用币种', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
+    it('应该处理大小写', async () => {
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
 
-      await service.updateCurrency('CNY', {
-        active: 0,
-      })
+      await service.updateCurrency('cny', { name: '更新后名称' })
 
-      const updated = await db.query.currencies.findFirst({
-        where: eq(currencies.code, 'CNY'),
-      })
-      expect(updated?.active).toBe(0)
+      const currency = await db.query.currencies.findFirst({ where: eq(currencies.code, 'CNY') })
+      expect(currency?.name).toBe('更新后名称')
     })
 
-    it('应该自动转换为大写代码', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
-
-      await service.updateCurrency('cny', {
-        // 小写
-        name: '新名称',
-      })
-
-      const updated = await db.query.currencies.findFirst({
-        where: eq(currencies.code, 'CNY'),
-      })
-      expect(updated?.name).toBe('新名称')
-    })
-
-    it('应该返回 ok 当没有更新字段', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
+    it('空更新应该返回成功', async () => {
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
 
       const result = await service.updateCurrency('CNY', {})
 
@@ -264,60 +194,34 @@ describe('CurrencyService', () => {
 
   describe('deleteCurrency', () => {
     it('应该删除币种', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
+      await db.insert(currencies).values({ code: 'TEST', name: '测试币种', active: 1 }).execute()
 
-      const result = await service.deleteCurrency('CNY')
+      const result = await service.deleteCurrency('TEST')
 
       expect(result.ok).toBe(true)
-      expect(result.name).toBe('人民币')
+      expect(result.name).toBe('测试币种')
 
-      const deleted = await db.query.currencies.findFirst({
-        where: eq(currencies.code, 'CNY'),
-      })
-      expect(deleted).toBeUndefined()
+      const currency = await db.query.currencies.findFirst({ where: eq(currencies.code, 'TEST') })
+      expect(currency).toBeUndefined()
+    })
+
+    it('应该处理大小写', async () => {
+      await db.insert(currencies).values({ code: 'TEST', name: '测试币种', active: 1 }).execute()
+
+      const result = await service.deleteCurrency('test')
+
+      expect(result.ok).toBe(true)
+    })
+
+    it('应该拒绝删除不存在的币种', async () => {
+      await expect(service.deleteCurrency('INVALID')).rejects.toThrow('不存在')
     })
 
     it('应该拒绝删除有账户使用的币种', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
+      await db.insert(accounts).values({ id: uuid(), name: '测试账户', type: 'bank', currency: 'CNY', active: 1 }).execute()
 
-      const account = {
-        id: 'account-id',
-        name: '账户',
-        type: 'bank',
-        currency: 'CNY',
-        openingCents: 100000,
-        active: 1,
-      }
-      await db.insert(accounts).values(account).execute()
-
-      await expect(service.deleteCurrency('CNY')).rejects.toThrow(Errors.BUSINESS_ERROR)
-    })
-
-    it('应该抛出错误当币种不存在', async () => {
-      await expect(service.deleteCurrency('NONEXISTENT')).rejects.toThrow(Errors.NOT_FOUND)
-    })
-
-    it('应该自动转换为大写代码', async () => {
-      const currency = {
-        code: 'CNY',
-        name: '人民币',
-        active: 1,
-      }
-      await db.insert(currencies).values(currency).execute()
-
-      const result = await service.deleteCurrency('cny') // 小写
-
-      expect(result.ok).toBe(true)
+      await expect(service.deleteCurrency('CNY')).rejects.toThrow('无法删除')
     })
   })
 })

@@ -176,54 +176,57 @@ const generateAllowancePaymentsRoute = createRoute({
   },
 })
 
-allowancePaymentsRoutes.openapi(generateAllowancePaymentsRoute, async (c: any) => {
-  const raw = c.req.valid('json')
-  const body = {
-    employeeId: raw.employeeId,
-    year: raw.year,
-    month: raw.month,
-    allowanceType: raw.allowanceType,
-    currencyId: raw.currencyId,
-    amountCents: raw.amountCents,
-    paymentDate: raw.paymentDate,
-    paymentMethod: raw.paymentMethod,
-    voucherUrl: raw.voucherUrl,
-    memo: raw.memo,
-  }
-  const userId = c.get('userId') as string
-
-  try {
-    const result = await c.var.services.allowancePayment.generate(
-      body.year,
-      body.month,
-      body.paymentDate,
-      userId
-    )
-
-    if (!result) {
-      throw Errors.INTERNAL_ERROR('生成津贴支付记录失败')
+allowancePaymentsRoutes.openapi(
+  generateAllowancePaymentsRoute,
+  createRouteHandler(async (c: any) => {
+    const raw = c.req.valid('json')
+    const body = {
+      employeeId: raw.employeeId,
+      year: raw.year,
+      month: raw.month,
+      allowanceType: raw.allowanceType,
+      currencyId: raw.currencyId,
+      amountCents: raw.amountCents,
+      paymentDate: raw.paymentDate,
+      paymentMethod: raw.paymentMethod,
+      voucherUrl: raw.voucherUrl,
+      memo: raw.memo,
     }
+    const userId = c.get('userId') as string
 
-    for (const id of result.ids) {
-      logAuditAction(
-        c,
-        'create',
-        'allowance_payment',
-        id,
-        JSON.stringify({
-          year: body.year,
-          month: body.month,
-          generated: true,
-        })
+    try {
+      const result = await c.var.services.allowancePayment.generate(
+        body.year,
+        body.month,
+        body.paymentDate,
+        userId
       )
-    }
 
-    return result
-  } catch (error: any) {
-    Logger.error('Failed to generate allowance payments', { error: error?.message }, c as any)
-    throw Errors.INTERNAL_ERROR('Failed to generate allowance payments')
-  }
-}) as any
+      if (!result) {
+        throw Errors.INTERNAL_ERROR('生成津贴支付记录失败')
+      }
+
+      for (const id of result.ids) {
+        logAuditAction(
+          c,
+          'create',
+          'allowance_payment',
+          id,
+          JSON.stringify({
+            year: body.year,
+            month: body.month,
+            generated: true,
+          })
+        )
+      }
+
+      return result
+    } catch (error: any) {
+      Logger.error('Failed to generate allowance payments', { error: error?.message }, c as any)
+      throw Errors.INTERNAL_ERROR('Failed to generate allowance payments')
+    }
+  }) as any
+)
 
 // 创建津贴发放记录
 const createAllowancePaymentRoute = createRoute({

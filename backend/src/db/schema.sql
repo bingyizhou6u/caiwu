@@ -195,7 +195,8 @@ CREATE TABLE IF NOT EXISTS accounts (
   alias TEXT,
   account_number TEXT,
   opening_cents INTEGER DEFAULT 0,
-  active INTEGER DEFAULT 1
+  active INTEGER DEFAULT 1,
+  version INTEGER DEFAULT 1
 );
 
 -- Cash Flows table

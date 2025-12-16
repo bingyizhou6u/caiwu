@@ -42,6 +42,7 @@ describe('Site Bills Routes', () => {
   const validSiteId = uuid()
 
   beforeEach(() => {
+    vi.clearAllMocks()
     app = new Hono()
 
     // Mock middleware

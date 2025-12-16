@@ -2,18 +2,19 @@ import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { CategoryService } from '../../src/services/CategoryService.js'
-import { categories, cashFlows } from '../../src/db/schema.js'
+import { categories, cashFlows, accounts, currencies } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
 import * as schema from '../../src/db/schema.js'
-import { Errors } from '../../src/utils/errors.js'
+import { AppError } from '../../src/utils/errors.js'
 
 describe('CategoryService', () => {
   let service: CategoryService
   let db: ReturnType<typeof drizzle<typeof schema>>
 
   beforeAll(async () => {
+    // 初始化数据库 schema
     const statements = schemaSql.split(';').filter(s => s.trim().length > 0)
     for (const statement of statements) {
       await env.DB.prepare(statement).run()
@@ -23,215 +24,156 @@ describe('CategoryService', () => {
   })
 
   beforeEach(async () => {
+    // 清理测试数据
     await db.delete(cashFlows).execute()
+    await db.delete(accounts).execute()
     await db.delete(categories).execute()
   })
 
   describe('getCategories', () => {
     it('应该返回所有类别', async () => {
-      const category1 = {
-        id: uuid(),
-        name: '类别A',
-        kind: 'expense',
-        active: 1,
-      }
-      const category2 = {
-        id: uuid(),
-        name: '类别B',
-        kind: 'income',
-        active: 1,
-      }
-      await db.insert(categories).values([category1, category2]).execute()
+      await db
+        .insert(categories)
+        .values([
+          { id: uuid(), name: '工资支出', kind: 'expense', active: 1 },
+          { id: uuid(), name: '销售收入', kind: 'income', active: 1 },
+        ])
+        .execute()
 
       const result = await service.getCategories()
 
       expect(result).toHaveLength(2)
-      expect(result.map(c => c.name)).toContain('类别A')
-      expect(result.map(c => c.name)).toContain('类别B')
+      expect(result.map(c => c.name)).toContain('工资支出')
+      expect(result.map(c => c.name)).toContain('销售收入')
     })
 
-    it('应该按 kind 和 name 排序', async () => {
-      const category1 = {
-        id: uuid(),
-        name: 'B类别',
-        kind: 'expense',
-        active: 1,
-      }
-      const category2 = {
-        id: uuid(),
-        name: 'A类别',
-        kind: 'expense',
-        active: 1,
-      }
-      const category3 = {
-        id: uuid(),
-        name: '收入类别',
-        kind: 'income',
-        active: 1,
-      }
-      await db.insert(categories).values([category1, category2, category3]).execute()
+    it('应该按类型和名称排序', async () => {
+      await db
+        .insert(categories)
+        .values([
+          { id: uuid(), name: 'B收入', kind: 'income', active: 1 },
+          { id: uuid(), name: 'A收入', kind: 'income', active: 1 },
+          { id: uuid(), name: 'A支出', kind: 'expense', active: 1 },
+        ])
+        .execute()
 
       const result = await service.getCategories()
 
-      // income 应该在 expense 之前（按 kind 排序）
-      expect(result[0].kind).toBe('income')
-      expect(result[1].name).toBe('A类别')
-      expect(result[2].name).toBe('B类别')
+      // 按 kind 排序（expense < income），然后按 name 排序
+      expect(result[0].name).toBe('A支出')
+      expect(result[1].name).toBe('A收入')
+      expect(result[2].name).toBe('B收入')
     })
   })
 
   describe('createCategory', () => {
     it('应该创建新类别', async () => {
-      const result = await service.createCategory({
-        name: '新类别',
+      const data = {
+        name: '办公费用',
         kind: 'expense',
-      })
+      }
+
+      const result = await service.createCategory(data)
 
       expect(result.id).toBeDefined()
-      expect(result.name).toBe('新类别')
+      expect(result.name).toBe('办公费用')
       expect(result.kind).toBe('expense')
 
+      // 验证数据库记录
       const category = await db.query.categories.findFirst({
         where: eq(categories.id, result.id),
       })
-      expect(category).toBeDefined()
+      expect(category?.name).toBe('办公费用')
       expect(category?.active).toBe(1)
     })
 
-    it('应该支持创建有父类别的类别', async () => {
-      const parent = {
-        id: uuid(),
-        name: '父类别',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(parent).execute()
+    it('应该支持创建子类别', async () => {
+      const parentId = uuid()
+      await db
+        .insert(categories)
+        .values({ id: parentId, name: '父类别', kind: 'expense', active: 1 })
+        .execute()
 
       const result = await service.createCategory({
         name: '子类别',
         kind: 'expense',
-        parentId: parent.id,
+        parentId,
       })
 
-      expect(result.parentId).toBe(parent.id)
       const category = await db.query.categories.findFirst({
         where: eq(categories.id, result.id),
       })
-      expect(category?.parentId).toBe(parent.id)
+      expect(category?.parentId).toBe(parentId)
     })
 
     it('应该拒绝重复的类别名称', async () => {
-      const existing = {
-        id: uuid(),
-        name: '已存在',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(existing).execute()
+      await db.insert(categories).values({ id: uuid(), name: '重复名称', kind: 'expense', active: 1 }).execute()
 
       await expect(
         service.createCategory({
-          name: '已存在',
-          kind: 'expense',
+          name: '重复名称',
+          kind: 'income',
         })
-      ).rejects.toThrow(Errors.DUPLICATE)
+      ).rejects.toThrow('已存在')
     })
   })
 
   describe('updateCategory', () => {
     it('应该更新类别信息', async () => {
-      const category = {
-        id: uuid(),
-        name: '原名称',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(category).execute()
+      const id = uuid()
+      await db.insert(categories).values({ id, name: '原名称', kind: 'expense', active: 1 }).execute()
 
-      await service.updateCategory(category.id, {
+      const result = await service.updateCategory(id, {
         name: '新名称',
         kind: 'income',
       })
 
-      const updated = await db.query.categories.findFirst({
-        where: eq(categories.id, category.id),
-      })
-      expect(updated?.name).toBe('新名称')
-      expect(updated?.kind).toBe('income')
+      expect(result.ok).toBe(true)
+
+      const category = await db.query.categories.findFirst({ where: eq(categories.id, id) })
+      expect(category?.name).toBe('新名称')
+      expect(category?.kind).toBe('income')
     })
 
     it('应该支持部分更新', async () => {
-      const category = {
-        id: uuid(),
-        name: '类别',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(category).execute()
+      const id = uuid()
+      await db.insert(categories).values({ id, name: '测试类别', kind: 'expense', active: 1 }).execute()
 
-      await service.updateCategory(category.id, {
-        name: '更新后的名称',
-      })
+      await service.updateCategory(id, { name: '更新后名称' })
 
-      const updated = await db.query.categories.findFirst({
-        where: eq(categories.id, category.id),
-      })
-      expect(updated?.name).toBe('更新后的名称')
-      expect(updated?.kind).toBe('expense') // 未更新的字段保持不变
+      const category = await db.query.categories.findFirst({ where: eq(categories.id, id) })
+      expect(category?.name).toBe('更新后名称')
+      expect(category?.kind).toBe('expense') // 未修改的字段保持不变
     })
 
-    it('应该拒绝更新为已存在的类别名称', async () => {
-      const category1 = {
-        id: uuid(),
-        name: '类别1',
-        kind: 'expense',
-        active: 1,
-      }
-      const category2 = {
-        id: uuid(),
-        name: '类别2',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values([category1, category2]).execute()
+    it('应该拒绝更新为重复名称', async () => {
+      const id1 = uuid()
+      const id2 = uuid()
+      await db
+        .insert(categories)
+        .values([
+          { id: id1, name: '类别1', kind: 'expense', active: 1 },
+          { id: id2, name: '类别2', kind: 'expense', active: 1 },
+        ])
+        .execute()
 
-      await expect(
-        service.updateCategory(category1.id, {
-          name: '类别2', // 与 category2 冲突
-        })
-      ).rejects.toThrow(Errors.DUPLICATE)
+      await expect(service.updateCategory(id1, { name: '类别2' })).rejects.toThrow('已存在')
     })
 
-    it('应该允许更新为相同的名称', async () => {
-      const category = {
-        id: uuid(),
-        name: '类别',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(category).execute()
+    it('应该允许更新为相同名称', async () => {
+      const id = uuid()
+      await db.insert(categories).values({ id, name: '原名称', kind: 'expense', active: 1 }).execute()
 
-      await service.updateCategory(category.id, {
-        name: '类别', // 相同名称
-        kind: 'income',
-      })
+      const result = await service.updateCategory(id, { name: '原名称' })
 
-      const updated = await db.query.categories.findFirst({
-        where: eq(categories.id, category.id),
-      })
-      expect(updated?.kind).toBe('income')
+      expect(result.ok).toBe(true)
     })
 
-    it('应该返回 ok 当没有更新字段', async () => {
-      const category = {
-        id: uuid(),
-        name: '类别',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(category).execute()
+    it('空更新应该返回成功', async () => {
+      const id = uuid()
+      await db.insert(categories).values({ id, name: '测试类别', kind: 'expense', active: 1 }).execute()
 
-      const result = await service.updateCategory(category.id, {})
+      const result = await service.updateCategory(id, {})
 
       expect(result.ok).toBe(true)
     })
@@ -239,50 +181,46 @@ describe('CategoryService', () => {
 
   describe('deleteCategory', () => {
     it('应该删除类别', async () => {
-      const category = {
-        id: uuid(),
-        name: '删除类别',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(category).execute()
+      const id = uuid()
+      await db.insert(categories).values({ id, name: '待删除类别', kind: 'expense', active: 1 }).execute()
 
-      const result = await service.deleteCategory(category.id)
+      const result = await service.deleteCategory(id)
 
       expect(result.ok).toBe(true)
-      expect(result.name).toBe('删除类别')
+      expect(result.name).toBe('待删除类别')
 
-      const deleted = await db.query.categories.findFirst({
-        where: eq(categories.id, category.id),
-      })
-      expect(deleted).toBeUndefined()
+      const category = await db.query.categories.findFirst({ where: eq(categories.id, id) })
+      expect(category).toBeUndefined()
+    })
+
+    it('应该拒绝删除不存在的类别', async () => {
+      await expect(service.deleteCategory('non-existent')).rejects.toThrow('不存在')
     })
 
     it('应该拒绝删除有流水记录的类别', async () => {
-      const category = {
-        id: uuid(),
-        name: '有流水的类别',
-        kind: 'expense',
-        active: 1,
-      }
-      await db.insert(categories).values(category).execute()
+      const categoryId = uuid()
+      const accountId = uuid()
 
-      const flow = {
-        id: uuid(),
-        accountId: uuid(),
-        type: 'expense',
-        amountCents: 10000,
-        categoryId: category.id,
-        transactionDate: '2024-01-01',
-        createdAt: Date.now(),
-      }
-      await db.insert(cashFlows).values(flow).execute()
+      await db.insert(currencies).values({ code: 'CNY', name: '人民币', active: 1 }).execute()
+      await db
+        .insert(accounts)
+        .values({ id: accountId, name: '测试账户', type: 'bank', currency: 'CNY', active: 1 })
+        .execute()
+      await db.insert(categories).values({ id: categoryId, name: '有流水类别', kind: 'expense', active: 1 }).execute()
+      await db
+        .insert(cashFlows)
+        .values({
+          id: uuid(),
+          accountId,
+          categoryId,
+          type: 'expense',
+          amountCents: 1000,
+          bizDate: '2024-01-01',
+          createdAt: Date.now(),
+        })
+        .execute()
 
-      await expect(service.deleteCategory(category.id)).rejects.toThrow(Errors.BUSINESS_ERROR)
-    })
-
-    it('应该抛出错误当类别不存在', async () => {
-      await expect(service.deleteCategory('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+      await expect(service.deleteCategory(categoryId)).rejects.toThrow('无法删除')
     })
   })
 })

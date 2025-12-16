@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { myRoutes } from '../../src/routes/v2/my.js'
-import { Errors, AppError } from '../../src/utils/errors.js'
+import { AppError } from '../../src/utils/errors.js'
 import { ErrorCodes } from '../../src/constants/errorCodes.js'
 import type { Env, AppVariables } from '../../src/types.js'
 

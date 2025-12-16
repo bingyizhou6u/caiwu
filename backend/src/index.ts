@@ -110,7 +110,7 @@ app.get('/api/health', async c => {
     ]).catch(() => null)
     checks.db = r ? r.ok === 1 : false
   } catch (error) {
-    console.error('Health check DB error:', error)
+    Logger.error('Health check DB error', { error })
   }
 
   // 2. Check KV (Sessions)
@@ -121,7 +121,7 @@ app.get('/api/health', async c => {
     ])
     checks.kv = true
   } catch (error) {
-    console.error('Health check KV error:', error)
+    Logger.error('Health check KV error', { error })
   }
 
   // 3. Check R2 (Vouchers)
@@ -132,7 +132,7 @@ app.get('/api/health', async c => {
     ])
     checks.r2 = true
   } catch (error) {
-    console.error('Health check R2 error:', error)
+    Logger.error('Health check R2 error', { error })
   }
 
   const healthy = checks.db && checks.kv && checks.r2
@@ -271,7 +271,7 @@ app.post('/api/v2/init-if-empty', async c => {
       })
     )
   } catch (error: any) {
-    console.error('Init error:', error)
+    Logger.error('Init error', { error }, c)
     throw errorHandlerV2(error, c)
   }
 })
