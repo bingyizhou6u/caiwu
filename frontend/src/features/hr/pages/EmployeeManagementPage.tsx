@@ -118,7 +118,7 @@ export function EmployeeManagement() {
     async (record: Employee) => {
       await resendActivation(record.id)
     },
-    { successMessage: '激活邮件已重新发送' }
+    { successMessage: '激活邮件已发送' }
   )
 
   const handleResetTotp = withErrorHandler(
@@ -323,7 +323,7 @@ export function EmployeeManagement() {
       if (!record.isActivated && record.userActive === 1) {
         accountMenuItems.push({
           key: 'resendActivation',
-          label: '重发激活邮件',
+          label: '发送激活邮件',
           onClick: () => handleResendActivation(record),
         })
       }
