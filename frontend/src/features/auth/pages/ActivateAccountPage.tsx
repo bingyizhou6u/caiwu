@@ -17,7 +17,7 @@ export function ActivateAccount() {
     const token = searchParams.get('token')
     const navigate = useNavigate()
     const [form] = Form.useForm()
-    const { setUserInfo, setToken } = useAppStore()
+    const { setUserInfo, setToken, logout } = useAppStore()
 
     const [verifying, setVerifying] = useState(true)
     const [valid, setValid] = useState(false)
@@ -179,7 +179,10 @@ export function ActivateAccount() {
                     title="激活失败"
                     subTitle={errorMsg}
                     extra={[
-                        <Button type="primary" key="login" onClick={() => navigate('/login')}>
+                        <Button type="primary" key="login" onClick={() => {
+                            logout() // 清除可能存在的旧登录状态
+                            navigate('/login')
+                        }}>
                             返回登录
                         </Button>
                     ]}
