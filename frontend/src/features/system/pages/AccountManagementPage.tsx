@@ -6,6 +6,7 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
 import { DataTable, type DataTableColumn, EmptyText, PageToolbar, BatchActionButton, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { SensitiveField } from '../../../components/SensitiveField'
 import { COMMON_STATUS } from '../../../utils/status'
 import { usePermissions } from '../../../utils/permissions'
 import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount, useBatchDeleteAccount, useCurrencyOptions, useFormModal, useZodForm } from '../../../hooks'
@@ -165,7 +166,20 @@ export function AccountManagement() {
 
   const columns: DataTableColumn<Account>[] = [
     { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '账户号', dataIndex: 'accountNumber', key: 'accountNumber', render: (v: string) => <EmptyText value={v} /> },
+    { 
+      title: '账户号', 
+      dataIndex: 'accountNumber', 
+      key: 'accountNumber', 
+      render: (v: string, r: Account) => v ? (
+        <SensitiveField 
+          value={v} 
+          type="default" 
+          permission="finance.account.view_sensitive" 
+          entityId={r.id} 
+          entityType="account" 
+        />
+      ) : <EmptyText value={v} />
+    },
     { title: '别名', dataIndex: 'alias', key: 'alias', render: (v: string) => <EmptyText value={v} /> },
     { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_OPTIONS.find(o => o.value === v)?.label || v },
     { title: '币种', key: 'currency', render: (_: unknown, r: Account) => r.currencyName ? `${r.currency} - ${r.currencyName}` : r.currency },

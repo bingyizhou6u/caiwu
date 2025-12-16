@@ -292,6 +292,19 @@
   - SearchFilters: 1+ 处
 - **说明**: 其他页面（如 AccountTransactionsPage、FlowsPage、FixedAssetsManagementPage、FixedAssetSalePage、SiteBillsPage、VendorManagementPage 等）已经使用了 SearchFilters。FixedAssetPurchasePage、SiteManagementPage、IPWhitelistManagementPage 等页面目前没有搜索需求或搜索功能较简单，暂不强制添加 SearchFilters
 
+### Phase 4: SensitiveField 推广（Week 7-8）
+
+#### ✅ Task 4.1: 推广 SensitiveField 到敏感信息页面
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `SalaryPaymentsPage.tsx` - 已为薪资列添加 SensitiveField 包装
+  - ✅ `ReportEmployeeSalaryPage.tsx` - 已为基础工资和应发工资列添加 SensitiveField 包装（2处）
+  - ✅ `AccountManagementPage.tsx` - 已为账户号列添加 SensitiveField 包装
+- **替换统计**:
+  - SensitiveField: 4+ 处
+- **说明**: 其他页面（如 EmployeeManagementPage、MyProfilePage 等）已经使用了 SensitiveField。CreateEmployeePage 是创建页面，不需要显示敏感信息。MyAssetsPage 没有敏感信息需要保护
+
 #### ✅ Task 1.4: 推广 VendorSelect
 - **完成时间**: 2024-12-19
 - **状态**: ✅ 已完成

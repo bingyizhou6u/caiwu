@@ -14,6 +14,7 @@ import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { salaryPaymentGenerateSchema, salaryPaymentTransferSchema, salaryPaymentAllocationSchema, salaryPaymentConfirmSchema } from '../../../validations/salary.schema'
 import { DataTable, StatusTag, AmountDisplay, PageToolbar, EmptyText } from '../../../components/common'
+import { SensitiveField } from '../../../components/SensitiveField'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { SALARY_PAYMENT_STATUS, SALARY_ALLOCATION_STATUS } from '../../../utils/status'
 import { formatAmountWithCurrency } from '../../../utils/amount'
@@ -279,13 +280,19 @@ export function SalaryPayments() {
       key: 'salary_cents',
       width: 120,
       align: 'right',
-      render: (cents: number | null | undefined, r: SalaryPayment) => (
-        <AmountDisplay 
-          cents={cents} 
-          currency={r.currency || 'CNY'} 
-          style={{ fontWeight: 'bold', color: '#1890ff' }}
-        />
-      ),
+      render: (cents: number | null | undefined, r: SalaryPayment) => {
+        if (!cents) return '-'
+        const amountStr = `${(cents / 100).toFixed(2)} ${r.currency || 'CNY'}`
+        return (
+          <SensitiveField 
+            value={amountStr} 
+            type="salary" 
+            permission="hr.salary.view" 
+            entityId={r.id} 
+            entityType="salary_payment" 
+          />
+        )
+      },
     },
     {
       title: '状态',
