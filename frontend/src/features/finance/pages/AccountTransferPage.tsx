@@ -49,7 +49,7 @@ export function AccountTransfer() {
 
       const values = await validateWithZod()
       await createTransfer({
-        transferDate: values.transferDate.format('YYYY-MM-DD'),
+        transferDate: values.transferDate.format('YYYY-MM-DD HH:mm:ss'),
         fromAccountId: values.fromAccountId,
         toAccountId: values.toAccountId,
         fromAmountCents: Math.round(values.fromAmount * 100),

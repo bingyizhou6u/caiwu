@@ -45,7 +45,7 @@ export function RepaymentManagement() {
       const values = await validateWithZod()
       await createRepayment({
         ...values,
-        repay_date: values.repay_date.format('YYYY-MM-DD')
+        repay_date: values.repay_date.format('YYYY-MM-DD HH:mm:ss')
       })
       setOpen(false)
       form.resetFields()

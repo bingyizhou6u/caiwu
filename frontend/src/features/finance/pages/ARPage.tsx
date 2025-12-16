@@ -64,8 +64,8 @@ export function AR() {
       const values = await createForm.validateWithZod()
       await createAR({
         siteId: values.siteId,
-        issueDate: values.issueDate.format('YYYY-MM-DD'),
-        dueDate: values.dueDate?.format('YYYY-MM-DD'),
+        issueDate: values.issueDate.format('YYYY-MM-DD HH:mm:ss'),
+        dueDate: values.dueDate?.format('YYYY-MM-DD HH:mm:ss'),
         amountCents: Math.round(values.amount * 100),
         memo: values.memo
       })
@@ -89,7 +89,7 @@ export function AR() {
         docId: confirmingDoc.id,
         accountId: values.accountId,
         categoryId: values.categoryId,
-        bizDate: values.bizDate.format('YYYY-MM-DD'),
+        bizDate: values.bizDate.format('YYYY-MM-DD HH:mm:ss'),
         memo: values.memo,
         voucherUrl: voucherUrl
       })

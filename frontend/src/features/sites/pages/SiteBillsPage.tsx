@@ -99,7 +99,7 @@ export function SiteBills() {
       const v = await validateCreate()
       await createBill({
         siteId: v.siteId,
-        billDate: v.billDate.format('YYYY-MM-DD'),
+        billDate: v.billDate.format('YYYY-MM-DD HH:mm:ss'),
         billType: v.billType,
         amountCents: Math.round(v.amount * 100),
         currency: v.currency,
@@ -107,7 +107,7 @@ export function SiteBills() {
         accountId: v.accountId || null,
         categoryId: v.categoryId || null,
         status: v.status || 'pending',
-        paymentDate: v.paymentDate ? v.paymentDate.format('YYYY-MM-DD') : null,
+        paymentDate: v.paymentDate ? v.paymentDate.format('YYYY-MM-DD HH:mm:ss') : null,
         memo: v.memo || null,
       })
     },
@@ -128,7 +128,7 @@ export function SiteBills() {
         id: editingBill.id,
         data: {
           siteId: v.siteId,
-          billDate: v.billDate.format('YYYY-MM-DD'),
+          billDate: v.billDate.format('YYYY-MM-DD HH:mm:ss'),
           billType: v.billType,
           amountCents: Math.round(v.amount * 100),
           currency: v.currency,
@@ -136,7 +136,7 @@ export function SiteBills() {
           accountId: v.accountId || null,
           categoryId: v.categoryId || null,
           status: v.status || 'pending',
-          paymentDate: v.paymentDate ? v.paymentDate.format('YYYY-MM-DD') : null,
+          paymentDate: v.paymentDate ? v.paymentDate.format('YYYY-MM-DD HH:mm:ss') : null,
           memo: v.memo || null,
         }
       })

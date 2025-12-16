@@ -48,7 +48,7 @@ export function BorrowingManagement() {
         accountId: values.accountId,
         amount: values.amount,
         currency: values.currency,
-        borrow_date: values.borrow_date.format('YYYY-MM-DD'),
+        borrow_date: values.borrow_date.format('YYYY-MM-DD HH:mm:ss'),
         memo: values.memo || null,
       })
       setOpen(false)

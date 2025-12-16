@@ -53,8 +53,8 @@ export function AP() {
         // 等等，旧代码：`partyId: v.party`。输入标签 "供应商"。
         // 如果是文本输入，可能就是名称。后端可能会处理它。
         // 让我们沿用旧逻辑：将 `party` 作为 `partyId` 传递。
-        issueDate: values.issueDate.format('YYYY-MM-DD'),
-        dueDate: values.dueDate?.format('YYYY-MM-DD'),
+        issueDate: values.issueDate.format('YYYY-MM-DD HH:mm:ss'),
+        dueDate: values.dueDate?.format('YYYY-MM-DD HH:mm:ss'),
         amountCents: Math.round(values.amount * 100),
         memo: values.memo
       })
@@ -78,7 +78,7 @@ export function AP() {
         docId: confirmingDoc.id,
         accountId: values.accountId,
         categoryId: values.categoryId,
-        bizDate: values.bizDate.format('YYYY-MM-DD'),
+        bizDate: values.bizDate.format('YYYY-MM-DD HH:mm:ss'),
         memo: values.memo,
         voucherUrl: voucherUrl
       })
