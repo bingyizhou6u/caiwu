@@ -6,7 +6,7 @@ import { ThunderboltFilled } from '@ant-design/icons'
 import { useAppStore } from '../../../store/useAppStore'
 import { useHealth, useLogin } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import './Login.css'
+import '../../../styles/features/auth/login.css'
 
 const { Header, Content } = Layout
 

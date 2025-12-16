@@ -1,0 +1,23 @@
+/**
+ * 按钮组件样式
+ * Ant Design Button 组件增强样式
+ */
+
+.ant-btn {
+    border-radius: var(--radius-base);
+    font-weight: 500;
+    transition: var(--transition-base);
+}
+
+.ant-btn-primary {
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+.ant-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.ant-btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+}

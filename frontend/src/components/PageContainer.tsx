@@ -1,7 +1,7 @@
 import React from 'react'
 import { Breadcrumb } from 'antd'
 import { Link } from 'react-router-dom'
-import './PageContainer.css'
+import '../styles/layouts/page-container.css'
 
 interface BreadcrumbItem {
     title: React.ReactNode

@@ -1,0 +1,72 @@
+/**
+ * 过渡效果工具类
+ * 定义全局过渡效果和交互动画类
+ */
+
+/* Global Transitions */
+.transition-base {
+    transition: var(--transition-base);
+}
+
+.transition-fast {
+    transition: var(--transition-fast);
+}
+
+.transition-bounce {
+    transition: var(--transition-bounce);
+}
+
+/* Hover Effects */
+.hover-scale {
+    transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.02);
+}
+
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.hover-glow {
+    transition: box-shadow 0.3s ease;
+}
+
+.hover-glow:hover {
+    box-shadow: var(--shadow-glow);
+}
+
+/* Button Micro-interactions */
+.btn-interactive {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-interactive:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.btn-interactive:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Card Animations */
+.card-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.12);
+}
+
+/* Focus Ring */
+.focus-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+}

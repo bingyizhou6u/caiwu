@@ -8,7 +8,7 @@ import { buildMenuItems, KEY_TO_PATH } from '../config/menu'
 import { MultiTabs } from '../components/MultiTabs'
 import { GlobalSearch } from '../components/GlobalSearch'
 import { preloadRoute } from '../router'
-import './MainLayout.css'
+import '../styles/layouts/main-layout.css'
 
 const { Header, Sider, Content } = Layout
 

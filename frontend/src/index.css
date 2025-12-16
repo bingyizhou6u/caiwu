@@ -1,71 +1,31 @@
-@import './styles/variables.css';
-@import './styles/components.css';
-@import './styles/animations.css';
-/* NProgress Customization */
+/**
+ * 全局样式入口文件
+ * 按层次导入所有样式文件
+ */
+
+/* ========== 1. 基础层 ========== */
+@import './styles/base/variables.css';
+@import './styles/base/reset.css';
+@import './styles/base/typography.css';
+@import './styles/base/scrollbar.css';
+
+/* ========== 2. 组件层 ========== */
+@import './styles/components/antd-overrides.css';
+@import './styles/components/table.css';
+@import './styles/components/form.css';
+@import './styles/components/button.css';
+@import './styles/components/card.css';
+@import './styles/components/modal.css';
+@import './styles/components/other.css';
+
+/* ========== 3. 布局层 ========== */
+@import './styles/layouts/main-layout.css';
+@import './styles/layouts/page-container.css';
+@import './styles/layouts/multi-tabs.css';
+
+/* ========== 4. 工具层 ========== */
+@import './styles/utilities/animations.css';
+@import './styles/utilities/transitions.css';
+
+/* ========== 5. 第三方样式 ========== */
 @import 'nprogress/nprogress.css';
-
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-base);
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5);
-  border-radius: 3px;
-  transition: all 0.3s;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.8);
-}
-
-/* Ant Design Overrides for Premium Feel */
-.ant-layout-sider {
-  box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.1);
-}
-
-.ant-menu-dark {
-  background: transparent;
-}
-
-/* NProgress Premium Style */
-#nprogress .bar {
-  background: #6366f1 !important; /* Primary Indigo */
-  height: 3px !important;
-  box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
-}
-
-#nprogress .peg {
-  box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
-}
-
-#nprogress .spinner-icon {
-  border-top-color: #6366f1;
-  border-left-color: #6366f1;
-}

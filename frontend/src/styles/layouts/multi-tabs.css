@@ -1,4 +1,8 @@
-/* Multi Tabs Premium Styling */
+/**
+ * 多标签页样式
+ * 多标签页组件的样式定义
+ */
+
 .multi-tabs-wrapper {
     position: sticky;
     top: 0;

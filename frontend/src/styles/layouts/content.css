@@ -1,0 +1,39 @@
+/**
+ * 内容区样式
+ * 主布局内容区域的样式定义
+ */
+
+.main-content-layout {
+    transition: var(--transition-base);
+    background: var(--color-bg-layout);
+}
+
+.main-content {
+    margin: 0;
+    overflow: initial;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-wrapper {
+    padding: 24px;
+    min-height: 360px;
+    background: var(--color-bg-container);
+    border-radius: var(--radius-lg);
+    margin: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--color-border);
+    animation: contentFadeIn 0.3s ease-out;
+}
+
+@keyframes contentFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

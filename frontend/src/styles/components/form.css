@@ -1,0 +1,68 @@
+/**
+ * 表单组件样式
+ * Ant Design Form 组件增强样式和表单工具类
+ */
+
+/* Form Utilities */
+.form-full-width {
+    width: 100%;
+}
+
+.form-no-margin-bottom {
+    margin-bottom: 0;
+}
+
+.form-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--color-border);
+    position: relative;
+}
+
+.form-section-title::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 40px;
+    height: 2px;
+    background: var(--gradient-primary);
+    border-radius: 1px;
+}
+
+.form-extra-error {
+    color: var(--color-error);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.form-extra-info {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Form Item Enhancement */
+.ant-form-item-label>label {
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+/* Input Enhancements */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-picker {
+    border-radius: var(--radius-base) !important;
+    transition: var(--transition-base) !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}

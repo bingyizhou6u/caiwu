@@ -3,7 +3,7 @@ import { Tabs, Dropdown, MenuProps } from 'antd'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ReloadOutlined, CloseOutlined, ArrowRightOutlined, BlockOutlined } from '@ant-design/icons'
 import { pageTitles, KEY_TO_PATH } from '../config/menu'
-import './MultiTabs.css'
+import '../styles/layouts/multi-tabs.css'
 
 interface TabItem {
     key: string

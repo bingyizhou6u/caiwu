@@ -1,3 +1,8 @@
+/**
+ * CSS 变量定义（设计令牌）
+ * 定义全局颜色、间距、阴影等设计系统变量
+ */
+
 :root {
     /* Brand Colors */
     --color-primary: #6366f1;
@@ -12,25 +17,18 @@
     --color-info: #3b82f6;
 
     /* Neutral Colors */
-    --color-text-primary: #1e293b;
-    /* Slate 800 */
-    --color-text-secondary: #64748b;
-    /* Slate 500 */
-    --color-text-tertiary: #94a3b8;
-    /* Slate 400 */
-    --color-border: #e2e8f0;
-    /* Slate 200 */
-    --color-divider: #f1f5f9;
-    /* Slate 100 */
-    --color-bg-base: #f8fafc;
-    /* Slate 50 */
+    --color-text-primary: #1e293b;      /* Slate 800 */
+    --color-text-secondary: #64748b;     /* Slate 500 */
+    --color-text-tertiary: #94a3b8;      /* Slate 400 */
+    --color-border: #e2e8f0;             /* Slate 200 */
+    --color-divider: #f1f5f9;           /* Slate 100 */
+    --color-bg-base: #f8fafc;           /* Slate 50 */
     --color-bg-container: #ffffff;
     --color-bg-elevated: #ffffff;
     --color-bg-layout: #f8fafc;
 
     /* Sidebar & Header (Glassmorphism) */
-    --sidebar-bg: #0f172a;
-    /* Slate 900 */
+    --sidebar-bg: #0f172a;              /* Slate 900 */
     --sidebar-width: 250px;
     --sidebar-collapsed-width: 80px;
     --header-bg: rgba(255, 255, 255, 0.9);
@@ -73,7 +71,7 @@
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* Dark Mode Overrides (if we decide to support it fully later) */
+/* Dark Mode Overrides */
 [data-theme='dark'] {
     --color-text-primary: rgba(255, 255, 255, 0.85);
     --color-text-secondary: rgba(255, 255, 255, 0.45);

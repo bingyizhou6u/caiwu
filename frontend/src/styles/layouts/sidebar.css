@@ -1,8 +1,9 @@
-.main-layout {
-    min-height: 100vh;
-}
+/**
+ * 侧边栏样式
+ * 主布局侧边栏的样式定义
+ */
 
-/* ========== SIDEBAR ========== */
+/* Sidebar Container */
 .main-sider {
     overflow: auto;
     height: 100vh;
@@ -138,7 +139,7 @@
     right: 8px;
 }
 
-/* ========== MENU STYLES ========== */
+/* Menu Styles */
 .main-sider .ant-menu.ant-menu-dark {
     background: transparent;
     padding: 8px 14px;
@@ -339,172 +340,7 @@
     font-weight: 600;
 }
 
-/* ========== HEADER ========== */
-.main-content-layout {
-    transition: var(--transition-base);
-    background: var(--color-bg-layout);
-}
-
-.main-header {
-    padding: 0 24px;
-    background: rgba(255, 255, 255, 0.9) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-    height: 64px;
-}
-
-.trigger-btn {
-    font-size: 18px;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-}
-
-.trigger-btn:hover {
-    color: var(--color-primary);
-    background: rgba(99, 102, 241, 0.08);
-    transform: scale(1.05);
-}
-
-.trigger-btn:active {
-    transform: scale(0.95);
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.user-dropdown {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    padding: 4px 12px 4px 4px;
-    border-radius: 28px;
-    transition: all 0.3s;
-    border: 1px solid transparent;
-}
-
-.user-dropdown:hover {
-    background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border-color: rgba(99, 102, 241, 0.15);
-}
-
-.user-avatar {
-    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
-    margin-right: 10px;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
-    border: 2px solid white;
-}
-
-.user-name {
-    margin-right: 6px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    font-size: 14px;
-}
-
-/* ========== GLOBAL SEARCH ========== */
-.global-search-input {
-    width: 240px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(0, 0, 0, 0.03) !important;
-    border-radius: 10px !important;
-    height: 38px !important;
-}
-
-.global-search-input:hover {
-    background: rgba(0, 0, 0, 0.05) !important;
-}
-
-.global-search-input:focus-within {
-    width: 320px;
-    background: white !important;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.global-search-input .ant-select-selector {
-    height: 38px !important;
-    padding: 0 14px !important;
-    border-radius: 10px !important;
-}
-
-.global-search-input .ant-select-selection-placeholder {
-    line-height: 38px !important;
-    font-size: 13px;
-    color: var(--color-text-tertiary);
-}
-
-.global-search-input .ant-select-selection-search-input {
-    height: 38px !important;
-}
-
-/* ========== CONTENT AREA ========== */
-.main-content {
-    margin: 0;
-    overflow: initial;
-    display: flex;
-    flex-direction: column;
-}
-
-.content-wrapper {
-    padding: 24px;
-    min-height: 360px;
-    background: var(--color-bg-container);
-    border-radius: var(--radius-lg);
-    margin: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    border: 1px solid var(--color-border);
-    animation: contentFadeIn 0.3s ease-out;
-}
-
-@keyframes contentFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ========== USER MENU DROPDOWN ========== */
-.user-menu-profile {
-    padding: 8px 4px;
-    min-width: 140px;
-}
-
-.user-menu-name {
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: 2px;
-    font-size: 14px;
-}
-
-.user-menu-email {
-    font-size: 12px;
-    color: var(--color-text-secondary);
-}
-
-/* ========== COLLAPSED STATE ========== */
+/* Collapsed State */
 .main-sider.ant-layout-sider-collapsed .ant-menu-item {
     padding: 0 !important;
     text-align: center;
