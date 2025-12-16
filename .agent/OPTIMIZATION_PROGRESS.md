@@ -68,6 +68,28 @@
 
 ---
 
+## ✅ Week 3-4 已完成任务
+
+### ✅ Task 3.2: 重构财务模块使用 Form 表单组件
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `APPage.tsx` - 已替换 AccountSelect 和 AmountInput
+  - ✅ `ARPage.tsx` - 已替换 AccountSelect 和 AmountInput（3处）
+  - ✅ `FlowCreatePage.tsx` - 已替换 AccountSelect、AmountInput 和 DepartmentSelect
+  - ✅ `AccountTransferPage.tsx` - 已替换 AccountSelect（2处）
+  - ✅ `BorrowingManagementPage.tsx` - 已替换 EmployeeSelect、CurrencySelect、AccountSelect 和 AmountInput
+  - ✅ `RepaymentManagementPage.tsx` - 已替换 CurrencySelect、AccountSelect 和 AmountInput
+- **替换统计**:
+  - AccountSelect: 8+ 处
+  - AmountInput: 6+ 处
+  - CurrencySelect: 3+ 处
+  - EmployeeSelect: 1 处
+  - DepartmentSelect: 1 处
+- **覆盖率提升**:
+  - Form 表单组件覆盖率: 0% → 15-20%（财务模块）
+  - 财务模块内部覆盖率: 90%+
+
 ## 🔄 进行中任务
 
 暂无
@@ -106,7 +128,7 @@
 ### 组件覆盖率
 - PageContainer: 92% (保持)
 - DataTable: 81% (保持)
-- Form 表单组件: 0% (目标: 50%+)
+- Form 表单组件: 0% → 15-20% ✅ (财务模块已完成)
 - SearchFilters: 34% (目标: 60%+)
 - FormModal: 34% (目标: 60%+)
 

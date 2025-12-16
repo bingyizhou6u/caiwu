@@ -252,7 +252,7 @@ export function AP() {
             <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
           </Form.Item>
           <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]} className="form-full-width">
-            <InputNumber min={0.01} step={0.01} className="form-full-width" precision={2} />
+            <AmountInput className="form-full-width" currency="CNY" />
           </Form.Item>
           <Form.Item name="memo" label="备注" className="form-full-width">
             <Input />
@@ -283,7 +283,7 @@ export function AP() {
               )}
             </Form.Item>
             <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
-              <Select options={Array.isArray(accounts) ? accounts : []} placeholder="选择账户" showSearch />
+              <AccountSelect placeholder="选择账户" showCurrency />
             </Form.Item>
             <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]} className="form-full-width">
               <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" />

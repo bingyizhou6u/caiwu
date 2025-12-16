@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Card, Button, Form, Input, Space, message, Select, DatePicker } from 'antd'
+import { CurrencySelect, AccountSelect, AmountInput } from '../../../components/form'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
 import { useAccounts } from '../../../hooks/useBusinessData'
@@ -187,21 +188,15 @@ export function RepaymentManagement() {
           </Form.Item>
           <Form.Item name="accountId" label="资金账户" rules={[{ required: true, message: '请选择资金账户' }]}
             dependencies={['currency']}>
-            <Select
-              showSearch
+            <AccountSelect
               placeholder="请选择资金账户"
-              optionFilterProp="label"
-              options={accounts
-                .filter((a: any) => {
-                  const currency = form.getFieldValue('currency')
-                  return !currency || a.currency === currency
-                })
-                .map((a: any) => ({ value: a.value, label: a.label }))}
               style={{ width: '100%' }}
+              filterByCurrency={form.getFieldValue('currency')}
+              showCurrency
             />
           </Form.Item>
           <Form.Item name="amount" label="还款金额" rules={[{ required: true, message: '请输入还款金额' }]}>
-            <Input type="number" step="0.01" placeholder="请输入还款金额" />
+            <AmountInput placeholder="请输入还款金额" currency={form.getFieldValue('currency')} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="repay_date" label="还款日期" rules={[{ required: true, message: '请选择还款日期' }]}>
             <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />

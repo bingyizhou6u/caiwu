@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Alert, Modal } from 'antd'
+import { AccountSelect } from '../../../components/form'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
@@ -238,24 +239,25 @@ export function AccountTransfer() {
           </Form.Item>
 
           <Form.Item name="fromAccountId" label="转出账户" rules={[{ required: true, message: '请选择转出账户' }]}>
-            <Select
+            <AccountSelect
               style={{ width: '100%' }}
-              options={Array.isArray(accounts) ? accounts : []}
               placeholder="选择转出账户"
-              onChange={(v) => {
-                setFromAccount(v)
+              showCurrency
+              onAccountChange={(id, account) => {
+                setFromAccount(id)
                 form.setFieldsValue({ exchangeRate: undefined, toAmount: undefined })
               }}
             />
           </Form.Item>
 
           <Form.Item name="toAccountId" label="转入账户" rules={[{ required: true, message: '请选择转入账户' }]}>
-            <Select
+            <AccountSelect
               style={{ width: '100%' }}
-              options={Array.isArray(accounts) ? accounts.filter((a: any) => a.value !== fromAccount) : []}
               placeholder="选择转入账户"
-              onChange={(v) => {
-                setToAccount(v)
+              showCurrency
+              filterByCurrency={fromAccountInfo?.currency} // 可以按币种过滤，但这里需要允许不同币种
+              onAccountChange={(id, account) => {
+                setToAccount(id)
                 form.setFieldsValue({ exchangeRate: undefined, toAmount: undefined })
               }}
             />
