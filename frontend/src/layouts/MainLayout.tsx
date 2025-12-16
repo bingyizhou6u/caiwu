@@ -55,19 +55,16 @@ export function MainLayout() {
             hoverTimeoutRef.current = null
         }
 
+        // 确保 overlay 已挂载
         if (!hoverOverlayMounted) {
             setHoverOverlayMounted(true)
-        }
-
-        if (!hoverExpanded) {
-            if (hoverTimeoutRef.current) {
-                clearTimeout(hoverTimeoutRef.current)
-                hoverTimeoutRef.current = null
-            }
-            // 使用 requestAnimationFrame 确保动画流畅
+            // overlay 挂载后立即展开
             requestAnimationFrame(() => {
                 setHoverExpanded(true)
             })
+        } else if (!hoverExpanded) {
+            // overlay 已挂载但未展开，立即展开
+            setHoverExpanded(true)
         }
     }
     
