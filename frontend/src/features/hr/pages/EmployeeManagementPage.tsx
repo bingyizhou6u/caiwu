@@ -369,10 +369,7 @@ export function EmployeeManagement() {
     <PageContainer>
       <Card
         extra={
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}>刷新</Button>
-            <Button type="primary" onClick={() => modal.openCreate()}>新建员工</Button>
-          </Space>
+          <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}>刷新</Button>
         }
       >
         <DataTable<Employee>
