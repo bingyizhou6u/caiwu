@@ -109,6 +109,27 @@ export const SITE_BILL_STATUS: Record<string, StatusConfig> = {
 }
 
 /**
+ * 员工在职状态
+ */
+export const EMPLOYEE_STATUS: Record<string, StatusConfig> = {
+  probation: { text: '试用期', color: 'warning' },
+  regular: { text: '已转正', color: 'success' },
+  resigned: { text: '已离职', color: 'error' },
+}
+
+/**
+ * 账号状态（用户账号启用/激活状态）
+ */
+export const ACCOUNT_STATUS: Record<string, StatusConfig> = {
+  no_account: { text: '未创建账号', color: 'default' },
+  disabled: { text: '账号已停用', color: 'error' },
+  enabled: { text: '已启用', color: 'success' },
+  activated: { text: '已激活', color: 'success' },
+  not_activated: { text: '未激活', color: 'warning' },
+  totp_enabled: { text: '2FA', color: 'blue' },
+}
+
+/**
  * 通用状态映射
  */
 export const COMMON_STATUS: Record<string, StatusConfig> = {
@@ -119,7 +140,9 @@ export const COMMON_STATUS: Record<string, StatusConfig> = {
   pending: { text: '待处理', color: 'processing' },
   approved: { text: '已批准', color: 'success' },
   rejected: { text: '已驳回', color: 'error' },
-  probation: { text: '试用', color: 'warning' },
+  probation: { text: '试用期', color: 'warning' },
+  regular: { text: '已转正', color: 'success' },
+  resigned: { text: '已离职', color: 'error' },
   normal: { text: '正常', color: 'success' },
   late: { text: '迟到', color: 'warning' },
   early: { text: '早退', color: 'warning' },

@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import { Card, Space, Select, Statistic, Row, Col } from 'antd'
-import { DataTable, AmountDisplay, EmptyText } from '../../../components/common'
+import { DataTable, AmountDisplay, EmptyText, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { useEmployeeSalary } from '../../../hooks'
+import { EMPLOYEE_STATUS } from '../../../utils/status'
 import type { ColumnsType } from 'antd/es/table'
 
 type EmployeeSalaryRow = {
@@ -71,11 +72,7 @@ export function ReportEmployeeSalary() {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: string) => (
-        <span style={{ color: status === 'regular' ? '#52c41a' : '#faad14' }}>
-          {status === 'regular' ? '已转正' : '试用期'}
-        </span>
-      ),
+      render: (status: string) => <StatusTag status={status} statusMap={EMPLOYEE_STATUS} />,
     },
     {
       title: '转正日期',
@@ -183,12 +180,12 @@ export function ReportEmployeeSalary() {
               label: '月份',
               type: 'select',
               placeholder: '全部月份',
-              options: [{ label: '全部月份', value: undefined }, ...monthOptions],
+              options: [{ label: '全部月份', value: '' }, ...monthOptions],
             },
           ]}
           onSearch={(values) => {
-            setYear(values.year || new Date().getFullYear())
-            setMonth(values.month)
+            setYear((values.year as number) || new Date().getFullYear())
+            setMonth(values.month ? (values.month as number) : undefined)
           }}
           onReset={() => {
             setYear(new Date().getFullYear())

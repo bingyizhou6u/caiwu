@@ -58,3 +58,4 @@ Even if routes pass filters, does the Service apply them?
 2.  **Refactor `flows.ts`**: Try to switch to `getDataAccessFilter` if `cash_flows` table schema allows (needs `department_id` mapping).
 3.  **Secure `reports.ts`**: Add a mandatory lookup to verify `department_id` in query is within user's scope using `getDataAccessFilter` or manual checks.
 
+

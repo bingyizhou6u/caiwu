@@ -6,7 +6,7 @@ import { useMyDashboard, useMyProfile } from '../../../hooks'
 // import { useAttendanceToday, useClockIn, useClockOut } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { StatusTag } from '../../../components/common'
-import { LEAVE_STATUS, REIMBURSEMENT_STATUS, COMMON_STATUS, getStatusConfig } from '../../../utils/status'
+import { LEAVE_STATUS, REIMBURSEMENT_STATUS, COMMON_STATUS, EMPLOYEE_STATUS, getStatusConfig } from '../../../utils/status'
 
 interface WorkSchedule {
   days: number[]
@@ -192,7 +192,7 @@ export function MyCenter() {
                       <Descriptions.Item label="职位">{profileData?.position || '-'}</Descriptions.Item>
                       <Descriptions.Item label="入职日期">{profileData?.entryDate || '-'}</Descriptions.Item>
                       <Descriptions.Item label="合同到期">{profileData?.contractEndDate || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="状态"><StatusTag status={profileData?.status || ''} statusMap={COMMON_STATUS} /></Descriptions.Item>
+                      <Descriptions.Item label="状态"><StatusTag status={profileData?.status || ''} statusMap={EMPLOYEE_STATUS} /></Descriptions.Item>
                     </Descriptions>
                   </Card>
                 </Col>

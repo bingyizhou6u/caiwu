@@ -24,15 +24,17 @@ export class FinanceService {
 
   async getNextVoucherNo(date: string, tx?: any) {
     const db = tx || this.db
+    // 提取日期部分（支持 'YYYY-MM-DD' 或 'YYYY-MM-DD HH:mm:ss' 格式）
+    const dateOnly = date.substring(0, 10)
     const result = await db
       .select({ count: sql<number>`count(1)` })
       .from(cashFlows)
-      .where(eq(cashFlows.bizDate, date))
+      .where(sql`substr(${cashFlows.bizDate}, 1, 10) = ${dateOnly}`)
       .get()
 
     const count = result?.count ?? 0
     const seq = (count + 1).toString().padStart(3, '0')
-    const day = date.replace(/-/g, '')
+    const day = dateOnly.replace(/-/g, '')
     return `JZ${day}-${seq}`
   }
 

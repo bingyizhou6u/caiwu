@@ -4,6 +4,8 @@ import { SettingOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { Employee } from '../../../types'
 import { useEmployees, useFormModal, useToggleUserActive, useResendActivation, useResetTotp, useEmployeeSalaries, useEmployeeAllowances } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
+import { EMPLOYEE_STATUS, ACCOUNT_STATUS } from '../../../utils/status'
+import { StatusTag } from '../../../components/common/StatusTag'
 import { EditEmployeeModal } from '../../../features/employees/components/modals/EditEmployeeModal'
 import { RegularizeEmployeeModal } from '../../../features/employees/components/modals/RegularizeEmployeeModal'
 import { LeaveEmployeeModal } from '../../../features/employees/components/modals/LeaveEmployeeModal'
@@ -174,10 +176,10 @@ export function EmployeeManagement() {
       },
     },
     {
-      title: '邮箱',
-      dataIndex: 'email',
-      key: 'email',
-      width: 150,
+      title: '个人邮箱',
+      dataIndex: 'personalEmail',
+      key: 'personalEmail',
+      width: 180,
       render: (email: string) => email || '-',
     },
     {
@@ -192,15 +194,7 @@ export function EmployeeManagement() {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: string) => {
-        if (status === 'resigned') {
-          return <Tag color="red">已离职</Tag>
-        } else if (status === 'regular') {
-          return <Tag color="green">已转正</Tag>
-        } else {
-          return <Tag color="orange">试用期</Tag>
-        }
-      },
+      render: (status: string) => <StatusTag status={status} statusMap={EMPLOYEE_STATUS} />,
       filters: [
         { text: '全部', value: 'all' },
         { text: '在职', value: 'active' },
@@ -222,20 +216,13 @@ export function EmployeeManagement() {
       width: 180,
       render: (_: unknown, record: Employee) => {
         if (!record.userId) {
-          return <Tag color="default">未创建账号</Tag>
+          return <StatusTag status="no_account" statusMap={ACCOUNT_STATUS} />
         }
         if (record.userActive === 0) {
-          return <Tag color="red">账号已停用</Tag>
+          return <StatusTag status="disabled" statusMap={ACCOUNT_STATUS} />
         }
 
-        const activatedTag = record.isActivated ?
-          <Tag color="success">已激活</Tag> :
-          <Tag color="warning">未激活</Tag>
-
-        const totpTag = record.totpEnabled ?
-          <Tag color="blue" title="2FA已开启">2FA</Tag> :
-          null
-
+        const activatedStatus = record.isActivated ? 'activated' : 'not_activated'
         const levelLabels: Record<number, string> = {
           1: '总部',
           2: '项目',
@@ -246,8 +233,8 @@ export function EmployeeManagement() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
               <Tag color="blue">{record.positionName || '无职位'}</Tag>
-              {activatedTag}
-              {totpTag}
+              <StatusTag status={activatedStatus} statusMap={ACCOUNT_STATUS} />
+              {record.totpEnabled && <StatusTag status="totp_enabled" statusMap={ACCOUNT_STATUS} style={{ marginLeft: 0 }} />}
             </div>
             {levelLabel && <div style={{ fontSize: 12, color: '#666' }}>层级: {levelLabel}</div>}
           </div>
@@ -444,7 +431,7 @@ export function EmployeeManagement() {
                   {record.userId && (
                     <>
                       <Descriptions.Item label="账号状态">
-                        {record.userActive === 1 ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>}
+                        <StatusTag status={record.userActive === 1 ? 'enabled' : 'disabled'} statusMap={ACCOUNT_STATUS} />
                       </Descriptions.Item>
                       {record.positionName && (
                         <>

@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Radio, Upload, Popconfirm, Card } from 'antd'
+import { Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Popconfirm, Card } from 'antd'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../../config/api'
 import { isSupportedImageType, uploadImageAsWebP } from '../../../utils/image'
-import { useFlows, useCreateFlow, useUpdateFlowVoucher, fetchNextVoucherNo } from '../../../hooks'
+import { useFlows, useCreateFlow, useUpdateFlowVoucher } from '../../../hooks'
 import { useBatchDeleteFlow } from '../../../hooks/business/useFlows'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
@@ -72,7 +72,6 @@ export function Flows() {
 
   // 本地状态
   const [categories, setCategories] = useState<{ value: string, label: string, kind: string }[]>([])
-  const [owner, setOwner] = useState<'hq' | 'department'>('hq')
   const [selectedType, setSelectedType] = useState<string>('income')
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>()
   const [uploading, setUploading] = useState(false)
@@ -97,11 +96,15 @@ export function Flows() {
       }
       const values = await validateWithZod()
 
+      // 根据选择的项目判断 owner_scope
+      const selectedDept = Array.isArray(departments) ? departments.find((d: any) => d.value === values.departmentId) : null
+      const ownerScope = selectedDept?.label === '总部' ? 'hq' : 'department'
+      
       await createFlow({
         ...values,
-        bizDate: values.bizDate.format('YYYY-MM-DD'),
+        bizDate: values.bizDate.format('YYYY-MM-DD HH:mm:ss'),
         amountCents: Math.round(values.amount * 100),
-        owner_scope: owner,
+        owner_scope: ownerScope,
         voucherUrls: voucherUrls
       })
 
@@ -263,6 +266,7 @@ export function Flows() {
               onClick: () => refetch()
             },
             ...(canDelete ? [{
+              label: '批量删除',
               component: (
                 <BatchActionButton
                   label="批量删除"
@@ -306,7 +310,7 @@ export function Flows() {
             { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo' },
             { title: '日期', dataIndex: 'bizDate', key: 'bizDate', render: (v: string) => <EmptyText value={v} /> },
             { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_LABELS[v] || v },
-            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number, r: Flow) => <AmountDisplay cents={v} currency={r.currency} /> },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} currency="CNY" /> },
             { title: '归属', key: 'owner', render: (_: unknown, r: Flow) => r.departmentId ? '项目' : '总部' },
             { title: '账户', dataIndex: 'accountName', key: 'accountName' },
             { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
@@ -358,7 +362,8 @@ export function Flows() {
                   </Space>
                 )
               }}
-              tableProps={{ className: 'table-striped', rowSelection }}
+              rowSelection={rowSelection}
+              tableProps={{ className: 'table-striped' }}
             />
           )
         })()}
@@ -372,68 +377,40 @@ export function Flows() {
           form.resetFields()
         }} destroyOnClose>
           <Form form={form} layout="vertical">
-            <Form.Item name="bizDate" label="日期" rules={[{ required: true, message: '请选择日期' }]}>
-              <DatePicker />
-            </Form.Item>
-            <Form.Item label="凭证号" shouldUpdate>
-              {() => {
-                const d = form.getFieldValue('bizDate')
-                return <Button onClick={async () => {
-                  if (!d) return
-                  try {
-                    const voucherNo = await fetchNextVoucherNo(d.format('YYYY-MM-DD'))
-                    form.setFieldValue('voucherNo', voucherNo)
-                  } catch (e) {
-                    message.error('生成凭证号失败')
-                  }
-                }}>生成</Button>
-              }}
-            </Form.Item>
-            <Form.Item name="voucherNo" hidden>
-              <Input />
+            <Form.Item name="bizDate" label="日期时间" rules={[{ required: true, message: '请选择日期时间' }]}>
+              <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" />
             </Form.Item>
             <Form.Item name="voucherUrls" hidden>
               <Input />
             </Form.Item>
-            <Form.Item label="归属">
-              <Radio.Group value={owner} onChange={(e) => setOwner(e.target.value)}>
-                <Radio value="hq">总部</Radio>
-                <Radio value="department">项目</Radio>
-              </Radio.Group>
+            <Form.Item name="departmentId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>
+              <Select
+                placeholder="请选择归属项目"
+                options={Array.isArray(departments) ? departments : []}
+                onChange={(value) => {
+                  setSelectedDepartmentId(value)
+                  form.setFieldsValue({ siteId: undefined })
+                }}
+              />
             </Form.Item>
-            {owner === 'department' && (
-              <>
-                <Form.Item name="departmentId" label="项目">
-                  <Select
-                    placeholder="请选择项目"
-                    options={Array.isArray(departments) ? departments : []}
-                    allowClear
-                    onChange={(value) => {
-                      setSelectedDepartmentId(value)
-                      form.setFieldsValue({ siteId: undefined })
-                    }}
-                  />
-                </Form.Item>
-                <Form.Item name="siteId" label="站点（可选）">
-                  <Select
-                    placeholder="请选择站点"
-                    options={Array.isArray(sites) ? sites
-                      .filter((s: any) => !selectedDepartmentId || s.departmentId === selectedDepartmentId)
-                      .map((s: any) => ({ value: s.value, label: s.label })) : []}
-                    allowClear
-                    onChange={(value) => {
-                      if (value) {
-                        const site = Array.isArray(sites) ? sites.find((s: any) => s.value === value) : undefined
-                        if (site) {
-                          form.setFieldsValue({ departmentId: site.departmentId })
-                          setSelectedDepartmentId(site.departmentId)
-                        }
-                      }
-                    }}
-                  />
-                </Form.Item>
-              </>
-            )}
+            <Form.Item name="siteId" label="站点（可选）">
+              <Select
+                placeholder="请选择站点"
+                options={Array.isArray(sites) ? sites
+                  .filter((s: any) => !selectedDepartmentId || s.departmentId === selectedDepartmentId)
+                  .map((s: any) => ({ value: s.value, label: s.label })) : []}
+                allowClear
+                onChange={(value) => {
+                  if (value) {
+                    const site = Array.isArray(sites) ? sites.find((s: any) => s.value === value) : undefined
+                    if (site) {
+                      form.setFieldsValue({ departmentId: site.departmentId })
+                      setSelectedDepartmentId(site.departmentId)
+                    }
+                  }
+                }}
+              />
+            </Form.Item>
             <Form.Item name="type" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
               <Select
                 options={[
