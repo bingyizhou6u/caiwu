@@ -219,6 +219,10 @@ export function AR() {
         <PageToolbar
           actions={[
             {
+              label: '刷新',
+              onClick: () => refetch(),
+            },
+            {
               label: '新建应收',
               type: 'primary',
               onClick: () => {
@@ -230,8 +234,6 @@ export function AR() {
           ]}
           style={{ marginTop: 16 }}
         />
-          <Button onClick={() => refetch()}>刷新</Button>
-        </Space>
 
         <DataTable<ARAPWithSiteName>
           columns={columns}

@@ -322,8 +322,6 @@ export function ExpenseReimbursement() {
       width: 100,
       render: (status: string) => (
         <StatusTag status={status} statusMap={REIMBURSEMENT_STATUS} />
-          {STATUS_LABELS[status] || status}
-        </Tag>
       ),
     },
     {
