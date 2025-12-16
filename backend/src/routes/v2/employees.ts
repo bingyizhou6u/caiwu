@@ -251,6 +251,11 @@ employeesRoutes.openapi(
 
     logAuditAction(c, 'resend_activation', 'employee', id, JSON.stringify({ result }))
 
+    // 如果邮件发送失败，返回错误给前端
+    if (!result.success) {
+      throw Errors.BUSINESS_ERROR(result.error || '邮件发送失败，请确认邮箱路由已验证')
+    }
+
     return result
   }) as any
 )
