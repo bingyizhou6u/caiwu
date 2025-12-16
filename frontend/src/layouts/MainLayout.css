@@ -462,7 +462,7 @@
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 64px); /* 减去 header 高度 */
+    height: calc(100vh - 64px - 46px); /* 减去 header 高度和 tabs 高度 */
 }
 
 .content-wrapper {

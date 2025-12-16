@@ -1,8 +1,8 @@
 /* Multi Tabs Premium Styling */
 .multi-tabs-wrapper {
     position: sticky;
-    top: 0;
-    z-index: 100;
+    top: 64px; /* Header 高度 */
+    z-index: 999;
     background: var(--color-bg-layout);
 }
 
