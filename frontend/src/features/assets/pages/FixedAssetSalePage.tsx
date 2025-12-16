@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, Button, Modal, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag } from 'antd'
+import { Card, Button, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
@@ -9,6 +9,8 @@ import { useAccounts, useIncomeCategories } from '../../../hooks/useBusinessData
 import { useFixedAssets, useFixedAssetSale } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { FormModal } from '../../../components/FormModal'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 
 const { TextArea } = Input
 
@@ -28,15 +30,14 @@ export function FixedAssetSale() {
   const [uploading, setUploading] = useState(false)
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
-  const [statusFilter, setStatusFilter] = useState<string | undefined>()
-  const [search, setSearch] = useState('')
+  const [searchParams, setSearchParams] = useState<{ search?: string; status?: string }>({})
 
   // Business data hooks
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useIncomeCategories()
   const { data: allAssets = [], isLoading } = useFixedAssets({ 
-    status: statusFilter,
-    search: search || undefined
+    status: searchParams.status,
+    search: searchParams.search || undefined
   })
   const { mutateAsync: saleAsset } = useFixedAssetSale()
 
@@ -131,24 +132,24 @@ export function FixedAssetSale() {
       breadcrumb={[{ title: '资产管理' }, { title: '资产卖出' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 16 }} wrap>
-          <Input.Search
-            placeholder="搜索资产编号、名称"
-            style={{ width: 300 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-          />
-          <Select
-            placeholder="状态筛选"
-            allowClear
-            style={{ width: 150 }}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          >
-            {STATUS_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
-          </Select>
-        </Space>
+        <SearchFilters
+          fields={[
+            { name: 'search', label: '搜索', type: 'input', placeholder: '搜索资产编号、名称' },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              placeholder: '状态筛选',
+              options: [
+                { label: '全部', value: '' },
+                ...STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+              ]
+            }
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
 
         <DataTable<any>
           columns={[
@@ -201,64 +202,63 @@ export function FixedAssetSale() {
           )}
         />
 
-        <Modal
-          title={`卖出资产：${currentAsset?.name || ''}`}
-          open={open}
-          onCancel={() => { setOpen(false); setCurrentAsset(null); form.resetFields(); setVoucherFile(null); setFileList([]) }}
-          onOk={handleSubmit}
-          width={800}
-        >
-          {currentAsset && (
-            <Form form={form} layout="vertical">
-              <Form.Item label="资产信息">
-                <div>
-                  <p>资产编号：{currentAsset.assetCode}</p>
-                  <p>资产名称：{currentAsset.name}</p>
-                  <p>购买价格：{formatAmount(currentAsset.purchasePriceCents)} {currentAsset.currency}</p>
-                  <p>当前净值：{formatAmount(currentAsset.currentValueCents)} {currentAsset.currency}</p>
-                </div>
-              </Form.Item>
-              <Form.Item name="sale_date" label="卖出日期" rules={[{ required: true }]}>
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-              </Form.Item>
-              <Form.Item name="sale_price_cents" label="卖出价格" rules={[{ required: true }]}>
-                <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入卖出价格" />
-              </Form.Item>
-              <Form.Item name="accountId" label="收入账户" rules={[{ required: true }]}>
-                <Select
-                  options={accounts.filter(a => a.currency === currentAsset.currency)}
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="选择账户"
-                />
-              </Form.Item>
-              <Form.Item name="categoryId" label="收入类别" rules={[{ required: true }]}>
-                <Select options={categories} showSearch optionFilterProp="label" placeholder="选择类别" />
-              </Form.Item>
-              <Form.Item name="sale_buyer" label="买方信息">
-                <Input placeholder="买方姓名或公司名称" />
-              </Form.Item>
-              <Form.Item name="voucherUrl" label="卖出凭证">
-                <Upload
-                  fileList={fileList}
-                  beforeUpload={handleUpload}
-                  onRemove={() => {
-                    setVoucherFile(null)
-                    setFileList([])
-                    form.setFieldsValue({ voucherUrl: undefined })
-                  }}
-                >
-                  <Button icon={<UploadOutlined />} loading={uploading}>
-                    上传凭证
-                  </Button>
-                </Upload>
-              </Form.Item>
-              <Form.Item name="sale_memo" label="备注">
-                <TextArea rows={3} placeholder="备注信息" />
-              </Form.Item>
-            </Form>
-          )}
-        </Modal>
+        {currentAsset && (
+          <FormModal
+            title={`卖出资产：${currentAsset.name}`}
+            open={open}
+            form={form}
+            onSubmit={handleSubmit}
+            onCancel={() => { setOpen(false); setCurrentAsset(null); form.resetFields(); setVoucherFile(null); setFileList([]) }}
+            width={800}
+          >
+            <Form.Item label="资产信息">
+              <div>
+                <p>资产编号：{currentAsset.assetCode}</p>
+                <p>资产名称：{currentAsset.name}</p>
+                <p>购买价格：{formatAmount(currentAsset.purchasePriceCents)} {currentAsset.currency}</p>
+                <p>当前净值：{formatAmount(currentAsset.currentValueCents)} {currentAsset.currency}</p>
+              </div>
+            </Form.Item>
+            <Form.Item name="sale_date" label="卖出日期" rules={[{ required: true }]}>
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item name="sale_price_cents" label="卖出价格" rules={[{ required: true }]}>
+              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入卖出价格" />
+            </Form.Item>
+            <Form.Item name="accountId" label="收入账户" rules={[{ required: true }]}>
+              <Select
+                options={accounts.filter(a => a.currency === currentAsset.currency)}
+                showSearch
+                optionFilterProp="label"
+                placeholder="选择账户"
+              />
+            </Form.Item>
+            <Form.Item name="categoryId" label="收入类别" rules={[{ required: true }]}>
+              <Select options={categories} showSearch optionFilterProp="label" placeholder="选择类别" />
+            </Form.Item>
+            <Form.Item name="sale_buyer" label="买方信息">
+              <Input placeholder="买方姓名或公司名称" />
+            </Form.Item>
+            <Form.Item name="voucherUrl" label="卖出凭证">
+              <Upload
+                fileList={fileList}
+                beforeUpload={handleUpload}
+                onRemove={() => {
+                  setVoucherFile(null)
+                  setFileList([])
+                  form.setFieldsValue({ voucherUrl: undefined })
+                }}
+              >
+                <Button icon={<UploadOutlined />} loading={uploading}>
+                  上传凭证
+                </Button>
+              </Upload>
+            </Form.Item>
+            <Form.Item name="sale_memo" label="备注">
+              <TextArea rows={3} placeholder="备注信息" />
+            </Form.Item>
+          </FormModal>
+        )}
       </Card>
     </PageContainer>
   )

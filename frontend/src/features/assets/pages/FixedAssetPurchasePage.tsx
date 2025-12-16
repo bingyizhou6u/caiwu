@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, Button, Modal, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload } from 'antd'
+import { Card, Button, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
@@ -10,6 +10,7 @@ import { useVendors, useFixedAssets, useFixedAssetPurchase } from '../../../hook
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { FormModal } from '../../../components/FormModal'
 
 const { TextArea } = Input
 
@@ -157,87 +158,87 @@ export function FixedAssetPurchase() {
           tableProps={{ className: 'table-striped', scroll: { x: 900 } }}
         />
 
-        <Modal
+        <FormModal
           title="买入资产"
           open={open}
+          form={form}
+          onSubmit={handleSubmit}
           onCancel={() => { setOpen(false); form.resetFields(); setVoucherFile(null); setFileList([]) }}
-          onOk={handleSubmit}
           width={800}
+          formProps={{ initialValues: { currency: 'CNY' } }}
         >
-          <Form form={form} layout="vertical" initialValues={{ currency: 'CNY' }}>
-            <Form.Item name="assetCode" label="资产编号" rules={[{ required: true, message: '请输入资产编号' }]}>
-              <Input placeholder="唯一标识，如：FA001" />
-            </Form.Item>
-            <Form.Item name="name" label="资产名称" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item name="category" label="资产类别">
-              <Select options={CATEGORY_OPTIONS} placeholder="选择类别" allowClear showSearch />
-            </Form.Item>
-            <Form.Item name="purchaseDate" label="购买日期" rules={[{ required: true }]}>
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-            </Form.Item>
-            <Form.Item name="purchasePriceCents" label="购买价格" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入购买价格" />
-            </Form.Item>
-            <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-              <Select options={safeCurrencies} showSearch optionFilterProp="label" placeholder="选择币种" />
-            </Form.Item>
-            <Form.Item name="accountId" label="支出账户" rules={[{ required: true }]}>
-              <Select
-                options={safeAccounts as AccountOption[]}
-                showSearch
-                optionFilterProp="label"
-                placeholder="选择账户"
-                onChange={(value) => {
-                  const account = (safeAccounts as AccountOption[]).find((a) => a.value === value)
-                  if (account?.currency) {
-                    form.setFieldsValue({ currency: account.currency })
-                  }
-                }}
-              />
-            </Form.Item>
-            <Form.Item name="categoryId" label="支出类别" rules={[{ required: true }]}>
-              <Select options={safeCategories} showSearch optionFilterProp="label" placeholder="选择类别" />
-            </Form.Item>
-            <Form.Item name="vendorId" label="供应商">
-              <Select options={vendors} showSearch optionFilterProp="label" placeholder="选择供应商" allowClear />
-            </Form.Item>
-            <Form.Item name="departmentId" label="使用项目">
-              <Select options={safeDepartments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
-            </Form.Item>
-            <Form.Item name="siteId" label="资产位置">
-              <Select options={sites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />
-            </Form.Item>
-            <Form.Item name="custodian" label="责任人">
-              <Input placeholder="使用人/责任人姓名" />
-            </Form.Item>
-            <Form.Item name="depreciation_method" label="折旧方法">
-              <Select options={DEPRECIATION_METHOD_OPTIONS} allowClear />
-            </Form.Item>
-            <Form.Item name="useful_life_years" label="预计使用年限（年）">
-              <InputNumber style={{ width: '100%' }} min={0} precision={0} placeholder="年" />
-            </Form.Item>
-            <Form.Item name="voucherUrl" label="购买凭证">
-              <Upload
-                fileList={fileList}
-                beforeUpload={handleUpload}
-                onRemove={() => {
-                  setVoucherFile(null)
-                  setFileList([])
-                  form.setFieldsValue({ voucherUrl: undefined })
-                }}
-              >
-                <Button icon={<UploadOutlined />} loading={uploading}>
-                  上传凭证
-                </Button>
-              </Upload>
-            </Form.Item>
-            <Form.Item name="memo" label="备注">
-              <TextArea rows={3} placeholder="备注信息" />
-            </Form.Item>
-          </Form>
-        </Modal>
+          <Form.Item name="assetCode" label="资产编号" rules={[{ required: true, message: '请输入资产编号' }]}>
+            <Input placeholder="唯一标识，如：FA001" />
+          </Form.Item>
+          <Form.Item name="name" label="资产名称" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="category" label="资产类别">
+            <Select options={CATEGORY_OPTIONS} placeholder="选择类别" allowClear showSearch />
+          </Form.Item>
+          <Form.Item name="purchaseDate" label="购买日期" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="purchasePriceCents" label="购买价格" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入购买价格" />
+          </Form.Item>
+          <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
+            <Select options={safeCurrencies} showSearch optionFilterProp="label" placeholder="选择币种" />
+          </Form.Item>
+          <Form.Item name="accountId" label="支出账户" rules={[{ required: true }]}>
+            <Select
+              options={safeAccounts as AccountOption[]}
+              showSearch
+              optionFilterProp="label"
+              placeholder="选择账户"
+              onChange={(value) => {
+                const account = (safeAccounts as AccountOption[]).find((a) => a.value === value)
+                if (account?.currency) {
+                  form.setFieldsValue({ currency: account.currency })
+                }
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="categoryId" label="支出类别" rules={[{ required: true }]}>
+            <Select options={safeCategories} showSearch optionFilterProp="label" placeholder="选择类别" />
+          </Form.Item>
+          <Form.Item name="vendorId" label="供应商">
+            <Select options={vendors} showSearch optionFilterProp="label" placeholder="选择供应商" allowClear />
+          </Form.Item>
+          <Form.Item name="departmentId" label="使用项目">
+            <Select options={safeDepartments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+          </Form.Item>
+          <Form.Item name="siteId" label="资产位置">
+            <Select options={sites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />
+          </Form.Item>
+          <Form.Item name="custodian" label="责任人">
+            <Input placeholder="使用人/责任人姓名" />
+          </Form.Item>
+          <Form.Item name="depreciation_method" label="折旧方法">
+            <Select options={DEPRECIATION_METHOD_OPTIONS} allowClear />
+          </Form.Item>
+          <Form.Item name="useful_life_years" label="预计使用年限（年）">
+            <InputNumber style={{ width: '100%' }} min={0} precision={0} placeholder="年" />
+          </Form.Item>
+          <Form.Item name="voucherUrl" label="购买凭证">
+            <Upload
+              fileList={fileList}
+              beforeUpload={handleUpload}
+              onRemove={() => {
+                setVoucherFile(null)
+                setFileList([])
+                form.setFieldsValue({ voucherUrl: undefined })
+              }}
+            >
+              <Button icon={<UploadOutlined />} loading={uploading}>
+                上传凭证
+              </Button>
+            </Upload>
+          </Form.Item>
+          <Form.Item name="memo" label="备注">
+            <TextArea rows={3} placeholder="备注信息" />
+          </Form.Item>
+        </FormModal>
       </Card>
     </PageContainer>
   )

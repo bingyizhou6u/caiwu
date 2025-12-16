@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, Button, Modal, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs } from 'antd'
+import { Card, Button, Modal, Form, Input, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs } from 'antd'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { FormInstance } from 'antd'
@@ -12,6 +12,7 @@ import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import { useRentalProperties, useRentalProperty, useCreateRentalProperty, useUpdateRentalProperty, useCreateRentalPayment, useAllocateDormitory } from '../../../hooks'
 import { useCurrencies, useDepartments, useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
@@ -92,8 +93,7 @@ const STATUS_OPTIONS = [
 
 export function RentalManagement() {
   const { hasPermission } = usePermissions()
-  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | undefined>()
-  const [statusFilter, setStatusFilter] = useState<string | undefined>()
+  const [searchParams, setSearchParams] = useState<{ propertyType?: string; status?: string }>({})
   const [uploading, setUploading] = useState(false)
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
@@ -410,28 +410,37 @@ export function RentalManagement() {
             </Button>
           )}
           <Button onClick={() => refetch()}>刷新</Button>
-          <Select
-            placeholder="类型筛选"
-            allowClear
-            style={{ width: 150 }}
-            value={propertyTypeFilter}
-            onChange={setPropertyTypeFilter}
-          >
-            {PROPERTY_TYPE_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
-          </Select>
-          <Select
-            placeholder="状态筛选"
-            allowClear
-            style={{ width: 150 }}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          >
-            {STATUS_OPTIONS.map(o => <Select.Option key={o.value} value={o.value}>{o.label}</Select.Option>)}
-          </Select>
         </Space>
       }
     >
       <Card bordered={false} className="page-card">
+        <SearchFilters
+          fields={[
+            {
+              name: 'propertyType',
+              label: '类型',
+              type: 'select',
+              placeholder: '类型筛选',
+              options: [
+                { label: '全部', value: '' },
+                ...PROPERTY_TYPE_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+              ]
+            },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              placeholder: '状态筛选',
+              options: [
+                { label: '全部', value: '' },
+                ...STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+              ]
+            }
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
         <DataTable<RentalProperty>
           rowKey="id"
           loading={loading}

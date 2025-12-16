@@ -12,6 +12,7 @@ import { createARSchema, confirmARSchema, settleARSchema } from '../../../valida
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { FormModal } from '../../../components/FormModal'
 import type { ARAP } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
@@ -249,32 +250,30 @@ export function AR() {
           tableProps={{ className: 'table-striped' }}
         />
 
-        <Modal
+        <FormModal
           title="新建应收"
           open={createOpen}
-          onOk={handleCreate}
-          confirmLoading={isCreating}
+          form={createForm.form}
+          onSubmit={handleCreate}
           onCancel={() => setCreateOpen(false)}
-          destroyOnClose
+          loading={isCreating}
         >
-          <Form form={createForm.form} layout="vertical">
-            <Form.Item name="siteId" label="客户（站点）" rules={[{ required: true, message: '请选择站点' }]} className="form-full-width">
-              <Select options={Array.isArray(sites) ? sites : []} placeholder="选择站点" showSearch />
-            </Form.Item>
-            <Form.Item name="issueDate" label="开立日期" rules={[{ required: true, message: '请选择开立日期' }]} className="form-full-width">
-              <DatePicker className="form-full-width" />
-            </Form.Item>
-            <Form.Item name="dueDate" label="到期日" className="form-full-width">
-              <DatePicker className="form-full-width" />
-            </Form.Item>
-            <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]} className="form-full-width">
-              <InputNumber min={0.01} step={0.01} className="form-full-width" precision={2} />
-            </Form.Item>
-            <Form.Item name="memo" label="备注" className="form-full-width">
-              <Input />
-            </Form.Item>
-          </Form>
-        </Modal>
+          <Form.Item name="siteId" label="客户（站点）" rules={[{ required: true, message: '请选择站点' }]} className="form-full-width">
+            <Select options={Array.isArray(sites) ? sites : []} placeholder="选择站点" showSearch />
+          </Form.Item>
+          <Form.Item name="issueDate" label="开立日期" rules={[{ required: true, message: '请选择开立日期' }]} className="form-full-width">
+            <DatePicker className="form-full-width" />
+          </Form.Item>
+          <Form.Item name="dueDate" label="到期日" className="form-full-width">
+            <DatePicker className="form-full-width" />
+          </Form.Item>
+          <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]} className="form-full-width">
+            <InputNumber min={0.01} step={0.01} className="form-full-width" precision={2} />
+          </Form.Item>
+          <Form.Item name="memo" label="备注" className="form-full-width">
+            <Input />
+          </Form.Item>
+        </FormModal>
 
         <Modal
           width={720}
@@ -329,65 +328,53 @@ export function AR() {
           )}
         </Modal>
 
-        <Modal
-          title="确认应收"
-          open={confirmOpen}
-          onCancel={() => {
-            setConfirmOpen(false)
-            setConfirmingDoc(null)
-            setFileList([])
-            setVoucherUrl(undefined)
-          }}
-          footer={null}
-          destroyOnClose
-        >
-          {confirmingDoc && (
-            <Form form={confirmForm.form} layout="vertical" onFinish={handleConfirm}>
-              <Form.Item label="金额">{(confirmingDoc.amountCents / 100).toFixed(2)}</Form.Item>
-              <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
-                <Select options={Array.isArray(accounts) ? accounts : []} placeholder="选择账户" showSearch />
-              </Form.Item>
-              <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]} className="form-full-width">
-                <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" />
-              </Form.Item>
-              <Form.Item name="bizDate" label="业务日期" rules={[{ required: true, message: '请选择业务日期' }]} className="form-full-width">
-                <DatePicker className="form-full-width" />
-              </Form.Item>
-              <Form.Item name="memo" label="备注" className="form-full-width">
-                <Input.TextArea rows={2} />
-              </Form.Item>
-              <Form.Item label="凭证" required className="form-full-width">
-                <Upload
-                  fileList={fileList}
-                  beforeUpload={(file) => {
-                    handleUpload(file)
-                    return false
-                  }}
-                  onRemove={() => {
-                    setFileList([])
-                    setVoucherUrl(undefined)
-                  }}
-                  accept="image/*"
-                  maxCount={1}
-                >
-                  <Button icon={<UploadOutlined />} loading={uploading}>上传凭证</Button>
-                </Upload>
-                {voucherUrl && <div className="form-extra-info" style={{ color: 'var(--color-success)' }}>✓ 凭证已上传</div>}
-              </Form.Item>
-              <Form.Item>
-                <Space>
-                  <Button type="primary" htmlType="submit" loading={isConfirming}>确认</Button>
-                  <Button onClick={() => {
-                    setConfirmOpen(false)
-                    setConfirmingDoc(null)
-                    setFileList([])
-                    setVoucherUrl(undefined)
-                  }}>取消</Button>
-                </Space>
-              </Form.Item>
-            </Form>
-          )}
-        </Modal>
+        {confirmingDoc && (
+          <FormModal
+            title="确认应收"
+            open={confirmOpen}
+            form={confirmForm.form}
+            onSubmit={handleConfirm}
+            onCancel={() => {
+              setConfirmOpen(false)
+              setConfirmingDoc(null)
+              setFileList([])
+              setVoucherUrl(undefined)
+            }}
+            loading={isConfirming}
+          >
+            <Form.Item label="金额">{(confirmingDoc.amountCents / 100).toFixed(2)}</Form.Item>
+            <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
+              <Select options={Array.isArray(accounts) ? accounts : []} placeholder="选择账户" showSearch />
+            </Form.Item>
+            <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]} className="form-full-width">
+              <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" />
+            </Form.Item>
+            <Form.Item name="bizDate" label="业务日期" rules={[{ required: true, message: '请选择业务日期' }]} className="form-full-width">
+              <DatePicker className="form-full-width" />
+            </Form.Item>
+            <Form.Item name="memo" label="备注" className="form-full-width">
+              <Input.TextArea rows={2} />
+            </Form.Item>
+            <Form.Item label="凭证" required className="form-full-width">
+              <Upload
+                fileList={fileList}
+                beforeUpload={(file) => {
+                  handleUpload(file)
+                  return false
+                }}
+                onRemove={() => {
+                  setFileList([])
+                  setVoucherUrl(undefined)
+                }}
+                accept="image/*"
+                maxCount={1}
+              >
+                <Button icon={<UploadOutlined />} loading={uploading}>上传凭证</Button>
+              </Upload>
+              {voucherUrl && <div className="form-extra-info" style={{ color: 'var(--color-success)' }}>✓ 凭证已上传</div>}
+            </Form.Item>
+          </FormModal>
+        )}
 
         <Modal open={previewOpen} footer={null} onCancel={() => setPreviewOpen(false)} width={800}>
           {previewUrl && (

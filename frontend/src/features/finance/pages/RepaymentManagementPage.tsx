@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, Button, Modal, Form, Input, Space, message, Select, DatePicker } from 'antd'
+import { Card, Button, Form, Input, Space, message, Select, DatePicker } from 'antd'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
 import { useAccounts } from '../../../hooks/useBusinessData'
@@ -9,6 +9,7 @@ import { createRepaymentSchema } from '../../../validations/repayment.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { FormModal } from '../../../components/FormModal'
 import type { Repayment, Borrowing } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
@@ -132,73 +133,72 @@ export function RepaymentManagement() {
           )
         })()}
 
-        <Modal
+        <FormModal
           title="新建还款"
           open={open}
-          confirmLoading={isCreating}
-          onOk={handleSubmit}
+          form={form}
+          onSubmit={handleSubmit}
           onCancel={() => {
             setOpen(false)
             form.resetFields()
           }}
+          loading={isCreating}
         >
-          <Form form={form} layout="vertical">
-            <Form.Item name="borrowing_id" label="借款记录" rules={[{ required: true, message: '请选择借款记录' }]}>
-              <Select
-                showSearch
-                placeholder="请选择借款记录"
-                optionFilterProp="label"
-                options={borrowingOptions}
-                style={{ width: '100%' }}
-                onChange={(value) => {
-                  const borrowing = borrowingOptions.find((b: any) => b.value === value)
-                  if (borrowing) {
-                    form.setFieldsValue({ currency: borrowing.currency, accountId: undefined })
-                  }
-                }}
-              />
-            </Form.Item>
-            <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
-              <Select
-                placeholder="请选择币种"
-                options={[
-                  { value: 'CNY', label: 'CNY - 人民币' },
-                  { value: 'USD', label: 'USD - 美元' },
-                  { value: 'EUR', label: 'EUR - 欧元' },
-                  { value: 'USDT', label: 'USDT - 泰达币' },
-                ]}
-                style={{ width: '100%' }}
-                onChange={(value) => {
-                  form.setFieldsValue({ accountId: undefined })
-                }}
-              />
-            </Form.Item>
-            <Form.Item name="accountId" label="资金账户" rules={[{ required: true, message: '请选择资金账户' }]}
-              dependencies={['currency']}>
-              <Select
-                showSearch
-                placeholder="请选择资金账户"
-                optionFilterProp="label"
-                options={accounts
-                  .filter((a: any) => {
-                    const currency = form.getFieldValue('currency')
-                    return !currency || a.currency === currency
-                  })
-                  .map((a: any) => ({ value: a.value, label: a.label }))}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item name="amount" label="还款金额" rules={[{ required: true, message: '请输入还款金额' }]}>
-              <Input type="number" step="0.01" placeholder="请输入还款金额" />
-            </Form.Item>
-            <Form.Item name="repay_date" label="还款日期" rules={[{ required: true, message: '请选择还款日期' }]}>
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-            </Form.Item>
-            <Form.Item name="memo" label="备注">
-              <Input.TextArea rows={3} placeholder="请输入备注" />
-            </Form.Item>
-          </Form>
-        </Modal>
+          <Form.Item name="borrowing_id" label="借款记录" rules={[{ required: true, message: '请选择借款记录' }]}>
+            <Select
+              showSearch
+              placeholder="请选择借款记录"
+              optionFilterProp="label"
+              options={borrowingOptions}
+              style={{ width: '100%' }}
+              onChange={(value) => {
+                const borrowing = borrowingOptions.find((b: any) => b.value === value)
+                if (borrowing) {
+                  form.setFieldsValue({ currency: borrowing.currency, accountId: undefined })
+                }
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
+            <Select
+              placeholder="请选择币种"
+              options={[
+                { value: 'CNY', label: 'CNY - 人民币' },
+                { value: 'USD', label: 'USD - 美元' },
+                { value: 'EUR', label: 'EUR - 欧元' },
+                { value: 'USDT', label: 'USDT - 泰达币' },
+              ]}
+              style={{ width: '100%' }}
+              onChange={(value) => {
+                form.setFieldsValue({ accountId: undefined })
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="accountId" label="资金账户" rules={[{ required: true, message: '请选择资金账户' }]}
+            dependencies={['currency']}>
+            <Select
+              showSearch
+              placeholder="请选择资金账户"
+              optionFilterProp="label"
+              options={accounts
+                .filter((a: any) => {
+                  const currency = form.getFieldValue('currency')
+                  return !currency || a.currency === currency
+                })
+                .map((a: any) => ({ value: a.value, label: a.label }))}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item name="amount" label="还款金额" rules={[{ required: true, message: '请输入还款金额' }]}>
+            <Input type="number" step="0.01" placeholder="请输入还款金额" />
+          </Form.Item>
+          <Form.Item name="repay_date" label="还款日期" rules={[{ required: true, message: '请选择还款日期' }]}>
+            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="memo" label="备注">
+            <Input.TextArea rows={3} placeholder="请输入备注" />
+          </Form.Item>
+        </FormModal>
       </Card>
     </PageContainer>
   )

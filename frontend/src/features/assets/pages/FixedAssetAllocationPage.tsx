@@ -5,6 +5,7 @@ import { useEmployees } from '../../../hooks/useBusinessData'
 import { useFixedAssets, useFixedAssetAllocations, useAllocateFixedAsset, useReturnFixedAsset } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { FormModal } from '../../../components/FormModal'
 import type { FixedAsset, FixedAssetAllocation } from '../../../types/domain'
 import type { SelectOption } from '../../../types/business'
 
@@ -244,76 +245,74 @@ export function FixedAssetAllocation() {
           )}
         />
 
-        <Modal
-          title={`分配资产：${currentAsset?.name || ''}`}
-          open={allocateOpen}
-          onCancel={() => { setAllocateOpen(false); setCurrentAsset(null); allocateForm.resetFields() }}
-          onOk={handleAllocateSubmit}
-          width={600}
-        >
-          {currentAsset && (
-            <Form form={allocateForm} layout="vertical">
-              <Form.Item label="资产信息">
-                <div>
-                  <p>资产编号：{currentAsset.assetCode}</p>
-                  <p>资产名称：{currentAsset.name}</p>
-                  <p>类别：{currentAsset.category || '-'}</p>
-                </div>
-              </Form.Item>
-              <Form.Item name="employeeId" label="分配给员工" rules={[{ required: true }]}>
-                <Select
-                  options={employees.map(e => ({
-                    value: e.id,
-                    label: `${e.name} (${e.departmentName || '-'})`
-                  }))}
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="选择员工"
-                />
-              </Form.Item>
-              <Form.Item name="allocationDate" label="分配日期" rules={[{ required: true }]}>
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-              </Form.Item>
-              <Form.Item name="allocationType" label="分配类型" rules={[{ required: true }]}>
-                <Select options={ALLOCATION_TYPE_OPTIONS} />
-              </Form.Item>
-              <Form.Item name="memo" label="备注">
-                <TextArea rows={3} placeholder="备注信息" />
-              </Form.Item>
-            </Form>
-          )}
-        </Modal>
+        {currentAsset && (
+          <FormModal
+            title={`分配资产：${currentAsset.name}`}
+            open={allocateOpen}
+            form={allocateForm}
+            onSubmit={handleAllocateSubmit}
+            onCancel={() => { setAllocateOpen(false); setCurrentAsset(null); allocateForm.resetFields() }}
+            width={600}
+          >
+            <Form.Item label="资产信息">
+              <div>
+                <p>资产编号：{currentAsset.assetCode}</p>
+                <p>资产名称：{currentAsset.name}</p>
+                <p>类别：{currentAsset.category || '-'}</p>
+              </div>
+            </Form.Item>
+            <Form.Item name="employeeId" label="分配给员工" rules={[{ required: true }]}>
+              <Select
+                options={employees.map(e => ({
+                  value: e.id,
+                  label: `${e.name} (${e.departmentName || '-'})`
+                }))}
+                showSearch
+                optionFilterProp="label"
+                placeholder="选择员工"
+              />
+            </Form.Item>
+            <Form.Item name="allocationDate" label="分配日期" rules={[{ required: true }]}>
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item name="allocationType" label="分配类型" rules={[{ required: true }]}>
+              <Select options={ALLOCATION_TYPE_OPTIONS} />
+            </Form.Item>
+            <Form.Item name="memo" label="备注">
+              <TextArea rows={3} placeholder="备注信息" />
+            </Form.Item>
+          </FormModal>
+        )}
 
-        <Modal
-          title={`归还资产：${currentAllocation?.assetName || ''}`}
-          open={returnOpen}
-          onCancel={() => { setReturnOpen(false); setCurrentAllocation(null); returnForm.resetFields() }}
-          onOk={handleReturnSubmit}
-          width={600}
-        >
-          {currentAllocation && (
-            <Form form={returnForm} layout="vertical">
-              <Form.Item label="资产信息">
-                <div>
-                  <p>资产编号：{currentAllocation.assetCode}</p>
-                  <p>资产名称：{currentAllocation.assetName}</p>
-                </div>
-              </Form.Item>
-              <Form.Item label="员工信息">
-                <div>
-                  <p>员工姓名：{currentAllocation.employeeName}</p>
-                  <p>分配日期：{currentAllocation.allocationDate}</p>
-                </div>
-              </Form.Item>
-              <Form.Item name="returnDate" label="归还日期" rules={[{ required: true }]}>
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-              </Form.Item>
-              <Form.Item name="memo" label="备注">
-                <TextArea rows={3} placeholder="备注信息" />
-              </Form.Item>
-            </Form>
-          )}
-        </Modal>
+        {currentAllocation && (
+          <FormModal
+            title={`归还资产：${currentAllocation.assetName}`}
+            open={returnOpen}
+            form={returnForm}
+            onSubmit={handleReturnSubmit}
+            onCancel={() => { setReturnOpen(false); setCurrentAllocation(null); returnForm.resetFields() }}
+            width={600}
+          >
+            <Form.Item label="资产信息">
+              <div>
+                <p>资产编号：{currentAllocation.assetCode}</p>
+                <p>资产名称：{currentAllocation.assetName}</p>
+              </div>
+            </Form.Item>
+            <Form.Item label="员工信息">
+              <div>
+                <p>员工姓名：{currentAllocation.employeeName}</p>
+                <p>分配日期：{currentAllocation.allocationDate}</p>
+              </div>
+            </Form.Item>
+            <Form.Item name="returnDate" label="归还日期" rules={[{ required: true }]}>
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+            <Form.Item name="memo" label="备注">
+              <TextArea rows={3} placeholder="备注信息" />
+            </Form.Item>
+          </FormModal>
+        )}
       </Card>
     </PageContainer>
   )

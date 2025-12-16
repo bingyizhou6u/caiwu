@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { Card, Table, Typography, Space, Spin, Select, Row, Col, Statistic, Progress, Tag, Alert } from 'antd'
+import { Card, Typography, Space, Select, Row, Col, Statistic, Progress, Tag, Alert } from 'antd'
 import { CalendarOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons'
-import type { ColumnsType } from 'antd/es/table'
 import { useDepartments } from '../../../hooks/useBusinessData'
 import { useAnnualLeave } from '../../../hooks'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 
 const { Title, Text } = Typography
 
@@ -55,7 +55,7 @@ export function ReportAnnualLeave() {
   const summary = reportData?.summary || null
   const config = reportData?.config || null
 
-  const columns: ColumnsType<AnnualLeaveRecord> = [
+  const columns: DataTableColumn<AnnualLeaveRecord>[] = [
     {
       title: '员工姓名',
       dataIndex: 'employeeName',
@@ -198,15 +198,13 @@ export function ReportAnnualLeave() {
           />
         </Space>
 
-        <Table
-          className="table-striped"
+        <DataTable<AnnualLeaveRecord>
           loading={loading}
           columns={columns}
-          dataSource={data}
+          data={data}
           rowKey="employeeId"
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 1000 }}
-          size="small"
+          tableProps={{ scroll: { x: 1000 }, size: 'small' }}
         />
       </Card>
     </PageContainer>

@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, Button, Modal, Form, Input, Space, message, Select, DatePicker } from 'antd'
-import { Table } from 'antd'
+import { Card, Button, Input, Space, message, Select, DatePicker } from 'antd'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
 import { useCurrencies, useAccounts, useEmployees } from '../../../hooks/useBusinessData'
@@ -10,6 +9,7 @@ import { createBorrowingSchema } from '../../../validations/borrowing.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { DataTable } from '../../../components/common/DataTable'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { FormModal } from '../../../components/FormModal'
 import type { Borrowing } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
@@ -106,60 +106,59 @@ export function BorrowingManagement() {
           }}
         />
 
-        <Modal
+        <FormModal
           title="新建借款"
           open={open}
-          confirmLoading={isCreating}
-          onOk={handleSubmit}
+          form={form}
+          onSubmit={handleSubmit}
           onCancel={() => {
             setOpen(false)
             form.resetFields()
           }}
+          loading={isCreating}
         >
-          <Form form={form} layout="vertical">
-            <Form.Item name="userId" label="借款人" rules={[{ required: true, message: '请选择借款人' }]}>
-              <Select
-                showSearch
-                placeholder="请选择借款人"
-                optionFilterProp="label"
-                options={Array.isArray(users) ? users : []}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
-              <Select
-                placeholder="请选择币种"
-                options={Array.isArray(currencies) ? currencies : []}
-                style={{ width: '100%' }}
-                onChange={(value) => {
-                  form.setFieldsValue({ accountId: undefined })
-                }}
-              />
-            </Form.Item>
-            <Form.Item name="accountId" label="资金账户" rules={[{ required: true, message: '请选择资金账户' }]}
-              dependencies={['currency']}>
-              <Select
-                showSearch
-                placeholder="请选择资金账户"
-                optionFilterProp="label"
-                options={Array.isArray(accounts) ? accounts.filter((a: any) => {
-                  const currency = form.getFieldValue('currency')
-                  return !currency || a.currency === currency
-                }) : []}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item name="amount" label="借款金额" rules={[{ required: true, message: '请输入借款金额' }]}>
-              <Input type="number" step="0.01" placeholder="请输入借款金额" />
-            </Form.Item>
-            <Form.Item name="borrow_date" label="借款日期" rules={[{ required: true, message: '请选择借款日期' }]}>
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-            </Form.Item>
-            <Form.Item name="memo" label="备注">
-              <Input.TextArea rows={3} placeholder="请输入备注" />
-            </Form.Item>
-          </Form>
-        </Modal>
+          <Form.Item name="userId" label="借款人" rules={[{ required: true, message: '请选择借款人' }]}>
+            <Select
+              showSearch
+              placeholder="请选择借款人"
+              optionFilterProp="label"
+              options={Array.isArray(users) ? users : []}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
+            <Select
+              placeholder="请选择币种"
+              options={Array.isArray(currencies) ? currencies : []}
+              style={{ width: '100%' }}
+              onChange={(value) => {
+                form.setFieldsValue({ accountId: undefined })
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="accountId" label="资金账户" rules={[{ required: true, message: '请选择资金账户' }]}
+            dependencies={['currency']}>
+            <Select
+              showSearch
+              placeholder="请选择资金账户"
+              optionFilterProp="label"
+              options={Array.isArray(accounts) ? accounts.filter((a: any) => {
+                const currency = form.getFieldValue('currency')
+                return !currency || a.currency === currency
+              }) : []}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item name="amount" label="借款金额" rules={[{ required: true, message: '请输入借款金额' }]}>
+            <Input type="number" step="0.01" placeholder="请输入借款金额" />
+          </Form.Item>
+          <Form.Item name="borrow_date" label="借款日期" rules={[{ required: true, message: '请选择借款日期' }]}>
+            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="memo" label="备注">
+            <Input.TextArea rows={3} placeholder="请输入备注" />
+          </Form.Item>
+        </FormModal>
       </Card>
     </PageContainer>
   )

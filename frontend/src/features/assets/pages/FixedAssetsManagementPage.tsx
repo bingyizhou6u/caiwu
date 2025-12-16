@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, Space, Button, Input, Select, Tag, Popconfirm, message, Modal, Form, DatePicker, InputNumber, Tabs } from 'antd'
+import { Card, Space, Button, Tag, Popconfirm, message, Modal, Form, DatePicker, InputNumber, Tabs } from 'antd'
 import { DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
@@ -11,6 +11,7 @@ import { useDepartments, useSites, useVendors, useCurrencies } from '../../../ho
 import { VirtualTable } from '../../../components/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { FixedAsset } from '../../../types'
 
 // 折旧记录类型
@@ -94,17 +95,14 @@ export function FixedAssetsManagement() {
   const detailData = modals.getData('detail')
 
   // 筛选
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState<string | undefined>()
-  const [filterDepartment, setFilterDepartment] = useState<string | undefined>()
-  const [filterCategory, setFilterCategory] = useState<string | undefined>()
+  const [searchParams, setSearchParams] = useState<{ search?: string; status?: string; department?: string; category?: string }>({})
 
   // 数据
   const { data: assets = [], isLoading, refetch } = useFixedAssets({
-    search,
-    status: filterStatus,
-    departmentId: filterDepartment,
-    category: filterCategory
+    search: searchParams.search,
+    status: searchParams.status,
+    departmentId: searchParams.department,
+    category: searchParams.category
   })
 
   // 变更操作
@@ -243,39 +241,51 @@ export function FixedAssetsManagement() {
               </Popconfirm>
             </Button>
           )}
-          <Input.Search
-            placeholder="搜索资产编号、名称、责任人"
-            style={{ width: 300 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={() => refetch()}
-            allowClear
-          />
-          <Select
-            placeholder="状态筛选"
-            allowClear
-            style={{ width: 150 }}
-            value={filterStatus}
-            onChange={setFilterStatus}
-            options={STATUS_OPTIONS}
-          />
-          <Select
-            placeholder="项目筛选"
-            allowClear
-            style={{ width: 150 }}
-            value={filterDepartment}
-            onChange={setFilterDepartment}
-            options={safeDepartments}
-          />
-          <Select
-            placeholder="类别筛选"
-            allowClear
-            style={{ width: 150 }}
-            value={filterCategory}
-            onChange={setFilterCategory}
-            options={CATEGORY_OPTIONS}
-          />
         </Space>
+        <SearchFilters
+          fields={[
+            { name: 'search', label: '搜索', type: 'input', placeholder: '搜索资产编号、名称、责任人' },
+            {
+              name: 'status',
+              label: '状态',
+              type: 'select',
+              placeholder: '状态筛选',
+              options: [
+                { label: '全部', value: '' },
+                ...STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+              ]
+            },
+            {
+              name: 'department',
+              label: '项目',
+              type: 'select',
+              placeholder: '项目筛选',
+              options: [
+                { label: '全部', value: '' },
+                ...safeDepartments.map((d: any) => ({ label: d.label || d.name, value: d.value || d.id }))
+              ]
+            },
+            {
+              name: 'category',
+              label: '类别',
+              type: 'select',
+              placeholder: '类别筛选',
+              options: [
+                { label: '全部', value: '' },
+                ...CATEGORY_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+              ]
+            }
+          ]}
+          onSearch={(values) => {
+            setSearchParams(values)
+            refetch()
+          }}
+          onReset={() => {
+            setSearchParams({})
+            refetch()
+          }}
+          initialValues={searchParams}
+        />
         <VirtualTable
           className="table-striped"
           rowKey="id"

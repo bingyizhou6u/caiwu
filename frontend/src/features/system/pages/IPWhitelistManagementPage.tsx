@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react'
-import { Button, Input, Modal, Form, message, Space, Popconfirm, Switch, Card, Alert } from 'antd'
+import { Button, Input, Form, message, Space, Popconfirm, Switch, Card, Alert } from 'antd'
 import { PlusOutlined, DeleteOutlined, SyncOutlined, ReloadOutlined, FileAddOutlined } from '@ant-design/icons'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { useIPWhitelist, useIPRuleStatus, useCreateIPRule, useToggleIPRule, useAddIP, useDeleteIP, useBatchAddIP, useBatchDeleteIP, useSyncIPWhitelist } from '../../../hooks/business/useIPWhitelist'
+import { FormModal } from '../../../components/FormModal'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { ipWhitelistSchema, ipBatchSchema } from '../../../validations/ipWhitelist.schema'
@@ -288,69 +289,61 @@ const IPWhitelistManagement: React.FC = () => {
         />
       </Card>
 
-      <Modal
+      <FormModal
         title="添加IP白名单"
         open={modalOpen}
+        form={form}
+        onSubmit={handleAdd}
         onCancel={() => {
           setModalOpen(false)
           form.resetFields()
         }}
-        onOk={handleAdd}
       >
-        <Form
-          form={form}
-          layout="vertical"
+        <Form.Item
+          label="IP地址"
+          name="ip_address"
+          rules={[{ required: true }]}
         >
-          <Form.Item
-            label="IP地址"
-            name="ip_address"
-            rules={[{ required: true }]}
-          >
-            <Input placeholder="例如: 175.157.96.241 或 2001:db8::1" />
-          </Form.Item>
-          <Form.Item
-            label="描述"
-            name="description"
-          >
-            <Input.TextArea rows={3} placeholder="可选，用于说明此IP的用途" />
-          </Form.Item>
-        </Form>
-      </Modal>
+          <Input placeholder="例如: 175.157.96.241 或 2001:db8::1" />
+        </Form.Item>
+        <Form.Item
+          label="描述"
+          name="description"
+        >
+          <Input.TextArea rows={3} placeholder="可选，用于说明此IP的用途" />
+        </Form.Item>
+      </FormModal>
 
-      <Modal
+      <FormModal
         title="批量添加IP白名单"
         open={batchModalOpen}
-        width={600}
+        form={batchForm}
+        onSubmit={handleBatchAdd}
         onCancel={() => {
           setBatchModalOpen(false)
           batchForm.resetFields()
         }}
-        onOk={handleBatchAdd}
+        width={600}
       >
-        <Form
-          form={batchForm}
-          layout="vertical"
+        <Form.Item
+          label="IP地址列表"
+          name="ips_text"
+          rules={[{ required: true }]}
+          extra="每行输入一个IP地址（支持IPv4和IPv6，包括CIDR格式）"
         >
-          <Form.Item
-            label="IP地址列表"
-            name="ips_text"
-            rules={[{ required: true }]}
-            extra="每行输入一个IP地址（支持IPv4和IPv6，包括CIDR格式）"
-          >
-            <Input.TextArea
-              rows={10}
-              placeholder={`例如：\n175.157.96.241\n192.168.1.0/24\n2001:db8::1\n2402:4000:126a:ede6:150f:2c99:837a:48d3`}
-            />
-          </Form.Item>
-          <Form.Item
-            label="描述（可选）"
-            name="description"
-            extra="此描述将应用于所有添加的IP地址"
-          >
-            <Input.TextArea rows={3} placeholder="可选，用于说明这些IP的用途" />
-          </Form.Item>
-        </Form>
-      </Modal>
+          <Input.TextArea
+            rows={10}
+            placeholder={`例如：\n175.157.96.241\n192.168.1.0/24\n2001:db8::1\n2402:4000:126a:ede6:150f:2c99:837a:48d3`}
+          />
+        </Form.Item>
+        <Form.Item
+          label="描述（可选）"
+          name="description"
+          extra="此描述将应用于所有添加的IP地址"
+        >
+          <Input.TextArea rows={3} placeholder="可选，用于说明这些IP的用途" />
+        </Form.Item>
+      </FormModal>
     </PageContainer>
   )
 }

@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react'
-import { Card, DatePicker, Button, Table, Space, Statistic, Breadcrumb, Modal } from 'antd'
+import { Card, DatePicker, Button, Space, Statistic, Breadcrumb, Modal } from 'antd'
 import { HomeOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
 import { useAccountBalance } from '../../../hooks'
 import type { AccountBalanceResponse } from '../../../hooks/business/useReports'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 
 type ViewLevel = 'currency' | 'accounts' | 'details'
 type CurrencySummary = {
@@ -156,12 +157,10 @@ export function ReportAccountBalance() {
 
         {viewLevel === 'currency' && (
           <div>
-            <Table
-              className="table-striped"
+            <DataTable<CurrencySummary>
               rowKey="currency"
-              dataSource={currencySummaries}
+              data={currencySummaries}
               loading={loading}
-              pagination={false}
               columns={[
                 { title: '币种', dataIndex: 'currency', width: 100 },
                 {
@@ -220,18 +219,17 @@ export function ReportAccountBalance() {
                   )
                 },
               ]}
+              tableProps={{ pagination: false }}
             />
           </div>
         )}
 
         {viewLevel === 'accounts' && (
           <div>
-            <Table
-              className="table-striped"
+            <DataTable<AccountSummary>
               rowKey="accountId"
-              dataSource={accountSummaries}
+              data={accountSummaries}
               loading={loading}
-              pagination={false}
               columns={[
                 { title: '账户名称', dataIndex: 'accountName', width: 150 },
                 { title: '账户号', dataIndex: 'accountNumber', width: 120, render: (v: string) => v || '-' },
@@ -286,16 +284,16 @@ export function ReportAccountBalance() {
                   )
                 },
               ]}
+              tableProps={{ pagination: false }}
             />
           </div>
         )}
 
         {viewLevel === 'details' && (
           <div>
-            <Table
-              className="table-striped"
+            <DataTable<TransactionDetail>
               rowKey="id"
-              dataSource={transactionDetails}
+              data={transactionDetails}
               loading={loading}
               pagination={{ pageSize: 50, showSizeChanger: true }}
               columns={[

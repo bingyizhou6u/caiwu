@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Alert } from 'antd'
+import { Button, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Alert } from 'antd'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { Dayjs } from 'dayjs'
@@ -11,6 +11,7 @@ import { useAccounts } from '../../../hooks/useBusinessData'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createAccountTransferSchema } from '../../../validations/accountTransfer.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { FormModal } from '../../../components/FormModal'
 import type { AccountTransfer as AccountTransferType } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
@@ -191,10 +192,11 @@ export function AccountTransfer() {
           tableProps={{ className: 'table-striped' }}
         />
 
-        <Modal
+        <FormModal
           title="新建转账"
           open={open}
-          confirmLoading={isCreating}
+          form={form}
+          onSubmit={handleSubmit}
           onCancel={() => {
             setOpen(false)
             form.resetFields()
@@ -204,125 +206,123 @@ export function AccountTransfer() {
             setFromAmount(undefined)
             setExchangeRate(undefined)
           }}
-          onOk={handleSubmit}
+          loading={isCreating}
           width={800}
         >
-          <Form form={form} layout="vertical">
-            <Form.Item name="transferDate" label="转账日期" rules={[{ required: true, message: '请选择转账日期' }]}>
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-            </Form.Item>
+          <Form.Item name="transferDate" label="转账日期" rules={[{ required: true, message: '请选择转账日期' }]}>
+            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+          </Form.Item>
 
-            <Form.Item name="fromAccountId" label="转出账户" rules={[{ required: true, message: '请选择转出账户' }]}>
-              <Select
-                style={{ width: '100%' }}
-                options={Array.isArray(accounts) ? accounts : []}
-                placeholder="选择转出账户"
-                onChange={(v) => {
-                  setFromAccount(v)
-                  form.setFieldsValue({ exchangeRate: undefined, toAmount: undefined })
-                }}
-              />
-            </Form.Item>
+          <Form.Item name="fromAccountId" label="转出账户" rules={[{ required: true, message: '请选择转出账户' }]}>
+            <Select
+              style={{ width: '100%' }}
+              options={Array.isArray(accounts) ? accounts : []}
+              placeholder="选择转出账户"
+              onChange={(v) => {
+                setFromAccount(v)
+                form.setFieldsValue({ exchangeRate: undefined, toAmount: undefined })
+              }}
+            />
+          </Form.Item>
 
-            <Form.Item name="toAccountId" label="转入账户" rules={[{ required: true, message: '请选择转入账户' }]}>
-              <Select
-                style={{ width: '100%' }}
-                options={Array.isArray(accounts) ? accounts.filter((a: any) => a.value !== fromAccount) : []}
-                placeholder="选择转入账户"
-                onChange={(v) => {
-                  setToAccount(v)
-                  form.setFieldsValue({ exchangeRate: undefined, toAmount: undefined })
-                }}
-              />
-            </Form.Item>
+          <Form.Item name="toAccountId" label="转入账户" rules={[{ required: true, message: '请选择转入账户' }]}>
+            <Select
+              style={{ width: '100%' }}
+              options={Array.isArray(accounts) ? accounts.filter((a: any) => a.value !== fromAccount) : []}
+              placeholder="选择转入账户"
+              onChange={(v) => {
+                setToAccount(v)
+                form.setFieldsValue({ exchangeRate: undefined, toAmount: undefined })
+              }}
+            />
+          </Form.Item>
 
-            {isSameCurrency && (
-              <Alert
-                message="同币种转账，转出金额和转入金额必须相等"
-                type="info"
-                style={{ marginBottom: 16 }}
-              />
-            )}
+          {isSameCurrency && (
+            <Alert
+              message="同币种转账，转出金额和转入金额必须相等"
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+          )}
 
-            {!isSameCurrency && (
-              <Alert
-                message="不同币种转账，需要提供实时汇率"
-                type="warning"
-                style={{ marginBottom: 16 }}
-              />
-            )}
+          {!isSameCurrency && (
+            <Alert
+              message="不同币种转账，需要提供实时汇率"
+              type="warning"
+              style={{ marginBottom: 16 }}
+            />
+          )}
 
-            <Form.Item name="fromAmount" label={`转出金额${fromAccountInfo ? ` (${fromAccountInfo.currency})` : ''}`} rules={[{ required: true, message: '请输入转出金额' }]}>
+          <Form.Item name="fromAmount" label={`转出金额${fromAccountInfo ? ` (${fromAccountInfo.currency})` : ''}`} rules={[{ required: true, message: '请输入转出金额' }]}>
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              precision={2}
+              placeholder="请输入转出金额"
+              onChange={(v) => {
+                setFromAmount(v || undefined)
+                if (isSameCurrency) {
+                  form.setFieldsValue({ toAmount: v })
+                }
+              }}
+            />
+          </Form.Item>
+
+          {!isSameCurrency && (
+            <Form.Item
+              name="exchangeRate"
+              label={`汇率 (1 ${fromAccountInfo?.currency} = ? ${toAccountInfo?.currency})`}
+              rules={[{ required: true, message: '请输入汇率' }]}
+            >
               <InputNumber
                 style={{ width: '100%' }}
                 min={0}
-                precision={2}
-                placeholder="请输入转出金额"
+                precision={6}
+                placeholder="请输入汇率"
                 onChange={(v) => {
-                  setFromAmount(v || undefined)
-                  if (isSameCurrency) {
-                    form.setFieldsValue({ toAmount: v })
+                  setExchangeRate(v || undefined)
+                  if (fromAmount && v) {
+                    form.setFieldsValue({ toAmount: Math.round(fromAmount * v * 100) / 100 })
                   }
                 }}
               />
             </Form.Item>
+          )}
 
-            {!isSameCurrency && (
-              <Form.Item
-                name="exchangeRate"
-                label={`汇率 (1 ${fromAccountInfo?.currency} = ? ${toAccountInfo?.currency})`}
-                rules={[{ required: true, message: '请输入汇率' }]}
-              >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  min={0}
-                  precision={6}
-                  placeholder="请输入汇率"
-                  onChange={(v) => {
-                    setExchangeRate(v || undefined)
-                    if (fromAmount && v) {
-                      form.setFieldsValue({ toAmount: Math.round(fromAmount * v * 100) / 100 })
-                    }
-                  }}
-                />
-              </Form.Item>
-            )}
+          <Form.Item name="toAmount" label={`转入金额${toAccountInfo ? ` (${toAccountInfo.currency})` : ''}`} rules={[{ required: true, message: '请输入转入金额' }]}>
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              precision={2}
+              placeholder="请输入转入金额"
+              readOnly={isSameCurrency}
+            />
+          </Form.Item>
 
-            <Form.Item name="toAmount" label={`转入金额${toAccountInfo ? ` (${toAccountInfo.currency})` : ''}`} rules={[{ required: true, message: '请输入转入金额' }]}>
-              <InputNumber
-                style={{ width: '100%' }}
-                min={0}
-                precision={2}
-                placeholder="请输入转入金额"
-                readOnly={isSameCurrency}
-              />
-            </Form.Item>
+          <Form.Item name="memo" label="备注">
+            <Input.TextArea rows={3} placeholder="请输入备注" />
+          </Form.Item>
 
-            <Form.Item name="memo" label="备注">
-              <Input.TextArea rows={3} placeholder="请输入备注" />
-            </Form.Item>
-
-            <Form.Item label="转账凭证" required>
-              <Upload
-                beforeUpload={handleUpload}
-                fileList={voucherUrls.map((url, index) => ({
-                  uid: String(index),
-                  name: `凭证${index + 1}`,
-                  status: 'done',
-                  url: api.vouchers(url.replace('/api/vouchers/', ''))
-                })) as UploadFile[]}
-                onRemove={(file) => {
-                  const index = voucherUrls.findIndex((_, i) => String(i) === file.uid)
-                  if (index !== -1) {
-                    setVoucherUrls(voucherUrls.filter((_, i) => i !== index))
-                  }
-                }}
-              >
-                <Button icon={<UploadOutlined />} loading={uploading}>上传凭证</Button>
-              </Upload>
-            </Form.Item>
-          </Form>
-        </Modal>
+          <Form.Item label="转账凭证" required>
+            <Upload
+              beforeUpload={handleUpload}
+              fileList={voucherUrls.map((url, index) => ({
+                uid: String(index),
+                name: `凭证${index + 1}`,
+                status: 'done',
+                url: api.vouchers(url.replace('/api/vouchers/', ''))
+              })) as UploadFile[]}
+              onRemove={(file) => {
+                const index = voucherUrls.findIndex((_, i) => String(i) === file.uid)
+                if (index !== -1) {
+                  setVoucherUrls(voucherUrls.filter((_, i) => i !== index))
+                }
+              }}
+            >
+              <Button icon={<UploadOutlined />} loading={uploading}>上传凭证</Button>
+            </Upload>
+          </Form.Item>
+        </FormModal>
 
         <Modal open={previewOpen} footer={null} onCancel={() => setPreviewOpen(false)} width={800}>
           {previewUrl && (

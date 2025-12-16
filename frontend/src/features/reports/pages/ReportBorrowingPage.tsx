@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Card, Table, Space, Button, Breadcrumb, Statistic, Tag } from 'antd'
+import { Card, Space, Button, Breadcrumb, Statistic, Tag } from 'antd'
 import { HomeOutlined, ArrowLeftOutlined } from '@ant-design/icons'
-import type { ColumnsType } from 'antd/es/table'
 import { useBorrowingSummary, useBorrowingDetail } from '../../../hooks'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 
 type ViewLevel = 'summary' | 'detail'
 type BorrowerSummary = {
@@ -79,7 +79,7 @@ export function ReportBorrowing() {
   }
 
   // 汇总表格列
-  const summaryColumns: ColumnsType<BorrowerSummary> = [
+  const summaryColumns: DataTableColumn<BorrowerSummary>[] = [
     {
       title: '姓名',
       dataIndex: 'borrowerName',
@@ -140,7 +140,7 @@ export function ReportBorrowing() {
   ]
 
   // 借款明细表格列
-  const borrowingColumns: ColumnsType<BorrowingRecord> = [
+  const borrowingColumns: DataTableColumn<BorrowingRecord>[] = [
     {
       title: '借款日期',
       dataIndex: 'borrowDate',
@@ -176,7 +176,7 @@ export function ReportBorrowing() {
   ]
 
   // 还款明细表格列
-  const repaymentColumns: ColumnsType<RepaymentRecord> = [
+  const repaymentColumns: DataTableColumn<RepaymentRecord>[] = [
     {
       title: '还款日期',
       dataIndex: 'repayDate',
@@ -314,24 +314,22 @@ export function ReportBorrowing() {
         </Space>
 
         <Card title="借款记录" style={{ marginTop: 16 }} bordered={false} className="page-card">
-          <Table
-            className="table-striped"
+          <DataTable<BorrowingRecord>
             columns={borrowingColumns}
-            dataSource={detail.borrowings}
+            data={detail.borrowings}
             rowKey="id"
             pagination={{ pageSize: 20 }}
-            size="small"
+            tableProps={{ size: 'small' }}
           />
         </Card>
 
         <Card title="还款记录" style={{ marginTop: 16 }} bordered={false} className="page-card">
-          <Table
-            className="table-striped"
+          <DataTable<RepaymentRecord>
             columns={repaymentColumns}
-            dataSource={detail.repayments}
+            data={detail.repayments}
             rowKey="id"
             pagination={{ pageSize: 20 }}
-            size="small"
+            tableProps={{ size: 'small' }}
           />
         </Card>
       </PageContainer>
@@ -379,14 +377,13 @@ export function ReportBorrowing() {
       </Card>
 
       <Card title="个人借款汇总" bordered={false} className="page-card">
-        <Table
-          className="table-striped"
+        <DataTable<BorrowerSummary>
           columns={summaryColumns}
-          dataSource={summaries}
+          data={summaries}
           rowKey={(record) => `${record.userId}-${record.currency}`}
           loading={loading}
           pagination={{ pageSize: 20 }}
-          scroll={{ x: 800 }}
+          tableProps={{ scroll: { x: 800 } }}
         />
       </Card>
     </PageContainer>
