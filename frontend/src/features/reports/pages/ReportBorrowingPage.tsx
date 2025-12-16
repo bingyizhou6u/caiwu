@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, Space, Button, Breadcrumb, Statistic, Tag } from 'antd'
 import { HomeOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { useBorrowingSummary, useBorrowingDetail } from '../../../hooks'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, EmptyText, AmountDisplay } from '../../../components/common'
 
 type ViewLevel = 'summary' | 'detail'
 type BorrowerSummary = {
@@ -91,7 +91,7 @@ export function ReportBorrowing() {
       dataIndex: 'borrowerEmail',
       key: 'borrowerEmail',
       width: 180,
-      render: (v: string) => v || '-',
+      render: (v: string) => <EmptyText value={v} />,
     },
     {
       title: '币种',
@@ -105,7 +105,7 @@ export function ReportBorrowing() {
       key: 'totalBorrowedCents',
       width: 150,
       align: 'right',
-      render: (cents: number, record: BorrowerSummary) => formatAmount(cents, record.currency),
+      render: (cents: number, record: BorrowerSummary) => <AmountDisplay cents={cents} currency={record.currency} />,
     },
     {
       title: '还款总额',
@@ -113,7 +113,7 @@ export function ReportBorrowing() {
       key: 'totalRepaidCents',
       width: 150,
       align: 'right',
-      render: (cents: number, record: BorrowerSummary) => formatAmount(cents, record.currency),
+      render: (cents: number, record: BorrowerSummary) => <AmountDisplay cents={cents} currency={record.currency} />,
     },
     {
       title: '余额',
@@ -121,10 +121,13 @@ export function ReportBorrowing() {
       key: 'balanceCents',
       width: 150,
       align: 'right',
-      render: (cents: number, record: BorrowerSummary) => {
-        const amount = formatAmount(cents, record.currency)
-        return <span style={{ color: cents > 0 ? '#ff4d4f' : '#52c41a', fontWeight: 'bold' }}>{amount}</span>
-      },
+      render: (cents: number, record: BorrowerSummary) => (
+        <AmountDisplay 
+          cents={cents} 
+          currency={record.currency} 
+          style={{ color: cents > 0 ? '#ff4d4f' : '#52c41a', fontWeight: 'bold' }}
+        />
+      ),
     },
     {
       title: '操作',

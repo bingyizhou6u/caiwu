@@ -15,11 +15,10 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useMultipleModals } from '../../../hooks/forms/useFormModal'
 import { createFlowSchema } from '../../../validations/flow.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar, BatchActionButton } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { Flow } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
-import { renderCurrency, renderDate, renderText } from '../../../utils/renderers'
 
 const TYPE_LABELS: Record<string, string> = {
   income: '收入',
@@ -241,32 +240,38 @@ export function Flows() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button type="primary" onClick={() => {
-            modals.open('create')
-            setSelectedType('income')
-            setCategories(allCategories.filter((c: any) => c.kind === 'income'))
-            form.resetFields()
-            form.setFieldsValue({ type: 'income', bizDate: dayjs(), method: 'cash' })
-          }}>新建记账</Button>
-          <Button onClick={() => refetch()}>刷新</Button>
-          <Button
-            danger
-            disabled={selectedRowKeys.length === 0}
-            icon={<DeleteOutlined />}
-            loading={batchDeleting}
-          >
-            <Popconfirm
-              title={`确定要删除选中的 ${selectedRowKeys.length} 条记录吗？`}
-              onConfirm={handleBatchDelete}
-              okText="确定"
-              cancelText="取消"
-              disabled={selectedRowKeys.length === 0}
-            >
-              <span>批量删除 ({selectedRowKeys.length})</span>
-            </Popconfirm>
-          </Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '新建记账',
+              type: 'primary',
+              onClick: () => {
+                modals.open('create')
+                setSelectedType('income')
+                setCategories(allCategories.filter((c: any) => c.kind === 'income'))
+                form.resetFields()
+                form.setFieldsValue({ type: 'income', bizDate: dayjs(), method: 'cash' })
+              }
+            },
+            {
+              label: '刷新',
+              onClick: () => refetch()
+            },
+            ...(canDelete ? [{
+              component: (
+                <BatchActionButton
+                  label="批量删除"
+                  selectedCount={selectedRowKeys.length}
+                  onConfirm={handleBatchDelete}
+                  icon={<DeleteOutlined />}
+                  loading={batchDeleting}
+                  confirmTitle={(count) => `确定要删除选中的 ${count} 条记录吗？`}
+                />
+              )
+            }] : [])
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         {(() => {
           // 过滤数据
@@ -294,14 +299,14 @@ export function Flows() {
 
           const columns: DataTableColumn<Flow>[] = [
             { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo' },
-            { title: '日期', dataIndex: 'bizDate', key: 'bizDate', render: (v: string) => renderDate(v) },
+            { title: '日期', dataIndex: 'bizDate', key: 'bizDate', render: (v: string) => <EmptyText value={v} /> },
             { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_LABELS[v] || v },
-            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => renderCurrency(v) },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number, r: Flow) => <AmountDisplay cents={v} currency={r.currency} /> },
             { title: '归属', key: 'owner', render: (_: unknown, r: Flow) => r.departmentId ? '项目' : '总部' },
             { title: '账户', dataIndex: 'accountName', key: 'accountName' },
             { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
-            { title: '对方', dataIndex: 'counterparty', key: 'counterparty', render: (v: string) => renderText(v) },
-            { title: '备注', dataIndex: 'memo', key: 'memo', render: (v: string) => renderText(v) },
+            { title: '对方', dataIndex: 'counterparty', key: 'counterparty', render: (v: string) => <EmptyText value={v} /> },
+            { title: '备注', dataIndex: 'memo', key: 'memo', render: (v: string) => <EmptyText value={v} /> },
           ]
 
           return (
@@ -533,7 +538,7 @@ export function Flows() {
             <div style={{ marginBottom: 16 }}>
               <p><strong>凭证号：</strong>{modals.getData('voucherUpload').voucherNo || '-'}</p>
               <p><strong>日期：</strong>{modals.getData('voucherUpload').bizDate}</p>
-              <p><strong>金额：</strong>{(modals.getData('voucherUpload').amountCents / 100).toFixed(2)}</p>
+              <p><strong>金额：</strong><AmountDisplay cents={modals.getData('voucherUpload').amountCents} currency={modals.getData('voucherUpload').currency} /></p>
             </div>
           )}
           {voucherUploadUrls.length > 0 && (

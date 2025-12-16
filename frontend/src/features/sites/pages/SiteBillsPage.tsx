@@ -21,7 +21,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 
@@ -252,15 +252,19 @@ export function SiteBills() {
           }}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }} wrap>
-          {canEdit && (
-            <Button type="primary" onClick={() => {
+        <PageToolbar
+          actions={canEdit ? [{
+            label: '新建账单',
+            type: 'primary',
+            onClick: () => {
               form.resetFields()
               form.setFieldsValue({ billDate: dayjs(), billType: 'income', status: 'pending' })
               openCreate()
-            }}>新建账单</Button>
-          )}
-        </Space>
+            }
+          }] : []}
+          wrap
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<any>
           columns={[
@@ -272,13 +276,13 @@ export function SiteBills() {
               key: 'amount',
               width: 150,
               align: 'right',
-              render: (_: any, r: any) => `${(r.amountCents / 100).toFixed(2)} ${r.currency}`
+              render: (_: any, r: any) => <AmountDisplay cents={r.amountCents} currency={r.currency} />
             },
             { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
             { title: '账户', dataIndex: 'accountName', key: 'accountName', width: 120 },
             { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
             { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => STATUS_LABELS[v] || v },
-            { title: '支付日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120, render: (v: string) => v || '-' },
+            { title: '支付日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120, render: (v: string) => <EmptyText value={v} /> },
             { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
             { title: '创建人', dataIndex: 'creator_name', key: 'creator_name', width: 100 },
           ] as DataTableColumn<any>[]}

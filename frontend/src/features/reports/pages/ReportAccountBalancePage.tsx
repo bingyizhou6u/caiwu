@@ -4,7 +4,7 @@ import { HomeOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
 import { useAccountBalance } from '../../../hooks'
 import type { AccountBalanceResponse } from '../../../hooks/business/useReports'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText } from '../../../components/common'
 
 type ViewLevel = 'currency' | 'accounts' | 'details'
 type CurrencySummary = {
@@ -33,6 +33,7 @@ type TransactionDetail = {
   amountCents: number
   balance_before_cents: number
   balance_after_cents: number
+  currency: string
   voucherNo?: string
   memo?: string
   counterparty?: string
@@ -168,17 +169,19 @@ export function ReportAccountBalance() {
                   dataIndex: 'openingCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => ((v || 0) / 100).toFixed(2)
+                  render: (v: number, r: CurrencySummary) => <AmountDisplay cents={v || 0} currency={r.currency} />
                 },
                 {
                   title: '当日收入',
                   dataIndex: 'incomeCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => (
-                    <span style={{ color: v > 0 ? '#52c41a' : '#999' }}>
-                      {((v || 0) / 100).toFixed(2)}
-                    </span>
+                  render: (v: number, r: CurrencySummary) => (
+                    <AmountDisplay 
+                      cents={v || 0} 
+                      currency={r.currency} 
+                      style={{ color: v > 0 ? '#52c41a' : '#999' }}
+                    />
                   )
                 },
                 {
@@ -186,10 +189,12 @@ export function ReportAccountBalance() {
                   dataIndex: 'expenseCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => (
-                    <span style={{ color: v > 0 ? '#ff4d4f' : '#999' }}>
-                      {((v || 0) / 100).toFixed(2)}
-                    </span>
+                  render: (v: number, r: CurrencySummary) => (
+                    <AmountDisplay 
+                      cents={v || 0} 
+                      currency={r.currency} 
+                      style={{ color: v > 0 ? '#ff4d4f' : '#999' }}
+                    />
                   )
                 },
                 {
@@ -197,10 +202,12 @@ export function ReportAccountBalance() {
                   dataIndex: 'closingCents',
                   width: 150,
                   align: 'right' as const,
-                  render: (v: number) => (
-                    <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-                      {((v || 0) / 100).toFixed(2)}
-                    </span>
+                  render: (v: number, r: CurrencySummary) => (
+                    <AmountDisplay 
+                      cents={v || 0} 
+                      currency={r.currency} 
+                      style={{ fontWeight: 'bold', color: '#1890ff' }}
+                    />
                   )
                 },
                 {
@@ -232,7 +239,7 @@ export function ReportAccountBalance() {
               loading={loading}
               columns={[
                 { title: '账户名称', dataIndex: 'accountName', width: 150 },
-                { title: '账户号', dataIndex: 'accountNumber', width: 120, render: (v: string) => v || '-' },
+                { title: '账户号', dataIndex: 'accountNumber', width: 120, render: (v: string) => <EmptyText value={v} /> },
                 { title: '账户类型', dataIndex: 'accountType', width: 100 },
                 {
                   title: '期初余额',
@@ -298,31 +305,30 @@ export function ReportAccountBalance() {
               pagination={{ pageSize: 50, showSizeChanger: true }}
               columns={[
                 { title: '日期', dataIndex: 'transactionDate', width: 110 },
-                { title: '凭证号', dataIndex: 'voucherNo', width: 120, render: (v: string) => v || '-' },
+                { title: '凭证号', dataIndex: 'voucherNo', width: 120, render: (v: string) => <EmptyText value={v} /> },
                 { title: '类型', dataIndex: 'transactionType', width: 80, render: (v: string) => TYPE_LABELS[v] || v },
-                { title: '类别', dataIndex: 'categoryName', width: 120, render: (v: string) => v || '-' },
-                { title: '摘要', dataIndex: 'memo', ellipsis: true, render: (v: string) => v || '-' },
-                { title: '交易对手', dataIndex: 'counterparty', width: 120, render: (v: string) => v || '-' },
+                { title: '类别', dataIndex: 'categoryName', width: 120, render: (v: string) => <EmptyText value={v} /> },
+                { title: '摘要', dataIndex: 'memo', ellipsis: true, render: (v: string) => <EmptyText value={v} /> },
+                { title: '交易对手', dataIndex: 'counterparty', width: 120, render: (v: string) => <EmptyText value={v} /> },
                 {
                   title: '账变前金额',
                   dataIndex: 'balanceBeforeCents',
                   width: 130,
                   align: 'right' as const,
-                  render: (v: number) => ((v || 0) / 100).toFixed(2)
+                  render: (v: number, r: TransactionDetail) => <AmountDisplay cents={v || 0} currency={r.currency} />
                 },
                 {
                   title: '账变金额',
                   dataIndex: 'amountCents',
                   width: 120,
                   align: 'right' as const,
-                  render: (v: number, r: any) => {
-                    const amount = ((v || 0) / 100).toFixed(2)
-                    if (r.transactionType === 'income') {
-                      return <span style={{ color: '#52c41a' }}>+{amount}</span>
-                    } else if (r.transactionType === 'expense') {
-                      return <span style={{ color: '#ff4d4f' }}>-{amount}</span>
+                  render: (v: number, r: TransactionDetail) => {
+                    if (r.transaction_type === 'income') {
+                      return <AmountDisplay cents={v || 0} currency={r.currency} style={{ color: '#52c41a' }} />
+                    } else if (r.transaction_type === 'expense') {
+                      return <AmountDisplay cents={v || 0} currency={r.currency} style={{ color: '#ff4d4f' }} />
                     }
-                    return amount
+                    return <AmountDisplay cents={v || 0} currency={r.currency} />
                   }
                 },
                 {
@@ -330,7 +336,13 @@ export function ReportAccountBalance() {
                   dataIndex: 'balanceAfterCents',
                   width: 130,
                   align: 'right' as const,
-                  render: (v: number) => <strong>{((v || 0) / 100).toFixed(2)}</strong>
+                  render: (v: number, r: TransactionDetail) => (
+                    <AmountDisplay 
+                      cents={v || 0} 
+                      currency={r.currency} 
+                      style={{ fontWeight: 'bold' }}
+                    />
+                  )
                 },
                 {
                   title: '凭证',
