@@ -214,24 +214,8 @@ export class EmployeeService {
 
       const userAccountCreated = true
 
-      // 9. 发送激活邮件到个人邮箱
-      let emailSent = false
-      if (userAccountCreated) {
-        try {
-          const result = await this.emailService.sendActivationEmail(
-            data.personalEmail,
-            data.name,
-            activationToken
-          )
-          emailSent = result.success
-          if (!result.success) {
-            Logger.error('[Employee Create] Failed to send activation email', { error: result.error })
-          }
-        } catch (error) {
-          Logger.error('[Employee Create] Email send error', { error })
-          emailSent = false
-        }
-      }
+      // 注意：不再自动发送激活邮件
+      // 原因：需要等待 Cloudflare 邮箱路由验证通过后，手动点击"发送激活邮件"
 
       return {
         id: newEmployeeId,
@@ -239,7 +223,7 @@ export class EmployeeService {
         personalEmail: data.personalEmail,
         user_account_created: userAccountCreated,
         user_role: position.functionRole || 'employee',
-        email_sent: emailSent,
+        email_sent: false, // 不再自动发送，需手动触发
         email_routing_created: emailRoutingCreated,
         password: undefined,
       }
