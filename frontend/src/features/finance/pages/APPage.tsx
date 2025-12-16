@@ -239,10 +239,10 @@ export function AP() {
             <Input />
           </Form.Item>
           <Form.Item name="issueDate" label="开立日期" rules={[{ required: true, message: '请选择开立日期' }]} className="form-full-width">
-            <DatePicker className="form-full-width" />
+            <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
           </Form.Item>
           <Form.Item name="dueDate" label="到期日" className="form-full-width">
-            <DatePicker className="form-full-width" />
+            <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
           </Form.Item>
           <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]} className="form-full-width">
             <InputNumber min={0.01} step={0.01} className="form-full-width" precision={2} />
@@ -282,7 +282,7 @@ export function AP() {
               <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" />
             </Form.Item>
             <Form.Item name="bizDate" label="业务日期" rules={[{ required: true, message: '请选择业务日期' }]} className="form-full-width">
-              <DatePicker className="form-full-width" />
+              <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
             </Form.Item>
             <Form.Item name="memo" label="备注" className="form-full-width">
               <Input.TextArea rows={2} />

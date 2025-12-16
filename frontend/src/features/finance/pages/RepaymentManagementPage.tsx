@@ -204,7 +204,7 @@ export function RepaymentManagement() {
             <Input type="number" step="0.01" placeholder="请输入还款金额" />
           </Form.Item>
           <Form.Item name="repay_date" label="还款日期" rules={[{ required: true, message: '请选择还款日期' }]}>
-            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
           </Form.Item>
           <Form.Item name="memo" label="备注">
             <Input.TextArea rows={3} placeholder="请输入备注" />

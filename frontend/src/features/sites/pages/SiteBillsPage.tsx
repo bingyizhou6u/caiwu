@@ -326,7 +326,7 @@ export function SiteBills() {
               />
             </Form.Item>
             <Form.Item name="billDate" label="账单日期" rules={[{ required: true, message: '请选择账单日期' }]}>
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+              <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
             </Form.Item>
             <Form.Item name="billType" label="账单类型" rules={[{ required: true, message: '请选择账单类型' }]}>
               <Radio.Group>
@@ -378,7 +378,7 @@ export function SiteBills() {
               />
             </Form.Item>
             <Form.Item name="paymentDate" label="支付日期">
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+              <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
             </Form.Item>
             <Form.Item name="memo" label="备注">
               <Input.TextArea rows={2} placeholder="请输入备注" />
@@ -402,7 +402,7 @@ export function SiteBills() {
               />
             </Form.Item>
             <Form.Item name="billDate" label="账单日期" rules={[{ required: true, message: '请选择账单日期' }]}>
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+              <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
             </Form.Item>
             <Form.Item name="billType" label="账单类型" rules={[{ required: true, message: '请选择账单类型' }]}>
               <Radio.Group>
@@ -454,7 +454,7 @@ export function SiteBills() {
               />
             </Form.Item>
             <Form.Item name="paymentDate" label="支付日期">
-              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+              <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
             </Form.Item>
             <Form.Item name="memo" label="备注">
               <Input.TextArea rows={2} placeholder="请输入备注" />

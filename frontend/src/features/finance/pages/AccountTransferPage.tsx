@@ -221,7 +221,7 @@ export function AccountTransfer() {
           width={800}
         >
           <Form.Item name="transferDate" label="转账日期" rules={[{ required: true, message: '请选择转账日期' }]}>
-            <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
           </Form.Item>
 
           <Form.Item name="fromAccountId" label="转出账户" rules={[{ required: true, message: '请选择转出账户' }]}>
