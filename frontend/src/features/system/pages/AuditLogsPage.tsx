@@ -6,8 +6,8 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import { useAuditLogs, useAuditLogOptions, useExportAuditLogs, type AuditLog, type AuditLogQueryParams } from '../../../hooks/business/useAuditLogs'
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 import { SearchFilters } from '../../../components/common/SearchFilters'
-
 import { PageContainer } from '../../../components/PageContainer'
+import { getActionLabel, getActionColor, getEntityLabel, ACTION_LABELS, ENTITY_LABELS } from '../../../config/auditLabels'
 
 export function AuditLogs() {
   const [filters, setFilters] = useState<Omit<AuditLogQueryParams, 'limit' | 'offset'>>({})
@@ -75,12 +75,13 @@ export function AuditLogs() {
       title: '动作',
       dataIndex: 'action',
       width: 120,
-      render: (text: string) => <Tag color="blue">{text}</Tag>
+      render: (text: string) => <Tag color={getActionColor(text)}>{getActionLabel(text)}</Tag>
     },
     {
       title: '对象类型',
       dataIndex: 'entity',
       width: 120,
+      render: (text: string) => getEntityLabel(text)
     },
     {
       title: '对象ID',
@@ -119,14 +120,20 @@ export function AuditLogs() {
               label: '操作类型',
               type: 'select',
               placeholder: '请选择操作类型',
-              options: options?.actions.map((a: string) => ({ label: a, value: a })),
+              options: options?.actions.map((a: string) => ({ 
+                label: ACTION_LABELS[a] || a, 
+                value: a 
+              })),
             },
             {
               name: 'entity',
               label: '对象类型',
               type: 'select',
               placeholder: '请选择对象类型',
-              options: options?.entities.map((e: string) => ({ label: e, value: e })),
+              options: options?.entities.map((e: string) => ({ 
+                label: ENTITY_LABELS[e] || e, 
+                value: e 
+              })),
             },
             {
               name: 'actor_keyword',
