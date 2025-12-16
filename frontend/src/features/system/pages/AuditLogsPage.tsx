@@ -152,7 +152,7 @@ export function AuditLogs() {
               name: 'timeRange',
               label: '时间范围',
               type: 'dateRange',
-              placeholder: ['开始时间', '结束时间'],
+              showQuickSelect: true,
             },
           ]}
           onSearch={(values) => {

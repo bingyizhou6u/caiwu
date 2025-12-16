@@ -5,8 +5,87 @@
 
 import { Form, Input, InputNumber, Select, DatePicker, Button, Space, Card } from 'antd'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import dayjs, { Dayjs } from 'dayjs'
+
+// 快捷日期范围选择器（内嵌版本）
+function QuickDateRangePicker({
+  value,
+  onChange,
+  allowClear = true,
+}: {
+  value?: [Dayjs, Dayjs] | null
+  onChange?: (value: [Dayjs, Dayjs] | null) => void
+  allowClear?: boolean
+}) {
+  const [range, setRange] = useState<[Dayjs, Dayjs] | null>(value || null)
+
+  const handleChange = (dates: unknown) => {
+    const typedDates = dates as [Dayjs, Dayjs] | null
+    setRange(typedDates)
+    onChange?.(typedDates)
+  }
+
+  const quickSelect = (type: string) => {
+    let start: Dayjs
+    let end: Dayjs = dayjs()
+
+    switch (type) {
+      case 'today':
+        start = dayjs().startOf('day')
+        end = dayjs().endOf('day')
+        break
+      case 'thisWeek':
+        start = dayjs().startOf('week')
+        end = dayjs().endOf('week')
+        break
+      case 'thisMonth':
+        start = dayjs().startOf('month')
+        end = dayjs().endOf('month')
+        break
+      case 'lastMonth':
+        start = dayjs().subtract(1, 'month').startOf('month')
+        end = dayjs().subtract(1, 'month').endOf('month')
+        break
+      case 'last7Days':
+        start = dayjs().subtract(6, 'day').startOf('day')
+        end = dayjs().endOf('day')
+        break
+      case 'last30Days':
+        start = dayjs().subtract(29, 'day').startOf('day')
+        end = dayjs().endOf('day')
+        break
+      case 'thisYear':
+        start = dayjs().startOf('year')
+        end = dayjs().endOf('year')
+        break
+      default:
+        return
+    }
+
+    const newRange: [Dayjs, Dayjs] = [start, end]
+    setRange(newRange)
+    onChange?.(newRange)
+  }
+
+  return (
+    <Space wrap size="small">
+      <DatePicker.RangePicker
+        value={range}
+        onChange={handleChange}
+        allowClear={allowClear}
+        format="YYYY-MM-DD"
+        style={{ width: 240 }}
+      />
+      <Button size="small" onClick={() => quickSelect('today')}>今天</Button>
+      <Button size="small" onClick={() => quickSelect('thisWeek')}>本周</Button>
+      <Button size="small" onClick={() => quickSelect('thisMonth')}>本月</Button>
+      <Button size="small" onClick={() => quickSelect('lastMonth')}>上月</Button>
+      <Button size="small" onClick={() => quickSelect('last7Days')}>近7天</Button>
+      <Button size="small" onClick={() => quickSelect('last30Days')}>近30天</Button>
+    </Space>
+  )
+}
 
 export interface SearchFilterField {
   name: string
@@ -20,6 +99,8 @@ export interface SearchFilterField {
   min?: number
   max?: number
   precision?: number
+  /** dateRange 类型专用：是否显示快捷选择按钮 */
+  showQuickSelect?: boolean
 }
 
 export interface SearchFiltersProps {
@@ -133,10 +214,15 @@ export function SearchFilters({
       case 'dateRange':
         return (
           <Form.Item {...commonProps}>
-            <DatePicker.RangePicker
-              allowClear={field.allowClear !== false}
-              style={{ width: '100%' }}
-            />
+            {field.showQuickSelect ? (
+              <QuickDateRangePicker allowClear={field.allowClear !== false} />
+            ) : (
+              <DatePicker.RangePicker
+                allowClear={field.allowClear !== false}
+                format="YYYY-MM-DD"
+                style={{ width: 240 }}
+              />
+            )}
           </Form.Item>
         )
       case 'number':

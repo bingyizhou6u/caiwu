@@ -199,7 +199,7 @@ export function SiteBills() {
               name: 'dateRange',
               label: '日期范围',
               type: 'dateRange',
-              placeholder: ['开始日期', '结束日期'],
+              showQuickSelect: true,
             },
             {
               name: 'billType',

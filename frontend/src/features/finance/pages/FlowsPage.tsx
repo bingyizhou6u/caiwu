@@ -144,6 +144,7 @@ export function Flows() {
               name: 'dateRange',
               label: '日期范围',
               type: 'dateRange',
+              showQuickSelect: true,
             },
           ]}
           onSearch={(values) => {
