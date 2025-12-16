@@ -69,6 +69,9 @@ export class EmployeeService {
 
     const companyEmail = await emailRoutingService.generateCompanyEmail(data.name, existingEmails)
 
+    // 邮箱统一转小写（Cloudflare Email Routing 区分大小写）
+    data.personalEmail = data.personalEmail.toLowerCase()
+
     // 2. 检查个人邮箱是否已被使用
     const existingByPersonalEmail = await this.db
       .select()
@@ -535,7 +538,7 @@ export class EmployeeService {
     if (data.joinDate !== undefined) {updateData.joinDate = data.joinDate}
     if (data.active !== undefined) {updateData.active = Number(data.active)}
     if (data.phone !== undefined) {updateData.phone = data.phone}
-    if (data.personalEmail !== undefined) {updateData.personalEmail = data.personalEmail}
+    if (data.personalEmail !== undefined) {updateData.personalEmail = data.personalEmail.toLowerCase()}
     if (data.usdtAddress !== undefined) {updateData.usdtAddress = data.usdtAddress}
     if (data.emergencyContact !== undefined) {updateData.emergencyContact = data.emergencyContact}
     if (data.emergencyPhone !== undefined) {updateData.emergencyPhone = data.emergencyPhone}
