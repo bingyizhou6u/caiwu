@@ -3,6 +3,7 @@ import type { Env, AppVariables } from '../../types.js'
 import { hasPermission, getUserPosition, getUserId, isTeamMember } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
@@ -218,8 +219,8 @@ allowancePaymentsRoutes.openapi(generateAllowancePaymentsRoute, async (c: any) =
     }
 
     return result
-  } catch {
-    console.error('Failed to generate allowance payments')
+  } catch (error: any) {
+    Logger.error('Failed to generate allowance payments', { error: error?.message }, c as any)
     throw Errors.INTERNAL_ERROR('Failed to generate allowance payments')
   }
 }) as any
@@ -312,8 +313,8 @@ allowancePaymentsRoutes.openapi(
         departmentName: result.departmentName,
         createdByName: result.createdByName,
       }
-    } catch {
-      console.error('Failed to create allowance payment')
+    } catch (error: any) {
+      Logger.error('Failed to create allowance payment', { error: error?.message }, c as any)
       throw Errors.INTERNAL_ERROR('Failed to create allowance payment')
     }
   }) as any
@@ -392,8 +393,8 @@ allowancePaymentsRoutes.openapi(
         departmentName: result.departmentName,
         createdByName: result.createdByName,
       }
-    } catch {
-      console.error('Failed to update allowance payment')
+    } catch (error: any) {
+      Logger.error('Failed to update allowance payment', { error: error?.message }, c as any)
       throw Errors.INTERNAL_ERROR('Failed to update allowance payment')
     }
   }) as any

@@ -1,6 +1,7 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
 import { Errors } from '../utils/errors.js'
+import { Logger } from '../utils/logger.js'
 import type { EmployeeLeaveService } from './EmployeeLeaveService.js'
 import type { ExpenseReimbursementService } from './ExpenseReimbursementService.js'
 import type { AttendanceService } from './AttendanceService.js'
@@ -64,7 +65,7 @@ export class MyService {
         try {
           return await this.annualLeaveService.getAnnualLeaveStats(employeeId, emp.joinDate)
         } catch (e) {
-          console.error('Failed to get annual leave stats:', e)
+          Logger.error('Failed to get annual leave stats', { error: e })
           return null
         }
       })(),

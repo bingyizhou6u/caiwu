@@ -1,5 +1,6 @@
 import type { Env } from '../types.js'
 import { Errors } from '../utils/errors.js'
+import { Logger } from '../utils/logger.js'
 import {
   fetchCloudflareIPListItems,
   addIPToCloudflareList,
@@ -37,7 +38,7 @@ export class IPWhitelistService {
 
     const result = await addIPToCloudflareList(this.env, ip, description)
     if (!result.success) {
-      console.error('Failed to add IP to Cloudflare list:', result.error)
+      Logger.error('Failed to add IP to Cloudflare list', { error: result.error })
       throw Errors.INTERNAL_ERROR(result.error || '添加IP到Cloudflare列表失败')
     }
 

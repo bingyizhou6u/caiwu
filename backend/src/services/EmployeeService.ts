@@ -4,6 +4,7 @@ import { employees, departments, orgDepartments, positions, userDepartments } fr
 import * as schema from '../db/schema.js'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
+import { Logger } from '../utils/logger.js'
 import { EmailRoutingService } from './EmailRoutingService.js'
 import { EmailService } from './EmailService.js'
 
@@ -120,7 +121,7 @@ export class EmployeeService {
       try {
         await emailRoutingService.ensureDestinationAddress(data.personalEmail)
       } catch (error) {
-        console.error('[Employee Create] ensureDestinationAddress error:', error)
+        Logger.error('[Employee Create] ensureDestinationAddress error', { error })
       }
     }
 
@@ -171,10 +172,10 @@ export class EmployeeService {
           )
           emailRoutingCreated = routingResult.success
           if (!routingResult.success) {
-            console.error('[Employee Create] Failed to create email routing:', routingResult.error)
+            Logger.error('[Employee Create] Failed to create email routing', { error: routingResult.error })
           }
         } catch (error) {
-          console.error('[Employee Create] Email routing error:', error)
+          Logger.error('[Employee Create] Email routing error', { error })
         }
       }
 
@@ -224,10 +225,10 @@ export class EmployeeService {
           )
           emailSent = result.success
           if (!result.success) {
-            console.error('[Employee Create] Failed to send activation email:', result.error)
+            Logger.error('[Employee Create] Failed to send activation email', { error: result.error })
           }
         } catch (error) {
-          console.error('[Employee Create] Email send error:', error)
+          Logger.error('[Employee Create] Email send error', { error })
           emailSent = false
         }
       }
@@ -244,21 +245,21 @@ export class EmployeeService {
       }
     } catch (error) {
       // 回滚：按相反顺序删除已创建的记录
-      console.error('[Employee Create] Error occurred, rolling back:', error)
+      Logger.error('[Employee Create] Error occurred, rolling back', { error })
 
       try {
         if (userDepartmentCreated && newUserId) {
           await this.db.delete(userDepartments).where(eq(userDepartments.userId, newUserId)).run()
-          console.log('[Employee Create] Rolled back user_departments')
+          Logger.info('[Employee Create] Rolled back user_departments')
         }
         // userCreated 标志现在指的是设置了认证字段，而不是单独的记录
         // 没有单独的 users 表需要回滚 - 删除 employee 记录会一并处理认证字段
         if (employeeCreated) {
           await this.db.delete(employees).where(eq(employees.id, newEmployeeId)).run()
-          console.log('[Employee Create] Rolled back employees')
+          Logger.info('[Employee Create] Rolled back employees')
         }
       } catch (rollbackError) {
-        console.error('[Employee Create] Rollback failed:', rollbackError)
+        Logger.error('[Employee Create] Rollback failed', { error: rollbackError })
       }
 
       // 重新抛出原始错误
@@ -300,7 +301,7 @@ export class EmployeeService {
       )
       return result
     } catch (error: any) {
-      console.error('[Employee Resend Activation] Email send error:', error)
+      Logger.error('[Employee Resend Activation] Email send error', { error })
       return { success: false, error: error.message }
     }
   }
