@@ -1,7 +1,20 @@
 # AR公司财务管理系统 - 文档索引
 
-> 最后更新：2025-01-XX  
+> 最后更新：2025-01-27  
 > 本文档索引帮助快速定位项目相关文档
+
+## 🚀 代码规范优化（最新）
+
+**重要**: 项目正在进行代码规范全面优化，请查看相关文档：
+
+- **[优化计划总览](./OPTIMIZATION_PLAN_SUMMARY.md)** ⭐⭐⭐⭐⭐ - 快速了解优化计划
+- **[文档索引](./OPTIMIZATION_INDEX.md)** - 所有优化相关文档索引
+- **[快速参考](./QUICK_REFERENCE.md)** - 快速查找修复方法
+- **[开发规范](./DEVELOPMENT_STANDARDS.md)** ⭐⭐⭐⭐⭐ - 完整的开发规范
+
+**开始优化**: 查看 [执行计划](./OPTIMIZATION_EXECUTION_PLAN.md) 和 [模块修复清单](./MODULE_FIX_CHECKLIST.md)
+
+---
 
 ## 📚 文档结构
 
