@@ -9,9 +9,8 @@ import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { ipWhitelistSchema, ipBatchSchema } from '../../../validations/ipWhitelist.schema'
 import type { IPWhitelist } from '../../../hooks/business/useIPWhitelist'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, PageToolbar, BatchActionButton } from '../../../components/common'
 import type { DataTableColumn } from '../../../components/common/DataTable'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 const IPWhitelistManagement: React.FC = () => {
@@ -239,22 +238,14 @@ const IPWhitelistManagement: React.FC = () => {
             >
               从 Cloudflare 同步
             </Button>
-            <Button
-              danger
-              disabled={selectedRowKeys.length === 0}
+            <BatchActionButton
+              label="批量删除"
+              selectedCount={selectedRowKeys.length}
+              onConfirm={handleBatchDelete}
               icon={<DeleteOutlined />}
               loading={batchDeleting}
-            >
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedRowKeys.length} 条IP地址吗？`}
-                onConfirm={handleBatchDelete}
-                okText="确定"
-                cancelText="取消"
-                disabled={selectedRowKeys.length === 0}
-              >
-                <span>批量删除 ({selectedRowKeys.length})</span>
-              </Popconfirm>
-            </Button>
+              confirmTitle={(count) => `确定要删除选中的 ${count} 条IP地址吗？`}
+            />
             <Button icon={<FileAddOutlined />} onClick={() => setBatchModalOpen(true)}>
               批量添加
             </Button>

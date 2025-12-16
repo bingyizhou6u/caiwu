@@ -13,9 +13,11 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { expenseSchema, approveExpenseSchema } from '../../../validations/expense.schema'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, StatusTag, AmountDisplay, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { REIMBURSEMENT_STATUS } from '../../../utils/status'
 import type { ExpenseReimbursement } from '../../../hooks/business/useExpenses'
+import { PageContainer } from '../../../components/PageContainer'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -27,22 +29,6 @@ const EXPENSE_TYPE_LABELS: Record<string, string> = {
   transport: '交通',
   other: '其他',
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: '待审批',
-  approved: '已批准',
-  rejected: '已拒绝',
-  paid: '已支付',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'orange',
-  approved: 'green',
-  rejected: 'red',
-  paid: 'blue',
-}
-
-import { PageContainer } from '../../../components/PageContainer'
 
 export function ExpenseReimbursement() {
   const { data: expensesData, isLoading, refetch } = useExpenses()
@@ -257,7 +243,7 @@ export function ExpenseReimbursement() {
     }
     editForm.setFieldsValue({
       ...record,
-      amount: record.amountCents / 100,
+      amount: <AmountDisplay cents={record.amountCents} currency={record.currencyId} />,
       expenseDate: dayjs(record.expenseDate),
     })
     setEditVoucherFile(null)
@@ -336,7 +322,7 @@ export function ExpenseReimbursement() {
       key: 'status',
       width: 100,
       render: (status: string) => (
-        <Tag color={STATUS_COLORS[status]}>
+        <StatusTag status={status} statusMap={REIMBURSEMENT_STATUS} />
           {STATUS_LABELS[status] || status}
         </Tag>
       ),
@@ -352,7 +338,7 @@ export function ExpenseReimbursement() {
       dataIndex: 'approver_name',
       key: 'approver_name',
       width: 100,
-      render: (name: string) => name || '-',
+      render: (name: string) => <EmptyText value={name} />,
     },
     {
       title: '支出账户',

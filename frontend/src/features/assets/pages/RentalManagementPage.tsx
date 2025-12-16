@@ -11,7 +11,7 @@ import type { RentalProperty, DormitoryAllocation, RentalPayment, RentalProperty
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, EmptyText, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { useRentalProperties, useRentalProperty, useCreateRentalProperty, useUpdateRentalProperty, useCreateRentalPayment, useAllocateDormitory } from '../../../hooks'
 import { useCurrencies, useDepartments, useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
@@ -918,7 +918,7 @@ export function RentalManagement() {
                       dataIndex: 'returnDate',
                       key: 'returnDate',
                       width: 120,
-                      render: (v: string | undefined) => v || '-'
+                      render: (v: string | undefined) => <EmptyText value={v} />
                     },
                     {
                       title: '员工月租金',

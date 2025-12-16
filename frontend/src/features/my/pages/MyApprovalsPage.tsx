@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import { useMyPendingApprovals, useApproveLeaveMy, useRejectLeave, useApproveReimbursement, useRejectReimbursement, useApproveBorrowing, useRejectBorrowing } from '../../../hooks'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { AmountDisplay } from '../../../components/common'
 
 const { TextArea } = Input
 const { Title } = Typography
@@ -155,7 +156,7 @@ export function MyApprovals() {
     { title: '部门', render: (_: unknown, r: PendingReimbursement) => r.orgDepartmentName || r.departmentName },
     { title: '类型', dataIndex: 'expenseType', render: (v: string) => expenseTypeLabels[v] || v },
     { title: '费用日期', dataIndex: 'expenseDate' },
-    { title: '金额', dataIndex: 'amountCents', render: (v: number, r: PendingReimbursement) => `${r.currency_symbol || '¥'}${(v / 100).toFixed(2)}` },
+    { title: '金额', dataIndex: 'amountCents', render: (v: number, r: PendingReimbursement) => <AmountDisplay cents={v} currency={r.currency_symbol || 'CNY'} showSymbol={false} /> },
     { title: '说明', dataIndex: 'description', ellipsis: true },
     { title: '申请时间', dataIndex: 'createdAt', render: (v: number) => dayjs(v).format('MM-DD HH:mm') },
     {
@@ -171,7 +172,7 @@ export function MyApprovals() {
 
   const borrowingColumns = [
     { title: '申请人', dataIndex: 'employeeName' },
-    { title: '金额', dataIndex: 'amountCents', render: (v: number, r: PendingBorrowing) => `${r.currency_symbol || '¥'}${(v / 100).toFixed(2)}` },
+    { title: '金额', dataIndex: 'amountCents', render: (v: number, r: PendingBorrowing) => <AmountDisplay cents={v} currency={r.currency_symbol || 'CNY'} showSymbol={false} /> },
     { title: '原因', dataIndex: 'memo', ellipsis: true },
     { title: '申请时间', dataIndex: 'createdAt', render: (v: number) => dayjs(v).format('MM-DD HH:mm') },
     {

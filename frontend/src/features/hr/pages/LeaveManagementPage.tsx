@@ -7,11 +7,14 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { leaveSchema, approveLeaveSchema } from '../../../validations/leave.schema'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, StatusTag, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { LEAVE_STATUS } from '../../../utils/status'
 import type { EmployeeLeave } from '../../../hooks/business/useLeaves'
 import React, { useState } from 'react'
 import { useEmployees } from '../../../hooks/useBusinessData'
+import { PageContainer } from '../../../components/PageContainer'
+import { DataTableColumn } from '../../../components/common/DataTable'
 
 const { Option } = Select
 
@@ -21,21 +24,6 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
   personal: '事假',
   other: '其他',
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: '待审批',
-  approved: '已批准',
-  rejected: '已拒绝',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'orange',
-  approved: 'green',
-  rejected: 'red',
-}
-
-import { PageContainer } from '../../../components/PageContainer'
-import { DataTableColumn } from '../../../components/common/DataTable'
 
 export function LeaveManagement() {
   const { data: leaves = [], isLoading, refetch } = useLeaves()
@@ -246,7 +234,7 @@ export function LeaveManagement() {
       key: 'status',
       width: 100,
       render: (status: string) => (
-        <Tag color={STATUS_COLORS[status]}>
+        <StatusTag status={status} statusMap={LEAVE_STATUS} />
           {STATUS_LABELS[status] || status}
         </Tag>
       ),
@@ -262,7 +250,7 @@ export function LeaveManagement() {
       dataIndex: 'approver_name',
       key: 'approver_name',
       width: 100,
-      render: (name: string) => name || '-',
+      render: (name: string) => <EmptyText value={name} />,
     },
     {
       title: '操作',

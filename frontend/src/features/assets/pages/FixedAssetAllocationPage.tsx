@@ -18,7 +18,7 @@ const ALLOCATION_TYPE_OPTIONS = [
 ]
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, EmptyText } from '../../../components/common'
 
 export function FixedAssetAllocation() {
   const [allocateOpen, setAllocateOpen] = useState(false)
@@ -216,7 +216,7 @@ export function FixedAssetAllocation() {
               dataIndex: 'returnDate',
               key: 'returnDate',
               width: 120,
-              render: (v: string) => v || '-'
+              render: (v: string) => <EmptyText value={v} />
             },
             {
               title: '状态',

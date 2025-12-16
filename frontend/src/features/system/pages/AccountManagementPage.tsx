@@ -3,7 +3,7 @@ import { Card, Button, Form, Input, Select, Space, message, Switch, Popconfirm }
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, EmptyText, PageToolbar, BatchActionButton } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount, useBatchDeleteAccount, useCurrencyOptions, useFormModal, useZodForm } from '../../../hooks'
@@ -163,11 +163,11 @@ export function AccountManagement() {
 
   const columns: DataTableColumn<Account>[] = [
     { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '账户号', dataIndex: 'accountNumber', key: 'accountNumber', render: (v: string) => v || '-' },
-    { title: '别名', dataIndex: 'alias', key: 'alias', render: (v: string) => v || '-' },
+    { title: '账户号', dataIndex: 'accountNumber', key: 'accountNumber', render: (v: string) => <EmptyText value={v} /> },
+    { title: '别名', dataIndex: 'alias', key: 'alias', render: (v: string) => <EmptyText value={v} /> },
     { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_OPTIONS.find(o => o.value === v)?.label || v },
     { title: '币种', key: 'currency', render: (_: unknown, r: Account) => r.currencyName ? `${r.currency} - ${r.currencyName}` : r.currency },
-    { title: '管理人员', dataIndex: 'manager', key: 'manager', render: (v: string) => v || '-' },
+    { title: '管理人员', dataIndex: 'manager', key: 'manager', render: (v: string) => <EmptyText value={v} /> },
     { title: '启用', dataIndex: 'active', key: 'active', render: (v: number) => v === 1 ? '是' : '否' },
   ]
 
@@ -217,30 +217,31 @@ export function AccountManagement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button type="primary" onClick={() => {
-            modal.openCreate()
-            cForm.resetFields()
-          }}>新建账户</Button>
-          {canManageAccounts && (
-            <Button
-              danger
-              disabled={selectedRowKeys.length === 0}
-              icon={<DeleteOutlined />}
-              loading={batchDeleting}
-            >
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedRowKeys.length} 个账户吗？`}
-                onConfirm={handleBatchDelete}
-                okText="确定"
-                cancelText="取消"
-                disabled={selectedRowKeys.length === 0}
-              >
-                <span>批量删除 ({selectedRowKeys.length})</span>
-              </Popconfirm>
-            </Button>
-          )}
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '新建账户',
+              type: 'primary' as const,
+              onClick: () => {
+                modal.openCreate()
+                cForm.resetFields()
+              }
+            },
+            ...(canManageAccounts ? [{
+              component: (
+                <BatchActionButton
+                  label="批量删除"
+                  selectedCount={selectedRowKeys.length}
+                  onConfirm={handleBatchDelete}
+                  icon={<DeleteOutlined />}
+                  loading={batchDeleting}
+                  confirmTitle={(count) => `确定要删除选中的 ${count} 个账户吗？`}
+                />
+              )
+            }] : [])
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<Account>
           columns={columns}

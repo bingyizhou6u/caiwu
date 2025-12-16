@@ -13,26 +13,10 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { salaryPaymentGenerateSchema, salaryPaymentTransferSchema, salaryPaymentAllocationSchema, salaryPaymentConfirmSchema } from '../../../validations/salary.schema'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, StatusTag, AmountDisplay } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { SALARY_PAYMENT_STATUS } from '../../../utils/status'
 import type { SalaryPayment } from '../../../hooks/business/useSalaryPayments'
-
-const STATUS_LABELS: Record<string, string> = {
-  pending_employee_confirmation: '待员工确认',
-  pending_finance_approval: '待财务确认',
-  pending_payment: '待出纳转账',
-  pending_payment_confirmation: '待出纳确认',
-  completed: '已完成',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  pending_employee_confirmation: 'orange',
-  pending_finance_approval: 'blue',
-  pending_payment: 'cyan',
-  pending_payment_confirmation: 'purple',
-  completed: 'green',
-}
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function SalaryPayments() {
@@ -293,28 +277,22 @@ export function SalaryPayments() {
       key: 'salary_cents',
       width: 120,
       align: 'right',
-      render: (cents: number | null | undefined) => {
-        if (cents == null) return '-'
-        return (
-          <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-            {formatAmount(cents)}
-          </span>
-        )
-      },
+      render: (cents: number | null | undefined, r: SalaryPayment) => (
+        <AmountDisplay 
+          cents={cents} 
+          currency={r.currency || 'CNY'} 
+          style={{ fontWeight: 'bold', color: '#1890ff' }}
+        />
+      ),
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status: string | null | undefined) => {
-        if (!status) return '-'
-        return (
-          <Tag color={STATUS_COLORS[status] || 'default'}>
-            {STATUS_LABELS[status] || '未知状态'}
-          </Tag>
-        )
-      },
+      render: (status: string | null | undefined) => (
+        <StatusTag status={status} statusMap={SALARY_PAYMENT_STATUS} />
+      ),
     },
     {
       title: '币种分配',
@@ -335,8 +313,8 @@ export function SalaryPayments() {
       key: 'accountName',
       width: 150,
       render: (name: string | null | undefined, record: SalaryPayment) => {
-        if (!name) return '-'
-        return `${name}${record.account_currency ? ` [${record.account_currency}]` : ''}`
+        if (!name) return <EmptyText value={null} />
+        return <EmptyText value={`${name}${record.account_currency ? ` [${record.account_currency}]` : ''}`} />
       },
     },
     {
