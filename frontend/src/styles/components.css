@@ -64,14 +64,26 @@
     background: rgba(248, 250, 252, 0.5);
 }
 
+[data-theme="dark"] .table-striped .ant-table-tbody>tr:nth-child(even) {
+    background: rgba(30, 41, 59, 0.5);
+}
+
 /* Row Hover */
 .ant-table-wrapper .ant-table-tbody>tr:hover>td {
     background: rgba(99, 102, 241, 0.04) !important;
 }
 
+[data-theme="dark"] .ant-table-wrapper .ant-table-tbody>tr:hover>td {
+    background: rgba(129, 140, 248, 0.1) !important;
+}
+
 /* Selected Row */
 .ant-table-wrapper .ant-table-tbody>tr.ant-table-row-selected>td {
     background: rgba(99, 102, 241, 0.08);
+}
+
+[data-theme="dark"] .ant-table-wrapper .ant-table-tbody>tr.ant-table-row-selected>td {
+    background: rgba(129, 140, 248, 0.15);
 }
 
 /* Card Styles */
@@ -85,6 +97,11 @@
 .page-card:hover {
     box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
     border-color: var(--color-primary-bg);
+}
+
+[data-theme="dark"] .page-card:hover {
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.3);
+    border-color: rgba(129, 140, 248, 0.3);
 }
 
 .page-card .ant-card-head {
@@ -112,6 +129,14 @@
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 
+[data-theme="dark"] .ant-btn-primary {
+    box-shadow: 0 2px 8px rgba(129, 140, 248, 0.3);
+}
+
+[data-theme="dark"] .ant-btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(129, 140, 248, 0.4);
+}
+
 .ant-btn-primary:active:not(:disabled) {
     transform: translateY(0);
 }
@@ -130,6 +155,13 @@
 .ant-select-focused .ant-select-selector,
 .ant-picker-focused {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+[data-theme="dark"] .ant-input:focus,
+[data-theme="dark"] .ant-input-affix-wrapper-focused,
+[data-theme="dark"] .ant-select-focused .ant-select-selector,
+[data-theme="dark"] .ant-picker-focused {
+    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2) !important;
 }
 
 /* Modal Enhancements */
@@ -202,6 +234,10 @@
 
 .ant-dropdown-menu-item:hover {
     background: rgba(99, 102, 241, 0.06);
+}
+
+[data-theme="dark"] .ant-dropdown-menu-item:hover {
+    background: rgba(129, 140, 248, 0.15);
 }
 
 /* Tooltip Enhancement */

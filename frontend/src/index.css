@@ -49,6 +49,25 @@ body {
   background: rgba(156, 163, 175, 0.8);
 }
 
+/* Dark Mode Scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.6); /* Slate 600 */
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8); /* Slate 500 */
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+[data-theme="dark"] * {
+  scrollbar-color: rgba(71, 85, 105, 0.6) transparent;
+}
+
 /* Ant Design Overrides for Premium Feel */
 .ant-layout-sider {
   box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.1);
@@ -72,4 +91,19 @@ body {
 #nprogress .spinner-icon {
   border-top-color: #6366f1;
   border-left-color: #6366f1;
+}
+
+/* Dark Mode NProgress */
+[data-theme="dark"] #nprogress .bar {
+  background: #818cf8 !important; /* Lighter Indigo for dark mode */
+  box-shadow: 0 0 10px #818cf8, 0 0 5px #818cf8;
+}
+
+[data-theme="dark"] #nprogress .peg {
+  box-shadow: 0 0 10px #818cf8, 0 0 5px #818cf8;
+}
+
+[data-theme="dark"] #nprogress .spinner-icon {
+  border-top-color: #818cf8;
+  border-left-color: #818cf8;
 }

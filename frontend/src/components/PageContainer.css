@@ -77,6 +77,10 @@
     border-radius: var(--radius-lg);
 }
 
+[data-theme="dark"] .page-card-outer {
+    background: var(--color-bg-layout) !important;
+}
+
 /* 内部卡片样式（白色背景 + 阴影） */
 .page-card-inner {
     background: var(--color-bg-container) !important;
@@ -90,6 +94,11 @@
 .page-card:hover {
     box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
     border-color: rgba(99, 102, 241, 0.2);
+}
+
+[data-theme="dark"] .page-card:hover {
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.3);
+    border-color: rgba(129, 140, 248, 0.3);
 }
 
 /* Breadcrumb Enhancements */
