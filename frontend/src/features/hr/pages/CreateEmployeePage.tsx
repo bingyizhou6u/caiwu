@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Form, Input, Select, Button, Space, Tabs, InputNumber, message, Modal, Result } from 'antd'
+import { Card, Form, Input, Select, Button, Space, Tabs, message, Modal, Result } from 'antd'
+import { CurrencySelect, AmountInput } from '../../../components/form'
 import { PlusOutlined, SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { handleConflictError } from '../../../utils/api'
 import { ROLE_LABELS } from '../../../shared/constants'
@@ -202,11 +203,7 @@ export function CreateEmployee() {
                                                     rules={[{ required: true, message: '请选择币种' }]}
                                                     style={{ marginBottom: 0, flex: 1 }}
                                                 >
-                                                    <Select placeholder="选择币种" style={{ width: '100%' }}>
-                                                        {currencies.map((c: Currency) => (
-                                                            <Option key={c.code} value={c.code}>{c.code} - {c.name}</Option>
-                                                        ))}
-                                                    </Select>
+                                                    <CurrencySelect placeholder="选择币种" style={{ width: '100%' }} />
                                                 </Form.Item>
                                                 <Form.Item
                                                     {...restField}
@@ -214,7 +211,7 @@ export function CreateEmployee() {
                                                     rules={[{ required: true, message: '请输入底薪金额' }]}
                                                     style={{ marginBottom: 0, flex: 1 }}
                                                 >
-                                                    <InputNumber placeholder="底薪金额" style={{ width: '100%' }} min={0} precision={2} />
+                                                    <AmountInput placeholder="底薪金额" style={{ width: '100%' }} currency={form.getFieldValue([name, 'currencyId'])} />
                                                 </Form.Item>
                                                 {fields.length > 1 && (
                                                     <Button onClick={() => remove(name)} danger size="small">删除</Button>
@@ -246,11 +243,7 @@ export function CreateEmployee() {
                                                     rules={[{ required: true, message: '请选择币种' }]}
                                                     style={{ marginBottom: 0, flex: 1 }}
                                                 >
-                                                    <Select placeholder="选择币种" style={{ width: '100%' }}>
-                                                        {currencies.map((c: Currency) => (
-                                                            <Option key={c.code} value={c.code}>{c.code} - {c.name}</Option>
-                                                        ))}
-                                                    </Select>
+                                                    <CurrencySelect placeholder="选择币种" style={{ width: '100%' }} />
                                                 </Form.Item>
                                                 <Form.Item
                                                     {...restField}
@@ -258,7 +251,7 @@ export function CreateEmployee() {
                                                     rules={[{ required: true, message: '请输入底薪金额' }]}
                                                     style={{ marginBottom: 0, flex: 1 }}
                                                 >
-                                                    <InputNumber placeholder="底薪金额" style={{ width: '100%' }} min={0} precision={2} />
+                                                    <AmountInput placeholder="底薪金额" style={{ width: '100%' }} currency={form.getFieldValue([name, 'currencyId'])} />
                                                 </Form.Item>
                                                 <Button onClick={() => remove(name)} danger size="small">删除</Button>
                                             </Space>
@@ -291,7 +284,7 @@ export function CreateEmployee() {
                                                         </Select>
                                                     </Form.Item>
                                                     <Form.Item {...restField} name={[name, 'amountCents']} rules={[{ required: true, message: '请输入金额' }]} style={{ marginBottom: 0, flex: 1 }}>
-                                                        <InputNumber placeholder="金额" style={{ width: '100%' }} min={0} precision={2} />
+                                                        <AmountInput placeholder="金额" style={{ width: '100%' }} currency={form.getFieldValue([name, 'currencyId'])} />
                                                     </Form.Item>
                                                     <Button onClick={() => remove(name)} danger size="small">删除</Button>
                                                 </Space>

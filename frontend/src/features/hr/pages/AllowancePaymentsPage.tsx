@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Card, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, DatePicker, InputNumber, Popconfirm } from 'antd'
+import { Card, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, DatePicker, Popconfirm } from 'antd'
+import { CurrencySelect, AmountInput, EmployeeSelect } from '../../../components/form'
 import { UploadOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
@@ -468,14 +469,7 @@ export function AllowancePayments() {
         >
           <Form form={createForm} layout="vertical">
             <Form.Item name="employeeId" label="员工">
-              <Select
-                placeholder="请选择员工"
-                showSearch
-                options={employees}
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-              />
+              <EmployeeSelect placeholder="请选择员工" />
             </Form.Item>
             <Form.Item name="year" label="年份">
               <Select placeholder="请选择年份" options={yearOptions} />
@@ -490,14 +484,13 @@ export function AllowancePayments() {
               />
             </Form.Item>
             <Form.Item name="currencyId" label="币种">
-              <Select placeholder="请选择币种" options={currencies} />
+              <CurrencySelect placeholder="请选择币种" />
             </Form.Item>
             <Form.Item name="amount" label="金额">
-              <InputNumber
+              <AmountInput
                 style={{ width: '100%' }}
                 placeholder="请输入金额"
-                min={0}
-                precision={2}
+                currency={form.getFieldValue('currencyId')}
               />
             </Form.Item>
             <Form.Item name="paymentDate" label="发放日期">

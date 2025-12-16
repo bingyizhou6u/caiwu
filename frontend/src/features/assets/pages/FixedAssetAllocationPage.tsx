@@ -19,6 +19,8 @@ const ALLOCATION_TYPE_OPTIONS = [
 
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, EmptyText, PageToolbar } from '../../../components/common'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import { EmployeeSelect } from '../../../components/form'
 
 export function FixedAssetAllocation() {
   const [allocateOpen, setAllocateOpen] = useState(false)
@@ -27,8 +29,7 @@ export function FixedAssetAllocation() {
   const [currentAllocation, setCurrentAllocation] = useState<FixedAssetAllocation | null>(null)
   const [allocateForm] = Form.useForm()
   const [returnForm] = Form.useForm()
-  const [employeeFilter, setEmployeeFilter] = useState<string | undefined>()
-  const [returnedFilter, setReturnedFilter] = useState<string | undefined>()
+  const [searchParams, setSearchParams] = useState<{ employeeId?: string; returned?: string }>({})
 
   const { hasPermission, isFinance: checkIsFinance, isHR } = usePermissions()
   const canManageAssets = checkIsFinance() || isHR()
@@ -47,8 +48,8 @@ export function FixedAssetAllocation() {
   }, [allAssets])
 
   const { data: allocations = [], isLoading } = useFixedAssetAllocations({
-    employeeId: employeeFilter,
-    returned: returnedFilter
+    employeeId: searchParams.employeeId,
+    returned: searchParams.returned
   })
   const { mutateAsync: allocateAsset } = useAllocateFixedAsset()
   const { mutateAsync: returnAsset } = useReturnFixedAsset()
@@ -167,32 +168,36 @@ export function FixedAssetAllocation() {
               分配资产
             </Button>
           )}
-          <Select
-            placeholder="员工筛选"
-            allowClear
-            style={{ width: 200 }}
-            value={employeeFilter}
-            onChange={setEmployeeFilter}
-            showSearch
-            optionFilterProp="label"
-          >
-            {employees.map(e => (
-              <Select.Option key={e.id} value={e.id}>
-                {e.name}
-              </Select.Option>
-            ))}
-          </Select>
-          <Select
-            placeholder="归还状态"
-            allowClear
-            style={{ width: 150 }}
-            value={returnedFilter}
-            onChange={setReturnedFilter}
-          >
-            <Select.Option value="false">未归还</Select.Option>
-            <Select.Option value="true">已归还</Select.Option>
-          </Select>
-        </Space>
+        </PageToolbar>
+
+        <SearchFilters
+          fields={[
+            {
+              name: 'employeeId',
+              label: '员工',
+              type: 'select',
+              placeholder: '请选择员工',
+              options: [
+                { label: '全部', value: '' },
+                ...employees.map((e: any) => ({ value: e.id, label: e.name })),
+              ],
+            },
+            {
+              name: 'returned',
+              label: '归还状态',
+              type: 'select',
+              placeholder: '请选择状态',
+              options: [
+                { label: '全部', value: '' },
+                { label: '未归还', value: 'false' },
+                { label: '已归还', value: 'true' },
+              ],
+            },
+          ]}
+          onSearch={setSearchParams}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
 
         <DataTable<any>
           columns={[

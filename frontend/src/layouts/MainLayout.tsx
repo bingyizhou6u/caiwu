@@ -5,8 +5,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH } from '../config/menu'
-import { MultiTabs } from '../components/MultiTabs'
-import { GlobalSearch } from '../components/GlobalSearch'
+// MultiTabs and GlobalSearch removed - not actively used
 import { preloadRoute } from '../router'
 import './MainLayout.css'
 
@@ -186,7 +185,6 @@ export function MainLayout() {
                         {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                     </div>
                     <div className="header-right">
-                        <GlobalSearch />
                         <Dropdown menu={{ items: userMenu }} placement="bottomRight">
                             <div className="user-dropdown">
                                 <Avatar icon={<UserOutlined />} className="user-avatar" />
@@ -197,7 +195,6 @@ export function MainLayout() {
                     </div>
                 </Header>
                 <Content className="main-content">
-                    <MultiTabs />
                     <div className="content-wrapper">
                         <Outlet />
                     </div>

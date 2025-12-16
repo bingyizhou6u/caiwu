@@ -1,18 +1,18 @@
 import { useState, useMemo } from 'react'
-import { Card, Button, Space, Statistic } from 'antd'
-import dayjs, { Dayjs } from 'dayjs'
-import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
+import { Card, Space, Statistic } from 'antd'
+import dayjs from 'dayjs'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { useExpenseSummary } from '../../../hooks'
-import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportExpenseSummary() {
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
-  const start = range[0].format('YYYY-MM-DD')
-  const end = range[1].format('YYYY-MM-DD')
+  const [searchParams, setSearchParams] = useState<{ start: string; end: string }>({
+    start: dayjs().startOf('month').format('YYYY-MM-DD'),
+    end: dayjs().format('YYYY-MM-DD'),
+  })
 
-  const { data, isLoading, refetch } = useExpenseSummary({ start, end })
+  const { data, isLoading } = useExpenseSummary(searchParams)
   
   const rows = data?.rows || []
   const stats = useMemo(() => {
@@ -20,14 +20,11 @@ export function ReportExpenseSummary() {
     return { total }
   }, [rows])
 
-  const handleQuery = withErrorHandler(
-    async () => {
-      await refetch()
-    },
-    {
-      errorMessage: '日常支出汇总失败',
-    }
-  )
+  const handleSearch = (values: Record<string, string | number | string[] | undefined>) => {
+    const start = (values.dateRangeStart as string) || dayjs().startOf('month').format('YYYY-MM-DD')
+    const end = (values.dateRangeEnd as string) || dayjs().format('YYYY-MM-DD')
+    setSearchParams({ start, end })
+  }
 
   return (
     <PageContainer
@@ -35,19 +32,21 @@ export function ReportExpenseSummary() {
       breadcrumb={[{ title: '报表中心' }, { title: '日常支出汇总' }]}
     >
       <Card bordered className="page-card page-card-outer">
-        <Card bordered={false} className="page-card-inner" style={{ marginBottom: 16 }}>
-          <PageToolbar
-            actions={[
-              {
-                label: '查询',
-                type: 'primary',
-                onClick: handleQuery
-              }
-            ]}
-            wrap
-          >
-            <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          </PageToolbar>
+        <SearchFilters
+          fields={[
+            {
+              name: 'dateRange',
+              label: '日期范围',
+              type: 'dateRange',
+              showQuickSelect: true,
+            },
+          ]}
+          onSearch={handleSearch}
+          initialValues={{
+            dateRange: [dayjs().startOf('month'), dayjs()],
+          }}
+        />
+        <Card bordered={false} className="page-card-inner" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space style={{ marginTop: 12 }}>
             <Statistic title="支出总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
           </Space>

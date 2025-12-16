@@ -1,10 +1,13 @@
 import { useMemo, useCallback, useState } from 'react'
 import { Card, Button, Form, Input, Select, Space, message, Switch, Popconfirm } from 'antd'
+import { CurrencySelect } from '../../../components/form'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { DataTable, type DataTableColumn, EmptyText, PageToolbar, BatchActionButton } from '../../../components/common'
+import { DataTable, type DataTableColumn, EmptyText, PageToolbar, BatchActionButton, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { SensitiveField } from '../../../components/SensitiveField'
+import { COMMON_STATUS } from '../../../utils/status'
 import { usePermissions } from '../../../utils/permissions'
 import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount, useBatchDeleteAccount, useCurrencyOptions, useFormModal, useZodForm } from '../../../hooks'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
@@ -163,12 +166,25 @@ export function AccountManagement() {
 
   const columns: DataTableColumn<Account>[] = [
     { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '账户号', dataIndex: 'accountNumber', key: 'accountNumber', render: (v: string) => <EmptyText value={v} /> },
+    { 
+      title: '账户号', 
+      dataIndex: 'accountNumber', 
+      key: 'accountNumber', 
+      render: (v: string, r: Account) => v ? (
+        <SensitiveField 
+          value={v} 
+          type="default" 
+          permission="finance.account.view_sensitive" 
+          entityId={r.id} 
+          entityType="account" 
+        />
+      ) : <EmptyText value={v} />
+    },
     { title: '别名', dataIndex: 'alias', key: 'alias', render: (v: string) => <EmptyText value={v} /> },
     { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_OPTIONS.find(o => o.value === v)?.label || v },
     { title: '币种', key: 'currency', render: (_: unknown, r: Account) => r.currencyName ? `${r.currency} - ${r.currencyName}` : r.currency },
     { title: '管理人员', dataIndex: 'manager', key: 'manager', render: (v: string) => <EmptyText value={v} /> },
-    { title: '启用', dataIndex: 'active', key: 'active', render: (v: number) => v === 1 ? '是' : '否' },
+    { title: '启用', dataIndex: 'active', key: 'active', render: (v: number) => <StatusTag status={v === 1 ? 'active' : 'inactive'} statusMap={COMMON_STATUS} /> },
   ]
 
   return (
@@ -299,7 +315,7 @@ export function AccountManagement() {
             <Select options={TYPE_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencyOptions} showSearch optionFilterProp="label" placeholder="选择币种" />
+            <CurrencySelect placeholder="选择币种" />
           </Form.Item>
           <Form.Item name="manager" label="管理人员">
             <Input placeholder="可选，填写管理人员姓名" />
@@ -329,7 +345,7 @@ export function AccountManagement() {
             <Select options={TYPE_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencyOptions} showSearch optionFilterProp="label" placeholder="选择币种" />
+            <CurrencySelect placeholder="选择币种" />
           </Form.Item>
           <Form.Item name="manager" label="管理人员">
             <Input placeholder="可选，填写管理人员姓名" />

@@ -1,29 +1,26 @@
 import { useState } from 'react'
-import { Card, Button, Space } from 'antd'
-import dayjs, { Dayjs } from 'dayjs'
-import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
+import { Card } from 'antd'
+import dayjs from 'dayjs'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { useSiteGrowth } from '../../../hooks'
-import { withErrorHandler } from '../../../utils/errorHandler'
 import type { SiteGrowthResponse } from '../../../hooks/business/useReports'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportSiteGrowth() {
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
-  const start = range[0].format('YYYY-MM-DD')
-  const end = range[1].format('YYYY-MM-DD')
+  const [searchParams, setSearchParams] = useState<{ start: string; end: string }>({
+    start: dayjs().startOf('month').format('YYYY-MM-DD'),
+    end: dayjs().format('YYYY-MM-DD'),
+  })
 
-  const { data, isLoading, refetch } = useSiteGrowth({ start, end })
+  const { data, isLoading, refetch } = useSiteGrowth(searchParams)
   const rows: SiteGrowthResponse['rows'] = data?.rows || []
 
-  const handleQuery = withErrorHandler(
-    async () => {
-      await refetch()
-    },
-    {
-      errorMessage: '站点增长失败',
-    }
-  )
+  const handleSearch = (values: Record<string, string | number | string[] | undefined>) => {
+    const start = (values.dateRangeStart as string) || dayjs().startOf('month').format('YYYY-MM-DD')
+    const end = (values.dateRangeEnd as string) || dayjs().format('YYYY-MM-DD')
+    setSearchParams({ start, end })
+  }
 
   return (
     <PageContainer
@@ -31,18 +28,20 @@ export function ReportSiteGrowth() {
       breadcrumb={[{ title: '报表中心' }, { title: '站点增长报表' }]}
     >
       <Card bordered={false} className="page-card">
-        <PageToolbar
-          actions={[
+        <SearchFilters
+          fields={[
             {
-              label: '查询',
-              type: 'primary',
-              onClick: handleQuery
-            }
+              name: 'dateRange',
+              label: '日期范围',
+              type: 'dateRange',
+              showQuickSelect: true,
+            },
           ]}
-          wrap
-        >
-          <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-        </PageToolbar>
+          onSearch={handleSearch}
+          initialValues={{
+            dateRange: [dayjs().startOf('month'), dayjs()],
+          }}
+        />
         <DataTable<SiteGrowthResponse['rows'][number]>
           columns={[
             { title: '站点', dataIndex: 'siteName', key: 'siteName' },

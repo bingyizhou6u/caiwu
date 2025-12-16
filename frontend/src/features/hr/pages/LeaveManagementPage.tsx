@@ -1,4 +1,5 @@
 import { Card, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, DatePicker, InputNumber } from 'antd'
+import { EmployeeSelect } from '../../../components/form'
 import { ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
@@ -7,7 +8,7 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { leaveSchema, approveLeaveSchema } from '../../../validations/leave.schema'
-import { DataTable, StatusTag, PageToolbar } from '../../../components/common'
+import { DataTable, StatusTag, PageToolbar, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { LEAVE_STATUS } from '../../../utils/status'
 import type { EmployeeLeave } from '../../../hooks/business/useLeaves'
@@ -264,7 +265,7 @@ export function LeaveManagement() {
       dataIndex: 'approver_name',
       key: 'approver_name',
       width: 100,
-      render: (name: string) => name || '-',
+      render: (name: string) => <EmptyText value={name} />,
     },
     {
       title: '操作',
@@ -474,13 +475,7 @@ export function LeaveManagement() {
               name="employeeId"
               label="员工"
             >
-              <Select placeholder="请选择员工" showSearch optionFilterProp="children">
-                {employees.map((emp) => (
-                  <Option key={emp.id} value={emp.id}>
-                    {emp.name} ({emp.departmentName})
-                  </Option>
-                ))}
-              </Select>
+              <EmployeeSelect placeholder="请选择员工" />
             </Form.Item>
             {renderFormFields()}
           </Form>

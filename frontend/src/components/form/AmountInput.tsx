@@ -19,8 +19,23 @@ export interface AmountInputProps extends Omit<InputNumberProps, 'precision' | '
  * 
  * @example
  * ```tsx
+ * // 基本用法
  * <Form.Item name="amount" label="金额">
  *   <AmountInput placeholder="请输入金额" />
+ * </Form.Item>
+ * 
+ * // 关联币种字段（使用 Form.Item 的 dependencies）
+ * <Form.Item name="currencyId" label="币种">
+ *   <CurrencySelect />
+ * </Form.Item>
+ * <Form.Item 
+ *   name="amount" 
+ *   label="金额"
+ *   dependencies={['currencyId']}
+ * >
+ *   {({ getFieldValue }) => (
+ *     <AmountInput currency={getFieldValue('currencyId')} />
+ *   )}
  * </Form.Item>
  * ```
  */

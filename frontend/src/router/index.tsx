@@ -154,9 +154,13 @@ export const preloadRoute = (path: string) => {
     }
 }
 
-import { SkeletonLoading } from '../components/SkeletonLoading'
+import { Spin } from 'antd'
 
-const Loading = () => <SkeletonLoading />
+const Loading = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Spin size="large" />
+    </div>
+)
 
 import { PrivateRoute } from './PrivateRoute'
 

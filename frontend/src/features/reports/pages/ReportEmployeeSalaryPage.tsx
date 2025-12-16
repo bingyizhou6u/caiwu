@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Card, Space, Select, Statistic, Row, Col } from 'antd'
 import { DataTable, AmountDisplay, EmptyText, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { SensitiveField } from '../../../components/SensitiveField'
 import { useEmployeeSalary } from '../../../hooks'
 import { EMPLOYEE_STATUS } from '../../../utils/status'
 import type { ColumnsType } from 'antd/es/table'
@@ -109,7 +110,18 @@ export function ReportEmployeeSalary() {
       key: 'baseSalaryCents',
       width: 120,
       align: 'right',
-      render: (cents: number, r: EmployeeSalaryRow) => <AmountDisplay cents={cents} currency="CNY" />,
+      render: (cents: number, r: EmployeeSalaryRow) => {
+        const amountStr = `${(cents / 100).toFixed(2)} CNY`
+        return (
+          <SensitiveField 
+            value={amountStr} 
+            type="salary" 
+            permission="hr.salary.view" 
+            entityId={r.employeeId} 
+            entityType="employee" 
+          />
+        )
+      },
     },
     {
       title: '工作天数',
@@ -139,11 +151,18 @@ export function ReportEmployeeSalary() {
       key: 'actualSalaryCents',
       width: 120,
       align: 'right',
-      render: (cents: number) => (
-        <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-          <AmountDisplay cents={cents} currency="CNY" />
-        </span>
-      ),
+      render: (cents: number, r: EmployeeSalaryRow) => {
+        const amountStr = `${(cents / 100).toFixed(2)} CNY`
+        return (
+          <SensitiveField 
+            value={amountStr} 
+            type="salary" 
+            permission="hr.salary.view" 
+            entityId={r.employeeId} 
+            entityType="employee" 
+          />
+        )
+      },
     },
   ]
 

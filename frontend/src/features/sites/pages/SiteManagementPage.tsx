@@ -7,7 +7,8 @@ import { siteSchema } from '../../../validations/site.schema'
 import { FormModal } from '../../../components/FormModal'
 import { usePermissions } from '../../../utils/permissions'
 import type { Site } from '../../../types'
-import { DataTable, EmptyText, PageToolbar } from '../../../components/common'
+import { DataTable, EmptyText, PageToolbar, StatusTag } from '../../../components/common'
+import { COMMON_STATUS } from '../../../utils/status'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 import { PageContainer } from '../../../components/PageContainer'
 
@@ -124,20 +125,20 @@ export function SiteManagement() {
                   <div style={{ width: 16, height: 16, borderRadius: 4, background: v }} />
                   {v}
                 </div>
-              ) : '-'
+              ) : <EmptyText value={v} />
             },
             {
               title: '前台网址', dataIndex: 'frontendUrl', key: 'frontendUrl', width: 200, render: (v: string) => v ? (
                 <a href={v} target="_blank" rel="noopener noreferrer">{v}</a>
-              ) : '-'
+              ) : <EmptyText value={v} />
             },
             {
               title: '所属项目', dataIndex: 'departmentId', key: 'departmentId', width: 120, render: (v: string) => {
                 const dept = deptOptions.find((d: any) => d.value === v)
-                return dept ? dept.label : '-'
+                return <EmptyText value={dept ? dept.label : null} />
               }
             },
-            { title: '状态', dataIndex: 'active', key: 'active', width: 80, render: (v: number) => v ? '启用' : '禁用' },
+            { title: '状态', dataIndex: 'active', key: 'active', width: 80, render: (v: number) => <StatusTag status={v === 1 ? 'active' : 'inactive'} statusMap={COMMON_STATUS} /> },
           ] as DataTableColumn<Site>[]}
           data={siteData}
           loading={isLoading}

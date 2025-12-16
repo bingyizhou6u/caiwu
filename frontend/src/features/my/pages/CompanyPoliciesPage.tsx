@@ -1,4 +1,6 @@
 import { Typography, Card, Collapse, Divider, Tag, Space, List } from 'antd'
+import { StatusTag } from '../../../components/common/StatusTag'
+import { COMMON_STATUS } from '../../../utils/status'
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -36,7 +38,7 @@ export function CompanyPolicies() {
   const leaveTypeColumns: DataTableColumn<LeaveType>[] = [
     { title: '假期类型', dataIndex: 'type', key: 'type' },
     { title: '说明', dataIndex: 'description', key: 'description' },
-    { title: '是否带薪', dataIndex: 'paid', key: 'paid', render: (v: boolean) => v ? <Tag color="green">带薪</Tag> : <Tag color="orange">无薪</Tag> },
+    { title: '是否带薪', dataIndex: 'paid', key: 'paid', render: (v: boolean) => <StatusTag status={v ? 'paid' : 'unpaid'} statusMap={COMMON_STATUS} /> },
   ]
 
   const leaveTypes: LeaveType[] = [

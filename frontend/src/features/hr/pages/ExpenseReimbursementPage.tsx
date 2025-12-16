@@ -342,7 +342,7 @@ export function ExpenseReimbursement() {
       dataIndex: 'accountName',
       key: 'accountName',
       width: 120,
-      render: (name: string) => name || '-',
+      render: (name: string) => <EmptyText value={name} />,
     },
     {
       title: '凭证',
@@ -521,15 +521,7 @@ export function ExpenseReimbursement() {
               name="employeeId"
               label="员工"
             >
-              <Select placeholder="请选择员工" showSearch optionFilterProp="children">
-                {Array.isArray(employees)
-                  ? employees.map((emp: any) => (
-                      <Option key={emp.id} value={emp.id}>
-                        {emp.name} {emp.departmentName ? `(${emp.departmentName})` : ''}
-                      </Option>
-                    ))
-                  : []}
-              </Select>
+              <EmployeeSelect placeholder="请选择员工" />
             </Form.Item>
             <Form.Item
               name="expenseType"
@@ -547,25 +539,16 @@ export function ExpenseReimbursement() {
               name="currencyId"
               label="币种"
             >
-              <Select placeholder="请选择币种">
-                {Array.isArray(currencies)
-                  ? currencies.map((curr: any) => (
-                      <Option key={curr.code} value={curr.code}>
-                        {curr.code} - {curr.name}
-                      </Option>
-                    ))
-                  : []}
-              </Select>
+              <CurrencySelect placeholder="请选择币种" />
             </Form.Item>
             <Form.Item
               name="amount"
               label="报销金额"
             >
-              <InputNumber
+              <AmountInput
                 style={{ width: '100%' }}
-                min={0}
-                precision={2}
                 placeholder="请输入报销金额"
+                currency={form.getFieldValue('currencyId')}
               />
             </Form.Item>
             <Form.Item
@@ -641,24 +624,15 @@ export function ExpenseReimbursement() {
               name="currencyId"
               label="币种"
             >
-              <Select placeholder="请选择币种">
-                {Array.isArray(currencies)
-                  ? currencies.map((curr: any) => (
-                      <Option key={curr.code} value={curr.code}>
-                        {curr.code} - {curr.name}
-                      </Option>
-                    ))
-                  : []}
-              </Select>
+              <CurrencySelect placeholder="请选择币种" />
             </Form.Item>
             <Form.Item
               name="amount"
               label="报销金额"
             >
-              <InputNumber
+              <AmountInput
                 style={{ width: '100%' }}
-                min={0}
-                precision={2}
+                currency={editForm.getFieldValue('currencyId')}
               />
             </Form.Item>
             <Form.Item

@@ -1,18 +1,24 @@
 import { useState } from 'react'
-import { Card, Button, Space, Statistic } from 'antd'
+import { Card, Space, Statistic } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
-import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay, PageToolbar, EmptyText } from '../../../components/common'
+import { SearchFilters } from '../../../components/common/SearchFilters'
+import { DataTable, AmountDisplay, EmptyText, StatusTag } from '../../../components/common'
+import { ARAP_STATUS } from '../../../utils/status'
 import { useARSummary } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportARSummary() {
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
-  const start = range[0].format('YYYY-MM-DD')
-  const end = range[1].format('YYYY-MM-DD')
+  const [filters, setFilters] = useState<{ dateRangeStart?: string; dateRangeEnd?: string }>({
+    dateRangeStart: dayjs().startOf('month').format('YYYY-MM-DD'),
+    dateRangeEnd: dayjs().format('YYYY-MM-DD'),
+  })
 
-  const { data, isLoading, refetch } = useARSummary({ start, end, kind: 'AR' })
+  const { data, isLoading, refetch } = useARSummary({ 
+    start: filters.dateRangeStart || dayjs().startOf('month').format('YYYY-MM-DD'),
+    end: filters.dateRangeEnd || dayjs().format('YYYY-MM-DD'),
+    kind: 'AR',
+  })
   
   const rows = data?.rows || []
   const stats = data ? {
@@ -21,14 +27,12 @@ export function ReportARSummary() {
     byStatus: data.byStatus,
   } : { total: 0, settled: 0, byStatus: {} }
 
-  const handleQuery = withErrorHandler(
-    async () => {
-      await refetch()
-    },
-    {
-      errorMessage: '应收账款汇总失败',
-    }
-  )
+  const handleSearch = (values: Record<string, string | number | string[] | undefined>) => {
+    setFilters({
+      dateRangeStart: values.dateRangeStart as string,
+      dateRangeEnd: values.dateRangeEnd as string,
+    })
+  }
 
   return (
     <PageContainer
@@ -36,19 +40,21 @@ export function ReportARSummary() {
       breadcrumb={[{ title: '报表中心' }, { title: '应收账款汇总' }]}
     >
       <Card bordered className="page-card page-card-outer">
-        <Card bordered={false} className="page-card-inner" style={{ marginBottom: 16 }}>
-          <PageToolbar
-            actions={[
-              {
-                label: '查询',
-                type: 'primary',
-                onClick: handleQuery
-              }
-            ]}
-            wrap
-          >
-            <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          </PageToolbar>
+        <SearchFilters
+          fields={[
+            {
+              name: 'dateRange',
+              label: '日期范围',
+              type: 'dateRange',
+              showQuickSelect: true,
+            },
+          ]}
+          onSearch={handleSearch}
+          initialValues={{
+            dateRange: [dayjs().startOf('month'), dayjs()],
+          }}
+        />
+        <Card bordered={false} className="page-card-inner" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space style={{ marginTop: 12 }}>
             <Statistic title="期间总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
             <Statistic title="期间已结" value={<AmountDisplay cents={stats.settled || 0} currency="CNY" showSymbol={false} />} />
@@ -66,7 +72,7 @@ export function ReportARSummary() {
               { title: '客户', dataIndex: 'partyId', key: 'partyId' },
               { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
               { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
-              { title: '状态', dataIndex: 'status', key: 'status' },
+              { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <StatusTag status={status} statusMap={ARAP_STATUS} /> },
             ]}
             data={rows}
             loading={isLoading}

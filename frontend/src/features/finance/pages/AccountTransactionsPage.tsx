@@ -5,7 +5,7 @@ import { api } from '../../../config/api'
 import { useAccounts } from '../../../hooks/useBusinessData'
 import { useAccountTransactions } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, PageToolbar, AmountDisplay } from '../../../components/common'
+import { DataTable, type DataTableColumn, PageToolbar, AmountDisplay, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { AccountTransaction } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
@@ -48,11 +48,11 @@ export function AccountTransactions() {
   // 缓存列定义
   const columns = useMemo<DataTableColumn<AccountTransaction>[]>(() => [
     { title: '日期', dataIndex: 'transactionDate', key: 'transactionDate', width: 110 },
-    { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo', width: 120 },
+    { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo', width: 120, render: (v: string) => <EmptyText value={v} /> },
     { title: '类型', dataIndex: 'transactionType', key: 'transactionType', width: 80, render: (v: string) => TYPE_LABELS[v] || v },
-    { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
-    { title: '摘要', dataIndex: 'memo', key: 'memo' },
-    { title: '交易对手', dataIndex: 'counterparty', key: 'counterparty', width: 120 },
+    { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120, render: (v: string) => <EmptyText value={v} /> },
+    { title: '摘要', dataIndex: 'memo', key: 'memo', render: (v: string) => <EmptyText value={v} /> },
+    { title: '交易对手', dataIndex: 'counterparty', key: 'counterparty', width: 120, render: (v: string) => <EmptyText value={v} /> },
     {
       title: '账变前金额',
       dataIndex: 'balanceBeforeCents',

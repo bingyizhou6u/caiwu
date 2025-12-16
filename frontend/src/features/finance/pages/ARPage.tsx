@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Card, Button, Modal, Form, Input, DatePicker, InputNumber, Select, Space, message, Descriptions, Upload, Table } from 'antd'
+import { Card, Button, Modal, Form, Input, DatePicker, Select, Space, message, Descriptions, Upload, Table } from 'antd'
+import { AccountSelect, AmountInput } from '../../../components/form'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
@@ -10,9 +11,10 @@ import { useAccounts, useIncomeCategories, useSites } from '../../../hooks/useBu
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createARSchema, confirmARSchema, settleARSchema } from '../../../validations/ar.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
+import { ARAP_STATUS } from '../../../utils/status'
 import type { ARAP } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
@@ -185,7 +187,7 @@ export function AR() {
     { title: '到期日', dataIndex: 'dueDate', key: 'dueDate' },
     { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
     { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
-    { title: '状态', dataIndex: 'status', key: 'status' },
+    { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <StatusTag status={status} statusMap={ARAP_STATUS} /> },
   ]
 
   return (
@@ -285,7 +287,7 @@ export function AR() {
             <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
           </Form.Item>
           <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]} className="form-full-width">
-            <InputNumber min={0.01} step={0.01} className="form-full-width" precision={2} />
+            <AmountInput className="form-full-width" currency="CNY" />
           </Form.Item>
           <Form.Item name="memo" label="备注" className="form-full-width">
             <Input />
@@ -333,7 +335,7 @@ export function AR() {
                   <Select style={{ width: 360 }} options={Array.isArray(flows) ? flows : []} placeholder="选择对应的收款流水" />
                 </Form.Item>
                 <Form.Item name="settle_amount" rules={[{ required: true, message: '请输入核销金额' }]}>
-                  <InputNumber min={0.01} step={0.01} placeholder="核销金额" />
+                  <AmountInput placeholder="核销金额" currency="CNY" />
                 </Form.Item>
                 <Form.Item>
                   <Space>
@@ -361,7 +363,7 @@ export function AR() {
           >
             <Form.Item label="金额"><AmountDisplay cents={confirmingDoc.amountCents} /></Form.Item>
             <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
-              <Select options={Array.isArray(accounts) ? accounts : []} placeholder="选择账户" showSearch />
+              <AccountSelect placeholder="选择账户" showCurrency />
             </Form.Item>
             <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]} className="form-full-width">
               <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" />

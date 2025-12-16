@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Card, Button, Modal, Form, Input, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs, Select } from 'antd'
+import { AmountInput, CurrencySelect, AccountSelect, EmployeeSelect, DepartmentSelect } from '../../../components/form'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { FormInstance } from 'antd'
@@ -598,11 +599,11 @@ export function RentalManagement() {
               const rentType = getFieldValue('rentType')
               return rentType === 'yearly' ? (
                 <Form.Item name="yearlyRentCents" label="年租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="年租金" />
+                  <AmountInput style={{ width: '100%' }} placeholder="年租金" currency={createForm.getFieldValue('currency')} />
                 </Form.Item>
               ) : (
                 <Form.Item name="monthlyRentCents" label="月租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="月租金" />
+                  <AmountInput style={{ width: '100%' }} placeholder="月租金" currency={createForm.getFieldValue('currency')} />
                 </Form.Item>
               )
             }}
@@ -611,11 +612,11 @@ export function RentalManagement() {
             <Select options={PAYMENT_PERIOD_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencies} showSearch optionFilterProp="label" />
+            <CurrencySelect />
           </Form.Item>
 
           <Form.Item name="employeeId" label="员工" required className="form-no-margin-bottom">
-            <Select options={employees} showSearch optionFilterProp="label" placeholder="选择员工" allowClear />
+            <EmployeeSelect placeholder="选择员工" allowClear />
           </Form.Item>
           <Form.Item name="startDate" label="开始日期" required className="form-no-margin-bottom">
             <DatePicker className="form-full-width" format="YYYY-MM-DD" />
@@ -642,7 +643,7 @@ export function RentalManagement() {
             <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
           </Form.Item>
           <Form.Item name="depositCents" label="押金">
-            <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="押金" />
+            <AmountInput style={{ width: '100%' }} placeholder="押金" currency={createForm.getFieldValue('currency')} />
           </Form.Item>
           <Form.Item name="paymentMethod" label="付款方式">
             <Select options={PAYMENT_METHOD_OPTIONS} allowClear />
@@ -658,7 +659,7 @@ export function RentalManagement() {
               const propertyType = getFieldValue('propertyType')
               return propertyType === 'office' ? (
                 <Form.Item name="departmentId" label="使用项目">
-                  <Select options={departments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+                  <DepartmentSelect placeholder="选择项目" allowClear />
                 </Form.Item>
               ) : propertyType === 'dormitory' ? (
                 <Form.Item name="initialEmployees" label="初始分配员工（可选）">
@@ -735,11 +736,11 @@ export function RentalManagement() {
               const rentType = getFieldValue('rentType')
               return rentType === 'yearly' ? (
                 <Form.Item name="yearlyRentCents" label="年租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} />
+                  <AmountInput style={{ width: '100%' }} currency={editForm.getFieldValue('currency')} />
                 </Form.Item>
               ) : (
                 <Form.Item name="monthlyRentCents" label="月租金" rules={[{ required: true }]}>
-                  <InputNumber style={{ width: '100%' }} min={0} precision={2} />
+                  <AmountInput style={{ width: '100%' }} currency={editForm.getFieldValue('currency')} />
                 </Form.Item>
               )
             }}
@@ -748,7 +749,7 @@ export function RentalManagement() {
             <Select options={PAYMENT_PERIOD_OPTIONS} />
           </Form.Item>
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-            <Select options={currencies} showSearch optionFilterProp="label" />
+            <CurrencySelect />
           </Form.Item>
           <Form.Item name="landlordName" label="房东姓名">
             <Input />
@@ -763,7 +764,7 @@ export function RentalManagement() {
             <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
           </Form.Item>
           <Form.Item name="depositCents" label="押金">
-            <InputNumber style={{ width: '100%' }} min={0} precision={2} />
+            <AmountInput style={{ width: '100%' }} currency={editForm.getFieldValue('currency')} />
           </Form.Item>
           <Form.Item name="paymentMethod" label="付款方式">
             <Select options={PAYMENT_METHOD_OPTIONS} allowClear />
@@ -779,7 +780,7 @@ export function RentalManagement() {
               const propertyType = getFieldValue('propertyType')
               return propertyType === 'office' ? (
                 <Form.Item name="departmentId" label="使用项目">
-                  <Select options={departments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+                  <DepartmentSelect placeholder="选择项目" allowClear />
                 </Form.Item>
               ) : null
             }}
@@ -902,13 +903,13 @@ export function RentalManagement() {
                       title: '房间号', 
                       key: 'room_number', 
                       width: 100,
-                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.room_number || r.roomNumber || '-'
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => <EmptyText value={r.room_number || r.roomNumber || null} />
                     },
                     { 
                       title: '床位号', 
                       key: 'bed_number', 
                       width: 100,
-                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.bed_number || r.bedNumber || '-'
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => <EmptyText value={r.bed_number || r.bedNumber || null} />
                     },
                     { title: '分配日期', dataIndex: 'allocationDate', key: 'allocationDate', width: 120 },
                     {
@@ -971,25 +972,25 @@ export function RentalManagement() {
                     title: '原租赁开始', 
                     key: 'fromLeaseStart', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_lease_start || r.fromLeaseStart || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_lease_start || r.fromLeaseStart || null} />
                   },
                   { 
                     title: '新租赁开始', 
                     key: 'toLeaseStart', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_lease_start || r.toLeaseStart || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_lease_start || r.toLeaseStart || null} />
                   },
                   { 
                     title: '原租赁结束', 
                     key: 'fromLeaseEnd', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_lease_end || r.fromLeaseEnd || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_lease_end || r.fromLeaseEnd || null} />
                   },
                   { 
                     title: '新租赁结束', 
                     key: 'toLeaseEnd', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_lease_end || r.toLeaseEnd || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_lease_end || r.toLeaseEnd || null} />
                   },
                   {
                     title: '原月租金',
@@ -1013,13 +1014,13 @@ export function RentalManagement() {
                     title: '原状态', 
                     key: 'fromStatus', 
                     width: 100,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_status || r.fromStatus || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_status || r.fromStatus || null} />
                   },
                   { 
                     title: '新状态', 
                     key: 'toStatus', 
                     width: 100,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_status || r.toStatus || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_status || r.toStatus || null} />
                   },
                   { title: '备注', dataIndex: 'memo', key: 'memo' },
                 ] satisfies DataTableColumn<RentalPropertyChangeWithSnakeCase>[]}
@@ -1048,14 +1049,33 @@ export function RentalManagement() {
             <Form.Item name="paymentDate" label="付款日期" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
-            <Form.Item name="amountCents" label="付款金额" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="付款金额" />
-            </Form.Item>
             <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-              <Select options={currencies} showSearch optionFilterProp="label" />
+              <CurrencySelect />
             </Form.Item>
-            <Form.Item name="accountId" label="付款账户" rules={[{ required: true }]}>
-              <Select
+            <Form.Item 
+              name="amountCents" 
+              label="付款金额" 
+              rules={[{ required: true }]}
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AmountInput style={{ width: '100%' }} placeholder="付款金额" currency={getFieldValue('currency')} />
+              )}
+            </Form.Item>
+            <Form.Item 
+              name="accountId" 
+              label="付款账户" 
+              rules={[{ required: true }]}
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AccountSelect
+                  placeholder="选择付款账户"
+                  filterByCurrency={getFieldValue('currency')}
+                  showCurrency
+                />
+              )}
+            </Form.Item>
                 options={accounts.filter((a) => a.currency === paymentProperty.currency)}
                 showSearch
                 optionFilterProp="label"
@@ -1117,8 +1137,14 @@ export function RentalManagement() {
             <Form.Item name="allocationDate" label="分配日期" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
-            <Form.Item name="monthlyRentCents" label="员工需支付月租金（如员工需要支付）">
-              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="员工月租金" />
+            <Form.Item 
+              name="monthlyRentCents" 
+              label="员工需支付月租金（如员工需要支付）"
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AmountInput style={{ width: '100%' }} placeholder="员工月租金" currency={allocateForm.getFieldValue('currency')} />
+              )}
             </Form.Item>
             <Form.Item name="memo" label="备注">
               <TextArea rows={3} placeholder="备注信息" />

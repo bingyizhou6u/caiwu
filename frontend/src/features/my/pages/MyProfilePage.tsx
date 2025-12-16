@@ -1,4 +1,6 @@
-import { Card, Descriptions, Button, Modal, Form, Input, Spin, Typography, Avatar, Space, Divider } from 'antd'
+import { Card, Descriptions, Button, Form, Input, Spin, Typography, Avatar, Space, Divider } from 'antd'
+import { FormModal } from '../../../components/FormModal'
+import { SensitiveField } from '../../../components/SensitiveField'
 import { UserOutlined, EditOutlined, PhoneOutlined, MailOutlined, IdcardOutlined, BankOutlined, TeamOutlined } from '@ant-design/icons'
 import { useMyProfile, useUpdateMyProfile } from '../../../hooks'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
@@ -93,9 +95,15 @@ export function MyProfile() {
         >
           <Descriptions column={{ xs: 1, sm: 2, md: 2 }} bordered>
             <Descriptions.Item label={<><MailOutlined /> 邮箱</>}>{profile.email}</Descriptions.Item>
-            <Descriptions.Item label={<><PhoneOutlined /> 手机</>}>{profile.phone || '-'}</Descriptions.Item>
-            <Descriptions.Item label={<><IdcardOutlined /> 身份证</>}>{profile.idCard || '-'}</Descriptions.Item>
-            <Descriptions.Item label={<><BankOutlined /> 银行账户</>}>{profile.bankAccount || '-'}</Descriptions.Item>
+            <Descriptions.Item label={<><PhoneOutlined /> 手机</>}>
+              {profile.phone ? <SensitiveField value={profile.phone} type="phone" entityId={profile.id} entityType="employee" /> : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={<><IdcardOutlined /> 身份证</>}>
+              {profile.idCard ? <SensitiveField value={profile.idCard} type="default" entityId={profile.id} entityType="employee" /> : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={<><BankOutlined /> 银行账户</>}>
+              {profile.bankAccount ? <SensitiveField value={profile.bankAccount} type="default" entityId={profile.id} entityType="employee" /> : '-'}
+            </Descriptions.Item>
             <Descriptions.Item label="开户行">{profile.bankName || '-'}</Descriptions.Item>
             <Descriptions.Item label="职位代码">{profile.positionCode || '-'}</Descriptions.Item>
             <Descriptions.Item label="入职日期">{profile.entryDate || '-'}</Descriptions.Item>
@@ -112,25 +120,24 @@ export function MyProfile() {
       </Card>
 
       {/* 编辑表单 */}
-      <Modal
+      <FormModal
         title="编辑个人信息"
         open={modalVisible}
-        onOk={handleSubmit}
+        form={form}
+        onSubmit={handleSubmit}
         onCancel={() => { closeModal(); form.resetFields() }}
         width={500}
       >
-        <Form form={form} layout="vertical">
-          <Form.Item name="phone" label="手机号码">
-            <Input placeholder="请输入手机号码" />
-          </Form.Item>
-          <Form.Item name="emergencyContact" label="紧急联系人">
-            <Input placeholder="请输入紧急联系人姓名" />
-          </Form.Item>
-          <Form.Item name="emergencyPhone" label="紧急联系人电话">
-            <Input placeholder="请输入紧急联系人电话" />
-          </Form.Item>
-        </Form>
-      </Modal>
+        <Form.Item name="phone" label="手机号码">
+          <Input placeholder="请输入手机号码" />
+        </Form.Item>
+        <Form.Item name="emergencyContact" label="紧急联系人">
+          <Input placeholder="请输入紧急联系人姓名" />
+        </Form.Item>
+        <Form.Item name="emergencyPhone" label="紧急联系人电话">
+          <Input placeholder="请输入紧急联系人电话" />
+        </Form.Item>
+      </FormModal>
     </PageContainer>
   )
 }

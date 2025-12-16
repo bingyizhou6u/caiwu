@@ -147,6 +147,12 @@ export const COMMON_STATUS: Record<string, StatusConfig> = {
   late: { text: '迟到', color: 'warning' },
   early: { text: '早退', color: 'warning' },
   late_early: { text: '迟到且早退', color: 'error' },
+  paid: { text: '带薪', color: 'success' },
+  unpaid: { text: '无薪', color: 'warning' },
+  yes: { text: '是', color: 'success' },
+  no: { text: '否', color: 'default' },
+  enabled: { text: '启用', color: 'success' },
+  disabled: { text: '禁用', color: 'default' },
 }
 
 /**

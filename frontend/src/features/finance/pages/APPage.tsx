@@ -10,9 +10,11 @@ import { useAccounts, useExpenseCategories } from '../../../hooks/useBusinessDat
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createAPSchema, confirmAPSchema } from '../../../validations/ap.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, AmountDisplay, PageToolbar } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, PageToolbar, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
+import { VendorSelect } from '../../../components/form'
+import { ARAP_STATUS } from '../../../utils/status'
 import type { ARAP } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
 
@@ -49,10 +51,7 @@ export function AP() {
     async () => {
       const values = await createForm.validateWithZod()
       await createAP({
-        partyId: values.party, // 注意：Schema 使用 'party'，API 期望 'partyId'。旧代码使用 'partyId: v.party'。假定输入是名称但字段是 partyId。
-        // 等等，旧代码：`partyId: v.party`。输入标签 "供应商"。
-        // 如果是文本输入，可能就是名称。后端可能会处理它。
-        // 让我们沿用旧逻辑：将 `party` 作为 `partyId` 传递。
+        partyId: values.partyId,
         issueDate: values.issueDate.format('YYYY-MM-DD HH:mm:ss'),
         dueDate: values.dueDate?.format('YYYY-MM-DD HH:mm:ss'),
         amountCents: Math.round(values.amount * 100),
@@ -153,7 +152,7 @@ export function AP() {
     { title: '到期日', dataIndex: 'dueDate', key: 'dueDate' },
     { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
     { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
-    { title: '状态', dataIndex: 'status', key: 'status' },
+    { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <StatusTag status={status} statusMap={ARAP_STATUS} /> },
   ]
 
   return (
@@ -242,8 +241,8 @@ export function AP() {
           onCancel={() => setCreateOpen(false)}
           loading={isCreating}
         >
-          <Form.Item name="party" label="供应商" rules={[{ required: true, message: '请输入供应商名称' }]} className="form-full-width">
-            <Input />
+          <Form.Item name="partyId" label="供应商" rules={[{ required: true, message: '请选择供应商' }]} className="form-full-width">
+            <VendorSelect placeholder="请选择供应商" />
           </Form.Item>
           <Form.Item name="issueDate" label="开立日期" rules={[{ required: true, message: '请选择开立日期' }]} className="form-full-width">
             <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
@@ -252,7 +251,7 @@ export function AP() {
             <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
           </Form.Item>
           <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]} className="form-full-width">
-            <InputNumber min={0.01} step={0.01} className="form-full-width" precision={2} />
+            <AmountInput className="form-full-width" currency="CNY" />
           </Form.Item>
           <Form.Item name="memo" label="备注" className="form-full-width">
             <Input />
@@ -283,7 +282,7 @@ export function AP() {
               )}
             </Form.Item>
             <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
-              <Select options={Array.isArray(accounts) ? accounts : []} placeholder="选择账户" showSearch />
+              <AccountSelect placeholder="选择账户" showCurrency />
             </Form.Item>
             <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]} className="form-full-width">
               <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" />

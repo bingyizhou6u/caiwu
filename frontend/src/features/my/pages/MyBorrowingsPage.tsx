@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Card, Button, Tag, Space, Modal, Form, Select, InputNumber, Input, message, Statistic, Row, Col, Typography, Progress } from 'antd'
+import { Card, Button, Tag, Space, Modal, Form, Input, message, Statistic, Row, Col, Typography, Progress } from 'antd'
+import { AmountInput, CurrencySelect } from '../../../components/form'
 import { PlusOutlined, BankOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useMyBorrowings, useCreateMyBorrowing } from '../../../hooks'
@@ -202,14 +203,10 @@ export function MyBorrowings() {
       >
         <Form form={form} layout="vertical" initialValues={{ currency: 'CNY' }}>
           <Form.Item name="amount" label="借支金额（元）" rules={[{ required: true, message: '请输入金额' }]}>
-            <InputNumber min={0.01} step={100} style={{ width: '100%' }} precision={2} />
+            <AmountInput style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="currency" label="币种">
-            <Select>
-              <Select.Option value="CNY">人民币 (CNY)</Select.Option>
-              <Select.Option value="USD">美元 (USD)</Select.Option>
-              <Select.Option value="USDT">USDT</Select.Option>
-            </Select>
+            <CurrencySelect />
           </Form.Item>
           <Form.Item name="memo" label="借支原因">
             <TextArea rows={3} placeholder="请输入借支原因" />

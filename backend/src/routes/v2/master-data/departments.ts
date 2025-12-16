@@ -100,7 +100,7 @@ departmentsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.createDepartment({
       name: body.name,
@@ -169,7 +169,7 @@ departmentsRoutes.openapi(
     }
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     await service.updateDepartment(id, {
       name: body.name,
@@ -219,7 +219,7 @@ departmentsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.deleteDepartment(id)
 
@@ -267,7 +267,7 @@ departmentsRoutes.openapi(
   listSitesRoute,
   createRouteHandler(async (c: any) => {
     const { activeOnly, search } = c.req.valid('query')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     let results = await service.getSites()
 
     // 后端过滤
@@ -318,7 +318,7 @@ departmentsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.createSite({
       name: body.name,
@@ -381,7 +381,7 @@ departmentsRoutes.openapi(
     }
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     await service.updateSite(id, {
       name: body.name,
@@ -425,7 +425,7 @@ departmentsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.deleteSite(id)
 

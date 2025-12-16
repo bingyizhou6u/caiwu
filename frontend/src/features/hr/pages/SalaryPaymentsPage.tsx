@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Card, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, InputNumber, Table } from 'antd'
+import { Card, Button, Modal, Form, Space, message, Tag, Select, Upload, Input, Table } from 'antd'
+import { CurrencySelect, AmountInput, AccountSelect } from '../../../components/form'
 import type { ColumnsType } from 'antd/es/table'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
@@ -13,6 +14,7 @@ import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { salaryPaymentGenerateSchema, salaryPaymentTransferSchema, salaryPaymentAllocationSchema, salaryPaymentConfirmSchema } from '../../../validations/salary.schema'
 import { DataTable, StatusTag, AmountDisplay, PageToolbar, EmptyText } from '../../../components/common'
+import { SensitiveField } from '../../../components/SensitiveField'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { SALARY_PAYMENT_STATUS, SALARY_ALLOCATION_STATUS } from '../../../utils/status'
 import { formatAmountWithCurrency } from '../../../utils/amount'
@@ -278,13 +280,19 @@ export function SalaryPayments() {
       key: 'salary_cents',
       width: 120,
       align: 'right',
-      render: (cents: number | null | undefined, r: SalaryPayment) => (
-        <AmountDisplay 
-          cents={cents} 
-          currency={r.currency || 'CNY'} 
-          style={{ fontWeight: 'bold', color: '#1890ff' }}
-        />
-      ),
+      render: (cents: number | null | undefined, r: SalaryPayment) => {
+        if (!cents) return '-'
+        const amountStr = `${(cents / 100).toFixed(2)} ${r.currency || 'CNY'}`
+        return (
+          <SensitiveField 
+            value={amountStr} 
+            type="salary" 
+            permission="hr.salary.view" 
+            entityId={r.id} 
+            entityType="salary_payment" 
+          />
+        )
+      },
     },
     {
       title: '状态',
@@ -557,26 +565,23 @@ export function SalaryPayments() {
                           name={[name, 'currencyId']}
                           rules={[{ required: true, message: '请选择币种' }]}
                         >
-                          <Select placeholder="币种" style={{ width: 150 }} options={currencies} />
+                          <CurrencySelect placeholder="币种" style={{ width: 150 }} />
                         </Form.Item>
                         <Form.Item
                           {...restField}
                           name={[name, 'amountCents']}
                           rules={[{ required: true, message: '请输入金额' }]}
                         >
-                          <InputNumber placeholder="金额" min={0} precision={2} style={{ width: 150 }} />
+                          <AmountInput placeholder="金额" currency={form.getFieldValue([name, 'currencyId'])} style={{ width: 150 }} />
                         </Form.Item>
                         <Form.Item
                           {...restField}
                           name={[name, 'accountId']}
                         >
-                          <Select
+                          <AccountSelect
                             placeholder="账户（可选）"
                             style={{ width: 200 }}
-                            allowClear
-                            showSearch
-                            filterOption={(input, option) =>
-                              String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            showCurrency
                             }
                             options={accounts.filter((acc: any) => {
                               const currency = allocationForm.getFieldValue(['allocations', name, 'currencyId'])

@@ -158,15 +158,10 @@ export function FlowCreate() {
                 />
               </Form.Item>
               <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>
-                <InputNumber min={0.01} step={0.01} style={{ width: '100%' }} />
+                <AmountInput style={{ width: '100%' }} currency="CNY" />
               </Form.Item>
               <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]}>
-                <Select
-                  showSearch
-                  placeholder="选择账户"
-                  options={Array.isArray(accounts) ? accounts : []}
-                  filterOption={(input, option) => (option?.search || '').includes(input.toLowerCase())}
-                />
+                <AccountSelect placeholder="选择账户" showCurrency />
               </Form.Item>
               <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
                 <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" showSearch optionFilterProp="label" />
@@ -176,9 +171,8 @@ export function FlowCreate() {
             {/* 右列 */}
             <Col xs={24} md={12}>
               <Form.Item name="departmentId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>
-                <Select
+                <DepartmentSelect
                   placeholder="请选择归属项目"
-                  options={Array.isArray(departments) ? departments : []}
                   onChange={(value) => {
                     setSelectedDepartmentId(value)
                     form.setFieldsValue({ siteId: undefined })

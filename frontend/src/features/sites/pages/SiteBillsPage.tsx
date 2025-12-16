@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Card, Button, Modal, Form, Input, Space, Select, DatePicker, InputNumber, Radio, Popconfirm } from 'antd'
+import { Card, Button, Modal, Form, Input, Space, Select, DatePicker, Radio, Popconfirm } from 'antd'
+import { AmountInput, CurrencySelect, AccountSelect } from '../../../components/form'
 import dayjs from 'dayjs'
 import { useCurrencies, useAccounts, useExpenseCategories, useSites } from '../../../hooks/useBusinessData'
 import { useSiteBills, useCreateSiteBill, useUpdateSiteBill, useDeleteSiteBill } from '../../../hooks'
@@ -14,14 +15,9 @@ const BILL_TYPE_LABELS: Record<string, string> = {
   expense: '支出',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '待处理',
-  paid: '已支付',
-  cancelled: '已取消',
-}
-
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
+import { DataTable, AmountDisplay, EmptyText, PageToolbar, StatusTag } from '../../../components/common'
+import { SITE_BILL_STATUS } from '../../../utils/status'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 
@@ -279,13 +275,13 @@ export function SiteBills() {
               align: 'right',
               render: (_: any, r: any) => <AmountDisplay cents={r.amountCents} currency={r.currency} />
             },
-            { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-            { title: '账户', dataIndex: 'accountName', key: 'accountName', width: 120 },
-            { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
-            { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => STATUS_LABELS[v] || v },
+            { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true, render: (v: string) => <EmptyText value={v} /> },
+            { title: '账户', dataIndex: 'accountName', key: 'accountName', width: 120, render: (v: string) => <EmptyText value={v} /> },
+            { title: '类别', dataIndex: 'categoryName', key: 'categoryName', width: 120, render: (v: string) => <EmptyText value={v} /> },
+            { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => <StatusTag status={v} statusMap={SITE_BILL_STATUS} /> },
             { title: '支付日期', dataIndex: 'paymentDate', key: 'paymentDate', width: 120, render: (v: string) => <EmptyText value={v} /> },
-            { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
-            { title: '创建人', dataIndex: 'creator_name', key: 'creator_name', width: 100 },
+            { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true, render: (v: string) => <EmptyText value={v} /> },
+            { title: '创建人', dataIndex: 'creator_name', key: 'creator_name', width: 100, render: (v: string) => <EmptyText value={v} /> },
           ] as DataTableColumn<any>[]}
           data={billsData}
           loading={loading}
@@ -335,28 +331,35 @@ export function SiteBills() {
                 <Radio value="expense">支出</Radio>
               </Radio.Group>
             </Form.Item>
-            <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>
-              <InputNumber min={0} step={0.01} precision={2} style={{ width: '100%' }} placeholder="请输入金额" />
-            </Form.Item>
             <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
-              <Select
-                placeholder="请选择币种"
-                options={currencies.map((c: any) => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
-                style={{ width: '100%' }}
-              />
+              <CurrencySelect placeholder="请选择币种" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item 
+              name="amount" 
+              label="金额" 
+              rules={[{ required: true, message: '请输入金额' }]}
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AmountInput style={{ width: '100%' }} placeholder="请输入金额" currency={getFieldValue('currency')} />
+              )}
             </Form.Item>
             <Form.Item name="description" label="描述">
               <Input.TextArea rows={3} placeholder="请输入账单描述" />
             </Form.Item>
-            <Form.Item name="accountId" label="账户">
-              <Select
-                showSearch
-                placeholder="请选择账户（可选）"
-                optionFilterProp="label"
-                options={accounts.map((a: any) => ({ value: a.id, label: `${a.name} (${a.currency})` }))}
-                style={{ width: '100%' }}
-                allowClear
-              />
+            <Form.Item 
+              name="accountId" 
+              label="账户"
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AccountSelect
+                  placeholder="请选择账户（可选）"
+                  filterByCurrency={getFieldValue('currency')}
+                  style={{ width: '100%' }}
+                  allowClear
+                />
+              )}
             </Form.Item>
             <Form.Item name="categoryId" label="类别">
               <Select
@@ -411,28 +414,35 @@ export function SiteBills() {
                 <Radio value="expense">支出</Radio>
               </Radio.Group>
             </Form.Item>
-            <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>
-              <InputNumber min={0} step={0.01} precision={2} style={{ width: '100%' }} placeholder="请输入金额" />
-            </Form.Item>
             <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
-              <Select
-                placeholder="请选择币种"
-                options={currencies.map((c: any) => ({ value: c.code, label: `${c.code} - ${c.name}` }))}
-                style={{ width: '100%' }}
-              />
+              <CurrencySelect placeholder="请选择币种" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item 
+              name="amount" 
+              label="金额" 
+              rules={[{ required: true, message: '请输入金额' }]}
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AmountInput style={{ width: '100%' }} placeholder="请输入金额" currency={getFieldValue('currency')} />
+              )}
             </Form.Item>
             <Form.Item name="description" label="描述">
               <Input.TextArea rows={3} placeholder="请输入账单描述" />
             </Form.Item>
-            <Form.Item name="accountId" label="账户">
-              <Select
-                showSearch
-                placeholder="请选择账户（可选）"
-                optionFilterProp="label"
-                options={accounts.map((a: any) => ({ value: a.id, label: `${a.name} (${a.currency})` }))}
-                style={{ width: '100%' }}
-                allowClear
-              />
+            <Form.Item 
+              name="accountId" 
+              label="账户"
+              dependencies={['currency']}
+            >
+              {({ getFieldValue }) => (
+                <AccountSelect
+                  placeholder="请选择账户（可选）"
+                  filterByCurrency={getFieldValue('currency')}
+                  style={{ width: '100%' }}
+                  allowClear
+                />
+              )}
             </Form.Item>
             <Form.Item name="categoryId" label="类别">
               <Select

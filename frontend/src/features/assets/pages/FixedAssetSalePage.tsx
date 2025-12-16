@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Card, Button, Form, Input, Select, Space, message, DatePicker, InputNumber, Upload, Tag } from 'antd'
+import { Card, Button, Form, Input, Select, Space, message, DatePicker, Upload, Tag } from 'antd'
+import { AmountInput, AccountSelect } from '../../../components/form'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
@@ -210,13 +211,11 @@ export function FixedAssetSale() {
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
             <Form.Item name="sale_price_cents" label="卖出价格" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} min={0} precision={2} placeholder="请输入卖出价格" />
+              <AmountInput style={{ width: '100%' }} placeholder="请输入卖出价格" currency={form.getFieldValue('currency')} />
             </Form.Item>
             <Form.Item name="accountId" label="收入账户" rules={[{ required: true }]}>
-              <Select
-                options={accounts.filter(a => a.currency === currentAsset.currency)}
-                showSearch
-                optionFilterProp="label"
+              <AccountSelect
+                filterByCurrency={currentAsset?.currency}
                 placeholder="选择账户"
               />
             </Form.Item>

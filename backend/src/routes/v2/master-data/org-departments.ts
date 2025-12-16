@@ -47,7 +47,7 @@ orgDepartmentsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const projectId = c.req.query('project_id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     const results = await service.getOrgDepartments(projectId)
 
     const mappedResults = results.map((r: any) => ({
@@ -104,7 +104,7 @@ orgDepartmentsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
     const result = (await service.getOrgDepartment(id)) as any
 
     return {
