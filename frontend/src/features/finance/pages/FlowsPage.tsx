@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Button, Modal, Space, message, Upload, Card } from 'antd'
-import { UploadOutlined, EyeOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { UploadOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../../config/api'
@@ -26,11 +25,8 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 export function Flows() {
-  const navigate = useNavigate()
-  
   // 权限
   const { hasPermission, isManager: _isManager } = usePermissions()
-  const canCreate = hasPermission('finance', 'flow', 'create')
   const canDelete = hasPermission('finance', 'flow', 'delete') || _isManager()
 
   // 模态框
@@ -165,12 +161,6 @@ export function Flows() {
 
         <PageToolbar
           actions={[
-            ...(canCreate ? [{
-              label: '新建记账',
-              type: 'primary' as const,
-              icon: <PlusOutlined />,
-              onClick: () => navigate('/finance/flows/create')
-            }] : []),
             {
               label: '刷新',
               onClick: () => refetch()

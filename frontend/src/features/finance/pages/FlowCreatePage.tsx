@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Modal } from 'antd'
-import { UploadOutlined, EyeOutlined, ArrowLeftOutlined } from '@ant-design/icons'
+import { Button, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Modal, Row, Col } from 'antd'
+import { UploadOutlined, EyeOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../../config/api'
@@ -14,7 +13,6 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function FlowCreate() {
-  const navigate = useNavigate()
   const { form, validateWithZod } = useZodForm(createFlowSchema)
 
   // 数据 Hook
@@ -78,7 +76,7 @@ export function FlowCreate() {
 
       const url = await uploadImageAsWebP(file, api.upload.voucher)
       setVoucherUrls(prev => [...prev, url])
-      message.success('凭证上传成功（已转换为WebP格式）')
+      message.success('凭证上传成功')
       setUploading(false)
       return false
     } catch (error: unknown) {
@@ -87,6 +85,15 @@ export function FlowCreate() {
       setUploading(false)
       return false
     }
+  }
+
+  const handleReset = () => {
+    form.resetFields()
+    form.setFieldsValue({ type: 'income', bizDate: dayjs() })
+    setSelectedType('income')
+    setSelectedDepartmentId(undefined)
+    setFileList([])
+    setVoucherUrls([])
   }
 
   const onCreate = withErrorHandler(
@@ -109,104 +116,107 @@ export function FlowCreate() {
         voucherUrls: voucherUrls
       })
 
-      message.success('记账成功')
-      navigate('/finance/flows')
+      message.success('记账成功，可继续录入')
+      handleReset()
     },
     { successMessage: '已新增' }
   )
-
-  const handleReset = () => {
-    form.resetFields()
-    form.setFieldsValue({ type: 'income', bizDate: dayjs() })
-    setSelectedType('income')
-    setSelectedDepartmentId(undefined)
-    setFileList([])
-    setVoucherUrls([])
-  }
 
   return (
     <PageContainer
       title="新建记账"
       breadcrumb={[{ title: '财务管理' }, { title: '新建记账' }]}
     >
-      <Card bordered={false} className="page-card" style={{ maxWidth: 800 }}>
+      <Card bordered={false} className="page-card">
         <Form form={form} layout="vertical">
-          <Form.Item name="bizDate" label="日期时间" rules={[{ required: true, message: '请选择日期时间' }]}>
-            <DatePicker 
-              showTime={{ format: 'HH:mm:ss' }}
-              format="YYYY-MM-DD HH:mm:ss"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
           <Form.Item name="voucherUrls" hidden>
             <Input />
           </Form.Item>
-          <Form.Item name="departmentId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>
-            <Select
-              placeholder="请选择归属项目"
-              options={Array.isArray(departments) ? departments : []}
-              onChange={(value) => {
-                setSelectedDepartmentId(value)
-                form.setFieldsValue({ siteId: undefined })
-              }}
-            />
-          </Form.Item>
-          <Form.Item name="siteId" label="站点（可选）">
-            <Select
-              placeholder="请选择站点"
-              options={Array.isArray(sites) ? sites
-                .filter((s: any) => !selectedDepartmentId || s.departmentId === selectedDepartmentId)
-                .map((s: any) => ({ value: s.value, label: s.label })) : []}
-              allowClear
-              onChange={(value) => {
-                if (value) {
-                  const site = Array.isArray(sites) ? sites.find((s: any) => s.value === value) : undefined
-                  if (site) {
-                    form.setFieldsValue({ departmentId: site.departmentId })
-                    setSelectedDepartmentId(site.departmentId)
-                  }
-                }
-              }}
-            />
-          </Form.Item>
-          <Form.Item name="type" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
-            <Select
-              options={[
-                { value: 'income', label: '收入' },
-                { value: 'expense', label: '支出' },
-                { value: 'transfer', label: '转账' },
-                { value: 'adjust', label: '调整' },
-              ]}
-              onChange={(value) => {
-                setSelectedType(value)
-                form.setFieldValue('categoryId', undefined)
-              }}
-            />
-          </Form.Item>
-          <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>
-            <InputNumber min={0.01} step={0.01} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]}>
-            <Select
-              showSearch
-              placeholder="选择账户"
-              options={Array.isArray(accounts) ? accounts : []}
-              filterOption={(input, option) => (option?.search || '').includes(input.toLowerCase())}
-            />
-          </Form.Item>
-          <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
-            <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" showSearch optionFilterProp="label" />
-          </Form.Item>
-          <Form.Item name="counterparty" label="对方">
-            <Input />
-          </Form.Item>
-          <Form.Item name="memo" label="备注">
-            <Input />
-          </Form.Item>
+          
+          <Row gutter={24}>
+            {/* 左列 */}
+            <Col xs={24} md={12}>
+              <Form.Item name="bizDate" label="日期时间" rules={[{ required: true, message: '请选择日期时间' }]}>
+                <DatePicker 
+                  showTime={{ format: 'HH:mm:ss' }}
+                  format="YYYY-MM-DD HH:mm:ss"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+              <Form.Item name="type" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
+                <Select
+                  options={[
+                    { value: 'income', label: '收入' },
+                    { value: 'expense', label: '支出' },
+                    { value: 'transfer', label: '转账' },
+                    { value: 'adjust', label: '调整' },
+                  ]}
+                  onChange={(value) => {
+                    setSelectedType(value)
+                    form.setFieldValue('categoryId', undefined)
+                  }}
+                />
+              </Form.Item>
+              <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>
+                <InputNumber min={0.01} step={0.01} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]}>
+                <Select
+                  showSearch
+                  placeholder="选择账户"
+                  options={Array.isArray(accounts) ? accounts : []}
+                  filterOption={(input, option) => (option?.search || '').includes(input.toLowerCase())}
+                />
+              </Form.Item>
+              <Form.Item name="categoryId" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
+                <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" showSearch optionFilterProp="label" />
+              </Form.Item>
+            </Col>
+            
+            {/* 右列 */}
+            <Col xs={24} md={12}>
+              <Form.Item name="departmentId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>
+                <Select
+                  placeholder="请选择归属项目"
+                  options={Array.isArray(departments) ? departments : []}
+                  onChange={(value) => {
+                    setSelectedDepartmentId(value)
+                    form.setFieldsValue({ siteId: undefined })
+                  }}
+                />
+              </Form.Item>
+              <Form.Item name="siteId" label="站点（可选）">
+                <Select
+                  placeholder="请选择站点"
+                  options={Array.isArray(sites) ? sites
+                    .filter((s: any) => !selectedDepartmentId || s.departmentId === selectedDepartmentId)
+                    .map((s: any) => ({ value: s.value, label: s.label })) : []}
+                  allowClear
+                  onChange={(value) => {
+                    if (value) {
+                      const site = Array.isArray(sites) ? sites.find((s: any) => s.value === value) : undefined
+                      if (site) {
+                        form.setFieldsValue({ departmentId: site.departmentId })
+                        setSelectedDepartmentId(site.departmentId)
+                      }
+                    }
+                  }}
+                />
+              </Form.Item>
+              <Form.Item name="counterparty" label="对方">
+                <Input placeholder="输入交易对方" />
+              </Form.Item>
+              <Form.Item name="memo" label="备注">
+                <Input.TextArea rows={4} placeholder="输入备注信息" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* 凭证上传 - 单独一行 */}
           <Form.Item
             label="凭证"
             required
-            help={voucherUrls.length > 0 ? `已上传 ${voucherUrls.length} 张凭证（已转换为WebP格式）` : '请上传图片文件（JPEG、PNG、GIF），系统会自动转换为WebP格式，可上传多张'}
+            help={voucherUrls.length > 0 ? `已上传 ${voucherUrls.length} 张凭证` : '请上传图片文件，可上传多张'}
           >
             <Upload
               beforeUpload={handleUpload}
@@ -219,20 +229,19 @@ export function FlowCreate() {
             </Upload>
             {voucherUrls.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                <div style={{ marginBottom: 8 }}>
+                <Space wrap>
                   {voucherUrls.map((url, index) => (
-                    <span key={index} style={{ marginRight: 8 }}>
+                    <Space key={index} size={4}>
                       <Button
                         size="small"
                         icon={<EyeOutlined />}
                         onClick={() => showPreview(voucherUrls, index)}
                       >
-                        查看 {index + 1}
+                        凭证 {index + 1}
                       </Button>
                       <Button
                         size="small"
                         danger
-                        style={{ marginLeft: 4 }}
                         onClick={() => {
                           setVoucherUrls(voucherUrls.filter((_, i) => i !== index))
                           setFileList(fileList.filter((_, i) => i !== index))
@@ -240,26 +249,21 @@ export function FlowCreate() {
                       >
                         删除
                       </Button>
-                    </span>
+                    </Space>
                   ))}
-                </div>
-                <Button size="small" onClick={() => showPreview(voucherUrls, 0)}>
-                  查看所有凭证 ({voucherUrls.length})
-                </Button>
+                </Space>
               </div>
             )}
           </Form.Item>
 
-          <Form.Item style={{ marginTop: 24 }}>
-            <Space>
-              <Button type="primary" onClick={onCreate} loading={isCreating}>
-                提交
+          {/* 按钮区 */}
+          <Form.Item style={{ marginTop: 24, marginBottom: 0 }}>
+            <Space size="middle">
+              <Button type="primary" icon={<SaveOutlined />} onClick={onCreate} loading={isCreating} size="large">
+                保存并继续
               </Button>
-              <Button onClick={handleReset}>
+              <Button icon={<ReloadOutlined />} onClick={handleReset} size="large">
                 重置
-              </Button>
-              <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/finance/flows')}>
-                返回列表
               </Button>
             </Space>
           </Form.Item>
