@@ -2,7 +2,7 @@ import { z } from 'zod'
 import dayjs from 'dayjs'
 
 export const createAPSchema = z.object({
-    party: z.string().min(1, '请输入供应商名称'),
+    partyId: z.string().min(1, '请选择供应商'),
     issueDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的开立日期'),
     dueDate: z.any().optional().refine((val) => !val || dayjs(val).isValid(), '请选择有效的到期日'),
     amount: z.number().min(0.01, '金额必须大于0'),

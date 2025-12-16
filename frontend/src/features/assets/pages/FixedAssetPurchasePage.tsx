@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Card, Button, Form, Input, Select, Space, message, DatePicker, Upload } from 'antd'
-import { AmountInput, CurrencySelect, AccountSelect, DepartmentSelect } from '../../../components/form'
+import { AmountInput, CurrencySelect, AccountSelect, DepartmentSelect, VendorSelect } from '../../../components/form'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
@@ -215,7 +215,7 @@ export function FixedAssetPurchase() {
             <Select options={safeCategories} showSearch optionFilterProp="label" placeholder="选择类别" />
           </Form.Item>
           <Form.Item name="vendorId" label="供应商">
-            <Select options={vendors} showSearch optionFilterProp="label" placeholder="选择供应商" allowClear />
+            <VendorSelect placeholder="选择供应商" allowClear />
           </Form.Item>
           <Form.Item name="departmentId" label="使用项目">
             <DepartmentSelect placeholder="选择项目" allowClear />

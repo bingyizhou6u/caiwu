@@ -255,6 +255,28 @@
 - **替换统计**:
   - EmployeeSelect: 2+ 处
   - DepartmentSelect: 7+ 处
+
+#### ✅ Task 1.4: 推广 VendorSelect
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `APPage.tsx` - 已替换创建表单中的供应商输入为 VendorSelect，并更新了 schema
+  - ✅ `FixedAssetPurchasePage.tsx` - 已替换供应商选择为 VendorSelect
+  - ✅ `FixedAssetsManagementPage.tsx` - 已替换供应商选择为 VendorSelect（2处：创建、编辑表单）
+- **替换统计**:
+  - VendorSelect: 4+ 处
+- **Schema 更新**:
+  - ✅ `ap.schema.ts` - 将 `party` 字段改为 `partyId`
+
+#### ✅ Task 1.4: 推广 VendorSelect
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `APPage.tsx` - 已替换创建表单中的供应商输入为 VendorSelect
+  - ✅ `FixedAssetPurchasePage.tsx` - 已替换供应商选择为 VendorSelect
+  - ✅ `FixedAssetsManagementPage.tsx` - 已替换供应商选择为 VendorSelect（2处：创建、编辑表单）
+- **替换统计**:
+  - VendorSelect: 4+ 处
   - ✅ `FixedAssetSalePage.tsx` - 已替换 AmountInput 和 AccountSelect
   - ✅ `RentalManagementPage.tsx` - 已替换 AmountInput（年租金、月租金、押金、付款金额、员工月租金）和 CurrencySelect（4处）、AccountSelect（1处）
   - ✅ `SiteBillsPage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect（新建和编辑表单）

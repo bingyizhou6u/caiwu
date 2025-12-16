@@ -13,6 +13,7 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import { DataTable, type DataTableColumn, AmountDisplay, PageToolbar, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
+import { VendorSelect } from '../../../components/form'
 import { ARAP_STATUS } from '../../../utils/status'
 import type { ARAP } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
@@ -50,10 +51,7 @@ export function AP() {
     async () => {
       const values = await createForm.validateWithZod()
       await createAP({
-        partyId: values.party, // 注意：Schema 使用 'party'，API 期望 'partyId'。旧代码使用 'partyId: v.party'。假定输入是名称但字段是 partyId。
-        // 等等，旧代码：`partyId: v.party`。输入标签 "供应商"。
-        // 如果是文本输入，可能就是名称。后端可能会处理它。
-        // 让我们沿用旧逻辑：将 `party` 作为 `partyId` 传递。
+        partyId: values.partyId,
         issueDate: values.issueDate.format('YYYY-MM-DD HH:mm:ss'),
         dueDate: values.dueDate?.format('YYYY-MM-DD HH:mm:ss'),
         amountCents: Math.round(values.amount * 100),
@@ -243,8 +241,8 @@ export function AP() {
           onCancel={() => setCreateOpen(false)}
           loading={isCreating}
         >
-          <Form.Item name="party" label="供应商" rules={[{ required: true, message: '请输入供应商名称' }]} className="form-full-width">
-            <Input />
+          <Form.Item name="partyId" label="供应商" rules={[{ required: true, message: '请选择供应商' }]} className="form-full-width">
+            <VendorSelect placeholder="请选择供应商" />
           </Form.Item>
           <Form.Item name="issueDate" label="开立日期" rules={[{ required: true, message: '请选择开立日期' }]} className="form-full-width">
             <DatePicker className="form-full-width" showTime format="YYYY-MM-DD HH:mm:ss" />
