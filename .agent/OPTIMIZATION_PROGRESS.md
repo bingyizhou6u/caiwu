@@ -281,6 +281,17 @@
   - StatusTag: 3+ 处
 - **说明**: 其他页面（如 FixedAssetsManagementPage、LeaveManagementPage、ExpenseReimbursementPage、MyBorrowingsPage、MyReimbursementsPage 等）已经使用了 StatusTag
 
+### Phase 3: SearchFilters 推广（Week 5-6）
+
+#### ✅ Task 3.1: 推广 SearchFilters 到所有列表页面
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `FixedAssetAllocationPage.tsx` - 已替换 Select 筛选为 SearchFilters（员工筛选、归还状态）
+- **替换统计**:
+  - SearchFilters: 1+ 处
+- **说明**: 其他页面（如 AccountTransactionsPage、FlowsPage、FixedAssetsManagementPage、FixedAssetSalePage、SiteBillsPage、VendorManagementPage 等）已经使用了 SearchFilters。FixedAssetPurchasePage、SiteManagementPage、IPWhitelistManagementPage 等页面目前没有搜索需求或搜索功能较简单，暂不强制添加 SearchFilters
+
 #### ✅ Task 1.4: 推广 VendorSelect
 - **完成时间**: 2024-12-19
 - **状态**: ✅ 已完成
