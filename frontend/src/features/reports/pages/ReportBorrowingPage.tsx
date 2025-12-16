@@ -269,8 +269,6 @@ export function ReportBorrowing() {
           { title: '报表中心' },
           {
             title: '借款报表', onClick: () => {
-              setViewLevel('summary')
-              setDetail(null)
               loadBorrowersSummary()
             }
           },

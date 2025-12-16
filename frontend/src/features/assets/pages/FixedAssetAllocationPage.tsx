@@ -18,7 +18,7 @@ const ALLOCATION_TYPE_OPTIONS = [
 ]
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, EmptyText, PageToolbar } from '../../../components/common'
+import { DataTable, EmptyText, PageToolbar, type DataTableColumn } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { EmployeeSelect } from '../../../components/form'
 
@@ -168,7 +168,7 @@ export function FixedAssetAllocation() {
               分配资产
             </Button>
           )}
-        </PageToolbar>
+        </Space>
 
         <SearchFilters
           fields={[
@@ -263,7 +263,7 @@ export function FixedAssetAllocation() {
               <div>
                 <p>资产编号：{currentAsset.assetCode}</p>
                 <p>资产名称：{currentAsset.name}</p>
-                <p>类别：{currentAsset.category || '-'}</p>
+                <p>类别：<EmptyText value={currentAsset.category} /></p>
               </div>
             </Form.Item>
             <Form.Item name="employeeId" label="分配给员工" rules={[{ required: true }]}>

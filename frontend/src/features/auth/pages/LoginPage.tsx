@@ -64,8 +64,8 @@ export function Login() {
                 message.info('请输入 Google 验证码')
             } else {
                 // 登录成功
-                setUserInfo(data.user)
-                setToken(data.token)
+                setUserInfo(data.user as unknown as Parameters<typeof setUserInfo>[0])
+                setToken(data.token ?? null)
                 message.success('登录成功')
                 navigate('/dashboard')
             }
@@ -88,8 +88,8 @@ export function Login() {
                 password: loginPassword,
                 totp: v.totp
             })
-            setUserInfo(data.user)
-            setToken(data.token)
+            setUserInfo(data.user as unknown as Parameters<typeof setUserInfo>[0])
+            setToken(data.token ?? null)
             message.success('登录成功')
             navigate('/dashboard')
         },

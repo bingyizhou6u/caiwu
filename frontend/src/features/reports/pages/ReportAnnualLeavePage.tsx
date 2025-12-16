@@ -192,7 +192,7 @@ export function ReportAnnualLeave() {
             value={selectedDept}
             onChange={setSelectedDept}
           />
-        </Space>
+        </PageToolbar>
 
         <DataTable<AnnualLeaveRecord>
           loading={loading}

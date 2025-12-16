@@ -48,7 +48,7 @@ describe('useAP', () => {
 
     describe('useAPDocs', () => {
         it('should fetch AP docs', async () => {
-            const mockData = { results: [{ id: '1', amountCents: 100 }] }
+            const mockData = { results: [{ id: '1', amountCents: 100 }], total: 1 }
             vi.mocked(apiClient.get).mockResolvedValue(mockData)
 
             const { result } = renderHook(() => useAPDocs(), {
@@ -57,7 +57,8 @@ describe('useAP', () => {
 
             await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-            expect(result.current.data).toEqual(mockData.results)
+            // Hook 返回 { total, list } 格式
+            expect(result.current.data).toEqual({ total: 1, list: mockData.results })
         })
     })
 
@@ -111,7 +112,7 @@ describe('useAR', () => {
 
     describe('useARDocs', () => {
         it('should fetch AR docs', async () => {
-            const mockData = { results: [{ id: '1', amountCents: 100 }] }
+            const mockData = { results: [{ id: '1', amountCents: 100 }], total: 1 }
             vi.mocked(apiClient.get).mockResolvedValue(mockData)
 
             const { result } = renderHook(() => useARDocs(), {
@@ -120,7 +121,8 @@ describe('useAR', () => {
 
             await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-            expect(result.current.data).toEqual(mockData.results)
+            // Hook 返回 { total, list } 格式
+            expect(result.current.data).toEqual({ total: 1, list: mockData.results })
         })
     })
 

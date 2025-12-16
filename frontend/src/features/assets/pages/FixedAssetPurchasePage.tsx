@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, Button, Form, Input, Select, Space, message, DatePicker, Upload } from 'antd'
+import { Card, Button, Form, Input, Select, Space, message, DatePicker, Upload, InputNumber } from 'antd'
 import { AmountInput, CurrencySelect, AccountSelect, DepartmentSelect, VendorSelect } from '../../../components/form'
 import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
@@ -135,10 +135,6 @@ export function FixedAssetPurchase() {
           ]}
           style={{ marginBottom: 16 }}
         />
-              买入资产
-            </Button>
-          )}
-        </Space>
 
         <DataTable<FixedAsset>
           columns={[

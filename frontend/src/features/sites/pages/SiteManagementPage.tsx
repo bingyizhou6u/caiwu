@@ -13,7 +13,7 @@ import type { DataTableColumn } from '../../../components/common/DataTable'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function SiteManagement() {
-  const { data: siteData = [], isLoading } = useSites()
+  const { data: siteData = [], isLoading, refetch } = useSites()
   const { data: deptOptions = [] } = useDepartmentOptions(false) // 不包含总部，因为站点必须属于某个具体项目
   const { mutateAsync: createSite } = useCreateSite()
   const { mutateAsync: updateSite } = useUpdateSite()

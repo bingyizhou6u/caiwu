@@ -10,10 +10,17 @@ import { useFixedAssets, useFixedAssetSale } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { SearchFilters, StatusTag, AmountDisplay } from '../../../components/common'
+import { SearchFilters, StatusTag, AmountDisplay, DataTable, type DataTableColumn } from '../../../components/common'
 import { FIXED_ASSET_STATUS } from '../../../utils/status'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable } from '../../../components/common/DataTable'
+import type { FixedAsset } from '../../../types'
+import type { SelectOption } from '../../../types/business'
+
+const STATUS_OPTIONS = [
+  { value: 'in_use', label: '使用中' },
+  { value: 'idle', label: '闲置' },
+  { value: 'under_maintenance', label: '维修中' },
+]
 
 const { TextArea } = Input
 

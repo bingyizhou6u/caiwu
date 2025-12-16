@@ -7,8 +7,8 @@ import React, { ReactNode } from 'react'
 import { Space, Button, ButtonProps } from 'antd'
 
 export interface PageToolbarAction {
-  /** 按钮文本 */
-  label: string
+  /** 按钮文本（当使用 component 时可选） */
+  label?: string
   /** 按钮类型 */
   type?: ButtonProps['type']
   /** 按钮危险状态 */
@@ -16,12 +16,12 @@ export interface PageToolbarAction {
   /** 按钮图标 */
   icon?: ReactNode
   /** 点击事件 */
-  onClick?: () => void
+  onClick?: () => void | Promise<void> | Promise<unknown>
   /** 是否禁用 */
   disabled?: boolean
   /** 是否加载中 */
   loading?: boolean
-  /** 自定义按钮组件 */
+  /** 自定义按钮组件（使用时 label 可选） */
   component?: ReactNode
 }
 

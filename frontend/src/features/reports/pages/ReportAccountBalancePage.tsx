@@ -5,6 +5,7 @@ import dayjs, { Dayjs } from 'dayjs'
 import { useAccountBalance } from '../../../hooks'
 import type { AccountBalanceResponse } from '../../../hooks/business/useReports'
 import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
+import { api } from '../../../config/api'
 
 type ViewLevel = 'currency' | 'accounts' | 'details'
 type CurrencySummary = {

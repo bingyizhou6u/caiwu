@@ -497,10 +497,10 @@ export function RentalManagement() {
               width: 200,
               render: (_: unknown, r: RentalProperty) => {
                 if (r.propertyType === 'office') {
-                  return r.departmentName || '-'
+                  return <EmptyText value={r.departmentName} />
                 } else {
                   // 住宅：显示分配的员工数量（需要从详情中获取）
-                  return r.allocationsCount ? `${r.allocationsCount}人` : '-'
+                  return r.allocationsCount ? `${r.allocationsCount}人` : <EmptyText value={null} />
                 }
               }
             },
@@ -829,7 +829,7 @@ export function RentalManagement() {
                 <p><strong>房屋编号：</strong>{currentProperty.propertyCode}</p>
                 <p><strong>房屋名称：</strong>{currentProperty.name}</p>
                 <p><strong>类型：</strong>{PROPERTY_TYPE_OPTIONS.find(o => o.value === currentProperty.propertyType)?.label || currentProperty.propertyType}</p>
-                <p><strong>地址：</strong>{currentProperty.address || '-'}</p>
+                <p><strong>地址：</strong><EmptyText value={currentProperty.address} /></p>
                 <p><strong>面积：</strong>{currentProperty.areaSqm ? `${currentProperty.areaSqm} 平方米` : '-'}</p>
                 <p><strong>租金类型：</strong>{RENT_TYPE_OPTIONS.find(o => o.value === currentProperty.rentType)?.label || currentProperty.rentType || '月租'}</p>
                 {currentProperty.rentType === 'yearly' ? (
@@ -839,21 +839,21 @@ export function RentalManagement() {
                 )}
                 <p><strong>付款周期：</strong>{PAYMENT_PERIOD_OPTIONS.find(o => o.value === currentProperty.paymentPeriodMonths)?.label || `${currentProperty.paymentPeriodMonths || 1}月`}</p>
                 <p><strong>押金：</strong><AmountDisplay cents={currentProperty.depositCents} currency={currentProperty.currency} /></p>
-                <p><strong>房东姓名：</strong>{currentProperty.landlordName || '-'}</p>
-                <p><strong>房东联系方式：</strong>{currentProperty.landlordContact || '-'}</p>
-                <p><strong>租赁开始：</strong>{currentProperty.leaseStartDate || '-'}</p>
-                <p><strong>租赁结束：</strong>{currentProperty.leaseEndDate || '-'}</p>
-                <p><strong>付款方式：</strong>{PAYMENT_METHOD_OPTIONS.find(o => o.value === currentProperty.paymentMethod)?.label || currentProperty.paymentMethod || '-'}</p>
-                <p><strong>每月付款日期：</strong>{currentProperty.paymentDay || '-'}号</p>
+                <p><strong>房东姓名：</strong><EmptyText value={currentProperty.landlordName} /></p>
+                <p><strong>房东联系方式：</strong><EmptyText value={currentProperty.landlordContact} /></p>
+                <p><strong>租赁开始：</strong><EmptyText value={currentProperty.leaseStartDate} /></p>
+                <p><strong>租赁结束：</strong><EmptyText value={currentProperty.leaseEndDate} /></p>
+                <p><strong>付款方式：</strong><EmptyText value={PAYMENT_METHOD_OPTIONS.find(o => o.value === currentProperty.paymentMethod)?.label || currentProperty.paymentMethod} /></p>
+                <p><strong>每月付款日期：</strong>{currentProperty.paymentDay ? `${currentProperty.paymentDay}号` : <EmptyText value={null} />}</p>
                 {currentProperty.propertyType === 'office' ? (
-                  <p><strong>使用项目：</strong>{currentProperty.departmentName || '-'}</p>
+                  <p><strong>使用项目：</strong><EmptyText value={currentProperty.departmentName} /></p>
                 ) : (
                   <>
                     <p><strong>使用员工：</strong>{currentProperty.allocations && currentProperty.allocations.length > 0 ? currentProperty.allocations.filter((a) => !a.returnDate).map((a) => a.employeeName).join('、') : '-'}</p>
                   </>
                 )}
                 <p><strong>状态：</strong>{STATUS_OPTIONS.find(o => o.value === currentProperty.status)?.label || currentProperty.status}</p>
-                <p><strong>备注：</strong>{currentProperty.memo || '-'}</p>
+                <p><strong>备注：</strong><EmptyText value={currentProperty.memo} /></p>
                 {currentProperty.contractFileUrl && (
                   <p>
                     <strong>租房合同：</strong>
@@ -1075,12 +1075,6 @@ export function RentalManagement() {
                   showCurrency
                 />
               )}
-            </Form.Item>
-                options={accounts.filter((a) => a.currency === paymentProperty.currency)}
-                showSearch
-                optionFilterProp="label"
-                placeholder="选择账户"
-              />
             </Form.Item>
             <Form.Item name="categoryId" label="支出类别">
               <Select options={categories} showSearch optionFilterProp="label" placeholder="选择类别" allowClear />

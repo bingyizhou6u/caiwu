@@ -572,7 +572,7 @@ export function SalaryPayments() {
                           name={[name, 'amountCents']}
                           rules={[{ required: true, message: '请输入金额' }]}
                         >
-                          <AmountInput placeholder="金额" currency={form.getFieldValue([name, 'currencyId'])} style={{ width: 150 }} />
+                          <AmountInput placeholder="金额" currency={allocationForm.getFieldValue(['allocations', name, 'currencyId'])} style={{ width: 150 }} />
                         </Form.Item>
                         <Form.Item
                           {...restField}
@@ -582,11 +582,6 @@ export function SalaryPayments() {
                             placeholder="账户（可选）"
                             style={{ width: 200 }}
                             showCurrency
-                            }
-                            options={accounts.filter((acc: any) => {
-                              const currency = allocationForm.getFieldValue(['allocations', name, 'currencyId'])
-                              return !currency || acc.currency === currency
-                            })}
                           />
                         </Form.Item>
                         <Button onClick={() => remove(name)}>删除</Button>

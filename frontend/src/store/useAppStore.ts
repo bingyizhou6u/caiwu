@@ -2,9 +2,18 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 interface UserInfo {
-  username: string
-  role: string
+  id?: string
+  email?: string
+  name?: string
+  username?: string
+  role?: string
   permissions?: string[]
+  position?: {
+    name?: string
+    level?: number
+    functionRole?: string
+    canManageSubordinates?: number
+  }
   [key: string]: any
 }
 

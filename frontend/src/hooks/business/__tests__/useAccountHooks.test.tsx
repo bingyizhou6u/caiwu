@@ -80,7 +80,7 @@ describe('useAccountTransactions', () => {
 
     describe('useAccountTransactions', () => {
         it('should fetch account transactions', async () => {
-            const mockData = [{ id: '1', amount: 100 }]
+            const mockData = { results: [{ id: '1', amount: 100 }], total: 1 }
             vi.mocked(apiClient.get).mockResolvedValue(mockData)
 
             const { result } = renderHook(() => useAccountTransactions('1'), {
@@ -89,7 +89,8 @@ describe('useAccountTransactions', () => {
 
             await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-            expect(result.current.data).toEqual(mockData)
+            // Hook 返回 { total, list } 格式
+            expect(result.current.data).toEqual({ total: 1, list: mockData.results })
         })
     })
 })
@@ -138,7 +139,7 @@ describe('useBorrowings', () => {
 
     describe('useBorrowings', () => {
         it('should fetch borrowings', async () => {
-            const mockData = { results: [{ id: '1', amount: 100 }] }
+            const mockData = { results: [{ id: '1', amount: 100 }], total: 1 }
             vi.mocked(apiClient.get).mockResolvedValue(mockData)
 
             const { result } = renderHook(() => useBorrowings(), {
@@ -147,7 +148,8 @@ describe('useBorrowings', () => {
 
             await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-            expect(result.current.data).toEqual(mockData.results)
+            // Hook 返回 { total, list } 格式
+            expect(result.current.data).toEqual({ total: 1, list: mockData.results })
         })
     })
 

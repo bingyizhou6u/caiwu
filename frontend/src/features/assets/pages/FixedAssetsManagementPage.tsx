@@ -10,7 +10,7 @@ import { useMultipleModals } from '../../../hooks/forms/useFormModal'
 import { useDepartments, useSites, useVendors, useCurrencies } from '../../../hooks'
 import { VirtualTable } from '../../../components/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton, AmountDisplay } from '../../../components/common'
+import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton, AmountDisplay, EmptyText } from '../../../components/common'
 import { DepartmentSelect, VendorSelect } from '../../../components/form'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FIXED_ASSET_STATUS } from '../../../utils/status'
@@ -469,18 +469,18 @@ export function FixedAssetsManagement() {
                 <div style={{ padding: '16px 0' }}>
                   <p><strong>资产编号：</strong>{detailData.assetCode}</p>
                   <p><strong>资产名称：</strong>{detailData.name}</p>
-                  <p><strong>类别：</strong>{detailData.category || '-'}</p>
-                  <p><strong>购买日期：</strong>{detailData.purchaseDate || '-'}</p>
+                  <p><strong>类别：</strong><EmptyText value={detailData.category} /></p>
+                  <p><strong>购买日期：</strong><EmptyText value={detailData.purchaseDate} /></p>
                   <p><strong>购买价格：</strong><AmountDisplay cents={detailData.purchasePriceCents} currency={detailData.currency} /> {detailData.currency}</p>
                   <p><strong>当前净值：</strong><AmountDisplay cents={detailData.currentValueCents} currency={detailData.currency} /> {detailData.currency}</p>
-                  <p><strong>供应商：</strong>{detailData.vendorName || '-'}</p>
-                  <p><strong>使用项目：</strong>{detailData.departmentName || '-'}</p>
-                  <p><strong>资产位置：</strong>{detailData.siteName || '-'}</p>
-                  <p><strong>责任人：</strong>{detailData.custodian || '-'}</p>
+                  <p><strong>供应商：</strong><EmptyText value={detailData.vendorName} /></p>
+                  <p><strong>使用项目：</strong><EmptyText value={detailData.departmentName} /></p>
+                  <p><strong>资产位置：</strong><EmptyText value={detailData.siteName} /></p>
+                  <p><strong>责任人：</strong><EmptyText value={detailData.custodian} /></p>
                   <p><strong>状态：</strong>{STATUS_OPTIONS.find(o => o.value === detailData.status)?.label || detailData.status}</p>
-                  <p><strong>折旧方法：</strong>{DEPRECIATION_METHOD_OPTIONS.find(o => o.value === detailData.depreciationMethod)?.label || detailData.depreciationMethod || '-'}</p>
-                  <p><strong>预计使用年限：</strong>{detailData.usefulLifeYears ? `${detailData.usefulLifeYears}年` : '-'}</p>
-                  <p><strong>备注：</strong>{detailData.memo || '-'}</p>
+                  <p><strong>折旧方法：</strong><EmptyText value={DEPRECIATION_METHOD_OPTIONS.find(o => o.value === detailData.depreciationMethod)?.label || detailData.depreciationMethod} /></p>
+                  <p><strong>预计使用年限：</strong>{detailData.usefulLifeYears ? `${detailData.usefulLifeYears}年` : <EmptyText value={null} />}</p>
+                  <p><strong>备注：</strong><EmptyText value={detailData.memo} /></p>
                 </div>
               </Tabs.TabPane>
               <Tabs.TabPane tab="折旧记录" key="depreciations">

@@ -41,7 +41,7 @@ describe('useFlows', () => {
 
     describe('useFlows', () => {
         it('should fetch flows', async () => {
-            const mockData = { results: [{ id: '1', amount_cents: 100 }] }
+            const mockData = { results: [{ id: '1', amount_cents: 100, voucherUrls: [] }], total: 1 }
             vi.mocked(apiClient.get).mockResolvedValue(mockData)
 
             const { result } = renderHook(() => useFlows(), {
@@ -50,7 +50,8 @@ describe('useFlows', () => {
 
             await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-            expect(result.current.data).toEqual(mockData.results)
+            // Hook 返回 { total, list } 格式，并且会处理 voucherUrls
+            expect(result.current.data).toEqual({ total: 1, list: mockData.results })
         })
     })
 

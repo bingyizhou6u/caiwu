@@ -16,8 +16,8 @@ import { ResetUserPasswordModal } from '../../../features/employees/components/m
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, EmptyText } from '../../../components/common/DataTable'
-import type { DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, EmptyText } from '../../../components/common'
+import type { DataTableColumn } from '../../../components/common'
 import { useQueryClient } from '@tanstack/react-query'
 import { formatAmountWithCurrency } from '../../../utils/amount'
 
@@ -387,7 +387,7 @@ export function EmployeeManagement() {
                   <Descriptions.Item label="转正工资">
                     <SensitiveField value={formatAmountWithCurrency(record.regularSalaryCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
-                  <Descriptions.Item label="转正日期">{record.regularDate || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="转正日期"><EmptyText value={record.regularDate} /></Descriptions.Item>
                   <Descriptions.Item label="生活补贴">
                     <SensitiveField value={formatAmountWithCurrency(record.livingAllowanceCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
@@ -405,7 +405,7 @@ export function EmployeeManagement() {
                   </Descriptions.Item>
                   {record.status === 'resigned' && (
                     <>
-                      <Descriptions.Item label="离职日期">{record.leaveDate || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="离职日期"><EmptyText value={record.leaveDate} /></Descriptions.Item>
                       <Descriptions.Item label="离职类型">
                         {record.leave_type === 'resigned' ? '主动离职' :
                           record.leave_type === 'terminated' ? '被动离职' :
@@ -413,8 +413,8 @@ export function EmployeeManagement() {
                               record.leave_type === 'retired' ? '退休' :
                                 record.leave_type === 'other' ? '其他' : '-'}
                       </Descriptions.Item>
-                      <Descriptions.Item label="离职原因">{record.leave_reason || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="离职备注">{record.leave_memo || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="离职原因"><EmptyText value={record.leave_reason} /></Descriptions.Item>
+                      <Descriptions.Item label="离职备注"><EmptyText value={record.leave_memo} /></Descriptions.Item>
                     </>
                   )}
                   <Descriptions.Item label="USDT地址">
@@ -431,8 +431,8 @@ export function EmployeeManagement() {
                   <Descriptions.Item label="地址" span={2}>
                     <SensitiveField value={record.address || '-'} type="address" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
-                  <Descriptions.Item label="生日">{record.birthday || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="备注" span={2}>{record.memo || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="生日"><EmptyText value={record.birthday} /></Descriptions.Item>
+                  <Descriptions.Item label="备注" span={2}><EmptyText value={record.memo} /></Descriptions.Item>
                   {record.userId && (
                     <>
                       <Descriptions.Item label="账号状态">
@@ -444,7 +444,7 @@ export function EmployeeManagement() {
                             {record.positionName}
                           </Descriptions.Item>
                           <Descriptions.Item label="职位代码">
-                            {record.positionCode || '-'}
+                            <EmptyText value={record.positionCode} />
                           </Descriptions.Item>
                           <Descriptions.Item label="职位层级">
                             {record.positionLevel === 1 ? '总部' :

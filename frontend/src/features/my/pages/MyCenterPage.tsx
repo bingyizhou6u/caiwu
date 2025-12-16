@@ -5,7 +5,7 @@ import { useMyDashboard, useMyProfile } from '../../../hooks'
 // TODO: 考勤功能暂未实现
 // import { useAttendanceToday, useClockIn, useClockOut } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { StatusTag } from '../../../components/common'
+import { StatusTag, EmptyText } from '../../../components/common'
 import { LEAVE_STATUS, REIMBURSEMENT_STATUS, COMMON_STATUS, EMPLOYEE_STATUS, getStatusConfig } from '../../../utils/status'
 
 interface WorkSchedule {
@@ -184,14 +184,14 @@ export function MyCenter() {
                 <Col xs={24} lg={12}>
                   <Card title={<><UserOutlined /> 基本信息</>} className="page-card-inner">
                     <Descriptions column={1} bordered size="small">
-                      <Descriptions.Item label="姓名">{profileData?.name || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="邮箱">{profileData?.email || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="手机">{profileData?.phone || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="部门">{profileData?.orgDepartment || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="项目">{profileData?.department || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="职位">{profileData?.position || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="入职日期">{profileData?.entryDate || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="合同到期">{profileData?.contractEndDate || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="姓名"><EmptyText value={profileData?.name} /></Descriptions.Item>
+                      <Descriptions.Item label="邮箱"><EmptyText value={profileData?.email} /></Descriptions.Item>
+                      <Descriptions.Item label="手机"><EmptyText value={profileData?.phone} /></Descriptions.Item>
+                      <Descriptions.Item label="部门"><EmptyText value={profileData?.orgDepartment} /></Descriptions.Item>
+                      <Descriptions.Item label="项目"><EmptyText value={profileData?.department} /></Descriptions.Item>
+                      <Descriptions.Item label="职位"><EmptyText value={profileData?.position} /></Descriptions.Item>
+                      <Descriptions.Item label="入职日期"><EmptyText value={profileData?.entryDate} /></Descriptions.Item>
+                      <Descriptions.Item label="合同到期"><EmptyText value={profileData?.contractEndDate} /></Descriptions.Item>
                       <Descriptions.Item label="状态"><StatusTag status={profileData?.status || ''} statusMap={EMPLOYEE_STATUS} /></Descriptions.Item>
                     </Descriptions>
                   </Card>
@@ -206,8 +206,8 @@ export function MyCenter() {
                   </Card>
                   <Card title={<><SafetyCertificateOutlined /> 紧急联系人</>} style={{ marginTop: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                     <Descriptions column={1} bordered size="small">
-                      <Descriptions.Item label="紧急联系人">{profileData?.emergencyContact || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="紧急联系电话">{profileData?.emergencyPhone || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="紧急联系人"><EmptyText value={profileData?.emergencyContact} /></Descriptions.Item>
+                      <Descriptions.Item label="紧急联系电话"><EmptyText value={profileData?.emergencyPhone} /></Descriptions.Item>
                     </Descriptions>
                   </Card>
                 </Col>
@@ -226,9 +226,9 @@ export function MyCenter() {
                 <Col span={24}>
                   <Card title="银行信息" className="page-card-inner">
                     <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small">
-                      <Descriptions.Item label="身份证号">{profileData?.idCard || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="银行名称">{profileData?.bankName || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="银行账号">{profileData?.bankAccount || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="身份证号"><EmptyText value={profileData?.idCard} /></Descriptions.Item>
+                      <Descriptions.Item label="银行名称"><EmptyText value={profileData?.bankName} /></Descriptions.Item>
+                      <Descriptions.Item label="银行账号"><EmptyText value={profileData?.bankAccount} /></Descriptions.Item>
                     </Descriptions>
                   </Card>
                 </Col>

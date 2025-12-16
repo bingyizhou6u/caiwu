@@ -12,6 +12,12 @@ import {
   getDateRange,
 } from '../date'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/zh-cn'
+
+// 加载 relativeTime 插件用于 fromNow()
+dayjs.extend(relativeTime)
+dayjs.locale('zh-cn')
 
 describe('date utils', () => {
   describe('formatDate', () => {

@@ -13,7 +13,7 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import { DataTable, type DataTableColumn, AmountDisplay, PageToolbar, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
-import { VendorSelect } from '../../../components/form'
+import { VendorSelect, AmountInput, AccountSelect } from '../../../components/form'
 import { ARAP_STATUS } from '../../../utils/status'
 import type { ARAP } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
@@ -120,7 +120,7 @@ export function AP() {
     setFileList([])
     setVoucherUrl(undefined)
     confirmForm.form.resetFields()
-    confirmForm.form.setFieldValue({ bizDate: dayjs(record.issueDate) })
+    confirmForm.form.setFieldsValue({ bizDate: dayjs(record.issueDate) })
   }
 
   // ARAP 扩展类型（包含可能的 party 字段）
@@ -198,7 +198,7 @@ export function AP() {
               onClick: () => {
                 setCreateOpen(true)
                 createForm.form.resetFields()
-                createForm.form.setFieldValue({ issueDate: dayjs() })
+                createForm.form.setFieldsValue({ issueDate: dayjs() })
               }
             },
             {

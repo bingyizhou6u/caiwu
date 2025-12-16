@@ -17,6 +17,7 @@ import { SearchFilters } from '../../../components/common/SearchFilters'
 import { REIMBURSEMENT_STATUS } from '../../../utils/status'
 import type { ExpenseReimbursement } from '../../../hooks/business/useExpenses'
 import { PageContainer } from '../../../components/PageContainer'
+import { EmployeeSelect, CurrencySelect, AmountInput } from '../../../components/form'
 
 const { Option } = Select
 const { TextArea } = Input
@@ -548,7 +549,7 @@ export function ExpenseReimbursement() {
               <AmountInput
                 style={{ width: '100%' }}
                 placeholder="请输入报销金额"
-                currency={form.getFieldValue('currencyId')}
+                currency={createForm.getFieldValue('currencyId')}
               />
             </Form.Item>
             <Form.Item

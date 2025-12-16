@@ -66,7 +66,7 @@ export function LeaveManagement() {
   const isManager = _isManager()
 
   // 使用React Query hook获取员工数据
-  const { data: employeesData = [] } = useEmployees({ activeOnly: true })
+  const { data: employeesData = [] } = useEmployees(true)
   
   // 转换员工数据格式
   const employees = React.useMemo(() => {

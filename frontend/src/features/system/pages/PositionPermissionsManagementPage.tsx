@@ -288,7 +288,7 @@ function PermissionEditForm({
 }
 
 export function PositionPermissionsManagement() {
-  const { data: positions = [], isLoading } = usePositions()
+  const { data: positions = [], isLoading, refetch } = usePositions()
   const { mutateAsync: updatePosition } = useUpdatePosition()
   const modal = useFormModal<Position>()
   const [form] = Form.useForm()

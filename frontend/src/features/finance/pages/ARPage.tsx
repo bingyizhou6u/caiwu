@@ -51,7 +51,7 @@ export function AR() {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useIncomeCategories()
   const { data: sites = [] } = useSites()
-  const { data: docs = { total: 0, list: [] }, isLoading: loading, refetch: load } = useARDocs(page, pageSize)
+  const { data: docs = { total: 0, list: [] }, isLoading: loading, refetch } = useARDocs(page, pageSize)
   const { data: flows = [] } = useSettlementFlowOptions()
   const { data: detail } = useARStatement(detailDocId)
 
@@ -311,7 +311,7 @@ export function AR() {
                 <Descriptions.Item label="单号">{detail.doc?.docNo}</Descriptions.Item>
                 <Descriptions.Item label="状态">{detail.doc?.status}</Descriptions.Item>
                 <Descriptions.Item label="开立">{detail.doc?.issueDate}</Descriptions.Item>
-                <Descriptions.Item label="到期">{detail.doc?.dueDate || '-'}</Descriptions.Item>
+                <Descriptions.Item label="到期"><EmptyText value={detail.doc?.dueDate} /></Descriptions.Item>
                 <Descriptions.Item label="金额"><AmountDisplay cents={detail.doc?.amountCents} /></Descriptions.Item>
                 <Descriptions.Item label="已结"><AmountDisplay cents={detail.settledCents} /></Descriptions.Item>
                 <Descriptions.Item label="未结" span={2}><AmountDisplay cents={detail.remainingCents} /></Descriptions.Item>

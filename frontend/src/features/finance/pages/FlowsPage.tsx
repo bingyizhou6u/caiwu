@@ -287,7 +287,7 @@ export function Flows() {
         >
           {modals.getData('voucherUpload') && (
             <div style={{ marginBottom: 16 }}>
-              <p><strong>凭证号：</strong>{modals.getData('voucherUpload').voucherNo || '-'}</p>
+              <p><strong>凭证号：</strong><EmptyText value={modals.getData('voucherUpload').voucherNo} /></p>
               <p><strong>日期：</strong>{modals.getData('voucherUpload').bizDate}</p>
               <p><strong>金额：</strong><AmountDisplay cents={modals.getData('voucherUpload').amountCents} currency={modals.getData('voucherUpload').currency} /></p>
             </div>

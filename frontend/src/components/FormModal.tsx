@@ -10,7 +10,7 @@ export interface FormModalProps {
   open: boolean
   title: string
   form: FormInstance
-  onSubmit: () => Promise<void> | void
+  onSubmit: () => Promise<unknown> | void
   onCancel: () => void
   children: ReactNode
   okText?: string

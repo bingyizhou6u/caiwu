@@ -1,6 +1,7 @@
 import { Card, Typography, Space, Descriptions, Tag } from 'antd'
 import { UserOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons'
 import { usePermissions } from '../../../utils/permissions'
+import { EmptyText } from '../../../components/common'
 
 const { Title } = Typography
 
@@ -43,7 +44,7 @@ export function Dashboard() {
                     </Space>
                   }
                 >
-                  {user?.name || '-'}
+                  <EmptyText value={user?.name} />
                 </Descriptions.Item>
                 <Descriptions.Item
                   label={
@@ -53,7 +54,7 @@ export function Dashboard() {
                     </Space>
                   }
                 >
-                  {user?.email || '-'}
+                  <EmptyText value={user?.email} />
                 </Descriptions.Item>
                 {user?.position && (
                   <Descriptions.Item

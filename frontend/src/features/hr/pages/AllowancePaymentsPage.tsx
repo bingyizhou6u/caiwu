@@ -490,7 +490,7 @@ export function AllowancePayments() {
               <AmountInput
                 style={{ width: '100%' }}
                 placeholder="请输入金额"
-                currency={form.getFieldValue('currencyId')}
+                currency={createForm.getFieldValue('currencyId')}
               />
             </Form.Item>
             <Form.Item name="paymentDate" label="发放日期">

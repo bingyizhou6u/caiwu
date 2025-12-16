@@ -128,8 +128,8 @@ describe('useEmployees', () => {
 
             await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
+            // 实际只发送 ids，不需要 action 字段
             expect(apiClient.post).toHaveBeenCalledWith(expect.anything(), {
-                action: 'delete',
                 ids: ['1', '2']
             })
         })

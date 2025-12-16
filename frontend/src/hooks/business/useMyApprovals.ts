@@ -20,6 +20,17 @@ export interface PendingLeave {
   createdAt: number | null
 }
 
+export interface Approval {
+  id: string
+  type: 'leave' | 'reimbursement'
+  employeeId: string
+  employeeName?: string | null
+  departmentName?: string | null
+  status: string
+  createdAt: number | null
+  approvedAt?: number | null
+}
+
 export interface PendingReimbursement {
   id: string
   employeeId: string

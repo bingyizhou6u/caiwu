@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Table, theme } from 'antd';
-import type { TableProps, ColumnsType } from 'antd';
-import List from 'rc-virtual-list';
+import type { TableProps } from 'antd';
+import type { ColumnType } from 'antd/es/table';
+import List, { ListRef } from 'rc-virtual-list';
 import ResizeObserver from 'rc-resize-observer';
 
 export interface VirtualTableProps<RecordType> extends TableProps<RecordType> {
@@ -27,27 +28,22 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
         };
     });
 
-    const gridRef = useRef<{ scrollLeft?: number; scrollTo?: (options: { left: number }) => void; resetAfterIndex?: (index: number) => void } | null>(null);
+    const gridRef = useRef<ListRef>(null);
     const [connectObject] = useState<{ scrollLeft?: number }>(() => {
-        const obj = {};
+        const obj: { scrollLeft?: number } = {};
         Object.defineProperty(obj, 'scrollLeft', {
             get: () => {
-                if (gridRef.current) {
-                    return gridRef.current?.scrollLeft;
-                }
-                return null;
+                return gridRef.current?.getScrollInfo?.()?.x ?? null;
             },
             set: (scrollLeft: number) => {
-                if (gridRef.current) {
-                    gridRef.current.scrollTo({ left: scrollLeft });
-                }
+                gridRef.current?.scrollTo?.({ left: scrollLeft });
             },
         });
         return obj;
     });
 
     const resetVirtualGrid = () => {
-        gridRef.current?.resetAfterIndex(0);
+        // rc-virtual-list doesn't have resetAfterIndex, skip this
     };
 
     useEffect(() => resetVirtualGrid, [tableWidth]);
@@ -99,7 +95,10 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
                             className="virtual-table-row"
                         >
                             {mergedColumns.map((column, i) => {
-                                const { dataIndex, render, align = 'left' } = column;
+                                const col = column as ColumnType<RecordType>;
+                                const dataIndex = col.dataIndex as string | undefined;
+                                const render = col.render;
+                                const align = col.align || 'left';
                                 const value = dataIndex ? (item as Record<string, unknown>)[dataIndex] : item;
                                 const text = render ? render(value, item, index) : value;
 
@@ -119,7 +118,7 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
                                             borderBottom: `1px solid ${token.colorSplit}`,
                                         }}
                                     >
-                                        {text}
+                                        {text as React.ReactNode}
                                     </div>
                                 );
                             })}
@@ -142,8 +141,8 @@ export function VirtualTable<RecordType extends object>(props: VirtualTableProps
                 columns={mergedColumns}
                 pagination={false}
                 components={{
-                    body: renderVirtualList as TableProps<RecordType>['components']['body'],
-                }}
+                    body: renderVirtualList as unknown as TableProps<RecordType>['components'],
+                } as TableProps<RecordType>['components']}
             />
         </ResizeObserver>
     );
