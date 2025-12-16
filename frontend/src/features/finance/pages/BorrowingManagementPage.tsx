@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, Button, Input, Space, message, Select, DatePicker } from 'antd'
+import { Card, Button, Input, Space, Select, DatePicker, Form } from 'antd'
 import dayjs from 'dayjs'
 import { usePermissions } from '../../../utils/permissions'
 import { useCurrencies, useAccounts, useEmployees } from '../../../hooks/useBusinessData'
@@ -7,11 +7,9 @@ import { useBorrowings, useCreateBorrowing } from '../../../hooks'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createBorrowingSchema } from '../../../validations/borrowing.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable } from '../../../components/common/DataTable'
-import { SearchFilters } from '../../../components/common/SearchFilters'
+import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 import { FormModal } from '../../../components/FormModal'
 import type { Borrowing } from '../../../types/business'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function BorrowingManagement() {
@@ -74,14 +72,10 @@ export function BorrowingManagement() {
               setOpen(true)
             }}>新建借款</Button>
           )}
-          <Button onClick={() => refetch()}>刷新</Button>
         </Space>
-        <Table
-          className="table-striped"
-          rowKey="id"
-          loading={loading}
-          dataSource={borrowings.list}
-          columns={[
+        
+        <DataTable<Borrowing>
+          columns={useMemo<DataTableColumn<Borrowing>[]>(() => [
             { title: '借款人', dataIndex: 'borrowerName', render: (v: string, r: Borrowing) => v || r.borrowerEmail || '-' },
             { title: '邮箱', dataIndex: 'borrower_email', render: (v: string) => v || '-' },
             { title: '资金账户', dataIndex: 'accountName' },
@@ -92,7 +86,11 @@ export function BorrowingManagement() {
             { title: '借款日期', dataIndex: 'borrow_date' },
             { title: '备注', dataIndex: 'memo', render: (v: string) => v || '-' },
             { title: '创建人', dataIndex: 'creator_name' },
-          ]}
+          ], [])}
+          data={borrowings.list}
+          loading={loading}
+          rowKey="id"
+          onRefresh={refetch}
           pagination={{
             current: page,
             pageSize: pageSize,
@@ -100,10 +98,12 @@ export function BorrowingManagement() {
             onChange: (p, ps) => {
               setPage(p)
               setPageSize(ps)
-            },
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条`
+            }
           }}
+          tableProps={{
+            className: 'table-striped'
+          }}
+          showActions={false}
         />
 
         <FormModal

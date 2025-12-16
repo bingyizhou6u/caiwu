@@ -1,6 +1,7 @@
 import React from 'react'
-import { Breadcrumb } from 'antd'
+import { Breadcrumb, Spin } from 'antd'
 import { Link } from 'react-router-dom'
+import { ErrorBoundary } from './ErrorBoundary'
 import './PageContainer.css'
 
 interface BreadcrumbItem {
@@ -15,6 +16,9 @@ interface PageContainerProps {
     extra?: React.ReactNode
     children: React.ReactNode
     className?: string
+    loading?: boolean
+    errorBoundary?: boolean
+    errorFallback?: React.ReactNode
 }
 
 export function PageContainer({
@@ -22,9 +26,12 @@ export function PageContainer({
     breadcrumb,
     extra,
     children,
-    className = ''
+    className = '',
+    loading = false,
+    errorBoundary = true,
+    errorFallback,
 }: PageContainerProps) {
-    return (
+    const content = (
         <div className={`page-container animate-fade-in ${className}`}>
             {(title || breadcrumb || extra) && (
                 <div className="page-header">
@@ -51,8 +58,24 @@ export function PageContainer({
                 </div>
             )}
             <div className="page-content">
-                {children}
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '50px 0' }}>
+                        <Spin size="large" />
+                    </div>
+                ) : (
+                    children
+                )}
             </div>
         </div>
     )
+
+    if (errorBoundary) {
+        return (
+            <ErrorBoundary fallback={errorFallback}>
+                {content}
+            </ErrorBoundary>
+        )
+    }
+
+    return content
 }
