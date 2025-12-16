@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Card, Space, Statistic } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { SearchFilters } from '../../../components/common/SearchFilters'
-import { DataTable, AmountDisplay, EmptyText } from '../../../components/common'
+import { DataTable, AmountDisplay, EmptyText, StatusTag } from '../../../components/common'
+import { ARAP_STATUS } from '../../../utils/status'
 import { useARSummary } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
@@ -71,7 +72,7 @@ export function ReportARSummary() {
               { title: '客户', dataIndex: 'partyId', key: 'partyId' },
               { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
               { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
-              { title: '状态', dataIndex: 'status', key: 'status' },
+              { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <StatusTag status={status} statusMap={ARAP_STATUS} /> },
             ]}
             data={rows}
             loading={isLoading}

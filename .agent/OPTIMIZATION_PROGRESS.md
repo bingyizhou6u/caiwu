@@ -151,13 +151,24 @@
   - ✅ `MyProfilePage.tsx` - 为手机、身份证、银行账户添加 SensitiveField
 - **替换统计**: 3 处
 
+### ✅ Task 5.3: 推广 StatusTag 组件
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **已完成页面**:
+  - ✅ `ReportAPSummaryPage.tsx` - 状态列使用 StatusTag + ARAP_STATUS
+  - ✅ `ReportARSummaryPage.tsx` - 状态列使用 StatusTag + ARAP_STATUS
+  - ✅ `APPage.tsx` - 状态列使用 StatusTag + ARAP_STATUS
+  - ✅ `ARPage.tsx` - 状态列使用 StatusTag + ARAP_STATUS
+- **替换统计**: 4 处
+
 ### 📊 Week 5-6 总体统计
 
 - **SearchFilters**: 2 处
 - **FormModal**: 1 处
 - **SensitiveField**: 3 处
+- **StatusTag**: 4 处
 
-**总计**: 6 处替换
+**总计**: 10 处替换
 
 ## 🔄 进行中任务
 

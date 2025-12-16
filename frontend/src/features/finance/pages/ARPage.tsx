@@ -11,9 +11,10 @@ import { useAccounts, useIncomeCategories, useSites } from '../../../hooks/useBu
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createARSchema, confirmARSchema, settleARSchema } from '../../../validations/ar.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
+import { ARAP_STATUS } from '../../../utils/status'
 import type { ARAP } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
@@ -186,7 +187,7 @@ export function AR() {
     { title: '到期日', dataIndex: 'dueDate', key: 'dueDate' },
     { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
     { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
-    { title: '状态', dataIndex: 'status', key: 'status' },
+    { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <StatusTag status={status} statusMap={ARAP_STATUS} /> },
   ]
 
   return (
