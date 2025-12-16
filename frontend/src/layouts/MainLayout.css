@@ -4,7 +4,7 @@
 
 /* ========== SIDEBAR ========== */
 .main-sider {
-    overflow: auto;
+    overflow: hidden; /* 改为 hidden，避免滚动条闪烁 */
     height: 100vh;
     position: fixed;
     left: 0;
@@ -22,12 +22,26 @@
     box-shadow: 
         4px 0 32px rgba(0, 0, 0, 0.25),
         inset -1px 0 0 rgba(255, 255, 255, 0.02);
-    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: width;
+}
+
+/* 内部滚动容器 */
+.main-sider .ant-layout-sider-children {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100%;
+    transition: opacity 0.2s ease-in-out;
 }
 
 /* Hover expand - 确保展开时覆盖内容区 */
 .main-sider.ant-layout-sider-collapsed {
-    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 展开时的平滑过渡 */
+.main-sider:not(.ant-layout-sider-collapsed) {
+    transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Decorative gradient overlay */
@@ -86,10 +100,12 @@
     color: white;
     font-weight: 700;
     font-size: 20px;
-    transition: var(--transition-base);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     letter-spacing: 0.5px;
     position: relative;
     z-index: 1;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .logo-container::after {
@@ -133,6 +149,15 @@
     font-size: 24px;
     letter-spacing: 2px;
     font-weight: 800;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s,
+                transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s;
+}
+
+.logo-container:not(.collapsed) .logo-text {
+    opacity: 1;
+    transform: translateX(0);
 }
 
 .logo-container.collapsed {
@@ -150,6 +175,25 @@
     padding: 8px 14px;
     position: relative;
     z-index: 1;
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* 菜单项文字平滑显示 */
+.main-sider .ant-menu-dark .ant-menu-item,
+.main-sider .ant-menu-dark .ant-menu-submenu-title {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.main-sider.ant-layout-sider-collapsed .ant-menu-dark .ant-menu-item span,
+.main-sider.ant-layout-sider-collapsed .ant-menu-dark .ant-menu-submenu-title span {
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+}
+
+.main-sider:not(.ant-layout-sider-collapsed) .ant-menu-dark .ant-menu-item span,
+.main-sider:not(.ant-layout-sider-collapsed) .ant-menu-dark .ant-menu-submenu-title span {
+    opacity: 1;
+    transition: opacity 0.3s ease-in 0.1s;
 }
 
 /* Menu Item Base */
@@ -347,8 +391,9 @@
 
 /* ========== HEADER ========== */
 .main-content-layout {
-    transition: var(--transition-base);
+    transition: margin-left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     background: var(--color-bg-layout);
+    will-change: margin-left;
 }
 
 .main-header {

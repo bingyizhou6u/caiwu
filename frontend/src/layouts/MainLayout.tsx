@@ -50,18 +50,23 @@ export function MainLayout() {
         if (collapsed && !hoverExpanded) {
             if (hoverTimeoutRef.current) {
                 clearTimeout(hoverTimeoutRef.current)
+                hoverTimeoutRef.current = null
             }
-            setHoverExpanded(true)
-            setCollapsed(false)
+            // 使用 requestAnimationFrame 确保动画流畅
+            requestAnimationFrame(() => {
+                setHoverExpanded(true)
+                setCollapsed(false)
+            })
         }
     }
     
     const handleSiderMouseLeave = () => {
         if (hoverExpanded) {
+            // 减少延迟时间，配合更长的动画时间
             hoverTimeoutRef.current = setTimeout(() => {
                 setHoverExpanded(false)
                 setCollapsed(true)
-            }, 200) // 200ms 延迟，避免快速移动时闪烁
+            }, 150) // 150ms 延迟
         }
     }
     
