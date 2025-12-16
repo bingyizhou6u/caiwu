@@ -18,7 +18,6 @@ export function MainLayout() {
         userInfo,
         collapsed,
         toggleCollapsed,
-        setCollapsed,
         logout,
         themeMode,
         toggleTheme
@@ -55,7 +54,6 @@ export function MainLayout() {
             // 使用 requestAnimationFrame 确保动画流畅
             requestAnimationFrame(() => {
                 setHoverExpanded(true)
-                setCollapsed(false)
             })
         }
     }
@@ -65,7 +63,6 @@ export function MainLayout() {
             // 减少延迟时间，配合更长的动画时间
             hoverTimeoutRef.current = setTimeout(() => {
                 setHoverExpanded(false)
-                setCollapsed(true)
             }, 150) // 150ms 延迟
         }
     }
@@ -224,7 +221,7 @@ export function MainLayout() {
                     getPopupContainer={(node) => node.parentElement || document.body}
                 />
             </Sider>
-            <Layout className="main-content-layout" style={{ marginLeft: (collapsed && !hoverExpanded) ? 80 : 240 }}>
+            <Layout className="main-content-layout" style={{ marginLeft: collapsed ? 80 : 240 }}>
                 <Header className="main-header">
                     <div
                         className="trigger-btn"
