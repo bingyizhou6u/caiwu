@@ -85,6 +85,32 @@ npm run gen:types
 - **Format**: Prettier
 - **Commit**: Conventional Commits
 
+### 组件使用规范
+
+**重要**: 所有页面必须使用公共组件，详见 [组件使用指南](./docs/COMPONENT_USAGE_GUIDE.md)
+
+#### 必须使用的组件
+
+- ✅ **PageContainer**: 所有页面组件
+- ✅ **DataTable**: 所有列表页面
+- ✅ **Form 表单组件**: 所有表单页面
+  - `AccountSelect` - 账户选择
+  - `AmountInput` - 金额输入
+  - `CurrencySelect` - 币种选择
+  - `DepartmentSelect` - 部门选择
+  - `EmployeeSelect` - 员工选择
+  - `VendorSelect` - 供应商选择
+
+#### 应该使用的组件
+
+- ✅ **SearchFilters**: 列表页面搜索筛选
+- ✅ **FormModal**: 弹窗表单
+- ✅ **AmountDisplay**: 金额显示
+- ✅ **SensitiveField**: 敏感信息显示
+
+详细使用指南请参考：[组件使用指南](./docs/COMPONENT_USAGE_GUIDE.md)  
+代码审查检查清单：[代码审查检查清单](./docs/CODE_REVIEW_CHECKLIST.md)
+
 ## 📄 许可证
 
 Private

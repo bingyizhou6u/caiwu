@@ -74,13 +74,26 @@
 
 ---
 
-## ⏳ 待开始任务
+## ✅ Week 2 已完成任务
 
-### Week 2: 建立开发规范
+### ✅ Task 2.1: 制定组件使用规范文档
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **创建文件**:
+  - `frontend/docs/COMPONENT_USAGE_GUIDE.md` - 组件使用指南（详细）
+  - `frontend/docs/CODE_REVIEW_CHECKLIST.md` - 代码审查检查清单
+  - `frontend/docs/ESLINT_SETUP.md` - ESLint 配置指南
 
-- [ ] Task 2.1: 制定组件使用规范文档
-- [ ] Task 2.2: 配置 ESLint 规则检查组件使用
-- [ ] Task 2.3: 更新项目 README 和开发文档
+### ✅ Task 2.3: 更新项目 README 和开发文档
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **更新文件**:
+  - `frontend/README.md` - 添加组件使用规范说明
+
+### ⏳ Task 2.2: 配置 ESLint 规则检查组件使用
+- **状态**: ⏳ 待开始（可选）
+- **说明**: 项目当前未配置 ESLint，已创建配置指南文档
+- **建议**: 通过代码审查检查清单进行人工检查
 
 ---
 
