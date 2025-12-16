@@ -381,14 +381,22 @@ export function LeaveManagement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
-          {canEdit && (
-            <Button type="primary" onClick={openCreate}>
-              新建请假
-            </Button>
-          )}
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '刷新',
+              icon: <ReloadOutlined />,
+              onClick: () => refetch(),
+              loading: isLoading
+            },
+            ...(canEdit ? [{
+              label: '新建请假',
+              type: 'primary' as const,
+              onClick: openCreate
+            }] : [])
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<EmployeeLeave>
           columns={columns}

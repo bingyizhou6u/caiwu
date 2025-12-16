@@ -7,9 +7,8 @@ import { siteSchema } from '../../../validations/site.schema'
 import { FormModal } from '../../../components/FormModal'
 import { usePermissions } from '../../../utils/permissions'
 import type { Site } from '../../../types'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, EmptyText, PageToolbar } from '../../../components/common'
 import type { DataTableColumn } from '../../../components/common/DataTable'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function SiteManagement() {
@@ -93,20 +92,28 @@ export function SiteManagement() {
       breadcrumb={[{ title: '站点管理' }, { title: '站点列表' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
-          {canManageSites && (
-            <Button type="primary" onClick={() => {
-              modal.openCreate()
-              form.resetFields()
-            }}>新建站点</Button>
-          )}
-          <Button onClick={() => refetch()} loading={isLoading}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            ...(canManageSites ? [{
+              label: '新建站点',
+              type: 'primary' as const,
+              onClick: () => {
+                modal.openCreate()
+                form.resetFields()
+              }
+            }] : []),
+            {
+              label: '刷新',
+              onClick: () => refetch(),
+              loading: isLoading
+            }
+          ]}
+        />
         <DataTable<Site>
           columns={[
             { title: '站点名称', dataIndex: 'name', key: 'name', width: 120 },
-            { title: '站点编号', dataIndex: 'siteCode', key: 'siteCode', width: 120, render: (v: string) => v || '-' },
-            { title: '版面风格', dataIndex: 'themeStyle', key: 'themeStyle', width: 120, render: (v: string) => v || '-' },
+            { title: '站点编号', dataIndex: 'siteCode', key: 'siteCode', width: 120, render: (v: string) => <EmptyText value={v} /> },
+            { title: '版面风格', dataIndex: 'themeStyle', key: 'themeStyle', width: 120, render: (v: string) => <EmptyText value={v} /> },
             {
               title: '主题色',
               dataIndex: 'themeColor',

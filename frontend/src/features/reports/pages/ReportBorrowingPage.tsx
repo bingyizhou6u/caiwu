@@ -48,10 +48,6 @@ type BorrowerDetail = {
   repayments: RepaymentRecord[]
 }
 
-const formatAmount = (cents: number, currency: string) => {
-  return `${(cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`
-}
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportBorrowing() {
@@ -156,7 +152,7 @@ export function ReportBorrowing() {
       key: 'amountCents',
       width: 150,
       align: 'right',
-      render: (cents: number, record: BorrowingRecord) => formatAmount(cents, record.currency),
+      render: (cents: number, record: BorrowingRecord) => <AmountDisplay cents={cents} currency={record.currency} />,
     },
     {
       title: '账户',
@@ -192,7 +188,7 @@ export function ReportBorrowing() {
       key: 'amountCents',
       width: 150,
       align: 'right',
-      render: (cents: number, record: RepaymentRecord) => formatAmount(cents, record.currency),
+      render: (cents: number, record: RepaymentRecord) => <AmountDisplay cents={cents} currency={record.currency} />,
     },
     {
       title: '对应借款日期',

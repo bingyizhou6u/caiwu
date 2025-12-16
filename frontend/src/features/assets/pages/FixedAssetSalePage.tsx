@@ -4,24 +4,17 @@ import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
 import dayjs from 'dayjs'
-import { formatAmount } from '../../../utils/formatters'
 import { useAccounts, useIncomeCategories } from '../../../hooks/useBusinessData'
 import { useFixedAssets, useFixedAssetSale } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { SearchFilters } from '../../../components/common/SearchFilters'
-
-const { TextArea } = Input
-
-const STATUS_OPTIONS = [
-  { value: 'in_use', label: '在用' },
-  { value: 'idle', label: '闲置' },
-  { value: 'maintenance', label: '维修中' },
-]
-
+import { SearchFilters, StatusTag } from '../../../components/common'
+import { FIXED_ASSET_STATUS } from '../../../utils/status'
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable } from '../../../components/common/DataTable'
+
+const { TextArea } = Input
 
 export function FixedAssetSale() {
   const [open, setOpen] = useState(false)
@@ -179,15 +172,7 @@ export function FixedAssetSale() {
               dataIndex: 'status',
               key: 'status',
               width: 100,
-              render: (v: string) => {
-                const option = STATUS_OPTIONS.find(o => o.value === v)
-                const colors: Record<string, string> = {
-                  in_use: 'green',
-                  idle: 'orange',
-                  maintenance: 'blue',
-                }
-                return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
-              }
+              render: (v: string) => <StatusTag status={v} statusMap={FIXED_ASSET_STATUS} />
             },
           ] as DataTableColumn<FixedAsset>[]}
           data={data}

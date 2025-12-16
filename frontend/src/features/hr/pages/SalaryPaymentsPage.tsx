@@ -13,7 +13,7 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { salaryPaymentGenerateSchema, salaryPaymentTransferSchema, salaryPaymentAllocationSchema, salaryPaymentConfirmSchema } from '../../../validations/salary.schema'
-import { DataTable, StatusTag, AmountDisplay } from '../../../components/common'
+import { DataTable, StatusTag, AmountDisplay, PageToolbar, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { SALARY_PAYMENT_STATUS } from '../../../utils/status'
 import type { SalaryPayment } from '../../../hooks/business/useSalaryPayments'
@@ -426,14 +426,20 @@ export function SalaryPayments() {
           initialValues={{ year, month: month || '', status: status || '' }}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          {_isFinance && (
-            <Button type="primary" onClick={openGenerate}>
-              生成薪资单
-            </Button>
-          )}
-          <Button onClick={() => refetch()}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            ...(_isFinance ? [{
+              label: '生成薪资单',
+              type: 'primary' as const,
+              onClick: openGenerate
+            }] : []),
+            {
+              label: '刷新',
+              onClick: () => refetch()
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<SalaryPayment>
           columns={columns}

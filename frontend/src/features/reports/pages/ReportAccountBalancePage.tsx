@@ -4,7 +4,7 @@ import { HomeOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
 import { useAccountBalance } from '../../../hooks'
 import type { AccountBalanceResponse } from '../../../hooks/business/useReports'
-import { DataTable, type DataTableColumn, AmountDisplay, EmptyText } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
 
 type ViewLevel = 'currency' | 'accounts' | 'details'
 type CurrencySummary = {
@@ -141,7 +141,17 @@ export function ReportAccountBalance() {
       breadcrumb={[{ title: '报表中心' }, { title: '账户余额报表' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }} wrap>
+        <PageToolbar
+          actions={[
+            {
+              label: '查询',
+              type: 'primary',
+              onClick: loadCurrencySummary,
+              loading: loading
+            }
+          ]}
+          wrap
+        >
           <DatePicker
             id="report-account-balance-date"
             value={asOf}
@@ -149,8 +159,7 @@ export function ReportAccountBalance() {
             format="YYYY-MM-DD"
             placeholder="截至日期"
           />
-          <Button type="primary" onClick={loadCurrencySummary} loading={loading}>查询</Button>
-        </Space>
+        </PageToolbar>
 
         {viewLevel !== 'currency' && (
           <Breadcrumb style={{ marginBottom: 16 }} items={breadcrumbItems} />

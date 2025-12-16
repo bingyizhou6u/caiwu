@@ -3,13 +3,12 @@ import { Card, Button, Form, Input, Space, message, Popconfirm, Switch } from 'a
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment, useFormModal, useZodForm } from '../../../hooks'
 import { departmentSchema } from '../../../validations/department.schema'
 import type { Department } from '../../../types'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function DepartmentManagement() {
@@ -118,14 +117,17 @@ export function DepartmentManagement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          {canManageDepartments && (
-            <Button type="primary" onClick={() => {
+        <PageToolbar
+          actions={canManageDepartments ? [{
+            label: '新建项目',
+            type: 'primary',
+            onClick: () => {
               modal.openCreate()
               deptForm.resetFields()
-            }}>新建项目</Button>
-          )}
-        </Space>
+            }
+          }] : []}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<Department>
           columns={columns}

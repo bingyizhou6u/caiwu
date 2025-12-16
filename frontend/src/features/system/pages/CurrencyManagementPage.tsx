@@ -3,7 +3,7 @@ import { Card, Button, Form, Input, Space, message, Switch, Popconfirm } from 'a
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import { useCurrencies, useCreateCurrency, useUpdateCurrency, useDeleteCurrency, useToggleCurrencyActive } from '../../../hooks/business/useCurrencies'
@@ -11,7 +11,6 @@ import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { currencySchema } from '../../../validations/currency.schema'
 import type { Currency } from '../../../types'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function CurrencyManagement() {
@@ -143,10 +142,21 @@ export function CurrencyManagement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button type="primary" onClick={() => { cModal.openCreate(); cForm.resetFields() }}>新增币种</Button>
-          <Button onClick={() => refetch()} loading={isLoading}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '新增币种',
+              type: 'primary',
+              onClick: () => { cModal.openCreate(); cForm.resetFields() }
+            },
+            {
+              label: '刷新',
+              onClick: () => refetch(),
+              loading: isLoading
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<Currency>
           columns={columns}

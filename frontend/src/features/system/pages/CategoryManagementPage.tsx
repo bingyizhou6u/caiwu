@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Card, Button, Input, Select, Space, message, Form } from 'antd'
 import { handleConflictError } from '../../../utils/api'
 import { FormModal } from '../../../components/FormModal'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../../hooks/business/useCategories'
@@ -11,13 +11,12 @@ import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { categorySchema } from '../../../validations/category.schema'
 import type { Category } from '../../../types'
+import { PageContainer } from '../../../components/PageContainer'
 
 const KIND_LABELS: Record<string, string> = {
   income: '收入',
   expense: '支出',
 }
-
-import { PageContainer } from '../../../components/PageContainer'
 
 export function CategoryManagement() {
   const { data: data = [], isLoading, refetch } = useCategories()
@@ -117,10 +116,20 @@ export function CategoryManagement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button type="primary" onClick={() => { openCreate(); form.setFieldsValue({ kind: 'income' }) }}>新建类别</Button>
-          <Button onClick={() => refetch()}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '新建类别',
+              type: 'primary',
+              onClick: () => { openCreate(); form.setFieldsValue({ kind: 'income' }) }
+            },
+            {
+              label: '刷新',
+              onClick: () => refetch()
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<Category>
           columns={columns}

@@ -15,7 +15,7 @@ import { FormModal } from '../../../components/FormModal'
 import type { AccountTransfer as AccountTransferType } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, PageToolbar, AmountDisplay } from '../../../components/common'
 
 export function AccountTransfer() {
   const [open, setOpen] = useState(false)
@@ -113,14 +113,25 @@ export function AccountTransfer() {
       breadcrumb={[{ title: '财务管理' }, { title: '账户转账' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 16 }}>
-          <Button type="primary" onClick={() => setOpen(true)}>新建转账</Button>
+        <PageToolbar
+          actions={[
+            {
+              label: '新建转账',
+              type: 'primary',
+              onClick: () => setOpen(true)
+            },
+            {
+              label: '刷新',
+              onClick: () => refetch()
+            }
+          ]}
+          style={{ marginBottom: 16 }}
+        >
           <DateRangePicker
             value={dateRange}
             onChange={setDateRange}
           />
-          <Button onClick={() => refetch()}>刷新</Button>
-        </Space>
+        </PageToolbar>
 
         <DataTable<AccountTransferType>
           columns={[
@@ -142,7 +153,7 @@ export function AccountTransfer() {
               key: 'fromAmountCents',
               width: 120,
               align: 'right',
-              render: (v: number) => (v / 100).toFixed(2)
+              render: (v: number, r: AccountTransferType) => <AmountDisplay cents={v} currency={r.fromAccountCurrency} />
             },
             {
               title: '转入账户',
@@ -161,7 +172,7 @@ export function AccountTransfer() {
               key: 'toAmountCents',
               width: 120,
               align: 'right',
-              render: (v: number) => (v / 100).toFixed(2)
+              render: (v: number, r: AccountTransferType) => <AmountDisplay cents={v} currency={r.toAccountCurrency} />
             },
             {
               title: '汇率',

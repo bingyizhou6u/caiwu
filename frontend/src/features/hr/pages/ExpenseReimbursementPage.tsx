@@ -4,7 +4,6 @@ import { api } from '../../../config/api'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { EyeOutlined, UploadOutlined, ReloadOutlined } from '@ant-design/icons'
-import { formatAmount } from '../../../utils/formatters'
 import { useCurrencies, useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
 import { uploadImageAsWebP } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
@@ -13,7 +12,7 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { expenseSchema, approveExpenseSchema } from '../../../validations/expense.schema'
-import { DataTable, StatusTag, AmountDisplay, EmptyText } from '../../../components/common'
+import { DataTable, StatusTag, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { REIMBURSEMENT_STATUS } from '../../../utils/status'
 import type { ExpenseReimbursement } from '../../../hooks/business/useExpenses'
@@ -305,7 +304,7 @@ export function ExpenseReimbursement() {
       align: 'right',
       render: (cents: number, record: ExpenseReimbursement) => (
         <span>
-          {formatAmount(cents)}
+          <AmountDisplay cents={cents} currency={record.currencyCode || 'CNY'} />
           {record.currencyCode && <span style={{ color: '#999', marginLeft: 4 }}>({record.currencyCode})</span>}
         </span>
       ),
@@ -448,23 +447,22 @@ export function ExpenseReimbursement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
-          {canEdit && (
-            <Button type="primary" onClick={openCreate}>
-              新建报销
-            </Button>
-          )}
-        </Space>
-
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
-          {canEdit && (
-            <Button type="primary" onClick={openCreate}>
-              新建报销
-            </Button>
-          )}
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '刷新',
+              icon: <ReloadOutlined />,
+              onClick: () => refetch(),
+              loading: isLoading
+            },
+            ...(canEdit ? [{
+              label: '新建报销',
+              type: 'primary' as const,
+              onClick: openCreate
+            }] : [])
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<ExpenseReimbursement>
           columns={columns}
@@ -737,7 +735,7 @@ export function ExpenseReimbursement() {
               <Input value={EXPENSE_TYPE_LABELS[approveRow?.expenseType || '']} disabled />
             </Form.Item>
             <Form.Item label="报销金额">
-              <Input value={`${formatAmount(approveRow?.amountCents || 0)} (${approveRow?.currencyCode || '-'})`} disabled />
+              <Input value={`${(approveRow?.amountCents || 0) / 100} (${approveRow?.currencyCode || '-'})`} disabled />
             </Form.Item>
             <Form.Item label="报销日期">
               <Input value={approveRow?.expenseDate} disabled />

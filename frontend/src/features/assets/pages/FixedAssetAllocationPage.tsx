@@ -18,7 +18,7 @@ const ALLOCATION_TYPE_OPTIONS = [
 ]
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, EmptyText } from '../../../components/common'
+import { DataTable, EmptyText, PageToolbar } from '../../../components/common'
 
 export function FixedAssetAllocation() {
   const [allocateOpen, setAllocateOpen] = useState(false)

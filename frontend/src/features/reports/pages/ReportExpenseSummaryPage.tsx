@@ -2,10 +2,9 @@ import { useState, useMemo } from 'react'
 import { Card, Button, Space, Statistic } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
 import { useExpenseSummary } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportExpenseSummary() {
@@ -36,17 +35,25 @@ export function ReportExpenseSummary() {
       breadcrumb={[{ title: '报表中心' }, { title: '日常支出汇总' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }} wrap>
+        <PageToolbar
+          actions={[
+            {
+              label: '查询',
+              type: 'primary',
+              onClick: handleQuery
+            }
+          ]}
+          wrap
+        >
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          <Button type="primary" onClick={handleQuery}>查询</Button>
-        </Space>
+        </PageToolbar>
         <Space style={{ marginBottom: 12 }}>
           <Statistic title="支出总额" value={((stats.total || 0) / 100).toFixed(2)} />
         </Space>
         <DataTable<{ categoryId: string; categoryName: string; totalCents: number; count: number }>
           columns={[
             { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
-            { title: '金额', dataIndex: 'totalCents', key: 'totalCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '金额', dataIndex: 'totalCents', key: 'totalCents', render: (v: number) => <AmountDisplay cents={v} currency="CNY" /> },
             { title: '笔数', dataIndex: 'count', key: 'count' },
           ]}
           data={rows}

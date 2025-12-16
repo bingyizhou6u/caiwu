@@ -6,13 +6,13 @@ import type { FormInstance } from 'antd'
 import { api } from '../../../config/api'
 import { api as apiClient } from '../../../api/http'
 import dayjs from 'dayjs'
-import { formatAmount } from '../../../utils/formatters'
 import type { RentalProperty, DormitoryAllocation, RentalPayment, RentalPropertyChange } from '../../../types/rental'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn, EmptyText, PageToolbar } from '../../../components/common'
+import { DataTable, type DataTableColumn, EmptyText, PageToolbar, StatusTag, AmountDisplay } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { RENTAL_STATUS } from '../../../utils/status'
 import { useRentalProperties, useRentalProperty, useCreateRentalProperty, useUpdateRentalProperty, useCreateRentalPayment, useAllocateDormitory } from '../../../hooks'
 import { useCurrencies, useDepartments, useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
@@ -465,11 +465,17 @@ export function RentalManagement() {
               width: 120,
               render: (_: unknown, r: RentalProperty) => {
                 if (r.rentType === 'yearly') {
-                  const rent = r.yearlyRentCents ? formatAmount(r.yearlyRentCents) : '0.00'
-                  return `${rent} ${r.currency || ''}/年`
+                  return (
+                    <span>
+                      <AmountDisplay cents={r.yearlyRentCents || 0} currency={r.currency || 'CNY'} /> /年
+                    </span>
+                  )
                 } else {
-                  const rent = r.monthlyRentCents ? formatAmount(r.monthlyRentCents) : '0.00'
-                  return `${rent} ${r.currency || ''}/月`
+                  return (
+                    <span>
+                      <AmountDisplay cents={r.monthlyRentCents || 0} currency={r.currency || 'CNY'} /> /月
+                    </span>
+                  )
                 }
               }
             },
@@ -502,15 +508,7 @@ export function RentalManagement() {
               dataIndex: 'status',
               key: 'status',
               width: 100,
-              render: (v: string) => {
-                const option = STATUS_OPTIONS.find(o => o.value === v)
-                const colors: Record<string, string> = {
-                  active: 'green',
-                  expired: 'orange',
-                  terminated: 'red',
-                }
-                return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
-              }
+              render: (v: string) => <StatusTag status={v} statusMap={RENTAL_STATUS} />
             },
             {
               title: '操作',
@@ -834,12 +832,12 @@ export function RentalManagement() {
                 <p><strong>面积：</strong>{currentProperty.areaSqm ? `${currentProperty.areaSqm} 平方米` : '-'}</p>
                 <p><strong>租金类型：</strong>{RENT_TYPE_OPTIONS.find(o => o.value === currentProperty.rentType)?.label || currentProperty.rentType || '月租'}</p>
                 {currentProperty.rentType === 'yearly' ? (
-                  <p><strong>年租金：</strong>{currentProperty.yearlyRentCents ? formatAmount(currentProperty.yearlyRentCents) : '-'} {currentProperty.currency}</p>
+                  <p><strong>年租金：</strong><AmountDisplay cents={currentProperty.yearlyRentCents} currency={currentProperty.currency} /></p>
                 ) : (
-                  <p><strong>月租金：</strong>{currentProperty.monthlyRentCents ? formatAmount(currentProperty.monthlyRentCents) : '-'} {currentProperty.currency}</p>
+                  <p><strong>月租金：</strong><AmountDisplay cents={currentProperty.monthlyRentCents} currency={currentProperty.currency} /></p>
                 )}
                 <p><strong>付款周期：</strong>{PAYMENT_PERIOD_OPTIONS.find(o => o.value === currentProperty.paymentPeriodMonths)?.label || `${currentProperty.paymentPeriodMonths || 1}月`}</p>
-                <p><strong>押金：</strong>{currentProperty.depositCents ? formatAmount(currentProperty.depositCents) : '-'} {currentProperty.currency}</p>
+                <p><strong>押金：</strong><AmountDisplay cents={currentProperty.depositCents} currency={currentProperty.currency} /></p>
                 <p><strong>房东姓名：</strong>{currentProperty.landlordName || '-'}</p>
                 <p><strong>房东联系方式：</strong>{currentProperty.landlordContact || '-'}</p>
                 <p><strong>租赁开始：</strong>{currentProperty.leaseStartDate || '-'}</p>
@@ -883,7 +881,7 @@ export function RentalManagement() {
                     title: '金额',
                     key: 'amount',
                     width: 120,
-                    render: (_: unknown, r: RentalPayment) => `${formatAmount(r.amountCents)} ${r.currency || ''}`
+                    render: (_: unknown, r: RentalPayment) => <AmountDisplay cents={r.amountCents} currency={r.currency || 'CNY'} />
                   },
                   { title: '付款账户', dataIndex: 'accountName', key: 'accountName', width: 150 },
                   { title: '付款方式', dataIndex: 'paymentMethod', key: 'paymentMethod', width: 100 },
@@ -924,7 +922,7 @@ export function RentalManagement() {
                       title: '员工月租金',
                       key: 'monthlyRent',
                       width: 120,
-                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.monthlyRentCents ? `${formatAmount(r.monthlyRentCents)} ${currentProperty.currency}` : '-'
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.monthlyRentCents ? <AmountDisplay cents={r.monthlyRentCents} currency={currentProperty.currency} /> : <EmptyText value={null} />
                     },
                     { title: '状态', key: 'status', width: 100, render: (_: unknown, r: DormitoryAllocationWithDetails) => r.returnDate ? '已归还' : '使用中' },
                   ] satisfies DataTableColumn<DormitoryAllocationWithDetails>[]}
@@ -999,7 +997,7 @@ export function RentalManagement() {
                     width: 120,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => {
                       const amount = r.from_monthlyRentCents || r.fromMonthlyRentCents
-                      return amount ? formatAmount(amount) : '-'
+                      return amount ? <AmountDisplay cents={amount} currency={currentProperty.currency} /> : <EmptyText value={null} />
                     }
                   },
                   {
@@ -1008,7 +1006,7 @@ export function RentalManagement() {
                     width: 120,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => {
                       const amount = r.to_monthlyRentCents || r.toMonthlyRentCents
-                      return amount ? formatAmount(amount) : '-'
+                      return amount ? <AmountDisplay cents={amount} currency={currentProperty.currency} /> : <EmptyText value={null} />
                     }
                   },
                   { 

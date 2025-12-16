@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { Card, Button, Space } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay } from '../../../components/common'
+import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
 import { useAPDetail } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportAPDetail() {
@@ -31,10 +30,18 @@ export function ReportAPDetail() {
       breadcrumb={[{ title: '报表中心' }, { title: '应付账款明细' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }} wrap>
+        <PageToolbar
+          actions={[
+            {
+              label: '查询',
+              type: 'primary',
+              onClick: handleQuery
+            }
+          ]}
+          wrap
+        >
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          <Button type="primary" onClick={handleQuery}>查询</Button>
-        </Space>
+        </PageToolbar>
         <DataTable<any>
           columns={[
             { title: '单号', dataIndex: 'docNo', key: 'docNo' },

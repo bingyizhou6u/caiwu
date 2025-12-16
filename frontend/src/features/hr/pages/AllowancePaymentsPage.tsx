@@ -4,7 +4,6 @@ import { UploadOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { api } from '../../../config/api'
-import { formatAmount } from '../../../utils/formatters'
 import dayjs from 'dayjs'
 import { useCurrencies, useAccounts, useEmployees } from '../../../hooks/useBusinessData'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
@@ -14,7 +13,7 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { allowancePaymentSchema, allowancePaymentUpdateSchema, allowancePaymentGenerateSchema } from '../../../validations/allowance.schema'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { AllowancePayment } from '../../../hooks/business/useAllowances'
 
@@ -256,7 +255,7 @@ export function AllowancePayments() {
       key: 'amountCents',
       width: 120,
       align: 'right',
-      render: (cents: number, record: AllowancePayment) => formatAmount(cents),
+      render: (cents: number, record: AllowancePayment) => <AmountDisplay cents={cents} currency={record.currencyId || 'CNY'} />,
     },
     {
       title: '发放日期',
@@ -398,19 +397,28 @@ export function AllowancePayments() {
           initialValues={{ year, month: month || '', allowanceType: allowanceType || '', employeeId: employeeId || '' }}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          {canManage && (
-            <>
-              <Button onClick={onGenerateOpen}>
-                生成补贴发放
-              </Button>
-              <Button type="primary" onClick={openCreate}>
-                新建发放记录
-              </Button>
-            </>
-          )}
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            ...(canManage ? [
+              {
+                label: '生成补贴发放',
+                onClick: onGenerateOpen
+              },
+              {
+                label: '新建发放记录',
+                type: 'primary' as const,
+                onClick: openCreate
+              }
+            ] : []),
+            {
+              label: '刷新',
+              icon: <ReloadOutlined />,
+              onClick: () => refetch(),
+              loading: isLoading
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<AllowancePayment>
           columns={columns}

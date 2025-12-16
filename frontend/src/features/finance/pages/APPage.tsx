@@ -10,11 +10,10 @@ import { useAccounts, useExpenseCategories } from '../../../hooks/useBusinessDat
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createAPSchema, confirmAPSchema } from '../../../validations/ap.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, AmountDisplay } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
 import type { ARAP } from '../../../types/business'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function AP() {
@@ -185,14 +184,24 @@ export function AP() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button type="primary" onClick={() => {
-            setCreateOpen(true)
-            createForm.form.resetFields()
-            createForm.form.setFieldValue({ issueDate: dayjs() })
-          }}>新建应付</Button>
-          <Button onClick={() => refetch()}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            {
+              label: '新建应付',
+              type: 'primary',
+              onClick: () => {
+                setCreateOpen(true)
+                createForm.form.resetFields()
+                createForm.form.setFieldValue({ issueDate: dayjs() })
+              }
+            },
+            {
+              label: '刷新',
+              onClick: () => refetch()
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<ARAPWithParty>
           columns={columns}

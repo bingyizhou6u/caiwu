@@ -7,11 +7,10 @@ import { useBorrowings, useRepayments, useCreateRepayment } from '../../../hooks
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createRepaymentSchema } from '../../../validations/repayment.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, AmountDisplay, EmptyText } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
 import type { Repayment, Borrowing } from '../../../types/business'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function RepaymentManagement() {
@@ -30,11 +29,14 @@ export function RepaymentManagement() {
   const { mutateAsync: createRepayment, isPending: isCreating } = useCreateRepayment()
 
   // 借款选项
-  const borrowingOptions = (borrowingsData.list || []).map((b: Borrowing) => ({
-    value: b.id,
-    label: `${b.borrowerName || b.borrowerEmail || '-'} - ${(b.amountCents / 100).toFixed(2)} ${b.currency} (${b.borrowDate})`,
-    currency: b.currency
-  }))
+  const borrowingOptions = (borrowingsData.list || []).map((b: Borrowing) => {
+    const amount = (b.amountCents / 100).toFixed(2)
+    return {
+      value: b.id,
+      label: `${b.borrowerName || b.borrowerEmail || '-'} - ${amount} ${b.currency} (${b.borrowDate})`,
+      currency: b.currency
+    }
+  })
 
   // 处理函数
   const handleSubmit = withErrorHandler(
@@ -79,16 +81,24 @@ export function RepaymentManagement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          {canEdit && (
-            <Button type="primary" onClick={() => {
-              form.resetFields()
-              form.setFieldsValue({ repay_date: dayjs() })
-              setOpen(true)
-            }}>新建还款</Button>
-          )}
-          <Button onClick={() => refetch()}>刷新</Button>
-        </Space>
+        <PageToolbar
+          actions={[
+            ...(canEdit ? [{
+              label: '新建还款',
+              type: 'primary' as const,
+              onClick: () => {
+                form.resetFields()
+                form.setFieldsValue({ repay_date: dayjs() })
+                setOpen(true)
+              }
+            }] : []),
+            {
+              label: '刷新',
+              onClick: () => refetch()
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         {(() => {
           // 过滤数据

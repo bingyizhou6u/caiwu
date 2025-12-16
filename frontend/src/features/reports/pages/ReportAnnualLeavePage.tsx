@@ -3,7 +3,7 @@ import { Card, Typography, Space, Select, Row, Col, Statistic, Progress, Tag, Al
 import { CalendarOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { useDepartments } from '../../../hooks/useBusinessData'
 import { useAnnualLeave } from '../../../hooks'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, PageToolbar, EmptyText } from '../../../components/common'
 
 const { Title, Text } = Typography
 
@@ -183,7 +183,7 @@ export function ReportAnnualLeave() {
       </Card>
 
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 16 }}>
+        <PageToolbar style={{ marginBottom: 16 }}>
           <Text>筛选项目：</Text>
           <Select
             style={{ width: 200 }}

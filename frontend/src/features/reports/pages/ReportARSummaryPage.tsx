@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { Card, Button, Space, Statistic } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay } from '../../../components/common'
+import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
 import { useARSummary } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportARSummary() {
@@ -37,10 +36,18 @@ export function ReportARSummary() {
       breadcrumb={[{ title: '报表中心' }, { title: '应收账款汇总' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }} wrap>
+        <PageToolbar
+          actions={[
+            {
+              label: '查询',
+              type: 'primary',
+              onClick: handleQuery
+            }
+          ]}
+          wrap
+        >
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
-          <Button type="primary" onClick={handleQuery}>查询</Button>
-        </Space>
+        </PageToolbar>
         <Space style={{ marginBottom: 12 }}>
           <Statistic title="期间总额" value={((stats.total || 0) / 100).toFixed(2)} />
           <Statistic title="期间已结" value={((stats.settled || 0) / 100).toFixed(2)} />

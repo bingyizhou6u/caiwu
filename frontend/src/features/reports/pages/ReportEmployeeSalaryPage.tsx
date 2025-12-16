@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Card, Space, Select, Statistic, Row, Col } from 'antd'
-import { formatAmount } from '../../../utils/formatters'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { useEmployeeSalary } from '../../../hooks'
 import type { ColumnsType } from 'antd/es/table'
@@ -83,7 +82,7 @@ export function ReportEmployeeSalary() {
       dataIndex: 'regularDate',
       key: 'regularDate',
       width: 120,
-      render: (date: string) => date || '-',
+      render: (date: string) => <EmptyText value={date} />,
     },
     {
       title: '年份',
@@ -113,7 +112,7 @@ export function ReportEmployeeSalary() {
       key: 'baseSalaryCents',
       width: 120,
       align: 'right',
-      render: (cents: number) => formatAmount(cents),
+      render: (cents: number, r: EmployeeSalaryRow) => <AmountDisplay cents={cents} currency="CNY" />,
     },
     {
       title: '工作天数',
@@ -145,7 +144,7 @@ export function ReportEmployeeSalary() {
       align: 'right',
       render: (cents: number) => (
         <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
-          {formatAmount(cents)}
+          <AmountDisplay cents={cents} currency="CNY" />
         </span>
       ),
     },

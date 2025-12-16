@@ -10,7 +10,7 @@ import { useAccounts, useIncomeCategories, useSites } from '../../../hooks/useBu
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createARSchema, confirmARSchema, settleARSchema } from '../../../validations/ar.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn, AmountDisplay, EmptyText } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
 import type { ARAP } from '../../../types/business'
@@ -216,12 +216,20 @@ export function AR() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          <Button type="primary" onClick={() => {
-            setCreateOpen(true)
-            createForm.form.resetFields()
-            createForm.form.setFieldValue('issueDate', dayjs())
-          }}>新建应收</Button>
+        <PageToolbar
+          actions={[
+            {
+              label: '新建应收',
+              type: 'primary',
+              onClick: () => {
+                setCreateOpen(true)
+                createForm.form.resetFields()
+                createForm.form.setFieldValue('issueDate', dayjs())
+              }
+            }
+          ]}
+          style={{ marginTop: 16 }}
+        />
           <Button onClick={() => refetch()}>刷新</Button>
         </Space>
 

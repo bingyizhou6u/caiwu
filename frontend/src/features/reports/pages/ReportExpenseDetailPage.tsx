@@ -2,12 +2,11 @@ import React, { useState } from 'react'
 import { Card, Button, Space, Select } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable, AmountDisplay } from '../../../components/common'
+import { DataTable, AmountDisplay, PageToolbar } from '../../../components/common'
 import { useExpenseDetail, useExpenseCategories } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import type { SelectOption } from '../../../types/business'
 import type { ExpenseDetailResponse } from '../../../hooks/business/useReports'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportExpenseDetail() {
@@ -44,7 +43,16 @@ export function ReportExpenseDetail() {
       breadcrumb={[{ title: '报表中心' }, { title: '日常支出明细' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }} wrap>
+        <PageToolbar
+          actions={[
+            {
+              label: '查询',
+              type: 'primary',
+              onClick: handleQuery
+            }
+          ]}
+          wrap
+        >
           <DateRangePicker value={range} onChange={(v) => v && setRange(v)} />
           <Select
             style={{ width: 200 }}
@@ -54,8 +62,7 @@ export function ReportExpenseDetail() {
             value={selectedCategoryId}
             onChange={(v) => setSelectedCategoryId(v)}
           />
-          <Button type="primary" onClick={handleQuery}>查询</Button>
-        </Space>
+        </PageToolbar>
         <DataTable<ExpenseDetailResponse['rows'][number]>
           columns={[
             { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo' },

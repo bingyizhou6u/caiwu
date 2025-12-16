@@ -8,11 +8,10 @@ import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 import { DeleteOutlined } from '@ant-design/icons'
 import { vendorSchema } from '../../../validations/vendor.schema'
 import { FormModal } from '../../../components/FormModal'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, PageToolbar, BatchActionButton } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import type { Vendor } from '../../../types'
-
 import { PageContainer } from '../../../components/PageContainer'
 
 export function VendorManagement() {
@@ -133,32 +132,31 @@ export function VendorManagement() {
           initialValues={searchParams}
         />
 
-        <Space style={{ marginBottom: 12, marginTop: 16 }}>
-          {canEdit && (
-            <Button type="primary" onClick={() => {
-              modal.openCreate()
-              form.resetFields()
-            }}>新建供应商</Button>
-          )}
-          {canDelete && (
-            <Button
-              danger
-              disabled={selectedRowKeys.length === 0}
-              icon={<DeleteOutlined />}
-              loading={batchDeleting}
-            >
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedRowKeys.length} 个供应商吗？`}
-                onConfirm={handleBatchDelete}
-                okText="确定"
-                cancelText="取消"
-                disabled={selectedRowKeys.length === 0}
-              >
-                <span>批量删除 ({selectedRowKeys.length})</span>
-              </Popconfirm>
-            </Button>
-          )}
-        </Space>
+        <PageToolbar
+          actions={[
+            ...(canEdit ? [{
+              label: '新建供应商',
+              type: 'primary' as const,
+              onClick: () => {
+                modal.openCreate()
+                form.resetFields()
+              }
+            }] : []),
+            ...(canDelete ? [{
+              component: (
+                <BatchActionButton
+                  label="批量删除"
+                  selectedCount={selectedRowKeys.length}
+                  onConfirm={handleBatchDelete}
+                  icon={<DeleteOutlined />}
+                  loading={batchDeleting}
+                  confirmTitle={(count) => `确定要删除选中的 ${count} 个供应商吗？`}
+                />
+              )
+            }] : [])
+          ]}
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<Vendor>
           columns={columns}

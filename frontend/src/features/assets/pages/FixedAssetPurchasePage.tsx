@@ -4,13 +4,13 @@ import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
 import dayjs from 'dayjs'
-import { formatAmount } from '../../../utils/formatters'
 import { useCurrencies, useDepartments, useAccounts, useExpenseCategories, useSites } from '../../../hooks/useBusinessData'
 import { useVendors, useFixedAssets, useFixedAssetPurchase } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
+import { AmountDisplay, PageToolbar } from '../../../components/common'
 
 const { TextArea } = Input
 
@@ -124,9 +124,16 @@ export function FixedAssetPurchase() {
       breadcrumb={[{ title: '资产管理' }, { title: '资产买入' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 16 }}>
-          {isFinance && (
-            <Button type="primary" onClick={() => { setOpen(true); form.resetFields(); setVoucherFile(null); setFileList([]) }}>
+        <PageToolbar
+          actions={[
+            ...(isFinance ? [{
+              label: '买入资产',
+              type: 'primary' as const,
+              onClick: () => { setOpen(true); form.resetFields(); setVoucherFile(null); setFileList([]) }
+            }] : [])
+          ]}
+          style={{ marginBottom: 16 }}
+        />
               买入资产
             </Button>
           )}
@@ -142,7 +149,7 @@ export function FixedAssetPurchase() {
               key: 'purchasePrice',
               width: 120,
               render: (_: unknown, r: FixedAsset) => {
-                const price = r.purchasePriceCents ? formatAmount(r.purchasePriceCents) : '0.00'
+                const price = r.purchasePriceCents ? <AmountDisplay cents={r.purchasePriceCents} currency={r.currency || 'CNY'} /> : <AmountDisplay cents={0} currency={r.currency || 'CNY'} />
                 return `${price} ${r.currency || ''}`
               }
             },
