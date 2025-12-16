@@ -37,10 +37,6 @@ interface AppState {
   setUserInfo: (user: UserInfo | null) => void
   setToken: (token: string | null) => void
   logout: () => void
-  
-  // Menu Favorites (最近访问)
-  recentMenuKeys: string[]
-  addRecentMenuKey: (key: string) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -71,14 +67,6 @@ export const useAppStore = create<AppState>()(
         isAuthenticated: !!(token && state.userInfo)
       })),
       logout: () => set({ userInfo: null, token: null, isAuthenticated: false }),
-      
-      // Menu Favorites
-      recentMenuKeys: [],
-      addRecentMenuKey: (key: string) => set((state) => {
-        const keys = state.recentMenuKeys.filter(k => k !== key)
-        keys.unshift(key)
-        return { recentMenuKeys: keys.slice(0, 6) } // 最多保存 6 个
-      }),
     }),
     {
       name: 'caiwu-app-storage',
@@ -88,7 +76,6 @@ export const useAppStore = create<AppState>()(
         userInfo: state.userInfo,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
-        recentMenuKeys: state.recentMenuKeys,
       }),
       onRehydrateStorage: () => (state) => {
         // After loading from localStorage, recompute isAuthenticated

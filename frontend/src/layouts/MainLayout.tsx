@@ -1,12 +1,10 @@
-import { Layout, Menu, Dropdown, Avatar, Button, theme, MenuProps, Tooltip } from 'antd'
-import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled, SunOutlined, MoonOutlined, StarFilled, StarOutlined } from '@ant-design/icons'
+import { Layout, Menu, Dropdown, Avatar, Button, theme, MenuProps } from 'antd'
+import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled, SunOutlined, MoonOutlined } from '@ant-design/icons'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH, PATH_TO_KEY } from '../config/menu'
-import { getMenuIcon } from '../config/menuIcons'
-import { pageTitles } from '../config/menu'
 import { MultiTabs } from '../components/MultiTabs'
 import { preloadRoute } from '../router'
 import './MainLayout.css'
@@ -23,9 +21,7 @@ export function MainLayout() {
         setCollapsed,
         logout,
         themeMode,
-        toggleTheme,
-        recentMenuKeys,
-        addRecentMenuKey
+        toggleTheme
     } = useAppStore()
     
     const [hoverExpanded, setHoverExpanded] = useState(false)
@@ -46,10 +42,8 @@ export function MainLayout() {
         const menuKey = PATH_TO_KEY[location.pathname]
         if (menuKey) {
             setSelectedKey(menuKey)
-            // 记录最近访问
-            addRecentMenuKey(menuKey)
         }
-    }, [location, addRecentMenuKey])
+    }, [location])
     
     // Hover expand handlers
     const handleSiderMouseEnter = () => {
@@ -131,29 +125,8 @@ export function MainLayout() {
         if (location.pathname !== path) {
             NProgress.start()
             navigate(path)
-            // 记录最近访问
-            addRecentMenuKey(key)
         }
     }
-    
-    // 获取快捷入口菜单项
-    const favoriteMenuItems = useMemo(() => {
-        return recentMenuKeys
-            .filter(key => KEY_TO_PATH[key]) // 确保路径存在
-            .slice(0, 6) // 最多显示 6 个
-            .map(key => ({
-                key,
-                label: pageTitles[key] || key,
-                icon: getMenuIcon(key),
-                onClick: () => {
-                    const path = KEY_TO_PATH[key]
-                    if (path) {
-                        navigate(path)
-                        addRecentMenuKey(key)
-                    }
-                }
-            }))
-    }, [recentMenuKeys, navigate, addRecentMenuKey])
 
     // Handle Menu Open Change (Accordion)
     const onOpenChange = (keys: string[]) => {
@@ -234,31 +207,6 @@ export function MainLayout() {
                     <ThunderboltFilled className="logo-icon" />
                     {(!collapsed || hoverExpanded) && <span className="logo-text">AR管理系统</span>}
                 </div>
-                
-                {/* 快捷入口区 */}
-                {collapsed && !hoverExpanded && favoriteMenuItems.length > 0 && (
-                    <div className="favorite-menu-section">
-                        <div className="favorite-menu-title">
-                            <StarFilled style={{ fontSize: 12, color: '#fbbf24' }} />
-                        </div>
-                        {favoriteMenuItems.map(item => (
-                            <Tooltip
-                                key={item.key}
-                                title={item.label}
-                                placement="right"
-                                overlayClassName="menu-item-tooltip"
-                            >
-                                <div
-                                    className={`favorite-menu-item ${selectedKey === item.key ? 'active' : ''}`}
-                                    onClick={item.onClick}
-                                >
-                                    {item.icon}
-                                </div>
-                            </Tooltip>
-                        ))}
-                    </div>
-                )}
-                
                 <Menu
                     theme="dark"
                     mode="inline"

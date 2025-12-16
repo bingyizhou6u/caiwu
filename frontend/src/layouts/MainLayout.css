@@ -549,70 +549,8 @@
     font-size: 20px;
 }
 
-/* ========== FAVORITE MENU SECTION ========== */
-.favorite-menu-section {
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(99, 179, 237, 0.1);
-    margin-bottom: 8px;
-}
-
-.favorite-menu-title {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 8px 0;
-    margin-bottom: 4px;
-}
-
-.favorite-menu-item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 48px;
-    height: 48px;
-    margin: 4px auto;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    color: rgba(226, 232, 240, 0.7);
-    font-size: 20px;
-    position: relative;
-}
-
-.favorite-menu-item:hover {
-    background: linear-gradient(90deg, 
-        rgba(96, 165, 250, 0.12) 0%, 
-        rgba(96, 165, 250, 0.06) 50%,
-        transparent 100%);
-    color: #60a5fa;
-    transform: scale(1.05);
-}
-
-.favorite-menu-item.active {
-    background: linear-gradient(90deg, 
-        rgba(96, 165, 250, 0.2) 0%, 
-        rgba(96, 165, 250, 0.08) 60%,
-        transparent 100%);
-    color: #60a5fa;
-}
-
-.favorite-menu-item.active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 3px;
-    background: linear-gradient(180deg, #38bdf8 0%, #60a5fa 50%, #818cf8 100%);
-    border-radius: 0 6px 6px 0;
-    box-shadow: 
-        0 0 12px rgba(96, 165, 250, 0.9),
-        0 0 24px rgba(96, 165, 250, 0.5);
-}
-
 /* Tooltip for collapsed menu */
-.ant-menu-inline-collapsed-tooltip .ant-tooltip-inner,
-.menu-item-tooltip .ant-tooltip-inner {
+.ant-menu-inline-collapsed-tooltip .ant-tooltip-inner {
     background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
     border-radius: 8px;
     padding: 8px 16px;
@@ -628,20 +566,14 @@
 }
 
 /* Dark mode tooltip */
-[data-theme="dark"] .ant-menu-inline-collapsed-tooltip .ant-tooltip-inner,
-[data-theme="dark"] .menu-item-tooltip .ant-tooltip-inner {
+[data-theme="dark"] .ant-menu-inline-collapsed-tooltip .ant-tooltip-inner {
     background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
     border: 1px solid rgba(71, 85, 105, 0.5);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-[data-theme="dark"] .ant-menu-inline-collapsed-tooltip .ant-tooltip-arrow::before,
-[data-theme="dark"] .menu-item-tooltip .ant-tooltip-arrow::before {
+[data-theme="dark"] .ant-menu-inline-collapsed-tooltip .ant-tooltip-arrow::before {
     background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
-}
-
-[data-theme="dark"] .favorite-menu-section {
-    border-bottom-color: rgba(71, 85, 105, 0.3);
 }
 
 /* Ensure tooltip shows for submenu items */
