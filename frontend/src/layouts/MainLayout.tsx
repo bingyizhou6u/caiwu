@@ -36,7 +36,22 @@ export function MainLayout() {
         if (path) setSelectedKey(path)
     }, [location])
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        // 调用后端 API 使 session 失效
+        const { token } = useAppStore.getState()
+        if (token) {
+            try {
+                await fetch('/api/v2/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+            } catch {
+                // 即使后端调用失败，也继续清除本地状态
+            }
+        }
         logout()
         navigate('/login')
     }
