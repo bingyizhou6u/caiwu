@@ -198,7 +198,7 @@ export class EmailService {
     email: string,
     name: string,
     activationToken: string,
-    frontendUrl: string = 'https://caiwu.cloudflarets.com'
+    frontendUrl: string = 'https://cloudflarets.com'
   ): Promise<{ success: boolean; error?: string }> {
     const subject = '🚀 激活您的账号 - AR公司管理系统'
     const activationUrl = `${frontendUrl}/auth/activate?token=${activationToken}`
@@ -253,7 +253,7 @@ export class EmailService {
     email: string,
     name: string,
     resetToken: string,
-    frontendUrl: string = 'https://caiwu.cloudflarets.com'
+    frontendUrl: string = 'https://cloudflarets.com'
   ): Promise<{ success: boolean; error?: string }> {
     const subject = '🔒 重置您的密码 - AR公司管理系统'
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${resetToken}`
@@ -339,7 +339,7 @@ export class EmailService {
     email: string,
     name: string,
     token: string,
-    frontendUrl: string = 'https://caiwu.cloudflarets.com'
+    frontendUrl: string = 'https://cloudflarets.com'
   ): Promise<{ success: boolean; error?: string }> {
     const subject = '🔐 重置 2FA 验证 - AR公司管理系统'
     const resetUrl = `${frontendUrl}/auth/reset-totp?token=${token}`
