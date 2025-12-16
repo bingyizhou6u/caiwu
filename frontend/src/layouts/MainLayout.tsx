@@ -1,10 +1,12 @@
-import { Layout, Menu, Dropdown, Avatar, Button, theme, MenuProps } from 'antd'
-import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled, SunOutlined, MoonOutlined } from '@ant-design/icons'
-import { useState, useEffect, useMemo } from 'react'
+import { Layout, Menu, Dropdown, Avatar, Button, theme, MenuProps, Tooltip } from 'antd'
+import { UserOutlined, DownOutlined, LogoutOutlined, KeyOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ThunderboltFilled, SunOutlined, MoonOutlined, StarFilled, StarOutlined } from '@ant-design/icons'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH, PATH_TO_KEY } from '../config/menu'
+import { getMenuIcon } from '../config/menuIcons'
+import { pageTitles } from '../config/menu'
 import { MultiTabs } from '../components/MultiTabs'
 import { preloadRoute } from '../router'
 import './MainLayout.css'
@@ -18,10 +20,17 @@ export function MainLayout() {
         userInfo,
         collapsed,
         toggleCollapsed,
+        setCollapsed,
         logout,
         themeMode,
-        toggleTheme
+        toggleTheme,
+        recentMenuKeys,
+        addRecentMenuKey
     } = useAppStore()
+    
+    const [hoverExpanded, setHoverExpanded] = useState(false)
+    const siderRef = useRef<HTMLDivElement>(null)
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     const {
         token: { colorBgContainer, borderRadiusLG },
@@ -37,8 +46,38 @@ export function MainLayout() {
         const menuKey = PATH_TO_KEY[location.pathname]
         if (menuKey) {
             setSelectedKey(menuKey)
+            // 记录最近访问
+            addRecentMenuKey(menuKey)
         }
-    }, [location])
+    }, [location, addRecentMenuKey])
+    
+    // Hover expand handlers
+    const handleSiderMouseEnter = () => {
+        if (collapsed && !hoverExpanded) {
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current)
+            }
+            setHoverExpanded(true)
+            setCollapsed(false)
+        }
+    }
+    
+    const handleSiderMouseLeave = () => {
+        if (hoverExpanded) {
+            hoverTimeoutRef.current = setTimeout(() => {
+                setHoverExpanded(false)
+                setCollapsed(true)
+            }, 200) // 200ms 延迟，避免快速移动时闪烁
+        }
+    }
+    
+    useEffect(() => {
+        return () => {
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current)
+            }
+        }
+    }, [])
 
     const handleLogout = async () => {
         // 调用后端 API 使 session 失效
@@ -92,8 +131,29 @@ export function MainLayout() {
         if (location.pathname !== path) {
             NProgress.start()
             navigate(path)
+            // 记录最近访问
+            addRecentMenuKey(key)
         }
     }
+    
+    // 获取快捷入口菜单项
+    const favoriteMenuItems = useMemo(() => {
+        return recentMenuKeys
+            .filter(key => KEY_TO_PATH[key]) // 确保路径存在
+            .slice(0, 6) // 最多显示 6 个
+            .map(key => ({
+                key,
+                label: pageTitles[key] || key,
+                icon: getMenuIcon(key),
+                onClick: () => {
+                    const path = KEY_TO_PATH[key]
+                    if (path) {
+                        navigate(path)
+                        addRecentMenuKey(key)
+                    }
+                }
+            }))
+    }, [recentMenuKeys, navigate, addRecentMenuKey])
 
     // Handle Menu Open Change (Accordion)
     const onOpenChange = (keys: string[]) => {
@@ -159,18 +219,46 @@ export function MainLayout() {
     return (
         <Layout className="main-layout">
             <Sider
+                ref={siderRef}
                 trigger={null}
                 collapsible
-                collapsed={collapsed}
+                collapsed={collapsed && !hoverExpanded}
                 width={240}
                 collapsedWidth={80}
                 theme="dark"
                 className="main-sider"
+                onMouseEnter={handleSiderMouseEnter}
+                onMouseLeave={handleSiderMouseLeave}
             >
-                <div className={`logo-container ${collapsed ? 'collapsed' : ''}`}>
+                <div className={`logo-container ${collapsed && !hoverExpanded ? 'collapsed' : ''}`}>
                     <ThunderboltFilled className="logo-icon" />
-                    {!collapsed && <span className="logo-text">AR管理系统</span>}
+                    {(!collapsed || hoverExpanded) && <span className="logo-text">AR管理系统</span>}
                 </div>
+                
+                {/* 快捷入口区 */}
+                {collapsed && !hoverExpanded && favoriteMenuItems.length > 0 && (
+                    <div className="favorite-menu-section">
+                        <div className="favorite-menu-title">
+                            <StarFilled style={{ fontSize: 12, color: '#fbbf24' }} />
+                        </div>
+                        {favoriteMenuItems.map(item => (
+                            <Tooltip
+                                key={item.key}
+                                title={item.label}
+                                placement="right"
+                                overlayClassName="menu-item-tooltip"
+                            >
+                                <div
+                                    className={`favorite-menu-item ${selectedKey === item.key ? 'active' : ''}`}
+                                    onClick={item.onClick}
+                                >
+                                    {item.icon}
+                                </div>
+                            </Tooltip>
+                        ))}
+                    </div>
+                )}
+                
                 <Menu
                     theme="dark"
                     mode="inline"
@@ -179,11 +267,11 @@ export function MainLayout() {
                     onOpenChange={onOpenChange}
                     items={menuItems}
                     onClick={onMenuClick}
-                    inlineCollapsed={collapsed}
+                    inlineCollapsed={collapsed && !hoverExpanded}
                     getPopupContainer={(node) => node.parentElement || document.body}
                 />
             </Sider>
-            <Layout className="main-content-layout" style={{ marginLeft: collapsed ? 80 : 240 }}>
+            <Layout className="main-content-layout" style={{ marginLeft: (collapsed && !hoverExpanded) ? 80 : 240 }}>
                 <Header className="main-header">
                     <div
                         className="trigger-btn"
