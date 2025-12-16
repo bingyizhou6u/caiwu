@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect } from 'react'
 import { Card, Tag, Space, Collapse, Button, Checkbox, Form, message, Switch, Popconfirm } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { DataTable, PageToolbar } from '../../../components/common'
+import { DataTable, PageToolbar, StatusTag } from '../../../components/common'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 // ActionColumn removed - using DataTable's built-in onEdit instead
 import { FormModal } from '../../../components/FormModal'
+import { COMMON_STATUS } from '../../../utils/status'
 import { usePositions, useUpdatePosition, useFormModal } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
 import { withErrorHandler } from '../../../utils/errorHandler'
@@ -348,7 +349,7 @@ export function PositionPermissionsManagement() {
       title: '管理下属',
       dataIndex: 'canManageSubordinates',
       width: 90,
-      render: (v: number) => v === 1 ? <Tag color="green">是</Tag> : <Tag>否</Tag>
+      render: (v: number) => <StatusTag status={v === 1 ? 'enabled' : 'disabled'} statusMap={COMMON_STATUS} />
     },
     {
       title: '权限配置',
@@ -379,7 +380,7 @@ export function PositionPermissionsManagement() {
             />
           </Popconfirm>
         ) : (
-          v === 1 ? <Tag color="green">启用</Tag> : <Tag color="red">禁用</Tag>
+          <StatusTag status={v === 1 ? 'enabled' : 'disabled'} statusMap={COMMON_STATUS} />
         )
       )
     },
