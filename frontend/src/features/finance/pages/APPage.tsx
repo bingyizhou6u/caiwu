@@ -178,6 +178,13 @@ export function AP() {
                 { value: 'pending', label: '待确认' },
               ],
             },
+            {
+              name: 'dateRange',
+              label: '开立日期',
+              type: 'dateRange',
+              showQuickSelect: true,
+              showTime: true,
+            },
           ]}
           onSearch={setSearchParams}
           onReset={() => setSearchParams({})}

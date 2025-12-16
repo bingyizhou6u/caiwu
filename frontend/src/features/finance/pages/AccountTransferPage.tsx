@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Form, Input, DatePicker, InputNumber, Select, Space, message, Upload, Card, Alert, Modal } from 'antd'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
-import { Dayjs } from 'dayjs'
 import { api } from '../../../config/api'
-import { DateRangePicker } from '../../../components/DateRangePicker'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { useAccountTransfers, useCreateAccountTransfer } from '../../../hooks'
 import { useAccounts } from '../../../hooks/useBusinessData'
@@ -15,7 +13,7 @@ import { FormModal } from '../../../components/FormModal'
 import type { AccountTransfer as AccountTransferType } from '../../../types/business'
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn, PageToolbar, AmountDisplay } from '../../../components/common'
+import { DataTable, type DataTableColumn, PageToolbar, AmountDisplay, SearchFilters } from '../../../components/common'
 
 export function AccountTransfer() {
   const [open, setOpen] = useState(false)
@@ -30,12 +28,14 @@ export function AccountTransfer() {
   const [toAccount, setToAccount] = useState<string>()
   const [fromAmount, setFromAmount] = useState<number>()
   const [exchangeRate, setExchangeRate] = useState<number>()
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null)
+  const [searchParams, setSearchParams] = useState<{ dateRangeStart?: string; dateRangeEnd?: string }>({})
 
   // 数据 Hook
   const { data: accounts = [] } = useAccounts()
   const { data: transfers = [], isLoading: loading, refetch } = useAccountTransfers(
-    dateRange ? [dateRange[0].format('YYYY-MM-DD'), dateRange[1].format('YYYY-MM-DD')] : undefined
+    searchParams.dateRangeStart && searchParams.dateRangeEnd
+      ? [searchParams.dateRangeStart, searchParams.dateRangeEnd]
+      : undefined
   )
   const { mutateAsync: createTransfer, isPending: isCreating } = useCreateAccountTransfer()
 
@@ -113,6 +113,24 @@ export function AccountTransfer() {
       breadcrumb={[{ title: '财务管理' }, { title: '账户转账' }]}
     >
       <Card bordered={false} className="page-card">
+        <SearchFilters
+          fields={[
+            {
+              name: 'dateRange',
+              label: '转账日期',
+              type: 'dateRange',
+              showQuickSelect: true,
+              showTime: true,
+            },
+          ]}
+          onSearch={(values) => setSearchParams({
+            dateRangeStart: values.dateRangeStart as string,
+            dateRangeEnd: values.dateRangeEnd as string,
+          })}
+          onReset={() => setSearchParams({})}
+          initialValues={searchParams}
+        />
+
         <PageToolbar
           actions={[
             {
@@ -125,13 +143,8 @@ export function AccountTransfer() {
               onClick: () => refetch()
             }
           ]}
-          style={{ marginBottom: 16 }}
-        >
-          <DateRangePicker
-            value={dateRange}
-            onChange={setDateRange}
-          />
-        </PageToolbar>
+          style={{ marginTop: 16 }}
+        />
 
         <DataTable<AccountTransferType>
           columns={[
