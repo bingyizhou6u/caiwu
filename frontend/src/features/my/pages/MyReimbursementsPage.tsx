@@ -115,7 +115,7 @@ export function MyReimbursements() {
       title: '申请时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (v: number | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'
+      render: (v: number | null) => <EmptyText value={v ? dayjs(v).format('YYYY-MM-DD HH:mm') : null} />
     },
   ]
 

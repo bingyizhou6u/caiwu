@@ -8,7 +8,7 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { leaveSchema, approveLeaveSchema } from '../../../validations/leave.schema'
-import { DataTable, StatusTag, PageToolbar } from '../../../components/common'
+import { DataTable, StatusTag, PageToolbar, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { LEAVE_STATUS } from '../../../utils/status'
 import type { EmployeeLeave } from '../../../hooks/business/useLeaves'
@@ -265,7 +265,7 @@ export function LeaveManagement() {
       dataIndex: 'approver_name',
       key: 'approver_name',
       width: 100,
-      render: (name: string) => name || '-',
+      render: (name: string) => <EmptyText value={name} />,
     },
     {
       title: '操作',

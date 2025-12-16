@@ -16,7 +16,7 @@ import { ResetUserPasswordModal } from '../../../features/employees/components/m
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, EmptyText } from '../../../components/common/DataTable'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 import { useQueryClient } from '@tanstack/react-query'
 import { formatAmountWithCurrency } from '../../../utils/amount'
@@ -163,7 +163,7 @@ export function EmployeeManagement() {
       dataIndex: 'positionName',
       key: 'positionName',
       width: 120,
-      render: (text: string) => text || '-',
+      render: (text: string) => <EmptyText value={text} />,
     },
     {
       title: '手机号',
@@ -180,7 +180,7 @@ export function EmployeeManagement() {
       dataIndex: 'personalEmail',
       key: 'personalEmail',
       width: 180,
-      render: (email: string) => email || '-',
+      render: (email: string) => <EmptyText value={email} />,
     },
     {
       title: '入职日期',

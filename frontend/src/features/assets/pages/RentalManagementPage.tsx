@@ -903,13 +903,13 @@ export function RentalManagement() {
                       title: '房间号', 
                       key: 'room_number', 
                       width: 100,
-                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.room_number || r.roomNumber || '-'
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => <EmptyText value={r.room_number || r.roomNumber || null} />
                     },
                     { 
                       title: '床位号', 
                       key: 'bed_number', 
                       width: 100,
-                      render: (_: unknown, r: DormitoryAllocationWithDetails) => r.bed_number || r.bedNumber || '-'
+                      render: (_: unknown, r: DormitoryAllocationWithDetails) => <EmptyText value={r.bed_number || r.bedNumber || null} />
                     },
                     { title: '分配日期', dataIndex: 'allocationDate', key: 'allocationDate', width: 120 },
                     {
@@ -972,25 +972,25 @@ export function RentalManagement() {
                     title: '原租赁开始', 
                     key: 'fromLeaseStart', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_lease_start || r.fromLeaseStart || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_lease_start || r.fromLeaseStart || null} />
                   },
                   { 
                     title: '新租赁开始', 
                     key: 'toLeaseStart', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_lease_start || r.toLeaseStart || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_lease_start || r.toLeaseStart || null} />
                   },
                   { 
                     title: '原租赁结束', 
                     key: 'fromLeaseEnd', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_lease_end || r.fromLeaseEnd || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_lease_end || r.fromLeaseEnd || null} />
                   },
                   { 
                     title: '新租赁结束', 
                     key: 'toLeaseEnd', 
                     width: 120,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_lease_end || r.toLeaseEnd || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_lease_end || r.toLeaseEnd || null} />
                   },
                   {
                     title: '原月租金',
@@ -1014,13 +1014,13 @@ export function RentalManagement() {
                     title: '原状态', 
                     key: 'fromStatus', 
                     width: 100,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.from_status || r.fromStatus || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_status || r.fromStatus || null} />
                   },
                   { 
                     title: '新状态', 
                     key: 'toStatus', 
                     width: 100,
-                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => r.to_status || r.toStatus || '-'
+                    render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_status || r.toStatus || null} />
                   },
                   { title: '备注', dataIndex: 'memo', key: 'memo' },
                 ] satisfies DataTableColumn<RentalPropertyChangeWithSnakeCase>[]}

@@ -342,7 +342,7 @@ export function ExpenseReimbursement() {
       dataIndex: 'accountName',
       key: 'accountName',
       width: 120,
-      render: (name: string) => name || '-',
+      render: (name: string) => <EmptyText value={name} />,
     },
     {
       title: '凭证',
