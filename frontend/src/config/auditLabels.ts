@@ -98,3 +98,154 @@ export function getAuditDescription(action: string, entity: string): string {
   const entityLabel = getEntityLabel(entity)
   return `${actionLabel}${entityLabel}`
 }
+
+// 详情字段中文映射
+const DETAIL_FIELD_LABELS: Record<string, string> = {
+  // 通用字段
+  name: '名称',
+  email: '邮箱',
+  phone: '电话',
+  status: '状态',
+  active: '启用状态',
+  memo: '备注',
+  result: '结果',
+  success: '成功',
+  error: '错误',
+  
+  // 员工相关
+  personalEmail: '个人邮箱',
+  companyEmail: '公司邮箱',
+  userAccountCreated: '账号已创建',
+  emailSent: '邮件已发送',
+  emailRoutingCreated: '邮箱路由已创建',
+  positionId: '职位',
+  departmentId: '项目',
+  orgDepartmentId: '部门',
+  joinDate: '入职日期',
+  regularDate: '转正日期',
+  leaveDate: '离职日期',
+  
+  // 薪资相关
+  amountCents: '金额(分)',
+  amount: '金额',
+  currencyId: '货币',
+  salaryType: '薪资类型',
+  allowanceType: '补贴类型',
+  
+  // 审批相关
+  approved: '已批准',
+  rejected: '已拒绝',
+  approverName: '审批人',
+  
+  // 账户相关
+  accountId: '账户',
+  fromAccountId: '转出账户',
+  toAccountId: '转入账户',
+  
+  // 其他
+  count: '数量',
+  successCount: '成功数',
+  failedCount: '失败数',
+  ipAddress: 'IP地址',
+  enabled: '启用',
+  ruleId: '规则ID',
+}
+
+// 状态值中文映射
+const STATUS_VALUE_LABELS: Record<string, string> = {
+  // 布尔值
+  'true': '是',
+  'false': '否',
+  
+  // 员工状态
+  probation: '试用期',
+  regular: '已转正',
+  resigned: '已离职',
+  
+  // 审批状态
+  pending: '待审批',
+  approved: '已批准',
+  rejected: '已拒绝',
+  
+  // 补贴类型
+  living: '生活补贴',
+  housing: '住房补贴',
+  transportation: '交通补贴',
+  meal: '伙食补贴',
+  birthday: '生日补贴',
+}
+
+// 格式化详情字段值
+function formatDetailValue(key: string, value: any): string {
+  if (value === null || value === undefined) return '-'
+  if (typeof value === 'boolean') return value ? '是' : '否'
+  if (typeof value === 'number') {
+    // 如果是金额（以 Cents 结尾），转换为元
+    if (key.toLowerCase().includes('cents') || key.toLowerCase().includes('amount')) {
+      return `¥${(value / 100).toFixed(2)}`
+    }
+    return value.toString()
+  }
+  if (typeof value === 'string') {
+    return STATUS_VALUE_LABELS[value] || value
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+  return String(value)
+}
+
+// 解析并格式化详情 JSON
+export function formatAuditDetail(detail: string | null | undefined): string {
+  if (!detail) return '-'
+  
+  try {
+    const parsed = JSON.parse(detail)
+    if (typeof parsed !== 'object' || parsed === null) {
+      return detail
+    }
+    
+    const parts: string[] = []
+    
+    for (const [key, value] of Object.entries(parsed)) {
+      const label = DETAIL_FIELD_LABELS[key] || key
+      
+      // 特殊处理嵌套的 result 对象
+      if (key === 'result' && typeof value === 'object' && value !== null) {
+        const resultObj = value as Record<string, any>
+        if ('success' in resultObj) {
+          parts.push(`结果: ${resultObj.success ? '成功' : '失败'}`)
+        }
+        if ('error' in resultObj && resultObj.error) {
+          parts.push(`错误: ${resultObj.error}`)
+        }
+        continue
+      }
+      
+      const formattedValue = formatDetailValue(key, value)
+      parts.push(`${label}: ${formattedValue}`)
+    }
+    
+    return parts.join('; ') || '-'
+  } catch {
+    // 如果不是 JSON，直接返回原文
+    return detail
+  }
+}
+
+// 格式化对象ID（缩短 UUID）
+export function formatEntityId(entityId: string | null | undefined): string {
+  if (!entityId) return '-'
+  
+  // 如果是 UUID 格式，只显示前8位
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId)) {
+    return entityId.substring(0, 8) + '...'
+  }
+  
+  // 如果太长，截断显示
+  if (entityId.length > 20) {
+    return entityId.substring(0, 20) + '...'
+  }
+  
+  return entityId
+}

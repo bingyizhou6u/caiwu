@@ -7,7 +7,7 @@ import { useAuditLogs, useAuditLogOptions, useExportAuditLogs, type AuditLog, ty
 import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { PageContainer } from '../../../components/PageContainer'
-import { getActionLabel, getActionColor, getEntityLabel, ACTION_LABELS, ENTITY_LABELS } from '../../../config/auditLabels'
+import { getActionLabel, getActionColor, getEntityLabel, formatAuditDetail, formatEntityId, ACTION_LABELS, ENTITY_LABELS } from '../../../config/auditLabels'
 
 export function AuditLogs() {
   const [filters, setFilters] = useState<Omit<AuditLogQueryParams, 'limit' | 'offset'>>({})
@@ -88,11 +88,18 @@ export function AuditLogs() {
       dataIndex: 'entityId',
       width: 120,
       ellipsis: true,
+      render: (text: string) => (
+        <span title={text}>{formatEntityId(text)}</span>
+      )
     },
     {
       title: '详情',
       dataIndex: 'detail',
       ellipsis: true,
+      render: (text: string) => {
+        const formatted = formatAuditDetail(text)
+        return <span title={formatted}>{formatted}</span>
+      }
     },
     {
       title: 'IP地址',
