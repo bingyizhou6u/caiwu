@@ -10,9 +10,13 @@ vi.mock('../../src/utils/audit.js', () => ({
 }))
 
 // Mock permissions
-vi.mock('../../src/utils/permissions.js', () => ({
-  hasPermission: vi.fn(() => true),
-}))
+vi.mock('../../src/utils/permissions.js', async () => {
+  const actual = await vi.importActual('../../src/utils/permissions.js')
+  return {
+    ...actual,
+    hasPermission: vi.fn(() => true),
+  }
+})
 
 const mockPositionService = {
   getPositions: vi.fn(),
@@ -112,9 +116,8 @@ describe('Position Permissions Routes', () => {
     expect(data.data).toEqual(mockResult)
   })
 
-  it.skip('should create position', async () => {
-    // 功能未实现：路由抛出 BUSINESS_ERROR('createPosition not implemented yet')
-    const mockResult = { id: '1', name: 'Director' }
+  it('should create position', async () => {
+    const mockResult = { id: '1', code: 'DIR', name: 'Director', level: 1, functionRole: 'director' }
     mockPositionService.createPosition.mockResolvedValue(mockResult)
 
     const res = await app.request('/position-permissions', {
@@ -131,15 +134,23 @@ describe('Position Permissions Routes', () => {
 
     expect(res.status).toBe(200)
     const data = (await res.json()) as any
-    // V2 响应格式
     expect(data.success).toBe(true)
-    expect(data.data).toEqual(mockResult)
+    expect(data.data.id).toBe('1')
+    expect(data.data.code).toBe('DIR')
+    expect(mockPositionService.createPosition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'DIR',
+        name: 'Director',
+        level: 1,
+        functionRole: 'director',
+      })
+    )
   })
 
-  it.skip('should update position', async () => {
-    // 功能未实现：路由抛出 BUSINESS_ERROR('updatePosition not implemented yet')
-    const mockResult = { id: '1', name: 'Director Updated' }
-    mockPositionService.updatePosition.mockResolvedValue(mockResult)
+  it('should update position', async () => {
+    const mockPosition = { id: '1', code: 'DIR', name: 'Director Updated', level: 1 }
+    mockPositionService.updatePosition.mockResolvedValue({ ok: true })
+    mockPositionService.getPositions.mockResolvedValue([mockPosition])
 
     const res = await app.request('/position-permissions/1', {
       method: 'PUT',
@@ -149,14 +160,13 @@ describe('Position Permissions Routes', () => {
 
     expect(res.status).toBe(200)
     const data = (await res.json()) as any
-    // V2 响应格式
     expect(data.success).toBe(true)
-    expect(data.data).toEqual(mockResult)
+    expect(data.data.name).toBe('Director Updated')
+    expect(mockPositionService.updatePosition).toHaveBeenCalledWith('1', { name: 'Director Updated' })
   })
 
-  it.skip('should delete position', async () => {
-    // 功能未实现：路由抛出 BUSINESS_ERROR('deletePosition not implemented yet')
-    mockPositionService.deletePosition.mockResolvedValue({ ok: true })
+  it('should delete position', async () => {
+    mockPositionService.deletePosition.mockResolvedValue({ ok: true, name: 'Director' })
 
     const res = await app.request('/position-permissions/1', {
       method: 'DELETE',
@@ -164,7 +174,25 @@ describe('Position Permissions Routes', () => {
 
     expect(res.status).toBe(200)
     const deleteData = (await res.json()) as any
-    // V2 响应格式
     expect(deleteData.success).toBe(true)
+    expect(mockPositionService.deletePosition).toHaveBeenCalledWith('1')
+  })
+
+  it('should return 403 when permission denied', async () => {
+    const { hasPermission } = await import('../../src/utils/permissions.js')
+    vi.mocked(hasPermission).mockReturnValue(false)
+
+    const res = await app.request('/position-permissions', {
+      method: 'POST',
+      body: JSON.stringify({
+        code: 'DIR',
+        name: 'Director',
+        level: 1,
+        functionRole: 'director',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    expect(res.status).toBe(403)
   })
 })
