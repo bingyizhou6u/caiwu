@@ -30,20 +30,10 @@ interface Stats {
   balanceCents: number
 }
 
-const statusColors: Record<string, string> = {
-  pending: 'processing',
-  approved: 'success',
-  rejected: 'error',
-}
-
-const statusLabels: Record<string, string> = {
-  pending: '待审批',
-  approved: '已通过',
-  rejected: '已驳回',
-}
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay, StatusTag, EmptyText } from '../../../components/common'
+import { BORROWING_STATUS } from '../../../utils/status'
 
 const createBorrowingSchema = z.object({
   amount: z.number().min(0.01, '金额必须大于0'),
@@ -95,35 +85,40 @@ export function MyBorrowings() {
     {
       title: '金额',
       key: 'amount',
-      render: (_: unknown, r: Borrowing) => `${r.currency_symbol || '¥'}${(r.amountCents / 100).toFixed(2)}`
+      render: (_: unknown, r: Borrowing) => <AmountDisplay cents={r.amountCents} currency={r.currency} showSymbol={false} />
     },
     {
       title: '已还',
       key: 'repaid',
-      render: (_: unknown, r: Borrowing) => `${r.currency_symbol || '¥'}${((r.repaid_cents || 0) / 100).toFixed(2)}`
+      render: (_: unknown, r: Borrowing) => <AmountDisplay cents={r.repaid_cents || 0} currency={r.currency} showSymbol={false} />
     },
     {
       title: '余额',
       key: 'balance',
       render: (_: unknown, r: Borrowing) => {
         const balance = r.amountCents - (r.repaid_cents || 0)
-        return <span style={{ color: balance > 0 ? '#cf1322' : '#3f8600' }}>
-          {r.currency_symbol || '¥'}{(balance / 100).toFixed(2)}
-        </span>
+        return (
+          <AmountDisplay 
+            cents={balance} 
+            currency={r.currency} 
+            showSymbol={false}
+            style={{ color: balance > 0 ? '#cf1322' : '#3f8600' }}
+          />
+        )
       }
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (v: string | null) => v ? <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag> : '-'
+      render: (v: string | null) => <StatusTag status={v} statusMap={BORROWING_STATUS} />
     },
     { title: '备注', dataIndex: 'memo', key: 'memo', ellipsis: true },
     {
       title: '申请时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (v: number | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'
+      render: (v: number | null) => <EmptyText value={v ? dayjs(v).format('YYYY-MM-DD HH:mm') : null} />
     },
   ]
 

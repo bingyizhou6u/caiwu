@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, Button, Space, Statistic } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { useARSummary } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 
@@ -54,8 +54,8 @@ export function ReportARSummary() {
             { title: '开立', dataIndex: 'issueDate', key: 'issueDate' },
             { title: '到期', dataIndex: 'dueDate', key: 'dueDate' },
             { title: '客户', dataIndex: 'partyId', key: 'partyId' },
-            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
+            { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
             { title: '状态', dataIndex: 'status', key: 'status' },
           ]}
           data={rows}

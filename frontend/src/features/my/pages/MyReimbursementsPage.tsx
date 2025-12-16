@@ -38,22 +38,9 @@ const expenseTypeLabels: Record<string, string> = {
   other: '其他',
 }
 
-const statusColors: Record<string, string> = {
-  pending: 'processing',
-  approved: 'success',
-  rejected: 'error',
-  paid: 'default',
-}
-
-const statusLabels: Record<string, string> = {
-  pending: '待审批',
-  approved: '已通过',
-  rejected: '已驳回',
-  paid: '已支付',
-}
-
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay, StatusTag, EmptyText } from '../../../components/common'
+import { REIMBURSEMENT_STATUS } from '../../../utils/status'
 
 const createReimbursementSchema = z.object({
   expenseType: z.string().min(1, '请选择费用类型'),
@@ -113,14 +100,14 @@ export function MyReimbursements() {
     {
       title: '金额',
       key: 'amount',
-      render: (_: unknown, r: Reimbursement) => `${r.currency_symbol || '¥'}${(r.amountCents / 100).toFixed(2)}`
+      render: (_: unknown, r: Reimbursement) => <AmountDisplay cents={r.amountCents} currency={r.currencyId} showSymbol={false} />
     },
     { title: '说明', dataIndex: 'description', key: 'description', ellipsis: true },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (v: string | null) => v ? <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag> : '-'
+      render: (v: string | null) => <StatusTag status={v} statusMap={REIMBURSEMENT_STATUS} />
     },
     { title: '审批人', dataIndex: 'approvedByName', key: 'approvedByName' },
     {

@@ -10,7 +10,7 @@ import { useAccounts, useExpenseCategories } from '../../../hooks/useBusinessDat
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createAPSchema, confirmAPSchema } from '../../../validations/ap.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
 import type { ARAP } from '../../../types/business'
@@ -152,8 +152,8 @@ export function AP() {
     { title: '单号', dataIndex: 'docNo', key: 'docNo' },
     { title: '开立日期', dataIndex: 'issueDate', key: 'issueDate' },
     { title: '到期日', dataIndex: 'dueDate', key: 'dueDate' },
-    { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-    { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
+    { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
+    { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
     { title: '状态', dataIndex: 'status', key: 'status' },
   ]
 

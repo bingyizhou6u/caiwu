@@ -10,7 +10,7 @@ import { useAccounts, useIncomeCategories, useSites } from '../../../hooks/useBu
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createARSchema, confirmARSchema, settleARSchema } from '../../../validations/ar.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
 import type { ARAP } from '../../../types/business'
@@ -180,11 +180,11 @@ export function AR() {
 
   const columns: DataTableColumn<ARAPWithSiteName>[] = [
     { title: '单号', dataIndex: 'docNo', key: 'docNo' },
-    { title: '客户（站点）', key: 'siteName', render: (_: unknown, r: ARAPWithSiteName) => r.siteName || r.partyName || '-' },
+    { title: '客户（站点）', key: 'siteName', render: (_: unknown, r: ARAPWithSiteName) => <EmptyText value={r.siteName || r.partyName} /> },
     { title: '开立日期', dataIndex: 'issueDate', key: 'issueDate' },
     { title: '到期日', dataIndex: 'dueDate', key: 'dueDate' },
-    { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-    { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
+    { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
+    { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
     { title: '状态', dataIndex: 'status', key: 'status' },
   ]
 
@@ -293,9 +293,9 @@ export function AR() {
                 <Descriptions.Item label="状态">{detail.doc?.status}</Descriptions.Item>
                 <Descriptions.Item label="开立">{detail.doc?.issueDate}</Descriptions.Item>
                 <Descriptions.Item label="到期">{detail.doc?.dueDate || '-'}</Descriptions.Item>
-                <Descriptions.Item label="金额">{(detail.doc?.amountCents / 100).toFixed(2)}</Descriptions.Item>
-                <Descriptions.Item label="已结">{(detail.settledCents / 100).toFixed(2)}</Descriptions.Item>
-                <Descriptions.Item label="未结" span={2}>{(detail.remainingCents / 100).toFixed(2)}</Descriptions.Item>
+                <Descriptions.Item label="金额"><AmountDisplay cents={detail.doc?.amountCents} /></Descriptions.Item>
+                <Descriptions.Item label="已结"><AmountDisplay cents={detail.settledCents} /></Descriptions.Item>
+                <Descriptions.Item label="未结" span={2}><AmountDisplay cents={detail.remainingCents} /></Descriptions.Item>
               </Descriptions>
               <div style={{ height: 8 }} />
               <Table
@@ -342,7 +342,7 @@ export function AR() {
             }}
             loading={isConfirming}
           >
-            <Form.Item label="金额">{(confirmingDoc.amountCents / 100).toFixed(2)}</Form.Item>
+            <Form.Item label="金额"><AmountDisplay cents={confirmingDoc.amountCents} /></Form.Item>
             <Form.Item name="accountId" label="账户" rules={[{ required: true, message: '请选择账户' }]} className="form-full-width">
               <Select options={Array.isArray(accounts) ? accounts : []} placeholder="选择账户" showSearch />
             </Form.Item>

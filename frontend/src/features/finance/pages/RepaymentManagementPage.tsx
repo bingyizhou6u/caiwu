@@ -7,7 +7,7 @@ import { useBorrowings, useRepayments, useCreateRepayment } from '../../../hooks
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createRepaymentSchema } from '../../../validations/repayment.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FormModal } from '../../../components/FormModal'
 import type { Repayment, Borrowing } from '../../../types/business'
@@ -108,16 +108,16 @@ export function RepaymentManagement() {
           }, [repayments, searchParams])
 
           const columns: DataTableColumn<Repayment>[] = [
-            { title: '借款人', key: 'borrower', render: (_: unknown, r: Repayment) => r.borrowerName || r.borrowerEmail || '-' },
-            { title: '邮箱', dataIndex: 'borrower_email', key: 'borrower_email', render: (v: string) => v || '-' },
+            { title: '借款人', key: 'borrower', render: (_: unknown, r: Repayment) => <EmptyText value={r.borrowerName || r.borrowerEmail} /> },
+            { title: '邮箱', dataIndex: 'borrower_email', key: 'borrower_email', render: (v: string) => <EmptyText value={v} /> },
             { title: '资金账户', dataIndex: 'accountName', key: 'accountName' },
             {
               title: '还款金额',
               key: 'amount',
-              render: (_: unknown, r: Repayment) => `${(r.amountCents / 100).toFixed(2)} ${r.currency}`
+              render: (_: unknown, r: Repayment) => <AmountDisplay cents={r.amountCents} currency={r.currency} />
             },
             { title: '还款日期', dataIndex: 'repay_date', key: 'repay_date' },
-            { title: '备注', dataIndex: 'memo', key: 'memo', render: (v: string) => v || '-' },
+            { title: '备注', dataIndex: 'memo', key: 'memo', render: (v: string) => <EmptyText value={v} /> },
             { title: '创建人', dataIndex: 'creator_name', key: 'creator_name' },
           ]
 

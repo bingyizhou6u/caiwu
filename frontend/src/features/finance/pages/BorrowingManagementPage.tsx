@@ -7,7 +7,7 @@ import { useBorrowings, useCreateBorrowing } from '../../../hooks'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createBorrowingSchema } from '../../../validations/borrowing.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
 import { FormModal } from '../../../components/FormModal'
 import type { Borrowing } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
@@ -64,27 +64,35 @@ export function BorrowingManagement() {
       breadcrumb={[{ title: '财务管理' }, { title: '借款管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }}>
-          {canEdit && (
-            <Button type="primary" onClick={() => {
-              form.resetFields()
-              form.setFieldsValue({ borrow_date: dayjs() })
-              setOpen(true)
-            }}>新建借款</Button>
-          )}
-        </Space>
+        <PageToolbar
+          actions={canEdit ? [
+            {
+              label: '新建借款',
+              type: 'primary',
+              onClick: () => {
+                form.resetFields()
+                form.setFieldsValue({ borrow_date: dayjs() })
+                setOpen(true)
+              }
+            }
+          ] : []}
+        />
         
         <DataTable<Borrowing>
           columns={useMemo<DataTableColumn<Borrowing>[]>(() => [
-            { title: '借款人', dataIndex: 'borrowerName', render: (v: string, r: Borrowing) => v || r.borrowerEmail || '-' },
-            { title: '邮箱', dataIndex: 'borrower_email', render: (v: string) => v || '-' },
+            { 
+              title: '借款人', 
+              dataIndex: 'borrowerName', 
+              render: (_: unknown, r: Borrowing) => <EmptyText value={r.borrowerName || r.borrowerEmail} />
+            },
+            { title: '邮箱', dataIndex: 'borrower_email', render: (v: string) => <EmptyText value={v} /> },
             { title: '资金账户', dataIndex: 'accountName' },
             {
               title: '借款金额',
-              render: (_: unknown, r: Borrowing) => `${(r.amountCents / 100).toFixed(2)} ${r.currency}`
+              render: (_: unknown, r: Borrowing) => <AmountDisplay cents={r.amountCents} currency={r.currency} />
             },
             { title: '借款日期', dataIndex: 'borrow_date' },
-            { title: '备注', dataIndex: 'memo', render: (v: string) => v || '-' },
+            { title: '备注', dataIndex: 'memo', render: (v: string) => <EmptyText value={v} /> },
             { title: '创建人', dataIndex: 'creator_name' },
           ], [])}
           data={borrowings.list}

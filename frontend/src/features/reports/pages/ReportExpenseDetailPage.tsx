@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Card, Button, Space, Select } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { useExpenseDetail, useExpenseCategories } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import type { SelectOption } from '../../../types/business'
@@ -62,7 +62,7 @@ export function ReportExpenseDetail() {
             { title: '日期', dataIndex: 'expenseDate', key: 'expenseDate' },
             { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
             { title: '账户', dataIndex: 'accountName', key: 'accountName' },
-            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
             { title: '对方', dataIndex: 'counterparty', key: 'counterparty' },
             { title: '项目', dataIndex: 'departmentName', key: 'departmentName' },
             { title: '站点', dataIndex: 'siteName', key: 'siteName' },

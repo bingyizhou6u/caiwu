@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, Button, Space } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { DateRangePicker } from '../../../components/DateRangePicker'
-import { DataTable } from '../../../components/common/DataTable'
+import { DataTable, AmountDisplay } from '../../../components/common'
 import { useAPDetail } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 
@@ -41,9 +41,9 @@ export function ReportAPDetail() {
             { title: '开立日期', dataIndex: 'issueDate', key: 'issueDate' },
             { title: '到期日', dataIndex: 'dueDate', key: 'dueDate' },
             { title: '供应商', dataIndex: 'partyId', key: 'partyId' },
-            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => (v / 100).toFixed(2) },
-            { title: '未结', dataIndex: 'remainingCents', key: 'remainingCents', render: (v: number) => (v / 100).toFixed(2) },
+            { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} /> },
+            { title: '已结', dataIndex: 'settledCents', key: 'settledCents', render: (v: number) => <AmountDisplay cents={v} /> },
+            { title: '未结', dataIndex: 'remainingCents', key: 'remainingCents', render: (v: number) => <AmountDisplay cents={v} /> },
             { title: '状态', dataIndex: 'status', key: 'status' },
             { title: '备注', dataIndex: 'memo', key: 'memo' },
           ]}

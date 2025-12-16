@@ -10,8 +10,9 @@ import { useMultipleModals } from '../../../hooks/forms/useFormModal'
 import { useDepartments, useSites, useVendors, useCurrencies } from '../../../hooks'
 import { VirtualTable } from '../../../components/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
+import { FIXED_ASSET_STATUS } from '../../../utils/status'
 import type { FixedAsset } from '../../../types'
 
 // 折旧记录类型
@@ -218,30 +219,32 @@ export function FixedAssetsManagement() {
       breadcrumb={[{ title: '资产管理' }, { title: '资产管理' }]}
     >
       <Card bordered={false} className="page-card">
-        <Space style={{ marginBottom: 12 }} wrap>
-          {canManageAssets && (
-            <Button type="primary" onClick={() => { modals.open('create'); cForm.resetFields(); cForm.setFieldsValue({ status: 'in_use', currency: 'CNY' }) }}>新建资产</Button>
-          )}
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>刷新</Button>
-          {canDelete && (
-            <Button
-              danger
-              disabled={selectedRowKeys.length === 0}
-              icon={<DeleteOutlined />}
-              loading={batchDeleting}
-            >
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedRowKeys.length} 项资产吗？`}
-                onConfirm={handleBatchDelete}
-                okText="确定"
-                cancelText="取消"
-                disabled={selectedRowKeys.length === 0}
-              >
-                <span>批量删除 ({selectedRowKeys.length})</span>
-              </Popconfirm>
-            </Button>
-          )}
-        </Space>
+        <PageToolbar
+          actions={[
+            ...(canManageAssets ? [{
+              label: '新建资产',
+              type: 'primary' as const,
+              onClick: () => { modals.open('create'); cForm.resetFields(); cForm.setFieldsValue({ status: 'in_use', currency: 'CNY' }) }
+            }] : []),
+            {
+              label: '刷新',
+              icon: <ReloadOutlined />,
+              onClick: () => refetch()
+            },
+            ...(canDelete ? [{
+              component: (
+                <BatchActionButton
+                  label="批量删除"
+                  selectedCount={selectedRowKeys.length}
+                  onConfirm={handleBatchDelete}
+                  icon={<DeleteOutlined />}
+                  loading={batchDeleting}
+                />
+              )
+            }] : [])
+          ]}
+          wrap
+        />
         <SearchFilters
           fields={[
             { name: 'search', label: '搜索', type: 'input', placeholder: '搜索资产编号、名称、责任人' },
@@ -319,16 +322,7 @@ export function FixedAssetsManagement() {
               title: '状态',
               dataIndex: 'status',
               width: 100,
-              render: (v: string) => {
-                const option = STATUS_OPTIONS.find(o => o.value === v)
-                const colors: Record<string, string> = {
-                  in_use: 'green',
-                  idle: 'orange',
-                  scrapped: 'red',
-                  maintenance: 'blue',
-                }
-                return <Tag color={colors[v] || 'default'}>{option?.label || v}</Tag>
-              }
+              render: (v: string) => <StatusTag status={v} statusMap={FIXED_ASSET_STATUS} />
             },
             {
               title: '操作',

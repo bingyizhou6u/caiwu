@@ -29,20 +29,10 @@ const leaveTypeLabels: Record<string, string> = {
   other: '其他',
 }
 
-const statusColors: Record<string, string> = {
-  pending: 'processing',
-  approved: 'success',
-  rejected: 'error',
-}
-
-const statusLabels: Record<string, string> = {
-  pending: '待审批',
-  approved: '已通过',
-  rejected: '已驳回',
-}
 
 import { PageContainer } from '../../../components/PageContainer'
-import { DataTable, type DataTableColumn } from '../../../components/common/DataTable'
+import { DataTable, type DataTableColumn, StatusTag, EmptyText } from '../../../components/common'
+import { LEAVE_STATUS } from '../../../utils/status'
 
 export function MyLeaves() {
   const { data, isLoading: loading } = useMyLeaves()
@@ -94,7 +84,7 @@ export function MyLeaves() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (v: string | null) => v ? <Tag color={statusColors[v]}>{statusLabels[v] || v}</Tag> : '-'
+      render: (v: string | null) => <StatusTag status={v} statusMap={LEAVE_STATUS} />
     },
     { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
     { title: '审批人', dataIndex: 'approvedByName', key: 'approvedByName' },
@@ -102,7 +92,7 @@ export function MyLeaves() {
       title: '申请时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (v: number | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'
+      render: (v: number | null) => <EmptyText value={v ? dayjs(v).format('YYYY-MM-DD HH:mm') : null} />
     },
   ]
 
