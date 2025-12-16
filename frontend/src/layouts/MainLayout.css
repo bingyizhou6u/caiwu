@@ -60,6 +60,16 @@
     transition: none !important;
 }
 
+.main-sider.ant-layout-sider-collapsed .ant-menu {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.main-sider:not(.ant-layout-sider-collapsed) .ant-menu {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .sider-hover-overlay .ant-menu-dark .ant-menu-item:hover,
 .sider-hover-overlay .ant-menu-dark .ant-menu-submenu-title:hover {
     /* 保留轻量 hover 反馈（不做 transform） */
@@ -86,7 +96,6 @@
     overflow-y: auto;
     overflow-x: hidden;
     height: 100%;
-    transition: opacity 0.2s ease-in-out;
 }
 
 /* Hover expand - 确保展开时覆盖内容区 */
@@ -230,25 +239,25 @@
     padding: 8px 14px;
     position: relative;
     z-index: 1;
-    transition: opacity 0.2s ease-in-out;
+    transition: none; /* 基础侧边栏禁用菜单自身动画，避免重排抖动 */
 }
 
 /* 菜单项文字平滑显示 */
 .main-sider .ant-menu-dark .ant-menu-item,
 .main-sider .ant-menu-dark .ant-menu-submenu-title {
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: none;
 }
 
 .main-sider.ant-layout-sider-collapsed .ant-menu-dark .ant-menu-item span,
 .main-sider.ant-layout-sider-collapsed .ant-menu-dark .ant-menu-submenu-title span {
     opacity: 0;
-    transition: opacity 0.2s ease-out;
+    transition: none;
 }
 
 .main-sider:not(.ant-layout-sider-collapsed) .ant-menu-dark .ant-menu-item span,
 .main-sider:not(.ant-layout-sider-collapsed) .ant-menu-dark .ant-menu-submenu-title span {
     opacity: 1;
-    transition: opacity 0.3s ease-in 0.1s;
+    transition: none;
 }
 
 /* Menu Item Base */
