@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
-import { buildMenuItems, KEY_TO_PATH } from '../config/menu'
+import { buildMenuItems, KEY_TO_PATH, PATH_TO_KEY } from '../config/menu'
 import { MultiTabs } from '../components/MultiTabs'
 import { preloadRoute } from '../router'
 import './MainLayout.css'
@@ -31,8 +31,11 @@ export function MainLayout() {
     // NProgress & Route Highlighting
     useEffect(() => {
         NProgress.done()
-        const path = location.pathname.split('/').pop()
-        if (path) setSelectedKey(path)
+        // 使用完整路径匹配菜单 key
+        const menuKey = PATH_TO_KEY[location.pathname]
+        if (menuKey) {
+            setSelectedKey(menuKey)
+        }
     }, [location])
 
     const handleLogout = async () => {

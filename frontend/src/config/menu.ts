@@ -301,3 +301,12 @@ export const KEY_TO_PATH: Record<string, string> = {
     'audit': '/system/audit',
     'change-password': '/change-password',
 }
+
+// 反向映射：路径 -> 菜单 key
+export const PATH_TO_KEY: Record<string, string> = Object.entries(KEY_TO_PATH).reduce(
+    (acc, [key, path]) => {
+        acc[path] = key
+        return acc
+    },
+    {} as Record<string, string>
+)
