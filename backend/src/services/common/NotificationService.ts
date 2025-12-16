@@ -2,7 +2,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { EmailService } from './EmailService.js'
-import { SystemConfigService } from './SystemConfigService.js'
+import { SystemConfigService } from '../system/SystemConfigService.js'
 import { Logger } from '../utils/logger.js'
 
 export class NotificationService {

@@ -4,16 +4,16 @@ import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
 import { generateTotpSecret, verifyTotp } from '../utils/auth.js'
 // import { logAudit } from '../utils/audit.js' // Removed
-import { SystemConfigService } from './SystemConfigService.js'
+import { SystemConfigService } from '../system/SystemConfigService.js'
 import { TrustedDeviceService } from './TrustedDeviceService.js'
-import { EmployeeService } from './EmployeeService.js'
+import { EmployeeService } from '../hr/EmployeeService.js'
 import { getUserFullContext } from '../utils/db.js'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
 import { eq, and, or } from 'drizzle-orm'
 import { employees, sessions } from '../db/schema.js'
-import { AuditService } from './AuditService.js'
-import { EmailService } from './EmailService.js'
+import { AuditService } from '../system/AuditService.js'
+import { EmailService } from '../common/EmailService.js'
 
 export class AuthService {
   private employeeService: EmployeeService

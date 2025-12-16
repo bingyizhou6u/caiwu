@@ -3,7 +3,7 @@ import { eq, and, desc, sql, inArray } from 'drizzle-orm'
 import { arApDocs, settlements, sites, accounts, cashFlows } from '../db/schema'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors'
-import { FinanceService } from './FinanceService'
+import { FinanceService } from './FinanceService.js'
 
 export class ArApService {
   constructor(

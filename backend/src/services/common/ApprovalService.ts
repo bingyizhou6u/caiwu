@@ -3,11 +3,11 @@ import { eq, and, desc, inArray, sql } from 'drizzle-orm'
 import * as schema from '../db/schema.js'
 import { Errors } from '../utils/errors.js'
 import { Logger } from '../utils/logger.js'
-import { EmployeeService } from './EmployeeService.js'
-import { FinanceService } from './FinanceService.js'
-import { PermissionService } from './PermissionService.js'
+import { EmployeeService } from '../hr/EmployeeService.js'
+import { FinanceService } from '../finance/FinanceService.js'
+import { PermissionService } from '../hr/PermissionService.js'
 import { NotificationService } from './NotificationService.js'
-import type { OperationHistoryService } from './OperationHistoryService.js'
+import type { OperationHistoryService } from '../system/OperationHistoryService.js'
 import {
   borrowingStateMachine,
   leaveStateMachine,

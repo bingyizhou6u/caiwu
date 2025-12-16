@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid'
-import { DepartmentService } from './DepartmentService'
-import { AuditService } from './AuditService'
+import { DepartmentService } from './DepartmentService.js'
+import { AuditService } from './AuditService.js'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
 import { headquarters, currencies } from '../db/schema.js'

@@ -5,8 +5,8 @@ import * as schema from '../db/schema.js'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../utils/errors.js'
 import { Logger } from '../utils/logger.js'
-import { EmailRoutingService } from './EmailRoutingService.js'
-import { EmailService } from './EmailService.js'
+import { EmailRoutingService } from '../common/EmailRoutingService.js'
+import { EmailService } from '../common/EmailService.js'
 
 export class EmployeeService {
   constructor(

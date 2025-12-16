@@ -5,7 +5,7 @@
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
-import { AnnualLeaveService } from './AnnualLeaveService.js'
+import { AnnualLeaveService } from '../hr/AnnualLeaveService.js'
 import { DashboardReportService } from './DashboardReportService.js'
 import { FinancialReportService } from './FinancialReportService.js'
 import { BusinessReportService } from './BusinessReportService.js'
