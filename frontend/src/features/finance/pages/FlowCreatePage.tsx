@@ -88,12 +88,15 @@ export function FlowCreate() {
   }
 
   const handleReset = () => {
+    // 递增会话 ID，使正在进行的异步上传失效
+    uploadSessionRef.current += 1
     form.resetFields()
     form.setFieldsValue({ type: 'income', bizDate: dayjs() })
     setSelectedType('income')
     setSelectedDepartmentId(undefined)
     setFileList([])
     setVoucherUrls([])
+    setUploading(false)
   }
 
   const onCreate = withErrorHandler(
