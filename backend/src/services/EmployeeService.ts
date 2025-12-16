@@ -411,7 +411,7 @@ export class EmployeeService {
       // 1. 检查用户是否存在
       const user = await tx.select().from(employees).where(eq(employees.id, userId)).get()
       if (!user) {
-        throw new Error('User not found')
+        throw Errors.NOT_FOUND('用户')
       }
 
       // 2. 检查员工是否已存在（合并 users 表后允许同一记录继续补全）
@@ -422,7 +422,7 @@ export class EmployeeService {
         .where(eq(employees.email, user.email))
         .get()
       if (existingEmployee && existingEmployee.id !== userId) {
-        throw new Error('Employee already exists')
+        throw Errors.DUPLICATE('员工邮箱')
       }
 
       // 3. 获取组织部门
@@ -432,7 +432,7 @@ export class EmployeeService {
         .where(eq(orgDepartments.id, data.orgDepartmentId))
         .get()
       if (!orgDept) {
-        throw new Error('Org Department not found')
+        throw Errors.NOT_FOUND('组织部门')
       }
 
       // 4. 确定部门 (项目)
@@ -445,7 +445,7 @@ export class EmployeeService {
           actualDepartmentId = hqDept.id
         } else {
           // 回退或错误？原始代码有查找总部的逻辑。
-          throw new Error('Headquarters department not found')
+          throw Errors.NOT_FOUND('总部部门')
         }
       }
 
@@ -456,7 +456,7 @@ export class EmployeeService {
         .where(eq(positions.id, data.positionId))
         .get()
       if (!position) {
-        throw new Error('Position not found')
+        throw Errors.NOT_FOUND('职位')
       }
 
       const now = Date.now()
@@ -530,7 +530,7 @@ export class EmployeeService {
     // D1 不支持 begin/transaction，这里改为顺序执行
     const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
     if (!employee) {
-      throw new Error('Employee not found')
+      throw Errors.NOT_FOUND('员工')
     }
 
     const updateData: any = { updatedAt: Date.now() }

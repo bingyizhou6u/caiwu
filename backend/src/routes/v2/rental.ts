@@ -59,7 +59,7 @@ rentalRoutes.openapi(
   listPropertiesRoute,
   createRouteHandler(async (c: any) => {
     const query = c.req.valid('query') as any
-    const service = c.get('services').rental
+    const service = c.var.services.rental
     const results = await service.listProperties(query)
     return { results }
   }) as any
@@ -109,7 +109,7 @@ rentalRoutes.openapi(
   listAllocationsRoute,
   createRouteHandler(async (c: any) => {
     const query = c.req.valid('query') as any
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     const returned = query.returned === 'true' ? true : query.returned === 'false' ? false : undefined
 
@@ -165,7 +165,7 @@ rentalRoutes.openapi(
       memo: raw.memo,
     }
     const userId = c.get('userId')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     try {
       const result = await service.allocateDormitory({
@@ -237,7 +237,7 @@ rentalRoutes.openapi(
       returnDate: raw.returnDate ?? raw.return_date,
       memo: raw.memo,
     }
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     try {
       await service.returnDormitory(id, {
@@ -278,7 +278,7 @@ rentalRoutes.openapi(
   getPropertyRoute,
   createRouteHandler(async c => {
     const id = c.req.param('id')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
     const result = await service.getProperty(id)
     return result ?? { id, name: 'property-stub' }
   })
@@ -341,7 +341,7 @@ rentalRoutes.openapi(
       contractFileUrl: raw.contractFileUrl ?? raw.contract_file_url,
     }
     const userId = c.get('userId')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     try {
       const result = await service.createProperty({
@@ -428,7 +428,7 @@ rentalRoutes.openapi(
       contractFileUrl: raw.contractFileUrl ?? raw.contract_file_url,
     }
     const userId = c.get('userId')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     await service.updateProperty(id, {
       ...body,
@@ -466,7 +466,7 @@ rentalRoutes.openapi(
   deletePropertyRoute,
   createRouteHandler(async (c: any) => {
     const id = c.req.param('id')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     const property = await service.deleteProperty(id)
 
@@ -525,7 +525,7 @@ rentalRoutes.openapi(
   listPaymentsRoute,
   createRouteHandler(async (c: any) => {
     const query = c.req.valid('query') as any
-    const service = c.get('services').rental
+    const service = c.var.services.rental
     const results = await service.listPayments({
       propertyId: query.propertyId,
       year: query.year,
@@ -568,7 +568,7 @@ rentalRoutes.openapi(
   createRouteHandler(async (c: any) => {
     const body = await c.req.json()
     const userId = c.get('userId')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     try {
       const result = await service.createPayment({
@@ -650,7 +650,7 @@ rentalRoutes.openapi(
     }
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     await service.updatePayment(id, {
       paymentDate: body.paymentDate,
@@ -693,7 +693,7 @@ rentalRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     const payment = await service.deletePayment(id)
 
@@ -743,7 +743,7 @@ rentalRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const userId = c.get('userId')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     const result = await service.generatePayableBills(userId)
 
@@ -801,7 +801,7 @@ rentalRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const query = c.req.valid('query') as any
-    const service = c.get('services').rental
+    const service = c.var.services.rental
 
     const results = await service.listPayableBills({
       propertyId: query.propertyId,
@@ -843,7 +843,7 @@ rentalRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').rental
+    const service = c.var.services.rental
     const result = await service.markBillPaid(id)
     logAuditAction(c, 'update', 'rental_payable_bill', id, JSON.stringify({ status: 'paid' }))
     return result

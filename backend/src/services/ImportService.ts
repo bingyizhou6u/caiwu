@@ -36,7 +36,7 @@ export class ImportService {
 
     // 验证必要表头
     if (ix.biz_date === -1 || ix.type === -1 || ix.account_id === -1 || ix.amount === -1) {
-      throw new Error('缺少必要列: biz_date, type, account_id, amount')
+      throw Errors.VALIDATION_ERROR('缺少必要列: biz_date, type, account_id, amount')
     }
 
     // 按日期排序以确保余额计算正确

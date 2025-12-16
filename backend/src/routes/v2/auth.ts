@@ -197,7 +197,7 @@ const logoutRoute = createRoute({
 
 authRoutes.openapi(logoutRoute, createRouteHandler(async c => {
   const token = extractAuthToken(c)
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
 
   if (token) {
     try {
@@ -247,11 +247,11 @@ async function handleGetMe(c: Context<{ Bindings: Env; Variables: AppVariables }
     return jsonResponse(c, apiSuccess({ user: null }))
   }
 
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   const session = await authService.getSession(payload.sid)
   if (!session) {return jsonResponse(c, apiSuccess({ user: null }))}
 
-  const userService = c.get('services').user
+  const userService = c.var.services.user
   const user = await userService.getUserById(payload.sub)
   if (!user || user.active === 0) {return jsonResponse(c, apiSuccess({ user: null }))}
 
@@ -347,7 +347,7 @@ const verifyActivationTokenRoute = createRoute({
 
 authRoutes.openapi(verifyActivationTokenRoute, createRouteHandler(async (c: any) => {
   const { token } = c.req.valid('query')
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   return await authService.verifyActivationToken(token)
 }) as any)
 
@@ -386,7 +386,7 @@ const generateTotpForActivationRoute = createRoute({
 
 authRoutes.openapi(generateTotpForActivationRoute, createRouteHandler(async (c: any) => {
   const body = c.req.valid('json') as { email: string }
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   return authService.generateTotpForActivation(body.email)
 }) as any)
 
@@ -425,7 +425,7 @@ const activateAccountRoute = createRoute({
 
 authRoutes.openapi(activateAccountRoute, async c => {
   const body = c.req.valid('json')
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
 
   const deviceInfo = {
     ip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown',
@@ -477,7 +477,7 @@ const verifyResetTokenRoute = createRoute({
 
 authRoutes.openapi(verifyResetTokenRoute, createRouteHandler(async (c: any) => {
   const { token } = c.req.valid('query')
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   return await authService.verifyResetToken(token)
 }) as any)
 
@@ -516,7 +516,7 @@ const resetPasswordRoute = createRoute({
 authRoutes.use('/auth/reset-password', passwordResetRateLimit)
 authRoutes.openapi(resetPasswordRoute, async c => {
   const body = c.req.valid('json')
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
 
   const deviceInfo = {
     ip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown',
@@ -561,13 +561,13 @@ authRoutes.openapi(requestMyResetLinkRoute, createRouteHandler(async c => {
     throw Errors.UNAUTHORIZED('请先登录')
   }
 
-  const userService = c.get('services').user
+  const userService = c.var.services.user
   const user = await userService.getUserById(userId)
   if (!user?.email) {
     throw Errors.UNAUTHORIZED('用户信息不完整')
   }
 
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   await authService.requestPasswordReset(user.email, c.env)
 
   return {
@@ -614,7 +614,7 @@ const requestTotpResetRoute = createRoute({
 authRoutes.use('/auth/mobile/request-totp-reset', totpResetRateLimit)
 authRoutes.openapi(requestTotpResetRoute, createRouteHandler(async (c: any) => {
   const body = c.req.valid('json') as { email: string }
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   return await authService.requestTotpReset(body.email, c.env)
 }) as any)
 
@@ -647,7 +647,7 @@ const verifyTotpResetTokenRoute = createRoute({
 
 authRoutes.openapi(verifyTotpResetTokenRoute, createRouteHandler(async (c: any) => {
   const { token } = c.req.valid('query')
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   return await authService.verifyTotpResetToken(token)
 }) as any)
 
@@ -686,7 +686,7 @@ const confirmTotpResetRoute = createRoute({
 
 authRoutes.openapi(confirmTotpResetRoute, createRouteHandler(async (c: any) => {
   const body = c.req.valid('json') as { token: string }
-  const authService = c.get('services').auth
+  const authService = c.var.services.auth
   return await authService.resetTotpByToken(body.token)
 }) as any)
 

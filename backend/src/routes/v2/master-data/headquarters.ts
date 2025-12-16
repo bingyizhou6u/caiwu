@@ -112,7 +112,7 @@ headquartersRoutes.openapi(
     }
     const id = c.req.param('id')
     const body = c.req.valid('json')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     await service.updateHeadquarters(id, {
       name: body.name,
@@ -155,7 +155,7 @@ headquartersRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
-    const service = c.get('services').masterData
+    const service = c.var.services.masterData
 
     const result = await service.deleteHeadquarters(id)
 
