@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { Card, Typography, Space, Select, Row, Col, Statistic, Progress, Tag, Alert } from 'antd'
+import { Card, Typography, Space, Row, Col, Statistic, Progress, Tag, Alert } from 'antd'
 import { CalendarOutlined, TeamOutlined, CheckCircleOutlined } from '@ant-design/icons'
-import { useDepartments } from '../../../hooks/useBusinessData'
 import { useAnnualLeave } from '../../../hooks'
 import { DataTable, type DataTableColumn, PageToolbar, EmptyText } from '../../../components/common'
+import { DepartmentSelect } from '../../../components/form'
 
 const { Title, Text } = Typography
 
@@ -40,13 +40,6 @@ import { PageContainer } from '../../../components/PageContainer'
 
 export function ReportAnnualLeave() {
   const [selectedDept, setSelectedDept] = useState<string | undefined>()
-
-  // Business data hooks
-  const { data: departmentsData = [] } = useDepartments()
-  // 确保 departments 始终是数组
-  const departments = React.useMemo(() => {
-    return Array.isArray(departmentsData) ? departmentsData : []
-  }, [departmentsData])
 
   const { data: reportData, isLoading: loading } = useAnnualLeave(selectedDept ? { departmentId: selectedDept } : undefined)
   
@@ -192,16 +185,12 @@ export function ReportAnnualLeave() {
         <Card bordered={false} className="page-card-inner">
         <PageToolbar style={{ marginBottom: 16 }}>
           <Text>筛选项目：</Text>
-          <Select
+          <DepartmentSelect
             style={{ width: 200 }}
             placeholder="全部项目"
             allowClear
             value={selectedDept}
             onChange={setSelectedDept}
-            options={departments.map(d => ({
-              value: d.id,
-              label: d.name,
-            }))}
           />
         </Space>
 

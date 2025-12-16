@@ -11,6 +11,7 @@ import { useDepartments, useSites, useVendors, useCurrencies } from '../../../ho
 import { VirtualTable } from '../../../components/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton, AmountDisplay } from '../../../components/common'
+import { DepartmentSelect } from '../../../components/form'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { FIXED_ASSET_STATUS } from '../../../utils/status'
 import type { FixedAsset } from '../../../types'
@@ -383,7 +384,7 @@ export function FixedAssetsManagement() {
               <Select options={safeVendors} showSearch optionFilterProp="label" placeholder="选择供应商" allowClear />
             </Form.Item>
             <Form.Item name="departmentId" label="使用项目" className="form-no-margin-bottom">
-              <Select options={safeDepartments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+              <DepartmentSelect placeholder="选择项目" allowClear />
             </Form.Item>
             <Form.Item name="siteId" label="资产位置" className="form-no-margin-bottom">
               <Select options={safeSites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />
@@ -527,7 +528,7 @@ export function FixedAssetsManagement() {
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
             <Form.Item name="toDepartmentId" label="调至项目">
-              <Select options={safeDepartments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+              <DepartmentSelect placeholder="选择项目" allowClear />
             </Form.Item>
             <Form.Item name="toSiteId" label="调至位置">
               <Select options={safeSites} showSearch optionFilterProp="label" placeholder="选择位置" allowClear />

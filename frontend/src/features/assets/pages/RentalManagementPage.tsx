@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Card, Button, Modal, Form, Input, Space, message, DatePicker, InputNumber, Upload, Tag, Tabs, Select } from 'antd'
-import { AmountInput, CurrencySelect, AccountSelect } from '../../../components/form'
+import { AmountInput, CurrencySelect, AccountSelect, EmployeeSelect, DepartmentSelect } from '../../../components/form'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import type { FormInstance } from 'antd'
@@ -616,7 +616,7 @@ export function RentalManagement() {
           </Form.Item>
 
           <Form.Item name="employeeId" label="员工" required className="form-no-margin-bottom">
-            <Select options={employees} showSearch optionFilterProp="label" placeholder="选择员工" allowClear />
+            <EmployeeSelect placeholder="选择员工" allowClear />
           </Form.Item>
           <Form.Item name="startDate" label="开始日期" required className="form-no-margin-bottom">
             <DatePicker className="form-full-width" format="YYYY-MM-DD" />
@@ -659,7 +659,7 @@ export function RentalManagement() {
               const propertyType = getFieldValue('propertyType')
               return propertyType === 'office' ? (
                 <Form.Item name="departmentId" label="使用项目">
-                  <Select options={departments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+                  <DepartmentSelect placeholder="选择项目" allowClear />
                 </Form.Item>
               ) : propertyType === 'dormitory' ? (
                 <Form.Item name="initialEmployees" label="初始分配员工（可选）">
@@ -780,7 +780,7 @@ export function RentalManagement() {
               const propertyType = getFieldValue('propertyType')
               return propertyType === 'office' ? (
                 <Form.Item name="departmentId" label="使用项目">
-                  <Select options={departments} showSearch optionFilterProp="label" placeholder="选择项目" allowClear />
+                  <DepartmentSelect placeholder="选择项目" allowClear />
                 </Form.Item>
               ) : null
             }}

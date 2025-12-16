@@ -174,6 +174,28 @@
 
 ## 📋 全面覆盖计划
 
+### Phase 1: Form 表单组件推广（Week 1-2）
+
+#### ✅ Task 1.1: 推广 AmountInput 和 CurrencySelect
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **完成页面**: FixedAssetPurchasePage.tsx, FixedAssetSalePage.tsx, RentalManagementPage.tsx, SiteBillsPage.tsx
+
+#### ✅ Task 1.2: 推广 AccountSelect
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **说明**: 大部分页面已在 Task 1.1 中处理
+
+#### ✅ Task 1.3: 推广 EmployeeSelect 和 DepartmentSelect
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
+- **完成页面**: 
+  - AllowancePaymentsPage.tsx (EmployeeSelect)
+  - ReportAnnualLeavePage.tsx (DepartmentSelect)
+  - RentalManagementPage.tsx (EmployeeSelect, DepartmentSelect)
+  - FixedAssetPurchasePage.tsx (DepartmentSelect)
+  - FixedAssetsManagementPage.tsx (DepartmentSelect - 3处)
+
 ### 计划制定
 - **制定时间**: 2024-12-19
 - **目标**: 3个月内将整体组件覆盖率从 48% 提升到 70%+
@@ -210,7 +232,7 @@
 
 #### ✅ Task 1.1: 推广 AmountInput 和 CurrencySelect
 - **完成时间**: 2024-12-19
-- **状态**: ✅ 部分完成
+- **状态**: ✅ 已完成
 - **已完成页面**:
   - ✅ `FixedAssetPurchasePage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect
   - ✅ `FixedAssetSalePage.tsx` - 已替换 AmountInput 和 AccountSelect
@@ -220,8 +242,19 @@
   - AmountInput: 8+ 处
   - CurrencySelect: 5+ 处
   - AccountSelect: 3+ 处
+
+#### ✅ Task 1.3: 推广 EmployeeSelect 和 DepartmentSelect
+- **完成时间**: 2024-12-19
+- **状态**: ✅ 已完成
 - **已完成页面**:
-  - ✅ `FixedAssetPurchasePage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect
+  - ✅ `AllowancePaymentsPage.tsx` - 已替换 EmployeeSelect（新建发放记录表单）
+  - ✅ `ReportAnnualLeavePage.tsx` - 已替换 DepartmentSelect（筛选项目）
+  - ✅ `RentalManagementPage.tsx` - 已替换 EmployeeSelect（宿舍分配）和 DepartmentSelect（2处：办公室使用项目）
+  - ✅ `FixedAssetPurchasePage.tsx` - 已替换 DepartmentSelect（使用项目）
+  - ✅ `FixedAssetsManagementPage.tsx` - 已替换 DepartmentSelect（3处：创建、编辑、调拨表单）
+- **替换统计**:
+  - EmployeeSelect: 2+ 处
+  - DepartmentSelect: 7+ 处
   - ✅ `FixedAssetSalePage.tsx` - 已替换 AmountInput 和 AccountSelect
   - ✅ `RentalManagementPage.tsx` - 已替换 AmountInput（年租金、月租金、押金、付款金额、员工月租金）和 CurrencySelect（4处）、AccountSelect（1处）
   - ✅ `SiteBillsPage.tsx` - 已替换 AmountInput、CurrencySelect 和 AccountSelect（新建和编辑表单）

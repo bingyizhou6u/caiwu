@@ -469,14 +469,7 @@ export function AllowancePayments() {
         >
           <Form form={createForm} layout="vertical">
             <Form.Item name="employeeId" label="员工">
-              <Select
-                placeholder="请选择员工"
-                showSearch
-                options={employees}
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-              />
+              <EmployeeSelect placeholder="请选择员工" />
             </Form.Item>
             <Form.Item name="year" label="年份">
               <Select placeholder="请选择年份" options={yearOptions} />
