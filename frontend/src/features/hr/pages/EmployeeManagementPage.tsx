@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react'
-import { Card, Button, Space, message, Popconfirm, Tag, Descriptions, Dropdown } from 'antd'
-import { SettingOutlined } from '@ant-design/icons'
-import type { ColumnsType } from 'antd/es/table'
+import React, { useState, useMemo, useCallback } from 'react'
+import { Card, Button, Space, Tag, Descriptions, Dropdown } from 'antd'
+import { SettingOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { Employee } from '../../../types'
 import { useEmployees, useFormModal, useToggleUserActive, useResendActivation, useResetTotp, useEmployeeSalaries, useEmployeeAllowances } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
@@ -14,18 +13,13 @@ import { AllowanceConfigModal } from '../../../features/employees/components/mod
 import { ResetUserPasswordModal } from '../../../features/employees/components/modals/ResetUserPasswordModal'
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageContainer } from '../../../components/PageContainer'
-import { renderStatus, renderText } from '../../../utils/renderers'
 import { DataTable } from '../../../components/common/DataTable'
 import type { DataTableColumn } from '../../../components/common/DataTable'
 import { useQueryClient } from '@tanstack/react-query'
 import { formatAmountWithCurrency } from '../../../utils/amount'
 
-import { useNavigate } from 'react-router-dom'
-
 export function EmployeeManagement() {
-  const navigate = useNavigate()
   const modal = useFormModal<Employee>()
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -164,21 +158,10 @@ export function EmployeeManagement() {
     },
     {
       title: '职位',
-      dataIndex: 'positionId',
-      key: 'positionId',
+      dataIndex: 'positionName',
+      key: 'positionName',
       width: 120,
-      render: (text) => renderText(text) // Simplification if positions map is not directly used here or needs lookup
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (text: string) => renderStatus(text, {
-        active: { text: '在职', color: 'success' },
-        probation: { text: '试用期', color: 'processing' },
-        resigned: { text: '离职', color: 'default' }
-      })
+      render: (text: string) => text || '-',
     },
     {
       title: '手机号',
