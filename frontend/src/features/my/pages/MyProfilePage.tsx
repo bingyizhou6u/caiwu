@@ -23,7 +23,7 @@ export function MyProfile() {
   const { data: profile, isLoading: loading } = useMyProfile()
   const { mutateAsync: updateProfile } = useUpdateMyProfile()
   const { form, validateWithZod: validateUpdate } = useZodForm(updateProfileSchema)
-  
+
   const {
     isOpen: modalVisible,
     openEdit,
@@ -37,7 +37,7 @@ export function MyProfile() {
         emergencyContact: profile.emergencyContact || '',
         emergencyPhone: profile.emergencyPhone || '',
       })
-      openEdit()
+      openEdit(profile)
     }
   }
 

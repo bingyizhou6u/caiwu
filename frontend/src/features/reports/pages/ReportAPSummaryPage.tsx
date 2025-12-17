@@ -13,12 +13,12 @@ export function ReportAPSummary() {
     dateRangeStart: dayjs().startOf('month').format('YYYY-MM-DD'),
     dateRangeEnd: dayjs().format('YYYY-MM-DD'),
   })
-  
-  const { data, isLoading, refetch } = useAPSummary({ 
+
+  const { data, isLoading, refetch } = useAPSummary({
     start: filters.dateRangeStart || dayjs().startOf('month').format('YYYY-MM-DD'),
     end: filters.dateRangeEnd || dayjs().format('YYYY-MM-DD'),
   })
-  
+
   const rows = data?.rows || []
   const stats = data ? {
     total: data.totalCents,
@@ -56,10 +56,10 @@ export function ReportAPSummary() {
         />
         <Card bordered={false} className="page-card-inner" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space style={{ marginTop: 12 }}>
-            <Statistic title="期间总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
-            <Statistic title="期间已结" value={<AmountDisplay cents={stats.settled || 0} currency="CNY" showSymbol={false} />} />
+            <Statistic title="期间总额" value={stats.total ? stats.total / 100 : 0} precision={2} suffix="CNY" />
+            <Statistic title="期间已结" value={stats.settled ? stats.settled / 100 : 0} precision={2} suffix="CNY" />
             {stats.byStatus && Object.entries(stats.byStatus).map(([status, cents]: [string, any]) => (
-              <Statistic key={status} title={`${status}状态`} value={<AmountDisplay cents={cents || 0} currency="CNY" showSymbol={false} />} />
+              <Statistic key={status} title={`${status}状态`} value={cents ? cents / 100 : 0} precision={2} suffix="CNY" />
             ))}
           </Space>
         </Card>

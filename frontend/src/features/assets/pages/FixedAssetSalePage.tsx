@@ -36,7 +36,7 @@ export function FixedAssetSale() {
   // Business data hooks
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useIncomeCategories()
-  const { data: allAssets = [], isLoading } = useFixedAssets({ 
+  const { data: allAssets = [], isLoading } = useFixedAssets({
     status: searchParams.status,
     search: searchParams.search || undefined
   })
@@ -62,7 +62,7 @@ export function FixedAssetSale() {
     setFileList([])
 
     // 根据资产币种过滤账户
-    const filteredAccounts = accounts.filter(a => a.currency === asset.currency)
+    const filteredAccounts = accounts.filter((a: any) => a.currency === asset.currency)
     if (filteredAccounts.length === 0) {
       message.warning(`没有找到币种为${asset.currency}的账户`)
     }

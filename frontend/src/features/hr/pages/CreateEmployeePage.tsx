@@ -52,8 +52,8 @@ export function CreateEmployee() {
                 ...restData,
                 orgDepartmentId,
                 departmentId: project_id && project_id !== 'hq' ? project_id : undefined,
-                probationSalaries: probation_salaries,
-                regularSalaries: regular_salaries,
+                probationSalaries: probation_salaries as any,
+                regularSalaries: regular_salaries as any,
                 phone: phone_country_code && phone_number ? `${phone_country_code}${phone_number}` : undefined,
                 emergencyPhone: emergencyPhone_country_code && emergencyPhone_number ? `${emergencyPhone_country_code}${emergencyPhone_number}` : undefined,
                 joinDate: joinDate ? joinDate.format('YYYY-MM-DD') : undefined,
@@ -79,7 +79,7 @@ export function CreateEmployee() {
                     allowancePromises.push(updateAllowances({
                         employeeId: data.id,
                         allowanceType: type,
-                        allowances: allowances,
+                        allowances: allowances as any,
                     }))
                 }
             }

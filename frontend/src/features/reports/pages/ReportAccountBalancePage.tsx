@@ -62,7 +62,7 @@ export function ReportAccountBalance() {
 
   const asOfStr = asOf.format('YYYY-MM-DD')
   const { data: balanceData, isLoading: loading } = useAccountBalance({ asOf: asOfStr })
-  
+
   const rows: AccountBalanceResponse['rows'] = balanceData?.rows || []
 
   // 按币种汇总
@@ -98,7 +98,7 @@ export function ReportAccountBalance() {
   // 账户明细（从rows中筛选，因为API返回的数据已经包含明细）
   const transactionDetails = useMemo(() => {
     if (!selectedAccountId) return []
-    return rows.filter((r) => r.accountId === selectedAccountId && r.transactionDate)
+    return rows.filter((r) => r.accountId === selectedAccountId && r.transactionDate).map((r, index) => ({ ...r, id: (r as any).id || `tx-${index}` })) as TransactionDetail[]
   }, [rows, selectedAccountId])
 
   const loadCurrencySummary = () => {
@@ -187,9 +187,9 @@ export function ReportAccountBalance() {
                   width: 150,
                   align: 'right' as const,
                   render: (v: number, r: CurrencySummary) => (
-                    <AmountDisplay 
-                      cents={v || 0} 
-                      currency={r.currency} 
+                    <AmountDisplay
+                      cents={v || 0}
+                      currency={r.currency}
                       style={{ color: v > 0 ? '#52c41a' : '#999' }}
                     />
                   )
@@ -200,9 +200,9 @@ export function ReportAccountBalance() {
                   width: 150,
                   align: 'right' as const,
                   render: (v: number, r: CurrencySummary) => (
-                    <AmountDisplay 
-                      cents={v || 0} 
-                      currency={r.currency} 
+                    <AmountDisplay
+                      cents={v || 0}
+                      currency={r.currency}
                       style={{ color: v > 0 ? '#ff4d4f' : '#999' }}
                     />
                   )
@@ -213,9 +213,9 @@ export function ReportAccountBalance() {
                   width: 150,
                   align: 'right' as const,
                   render: (v: number, r: CurrencySummary) => (
-                    <AmountDisplay 
-                      cents={v || 0} 
-                      currency={r.currency} 
+                    <AmountDisplay
+                      cents={v || 0}
+                      currency={r.currency}
                       style={{ fontWeight: 'bold', color: '#1890ff' }}
                     />
                   )
@@ -236,7 +236,8 @@ export function ReportAccountBalance() {
                   )
                 },
               ]}
-              tableProps={{ pagination: false }}
+              tableProps={{}}
+              pagination={false}
             />
           </div>
         )}
@@ -301,7 +302,8 @@ export function ReportAccountBalance() {
                   )
                 },
               ]}
-              tableProps={{ pagination: false }}
+              tableProps={{}}
+              pagination={false}
             />
           </div>
         )}
@@ -347,9 +349,9 @@ export function ReportAccountBalance() {
                   width: 130,
                   align: 'right' as const,
                   render: (v: number, r: TransactionDetail) => (
-                    <AmountDisplay 
-                      cents={v || 0} 
-                      currency={r.currency} 
+                    <AmountDisplay
+                      cents={v || 0}
+                      currency={r.currency}
                       style={{ fontWeight: 'bold' }}
                     />
                   )

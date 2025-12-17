@@ -42,10 +42,10 @@ export function CategoryManagement() {
     let result = data
     if (searchParams.search) {
       const search = searchParams.search.toLowerCase()
-      result = result.filter(c => c.name.toLowerCase().includes(search))
+      result = result.filter((c: Category) => c.name.toLowerCase().includes(search))
     }
     if (searchParams.kind) {
-      result = result.filter(c => c.kind === searchParams.kind)
+      result = result.filter((c: Category) => c.kind === searchParams.kind)
     }
     return result
   }, [data, searchParams])

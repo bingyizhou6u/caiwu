@@ -146,13 +146,13 @@ export function FixedAssetAllocation() {
                     placeholder="搜索资产"
                     optionFilterProp="label"
                     options={assets
-                      .filter(a => a.status === 'in_use' || a.status === 'idle')
-                      .map(a => ({
+                      .filter((a: FixedAsset) => a.status === 'in_use' || a.status === 'idle')
+                      .map((a: FixedAsset) => ({
                         value: a.id,
                         label: `${a.assetCode} - ${a.name} (${a.category || '其他'})`
                       }))}
                     onChange={(value) => {
-                      const asset = assets.find(a => a.id === value)
+                      const asset = assets.find((a: FixedAsset) => a.id === value)
                       if (asset) {
                         Modal.destroyAll()
                         handleAllocate(asset)
@@ -268,9 +268,9 @@ export function FixedAssetAllocation() {
             </Form.Item>
             <Form.Item name="employeeId" label="分配给员工" rules={[{ required: true }]}>
               <Select
-                options={employees.map(e => ({
+                options={employees.map((e: any) => ({
                   value: e.id,
-                  label: `${e.name} (${e.departmentName || '-'})`
+                  label: `${e.name}`
                 }))}
                 showSearch
                 optionFilterProp="label"

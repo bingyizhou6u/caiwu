@@ -118,9 +118,9 @@ export function ReportBorrowing() {
       width: 150,
       align: 'right',
       render: (cents: number, record: BorrowerSummary) => (
-        <AmountDisplay 
-          cents={cents} 
-          currency={record.currency} 
+        <AmountDisplay
+          cents={cents}
+          currency={record.currency}
           style={{ color: cents > 0 ? '#ff4d4f' : '#52c41a', fontWeight: 'bold' }}
         />
       ),
@@ -130,7 +130,7 @@ export function ReportBorrowing() {
       key: 'action',
       width: 120,
       fixed: 'right',
-      render: (_: unknown, record: BorrowerSummary) => (
+      render: (_: any, record: BorrowerSummary) => (
         <Button type="link" size="small" onClick={() => loadDetail(record.userId, record.borrowerName)}>
           查看明细
         </Button>
@@ -217,7 +217,7 @@ export function ReportBorrowing() {
   ]
 
   // 按币种汇总统计
-  const currencyStats = summaries.reduce((acc, item) => {
+  const currencyStats = summaries.reduce((acc: Record<string, { currency: string; total_borrowed: number; total_repaid: number; balance: number; count: number }>, item: BorrowerSummary) => {
     const curr = item.currency
     if (!acc[curr]) {
       acc[curr] = {
@@ -237,7 +237,7 @@ export function ReportBorrowing() {
 
   if (viewLevel === 'detail' && detail) {
     // 计算该借款人的汇总统计
-    const borrowerCurrencyStats = detail.borrowings.reduce((acc, b) => {
+    const borrowerCurrencyStats = detail.borrowings.reduce((acc: Record<string, { currency: string; borrowed: number; repaid: number }>, b: BorrowingRecord) => {
       const curr = b.currency
       if (!acc[curr]) {
         acc[curr] = {
@@ -250,7 +250,7 @@ export function ReportBorrowing() {
       return acc
     }, {} as Record<string, { currency: string; borrowed: number; repaid: number }>)
 
-    detail.repayments.forEach((r) => {
+    detail.repayments.forEach((r: RepaymentRecord) => {
       const curr = r.currency
       if (!borrowerCurrencyStats[curr]) {
         borrowerCurrencyStats[curr] = {
@@ -284,7 +284,7 @@ export function ReportBorrowing() {
           </Card>
 
           <Space direction="vertical" size="large" style={{ width: '100%', marginBottom: 16 }}>
-            {Object.values(borrowerCurrencyStats).map((stat) => (
+            {(Object.values(borrowerCurrencyStats) as { currency: string; borrowed: number; repaid: number }[]).map((stat) => (
               <Card key={stat.currency} title={`${stat.currency} 币种统计`} size="small" bordered={false} className="page-card-inner">
                 <Space size="large">
                   <Statistic
@@ -343,7 +343,7 @@ export function ReportBorrowing() {
       <Card bordered className="page-card page-card-outer">
         <Card title="借款概览" style={{ marginBottom: 16 }} bordered={false} className="page-card-inner">
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {Object.values(currencyStats).map((stat) => (
+            {(Object.values(currencyStats) as { currency: string; total_borrowed: number; total_repaid: number; balance: number; count: number }[]).map((stat) => (
               <Card key={stat.currency} title={`${stat.currency} 币种汇总`} size="small">
                 <Space size="large">
                   <Statistic

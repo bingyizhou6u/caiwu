@@ -79,7 +79,7 @@ export function MyApprovals() {
   const { mutateAsync: rejectBorrowing } = useRejectBorrowing()
 
   const [memo, setMemo] = useState('')
-  
+
   const {
     isOpen: actionModalVisible,
     data: actionModalData,
@@ -119,8 +119,8 @@ export function MyApprovals() {
       }
     },
     {
-      successMessage: (_, { action }) => action === 'approve' ? '审批通过' : '已驳回',
       onSuccess: () => {
+        message.success(actionModalData?.action === 'approve' ? '审批通过' : '已驳回')
         closeActionModal()
         setMemo('')
       }

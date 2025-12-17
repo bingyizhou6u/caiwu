@@ -20,6 +20,7 @@ export function useApiQuery<T = any>(
     select?: (data: any) => any
     placeholderData?: ((previousData: any) => any) | any
     keepPreviousData?: boolean
+    retry?: number | boolean | ((failureCount: number, error: any) => boolean)
   }
 ) {
   return useQuery({
@@ -35,6 +36,7 @@ export function useApiQuery<T = any>(
     refetchOnWindowFocus: options?.refetchOnWindowFocus,
     select: options?.select,
     placeholderData: options?.keepPreviousData ? keepPreviousData : options?.placeholderData,
+    retry: options?.retry,
   })
 }
 

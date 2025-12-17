@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Form, Input, Select, DatePicker, InputNumber, Switch, Tabs, Space } from 'antd'
-import { WorkScheduleEditor } from '../../../../components/WorkScheduleEditor'
+import { WorkScheduleEditor } from '../WorkScheduleEditor'
 import { COUNTRY_CODES } from '../../../../shared/constants'
 import { useDepartments } from '../../../../hooks'
 import { useApiQuery } from '../../../../utils/useApiQuery'
@@ -10,8 +10,8 @@ import './EmployeeForm.css'
 
 // 职位数据响应类型（可能包含 grouped 字段）
 interface PositionsResponse {
-  results?: Position[]
-  grouped?: Record<string, Position[]>
+    results?: Position[]
+    grouped?: Record<string, Position[]>
 }
 
 const { Option, OptGroup } = Select
@@ -62,7 +62,7 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
     )
 
     const positions = Array.isArray(positionsData) ? positionsData : (positionsData?.results || [])
-    const groupedPositions = Array.isArray(positionsData) ? {} : (positionsData?.grouped || {})
+    const groupedPositions: Record<string, Position[]> = Array.isArray(positionsData) ? {} : (positionsData?.grouped || {})
     const hasGroupedPositions = Object.keys(groupedPositions).length > 0
 
     return (

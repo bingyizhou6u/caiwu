@@ -9,6 +9,7 @@ interface UserInfo {
   role?: string
   permissions?: string[]
   position?: {
+    code?: string
     name?: string
     level?: number
     functionRole?: string
@@ -24,7 +25,7 @@ interface AppState {
   collapsed: boolean
   toggleCollapsed: () => void
   setCollapsed: (collapsed: boolean) => void
-  
+
   // Theme State
   themeMode: ThemeMode
   toggleTheme: () => void
@@ -46,11 +47,11 @@ export const useAppStore = create<AppState>()(
       collapsed: false,
       toggleCollapsed: () => set((state) => ({ collapsed: !state.collapsed })),
       setCollapsed: (collapsed) => set({ collapsed }),
-      
+
       // Theme State
       themeMode: 'light',
-      toggleTheme: () => set((state) => ({ 
-        themeMode: state.themeMode === 'light' ? 'dark' : 'light' 
+      toggleTheme: () => set((state) => ({
+        themeMode: state.themeMode === 'light' ? 'dark' : 'light'
       })),
       setThemeMode: (themeMode) => set({ themeMode }),
 

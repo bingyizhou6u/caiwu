@@ -27,7 +27,7 @@ export { useRentalProperties, useRentalProperty, useCreateRentalProperty, useUpd
 export { useRentalPayments, useCreateRentalPayment, useUpdateRentalPayment } from './business/useRentalPayments'
 export { useDormitoryAllocations, useAllocateDormitory, useReturnDormitory } from './business/useDormitoryAllocations'
 export { useRentalPayableBills, useGeneratePayableBills, useMarkBillPaid } from './business/useRentalPayableBills'
-export { useMyDashboard, useMyLeaves, useCreateMyLeave, useMyReimbursements, useCreateMyReimbursement, useMyBorrowings, useCreateMyBorrowing, useMyAssets, useMyProfile, useUpdateMyProfile } from './business/useMy'
+export { useMyDashboard, useMyLeaves, useCreateMyLeave, useMyReimbursements, useCreateMyReimbursement, useMyBorrowings, useCreateMyBorrowing, useMyAssets, useMyProfile, useUpdateMyProfile, type MyLeave, type MyLeavesResponse } from './business/useMy'
 export { useAPSummary, useAPDetail, useARSummary, useARDetail, useExpenseDetail, useExpenseSummary, useAnnualLeave, useBorrowingSummary, useBorrowingDetail, useAccountBalance, useDepartmentCash, useEmployeeSalary, useSiteGrowth } from './business/useReports'
 export { useMyPendingApprovals, useMyApprovalHistory, useApproveLeave as useApproveLeaveMy, useRejectLeave, useApproveReimbursement, useRejectReimbursement, useApproveBorrowing, useRejectBorrowing } from './business/useMyApprovals'
 export { useFixedAssets, useFixedAsset, useCreateFixedAsset, useUpdateFixedAsset, useDeleteFixedAsset, useBatchDeleteFixedAsset, useTransferFixedAsset, useDepreciateFixedAsset, useAllocateFixedAsset, useReturnFixedAsset, useFixedAssetPurchase, useFixedAssetSale, useFixedAssetAllocations } from './business/useFixedAssets'

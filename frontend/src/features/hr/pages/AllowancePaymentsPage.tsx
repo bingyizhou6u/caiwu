@@ -86,9 +86,9 @@ export function AllowancePayments() {
   const { data: employeesData = [] } = useEmployees()
 
   // Transform data format
-  const currencies = React.useMemo(() => canManage ? currenciesData.map((c: any) => ({ 
-    value: c.value as string, 
-    label: c.label.split(' - ')[1] || c.label 
+  const currencies = React.useMemo(() => canManage ? currenciesData.map((c: any) => ({
+    value: c.value as string,
+    label: c.label.split(' - ')[1] || c.label
   })) : [], [currenciesData, canManage])
 
   const accounts = React.useMemo(() => canManage ? accountsData.map((a: any) => ({
@@ -97,9 +97,9 @@ export function AllowancePayments() {
     currency: a.currency
   })) : [], [accountsData, canManage])
 
-  const employees = React.useMemo(() => canManage ? employeesData.map((e: any) => ({ 
-    value: e.value as string, 
-    label: e.label.split(' (')[0] 
+  const employees = React.useMemo(() => canManage ? employeesData.map((e: any) => ({
+    value: e.value as string,
+    label: e.label.split(' (')[0]
   })) : [], [employeesData, canManage])
 
   const handleGenerate = withErrorHandler(
@@ -348,14 +348,14 @@ export function AllowancePayments() {
             {
               name: 'year',
               label: '年份',
-              type: 'select',
+              type: 'select' as const,
               placeholder: '请选择年份',
               options: yearOptions,
             },
             {
               name: 'month',
               label: '月份',
-              type: 'select',
+              type: 'select' as const,
               placeholder: '请选择月份',
               options: [
                 { label: '全部', value: '' },
@@ -365,7 +365,7 @@ export function AllowancePayments() {
             {
               name: 'allowanceType',
               label: '补贴类型',
-              type: 'select',
+              type: 'select' as const,
               placeholder: '请选择补贴类型',
               options: [
                 { label: '全部', value: '' },
@@ -375,7 +375,7 @@ export function AllowancePayments() {
             ...(canManage ? [{
               name: 'employeeId',
               label: '员工',
-              type: 'select',
+              type: 'select' as const,
               placeholder: '请选择员工',
               options: [
                 { label: '全部', value: '' },
@@ -384,10 +384,10 @@ export function AllowancePayments() {
             }] : []),
           ]}
           onSearch={(values) => {
-            if (values.year) setYear(values.year)
-            if (values.month !== undefined) setMonth(values.month || undefined)
-            if (values.allowanceType !== undefined) setAllowanceType(values.allowanceType || undefined)
-            if (values.employeeId !== undefined) setEmployeeId(values.employeeId || undefined)
+            if (values.year) setYear(Number(values.year))
+            if (values.month !== undefined) setMonth(values.month ? Number(values.month) : undefined)
+            if (values.allowanceType !== undefined) setAllowanceType(values.allowanceType ? String(values.allowanceType) : undefined)
+            if (values.employeeId !== undefined) setEmployeeId(values.employeeId ? String(values.employeeId) : undefined)
           }}
           onReset={() => {
             setYear(new Date().getFullYear())

@@ -100,7 +100,7 @@ export function RentalManagement() {
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [contractFileList, setContractFileList] = useState<UploadFile[]>([])
   const [contractUploading, setContractUploading] = useState(false)
-  
+
   const canManageRental = hasPermission('asset', 'rental', 'create')
   const canAllocate = hasPermission('asset', 'rental', 'allocate') || canManageRental
 
@@ -109,7 +109,7 @@ export function RentalManagement() {
     propertyType: searchParams.propertyType,
     status: searchParams.status
   })
-  
+
   // Business data hooks
   const { data: currencies = [] } = useCurrencies()
   const { data: departments = [] } = useDepartments()
@@ -262,7 +262,7 @@ export function RentalManagement() {
     async () => {
       const v = await validateCreate()
       const initialEmployees = v.initialEmployees || []
-      
+
       const { initialEmployees: _, ...rest } = v
       const payload = {
         ...rest,
@@ -849,7 +849,7 @@ export function RentalManagement() {
                   <p><strong>使用项目：</strong><EmptyText value={currentProperty.departmentName} /></p>
                 ) : (
                   <>
-                    <p><strong>使用员工：</strong>{currentProperty.allocations && currentProperty.allocations.length > 0 ? currentProperty.allocations.filter((a) => !a.returnDate).map((a) => a.employeeName).join('、') : '-'}</p>
+                    <p><strong>使用员工：</strong>{currentProperty.allocations && currentProperty.allocations.length > 0 ? currentProperty.allocations.filter((a: DormitoryAllocation) => !a.returnDate).map((a: DormitoryAllocation) => a.employeeName).join('、') : '-'}</p>
                   </>
                 )}
                 <p><strong>状态：</strong>{STATUS_OPTIONS.find(o => o.value === currentProperty.status)?.label || currentProperty.status}</p>
@@ -899,15 +899,15 @@ export function RentalManagement() {
                   columns={[
                     { title: '员工姓名', dataIndex: 'employeeName', key: 'employeeName', width: 120 },
                     { title: '员工项目', dataIndex: 'employee_departmentName', key: 'employee_departmentName', width: 120 },
-                    { 
-                      title: '房间号', 
-                      key: 'room_number', 
+                    {
+                      title: '房间号',
+                      key: 'room_number',
                       width: 100,
                       render: (_: unknown, r: DormitoryAllocationWithDetails) => <EmptyText value={r.room_number || r.roomNumber || null} />
                     },
-                    { 
-                      title: '床位号', 
-                      key: 'bed_number', 
+                    {
+                      title: '床位号',
+                      key: 'bed_number',
                       width: 100,
                       render: (_: unknown, r: DormitoryAllocationWithDetails) => <EmptyText value={r.bed_number || r.bedNumber || null} />
                     },
@@ -936,10 +936,10 @@ export function RentalManagement() {
             <Tabs.TabPane tab="变动记录" key="changes">
               <DataTable<RentalPropertyChangeWithSnakeCase>
                 columns={[
-                  { 
-                    title: '变动日期', 
-                    key: 'changedAt', 
-                    width: 120, 
+                  {
+                    title: '变动日期',
+                    key: 'changedAt',
+                    width: 120,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => {
                       const date = r.change_date || r.changedAt
                       return date ? dayjs(typeof date === 'number' ? date : date).format('YYYY-MM-DD') : '-'
@@ -968,27 +968,27 @@ export function RentalManagement() {
                       return '修改'
                     }
                   },
-                  { 
-                    title: '原租赁开始', 
-                    key: 'fromLeaseStart', 
+                  {
+                    title: '原租赁开始',
+                    key: 'fromLeaseStart',
                     width: 120,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_lease_start || r.fromLeaseStart || null} />
                   },
-                  { 
-                    title: '新租赁开始', 
-                    key: 'toLeaseStart', 
+                  {
+                    title: '新租赁开始',
+                    key: 'toLeaseStart',
                     width: 120,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_lease_start || r.toLeaseStart || null} />
                   },
-                  { 
-                    title: '原租赁结束', 
-                    key: 'fromLeaseEnd', 
+                  {
+                    title: '原租赁结束',
+                    key: 'fromLeaseEnd',
                     width: 120,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_lease_end || r.fromLeaseEnd || null} />
                   },
-                  { 
-                    title: '新租赁结束', 
-                    key: 'toLeaseEnd', 
+                  {
+                    title: '新租赁结束',
+                    key: 'toLeaseEnd',
                     width: 120,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_lease_end || r.toLeaseEnd || null} />
                   },
@@ -1010,15 +1010,15 @@ export function RentalManagement() {
                       return amount ? <AmountDisplay cents={amount} currency={currentProperty.currency} /> : <EmptyText value={null} />
                     }
                   },
-                  { 
-                    title: '原状态', 
-                    key: 'fromStatus', 
+                  {
+                    title: '原状态',
+                    key: 'fromStatus',
                     width: 100,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.from_status || r.fromStatus || null} />
                   },
-                  { 
-                    title: '新状态', 
-                    key: 'toStatus', 
+                  {
+                    title: '新状态',
+                    key: 'toStatus',
                     width: 100,
                     render: (_: unknown, r: RentalPropertyChangeWithSnakeCase) => <EmptyText value={r.to_status || r.toStatus || null} />
                   },
@@ -1052,9 +1052,9 @@ export function RentalManagement() {
             <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
               <CurrencySelect />
             </Form.Item>
-            <Form.Item 
-              name="amountCents" 
-              label="付款金额" 
+            <Form.Item
+              name="amountCents"
+              label="付款金额"
               rules={[{ required: true }]}
               dependencies={['currency']}
             >
@@ -1062,9 +1062,9 @@ export function RentalManagement() {
                 <AmountInput style={{ width: '100%' }} placeholder="付款金额" currency={getFieldValue('currency')} />
               )}
             </Form.Item>
-            <Form.Item 
-              name="accountId" 
-              label="付款账户" 
+            <Form.Item
+              name="accountId"
+              label="付款账户"
               rules={[{ required: true }]}
               dependencies={['currency']}
             >
@@ -1131,8 +1131,8 @@ export function RentalManagement() {
             <Form.Item name="allocationDate" label="分配日期" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
-            <Form.Item 
-              name="monthlyRentCents" 
+            <Form.Item
+              name="monthlyRentCents"
               label="员工需支付月租金（如员工需要支付）"
               dependencies={['currency']}
             >

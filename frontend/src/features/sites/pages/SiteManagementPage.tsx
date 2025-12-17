@@ -30,9 +30,9 @@ export function SiteManagement() {
     async () => {
       const v = await validateWithZod()
       if (modal.isEdit && modal.data) {
-        await updateSite({ id: modal.data.id, data: v })
+        await updateSite({ id: modal.data.id, data: { ...v, active: v.active as any } })
       } else {
-        await createSite(v)
+        await createSite({ ...v, active: v.active as any })
       }
       modal.close()
       form.resetFields()
@@ -59,7 +59,7 @@ export function SiteManagement() {
 
   const handleToggleActive = useMemo(() => withErrorHandler(
     async (id: string, checked: boolean) => {
-      await updateSite({ id, data: { active: checked ? 1 : 0 } })
+      await updateSite({ id, data: { active: (checked ? 1 : 0) as any } })
       return checked ? '已启用' : '已停用'
     },
     {

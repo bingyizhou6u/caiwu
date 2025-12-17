@@ -282,14 +282,14 @@ export function SalaryPayments() {
       align: 'right',
       render: (cents: number | null | undefined, r: SalaryPayment) => {
         if (!cents) return '-'
-        const amountStr = `${(cents / 100).toFixed(2)} ${r.currency || 'CNY'}`
+        const amountStr = `${(cents / 100).toFixed(2)} ${(r as any).currency || 'CNY'}`
         return (
-          <SensitiveField 
-            value={amountStr} 
-            type="salary" 
-            permission="hr.salary.view" 
-            entityId={r.id} 
-            entityType="salary_payment" 
+          <SensitiveField
+            value={amountStr}
+            type="salary"
+            permission="hr.salary.view"
+            entityId={r.id}
+            entityType="salary_payment"
           />
         )
       },
@@ -419,9 +419,9 @@ export function SalaryPayments() {
             },
           ]}
           onSearch={(values) => {
-            if (values.year) setYear(values.year)
-            if (values.month !== undefined) setMonth(values.month || undefined)
-            if (values.status !== undefined) setStatus(values.status || undefined)
+            if (values.year) setYear(Number(values.year))
+            if (values.month !== undefined) setMonth(values.month ? Number(values.month) : undefined)
+            if (values.status !== undefined) setStatus(values.status ? String(values.status) : undefined)
           }}
           onReset={() => {
             setYear(new Date().getFullYear())

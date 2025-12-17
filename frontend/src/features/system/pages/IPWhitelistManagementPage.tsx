@@ -261,11 +261,11 @@ const IPWhitelistManagement: React.FC = () => {
           loading={isLoading}
           rowKey="id"
           pagination={{ pageSize: 20 }}
+          rowSelection={rowSelection}
           tableProps={{
             className: 'table-striped',
-            rowSelection,
           }}
-          actions={(_: unknown, record: IPWhitelist) => (
+          actions={(record: IPWhitelist) => (
             <Popconfirm
               title="确定要删除此IP白名单吗？"
               onConfirm={() => handleDelete(record.id)}

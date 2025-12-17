@@ -24,7 +24,7 @@ import { DataTable, type DataTableColumn, AmountDisplay } from '../../../compone
 
 export function MyAssets() {
   const { data, isLoading: loading } = useMyAssets()
-  
+
   const current = data?.current || []
   const returned = data?.returned || []
 
@@ -67,7 +67,8 @@ export function MyAssets() {
                 columns={columns}
                 data={current}
                 rowKey="id"
-                tableProps={{ className: 'table-striped', pagination: false }}
+                pagination={false}
+                tableProps={{ className: 'table-striped' }}
               />
             ) : <Empty description="暂无持有资产" />
           },
@@ -79,7 +80,8 @@ export function MyAssets() {
                 columns={returnedColumns}
                 data={returned}
                 rowKey="id"
-                tableProps={{ className: 'table-striped', pagination: { pageSize: 10 } }}
+                pagination={{ pageSize: 10 }}
+                tableProps={{ className: 'table-striped' }}
               />
             ) : <Empty description="暂无归还记录" />
           },

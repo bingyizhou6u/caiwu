@@ -93,8 +93,8 @@ export function AccountTransfer() {
     }
   }
 
-  const fromAccountInfo = accounts.find((a) => a.value === fromAccount)
-  const toAccountInfo = accounts.find((a) => a.value === toAccount)
+  const fromAccountInfo = accounts.find((a: any) => a.value === fromAccount)
+  const toAccountInfo = accounts.find((a: any) => a.value === toAccount)
   const isSameCurrency = fromAccountInfo?.currency === toAccountInfo?.currency
 
   // 计算转入金额

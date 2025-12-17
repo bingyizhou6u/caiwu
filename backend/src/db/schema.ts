@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real, uniqueIndex, index } from 'drizzle-orm/sqlite-core'
 
 export const systemConfig = sqliteTable('system_config', {
   key: text('key').primaryKey(),
@@ -155,35 +155,53 @@ export const openingBalances = sqliteTable('opening_balances', {
   createdAt: integer('created_at'),
 })
 
-export const cashFlows = sqliteTable('cash_flows', {
-  id: text('id').primaryKey(),
-  voucherNo: text('voucher_no'),
-  bizDate: text('biz_date').notNull(),
-  type: text('type').notNull(),
-  accountId: text('account_id').notNull(),
-  categoryId: text('category_id'),
-  method: text('method'),
-  amountCents: integer('amount_cents').notNull(),
-  siteId: text('site_id'),
-  departmentId: text('department_id'),
-  counterparty: text('counterparty'),
-  memo: text('memo'),
-  voucherUrl: text('voucher_url'),
-  createdBy: text('created_by'),
-  createdAt: integer('created_at'),
-})
+export const cashFlows = sqliteTable(
+  'cash_flows',
+  {
+    id: text('id').primaryKey(),
+    voucherNo: text('voucher_no'),
+    bizDate: text('biz_date').notNull(),
+    type: text('type').notNull(),
+    accountId: text('account_id').notNull(),
+    categoryId: text('category_id'),
+    method: text('method'),
+    amountCents: integer('amount_cents').notNull(),
+    siteId: text('site_id'),
+    departmentId: text('department_id'),
+    counterparty: text('counterparty'),
+    memo: text('memo'),
+    voucherUrl: text('voucher_url'),
+    createdBy: text('created_by'),
+    createdAt: integer('created_at'),
+  },
+  t => ({
+    idxAccountBiz: index('idx_cash_flows_account_biz').on(t.accountId, t.bizDate),
+    idxType: index('idx_cash_flows_type').on(t.type),
+  })
+)
 
-export const accountTransactions = sqliteTable('account_transactions', {
-  id: text('id').primaryKey(),
-  accountId: text('account_id').notNull(),
-  flowId: text('flow_id').notNull(),
-  transactionDate: text('transaction_date').notNull(),
-  transactionType: text('transaction_type').notNull(),
-  amountCents: integer('amount_cents').notNull(),
-  balanceBeforeCents: integer('balance_before_cents').notNull(),
-  balanceAfterCents: integer('balance_after_cents').notNull(),
-  createdAt: integer('created_at'),
-})
+export const accountTransactions = sqliteTable(
+  'account_transactions',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id').notNull(),
+    flowId: text('flow_id').notNull(),
+    transactionDate: text('transaction_date').notNull(),
+    transactionType: text('transaction_type').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    balanceBeforeCents: integer('balance_before_cents').notNull(),
+    balanceAfterCents: integer('balance_after_cents').notNull(),
+    createdAt: integer('created_at'),
+  },
+  t => ({
+    idxAccountDate: index('idx_acc_tx_account_date').on(t.accountId, t.transactionDate),
+  })
+)
+
+// ... (skipping other tables to keep context small, wait, I can modify auditLogs in same call if I target them separately or just one replacing block if contiguous? They are not contiguous.) 
+// I will use multi_replace for this tool.
+
+
 
 export const currencies = sqliteTable('currencies', {
   code: text('code').primaryKey(),
@@ -647,17 +665,24 @@ export const rentalPayableBills = sqliteTable('rental_payable_bills', {
   updatedAt: integer('updated_at'),
 })
 
-export const auditLogs = sqliteTable('audit_logs', {
-  id: text('id').primaryKey(),
-  actorId: text('actor_id'),
-  action: text('action'),
-  entity: text('entity'),
-  entityId: text('entity_id'),
-  at: integer('at').notNull(),
-  detail: text('detail'),
-  ip: text('ip'),
-  ipLocation: text('ip_location'),
-})
+export const auditLogs = sqliteTable(
+  'audit_logs',
+  {
+    id: text('id').primaryKey(),
+    actorId: text('actor_id'),
+    action: text('action'),
+    entity: text('entity'),
+    entityId: text('entity_id'),
+    at: integer('at').notNull(),
+    detail: text('detail'),
+    ip: text('ip'),
+    ipLocation: text('ip_location'),
+  },
+  t => ({
+    idxTime: index('idx_audit_logs_time').on(t.at),
+    idxEntity: index('idx_audit_logs_entity').on(t.entityId),
+  })
+)
 
 export const businessOperationHistory = sqliteTable('business_operation_history', {
   id: text('id').primaryKey(),

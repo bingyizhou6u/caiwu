@@ -18,7 +18,7 @@ import { Errors, createError } from '../utils/errors.js'
 import { ErrorCodes } from '../constants/errorCodes.js'
 
 export class FinanceService {
-  constructor(private db: DrizzleD1Database<any>) {}
+  constructor(private db: DrizzleD1Database<any>) { }
 
   // --- Cash Flows ---
 
@@ -91,10 +91,85 @@ export class FinanceService {
     const voucherNo = data.voucherNo ?? (await this.getNextVoucherNo(data.bizDate, db))
     const voucherUrlJson = JSON.stringify(data.voucherUrls ?? [])
 
-    // 计算之前的余额
+    // 1. 获取账户当前余额和版本号 (Explicitly get version for Optimistic Locking)
+    const account = await db
+      .select({
+        openingCents: accounts.openingCents,
+        version: accounts.version
+      })
+      .from(accounts)
+      .where(eq(accounts.id, data.accountId))
+      .get()
+
+    if (!account) {
+      throw createError(404, ErrorCodes.BUS_NOT_FOUND, '账户不存在')
+    }
+
+    // 计算之前的余额 (Logic remains mostly same, but we rely on transactions for history)
+    // Note: getAccountBalanceBefore checks history. If no history, it uses account.openingCents.
+    // However, strictly speaking for "current" balance to update, we should calculate from ALL transactions 
+    // OR if we maintain a "current_balance" field on account (we don't seems to).
+    // The previous logic was: `balanceBefore = await this.getAccountBalanceBefore(...)`
+    // This looks at *history*. Use that for the *record* in transaction history.
+    // BUT for checking "sufficient balance" effectively, we need the *latest* state.
+
+    // PROBLEM: The system doesn't store "currentBalance" on the account table? 
+    // Let's check schema for `accounts`.
+    // Schema: `accounts` has `openingCents`, `active`, `version`. NO `currentBalanceCents`.
+    // This means balance is *always* calculated on the fly or openingCents is the only "base".
+    // IF balance is calculated on the fly from `accountTransactions`, then updates to `accounts` table 
+    // won't prevent race conditions on *balance calculation* if we don't lock the `accountTransactions` table 
+    // or use a serialized transaction.
+    // Wait, the audit report said: "In createCashFlow ... calculates new balance ... and updates".
+    // I need to check WHERE it updates.
+    // The previous code verified: 
+    //   await db.insert(accountTransactions).values(...)
+    // It DOES NOT update `accounts` table with a new balance?
+    // Let's re-read the `FinanceService.ts` code I saw earlier.
+
+    /*
+      const balanceBefore = await this.getAccountBalanceBefore(data.accountId, data.bizDate, now, db)
+      ...
+      const balanceAfter = balanceBefore + delta
+      
+      await db.insert(cashFlows)...
+      await db.insert(accountTransactions)...
+    */
+
+    // IT DOES NOT UPDATE THE ACCOUNT TABLE BALANCE! 
+    // So `accounts` table `version` field is useless for this specific race condition 
+    // UNLESS we force a dummy update on `accounts` to act as a mutex.
+    // Yes, that is the standard pattern when you don't store computed fields but need serialization.
+    // We will update `accounts.version` to `version + 1`. 
+    // If that fails, someone else inserted a flow in parallel.
+
+    // 2. 乐观锁检查: 尝试更新 account version
+    // 这充当了一个 "Mutex"，确保同一账户的交易是串行写入的 (至少在并发冲突时会失败)
+    const updateResult = await db
+      .update(accounts)
+      .set({
+        version: (account.version || 0) + 1,
+        // D1/SQLite specific: ensuring we have a change
+      })
+      .where(and(eq(accounts.id, data.accountId), eq(accounts.version, account.version || 0)))
+      .run()
+
+    // @ts-ignore - D1 result handling
+    if (updateResult.meta.changes === 0) {
+      throw createError(
+        409, // Conflict
+        ErrorCodes.BUS_CONCURRENT_MODIFICATION,
+        '账户状态已更变（并发冲突），请重试',
+        { accountId: data.accountId }
+      )
+    }
+
+    // 3. 重新计算余额 (Now we 'locked' the account virtually)
+    // 注意: 由于我们刚刚"锁定"了版本号，此刻计算的 balanceBefore 应该是安全的，
+    // 前提是所有修改都会经过这个锁。
     const balanceBefore = await this.getAccountBalanceBefore(data.accountId, data.bizDate, now, db)
-    
-    // 检查账户余额（仅对支出类型）
+
+    // 检查余额 (仅支出)
     if (data.type === 'expense') {
       if (balanceBefore < data.amountCents) {
         throw createError(
@@ -109,7 +184,7 @@ export class FinanceService {
         )
       }
     }
-    
+
     const delta = data.type === 'income' ? data.amountCents : -data.amountCents
     const balanceAfter = balanceBefore + delta
 

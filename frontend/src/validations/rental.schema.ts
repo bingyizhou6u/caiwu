@@ -4,14 +4,10 @@ import dayjs from 'dayjs'
 export const createRentalPropertySchema = z.object({
     propertyCode: z.string().min(1, '房屋编号不能为空'),
     name: z.string().min(1, '房屋名称不能为空'),
-    propertyType: z.enum(['office', 'dormitory'], {
-        errorMap: () => ({ message: '类型必须为办公室或员工宿舍' }),
-    }),
+    propertyType: z.enum(['office', 'dormitory']),
     address: z.string().optional(),
     areaSqm: z.number().min(0).optional(),
-    rentType: z.enum(['monthly', 'yearly'], {
-        errorMap: () => ({ message: '租金类型必须为月租或年租' }),
-    }),
+    rentType: z.enum(['monthly', 'yearly']),
     monthlyRentCents: z.number().min(0).optional(),
     yearlyRentCents: z.number().min(0).optional(),
     paymentPeriodMonths: z.number().int().min(1).max(12).optional(),

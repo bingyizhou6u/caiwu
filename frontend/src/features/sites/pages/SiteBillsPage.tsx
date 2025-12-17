@@ -54,7 +54,7 @@ export function SiteBills() {
 
   const { form, validateWithZod: validateCreate } = useZodForm(siteBillSchema)
   const { form: editForm, validateWithZod: validateEdit } = useZodForm(siteBillSchema)
-  
+
   const {
     isOpen: open,
     openCreate,
@@ -75,18 +75,18 @@ export function SiteBills() {
   const { data: sitesData = [] } = useSites()
 
   // Transform data format
-  const currencies = React.useMemo(() => currenciesData.map((r: any) => ({ 
-    value: r.value, 
-    label: r.label 
+  const currencies = React.useMemo(() => currenciesData.map((r: any) => ({
+    value: r.value,
+    label: r.label
   })), [currenciesData])
-  const accounts = React.useMemo(() => accountsData.map((a: any) => ({ 
-    value: a.value, 
-    label: a.label, 
-    currency: a.currency 
+  const accounts = React.useMemo(() => accountsData.map((a: any) => ({
+    value: a.value,
+    label: a.label,
+    currency: a.currency
   })), [accountsData])
-  const categories = React.useMemo(() => categoriesData.map((c: any) => ({ 
-    value: c.value, 
-    label: c.label 
+  const categories = React.useMemo(() => categoriesData.map((c: any) => ({
+    value: c.value,
+    label: c.label
   })), [categoriesData])
   const sites = React.useMemo(() => sitesData.filter((s: any) => s.active === 1), [sitesData])
 
@@ -224,11 +224,11 @@ export function SiteBills() {
           ]}
           onSearch={(values) => {
             setFilters({
-              siteId: values.siteId || undefined,
-              startDate: values.dateRangeStart || undefined,
-              endDate: values.dateRangeEnd || undefined,
-              billType: values.billType || undefined,
-              status: values.status || undefined,
+              siteId: values.siteId ? String(values.siteId) : undefined,
+              startDate: values.dateRangeStart ? String(values.dateRangeStart) : undefined,
+              endDate: values.dateRangeEnd ? String(values.dateRangeEnd) : undefined,
+              billType: values.billType ? String(values.billType) : undefined,
+              status: values.status ? String(values.status) : undefined,
             })
           }}
           onReset={() => {
@@ -334,9 +334,9 @@ export function SiteBills() {
             <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
               <CurrencySelect placeholder="请选择币种" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item 
-              name="amount" 
-              label="金额" 
+            <Form.Item
+              name="amount"
+              label="金额"
               rules={[{ required: true, message: '请输入金额' }]}
               dependencies={['currency']}
             >
@@ -347,8 +347,8 @@ export function SiteBills() {
             <Form.Item name="description" label="描述">
               <Input.TextArea rows={3} placeholder="请输入账单描述" />
             </Form.Item>
-            <Form.Item 
-              name="accountId" 
+            <Form.Item
+              name="accountId"
               label="账户"
               dependencies={['currency']}
             >
@@ -417,9 +417,9 @@ export function SiteBills() {
             <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请选择币种' }]}>
               <CurrencySelect placeholder="请选择币种" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item 
-              name="amount" 
-              label="金额" 
+            <Form.Item
+              name="amount"
+              label="金额"
               rules={[{ required: true, message: '请输入金额' }]}
               dependencies={['currency']}
             >
@@ -430,8 +430,8 @@ export function SiteBills() {
             <Form.Item name="description" label="描述">
               <Input.TextArea rows={3} placeholder="请输入账单描述" />
             </Form.Item>
-            <Form.Item 
-              name="accountId" 
+            <Form.Item
+              name="accountId"
               label="账户"
               dependencies={['currency']}
             >

@@ -17,7 +17,7 @@ export function DepartmentManagement() {
   const { mutateAsync: createDeptMutation } = useCreateDepartment()
   const { mutateAsync: updateDeptMutation } = useUpdateDepartment()
   const { mutateAsync: deleteDeptMutation } = useDeleteDepartment()
-  
+
   const modal = useFormModal<Department>()
   const { form: deptForm, validateWithZod } = useZodForm(departmentSchema)
   const [searchParams, setSearchParams] = useState<{ search?: string; activeOnly?: string }>({})
@@ -30,12 +30,12 @@ export function DepartmentManagement() {
     let result = deptData
     if (searchParams.search) {
       const search = searchParams.search.toLowerCase()
-      result = result.filter(d => d.name.toLowerCase().includes(search))
+      result = result.filter((d: Department) => d.name.toLowerCase().includes(search))
     }
     if (searchParams.activeOnly === 'true') {
-      result = result.filter(d => d.active === 1)
+      result = result.filter((d: Department) => d.active === 1)
     } else if (searchParams.activeOnly === 'false') {
-      result = result.filter(d => d.active === 0)
+      result = result.filter((d: Department) => d.active === 0)
     }
     return result
   }, [deptData, searchParams])
@@ -43,7 +43,7 @@ export function DepartmentManagement() {
   const createDept = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateWithZod()
-      await createDeptMutation(v)
+      await createDeptMutation({ ...v, active: v.active as any })
       modal.close()
       deptForm.resetFields()
     },
@@ -70,7 +70,7 @@ export function DepartmentManagement() {
 
   const handleToggleActive = useMemo(() => withErrorHandler(
     async (id: string, checked: boolean) => {
-      await updateDeptMutation({ id, data: { active: checked ? 1 : 0 } })
+      await updateDeptMutation({ id, data: { active: (checked ? 1 : 0) as any } })
       return checked ? '已启用' : '已停用'
     },
     {
@@ -157,7 +157,8 @@ export function DepartmentManagement() {
               )}
             </Space>
           )}
-          tableProps={{ className: 'table-striped', pagination: { pageSize: 20 } }}
+          pagination={{ pageSize: 20 }}
+          tableProps={{ className: 'table-striped' }}
         />
 
         <FormModal

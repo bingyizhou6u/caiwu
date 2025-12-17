@@ -13,10 +13,10 @@ export function ReportExpenseSummary() {
   })
 
   const { data, isLoading } = useExpenseSummary(searchParams)
-  
+
   const rows = data?.rows || []
   const stats = useMemo(() => {
-    const total = rows.reduce((acc: number, r) => acc + (r.totalCents || 0), 0)
+    const total = rows.reduce((acc: number, r: { totalCents: number }) => acc + (r.totalCents || 0), 0)
     return { total }
   }, [rows])
 
@@ -49,7 +49,7 @@ export function ReportExpenseSummary() {
         />
         <Card bordered={false} className="page-card-inner" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space style={{ marginTop: 12 }}>
-            <Statistic title="支出总额" value={<AmountDisplay cents={stats.total || 0} currency="CNY" showSymbol={false} />} />
+            <Statistic title="支出总额" value={stats.total ? stats.total / 100 : 0} precision={2} suffix="CNY" />
           </Space>
         </Card>
         <Card bordered={false} className="page-card-inner">

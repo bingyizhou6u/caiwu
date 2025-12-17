@@ -127,9 +127,9 @@ export function AuditLogs() {
               label: '操作类型',
               type: 'select',
               placeholder: '请选择操作类型',
-              options: options?.actions.map((a: string) => ({ 
-                label: ACTION_LABELS[a] || a, 
-                value: a 
+              options: options?.actions.map((a: string) => ({
+                label: ACTION_LABELS[a] || a,
+                value: a
               })),
             },
             {
@@ -137,9 +137,9 @@ export function AuditLogs() {
               label: '对象类型',
               type: 'select',
               placeholder: '请选择对象类型',
-              options: options?.entities.map((e: string) => ({ 
-                label: ENTITY_LABELS[e] || e, 
-                value: e 
+              options: options?.entities.map((e: string) => ({
+                label: ENTITY_LABELS[e] || e,
+                value: e
               })),
             },
             {
@@ -157,11 +157,11 @@ export function AuditLogs() {
           ]}
           onSearch={(values) => {
             const searchParams: Partial<AuditLogQueryParams> = {}
-            if (values.action) searchParams.action = values.action
-            if (values.entity) searchParams.entity = values.entity
-            if (values.actor_keyword) searchParams.actor_keyword = values.actor_keyword
-            if (values.timeRangeStart) searchParams.start_time = dayjs(values.timeRangeStart).valueOf()
-            if (values.timeRangeEnd) searchParams.end_time = dayjs(values.timeRangeEnd).valueOf()
+            if (values.action) searchParams.action = values.action as string
+            if (values.entity) searchParams.entity = values.entity as string
+            if (values.actor_keyword) searchParams.actor_keyword = values.actor_keyword as string
+            if (values.timeRangeStart) searchParams.start_time = dayjs(values.timeRangeStart as string).valueOf()
+            if (values.timeRangeEnd) searchParams.end_time = dayjs(values.timeRangeEnd as string).valueOf()
             handleSearch(searchParams)
           }}
           onReset={() => handleSearch({})}

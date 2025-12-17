@@ -370,14 +370,14 @@ export function EmployeeManagement() {
           loading={isLoading}
           rowKey="id"
           actions={renderActions}
+          onChange={(_pagination, filters) => {
+            if (filters.status && filters.status.length > 0) {
+              setStatusFilter(filters.status[0] as string)
+            } else {
+              setStatusFilter('all')
+            }
+          }}
           tableProps={{
-            onChange: (_pagination, filters) => {
-              if (filters.status && filters.status.length > 0) {
-                setStatusFilter(filters.status[0] as string)
-              } else {
-                setStatusFilter('all')
-              }
-            },
             expandable: {
               expandedRowRender: (record) => (
                 <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>

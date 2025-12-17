@@ -22,7 +22,7 @@ export interface DataTableProps<T> {
     showSizeChanger?: boolean
     showTotal?: (total: number, range: [number, number]) => ReactNode
     pageSizeOptions?: string[]
-  }
+  } | false
   onEdit?: (record: T) => void
   onDelete?: (record: T) => void
   onRefresh?: () => void
@@ -114,17 +114,17 @@ export function DataTable<T extends Record<string, any>>({
     () =>
       pagination
         ? {
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            showSizeChanger: pagination.showSizeChanger !== false,
-            showTotal:
-              pagination.showTotal ||
-              ((total: number, range: [number, number]) => `共 ${total} 条，显示 ${range[0]}-${range[1]} 条`),
-            onChange: pagination.onChange,
-            onShowSizeChange: pagination.onChange,
-            pageSizeOptions: pagination.pageSizeOptions || ['10', '20', '50', '100'],
-          }
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          showSizeChanger: pagination.showSizeChanger !== false,
+          showTotal:
+            pagination.showTotal ||
+            ((total: number, range: [number, number]) => `共 ${total} 条，显示 ${range[0]}-${range[1]} 条`),
+          onChange: pagination.onChange,
+          onShowSizeChange: pagination.onChange,
+          pageSizeOptions: pagination.pageSizeOptions || ['10', '20', '50', '100'],
+        }
         : false,
     [pagination]
   )

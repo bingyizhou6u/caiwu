@@ -31,7 +31,7 @@ export function AccountManagement() {
   const { mutateAsync: updateAccount } = useUpdateAccount()
   const { mutateAsync: deleteAccountMutation } = useDeleteAccount()
   const { mutateAsync: batchDeleteAccount } = useBatchDeleteAccount()
-  
+
   const [searchParams, setSearchParams] = useState<{ search?: string; type?: string; currency?: string; activeOnly?: string }>({})
 
   const modal = useFormModal<Account>()
@@ -58,34 +58,34 @@ export function AccountManagement() {
   // 过滤和排序数据
   const filteredAndSorted = useMemo(() => {
     let result = accounts.slice()
-    
+
     // 搜索过滤
     if (searchParams.search) {
       const search = searchParams.search.toLowerCase()
-      result = result.filter((a: Account) => 
+      result = result.filter((a: Account) =>
         a.name.toLowerCase().includes(search) ||
         (a.alias && a.alias.toLowerCase().includes(search)) ||
         (a.accountNumber && a.accountNumber.toLowerCase().includes(search))
       )
     }
-    
+
     // 类型过滤
     if (searchParams.type) {
       result = result.filter((a: Account) => a.type === searchParams.type)
     }
-    
+
     // 币种过滤
     if (searchParams.currency) {
       result = result.filter((a: Account) => a.currency === searchParams.currency)
     }
-    
+
     // 状态过滤
     if (searchParams.activeOnly === 'true') {
       result = result.filter((a: Account) => a.active === 1)
     } else if (searchParams.activeOnly === 'false') {
       result = result.filter((a: Account) => a.active === 0)
     }
-    
+
     // 排序
     return result.sort((a: Account, b: Account) => a.name.localeCompare(b.name))
   }, [accounts, searchParams])
@@ -115,7 +115,7 @@ export function AccountManagement() {
   const handleCreate = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateCreate()
-      await createAccount(v)
+      await createAccount({ ...v, active: (v.active ? 1 : 0) as any })
       modal.close()
       cForm.resetFields()
     },
@@ -133,7 +133,7 @@ export function AccountManagement() {
   const handleEdit = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateEdit()
-      const payload = { ...v, active: v.active ? 1 : 0 }
+      const payload = { ...v, active: (v.active ? 1 : 0) as any }
       if (modal.data) {
         await updateAccount({ id: modal.data.id, data: payload })
         modal.close()
@@ -166,17 +166,17 @@ export function AccountManagement() {
 
   const columns: DataTableColumn<Account>[] = [
     { title: '名称', dataIndex: 'name', key: 'name' },
-    { 
-      title: '账户号', 
-      dataIndex: 'accountNumber', 
-      key: 'accountNumber', 
+    {
+      title: '账户号',
+      dataIndex: 'accountNumber',
+      key: 'accountNumber',
       render: (v: string, r: Account) => v ? (
-        <SensitiveField 
-          value={v} 
-          type="default" 
-          permission="finance.account.view_sensitive" 
-          entityId={r.id} 
-          entityType="account" 
+        <SensitiveField
+          value={v}
+          type="default"
+          permission="finance.account.view_sensitive"
+          entityId={r.id}
+          entityType="account"
         />
       ) : <EmptyText value={v} />
     },

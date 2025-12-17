@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import type { ColumnsType } from 'antd/es/table'
 import { Card, Button, Modal, Form, Input, Space, message, Select, Popconfirm, Tag, DatePicker, InputNumber, Upload } from 'antd'
 import { api } from '../../../config/api'
 import type { UploadFile } from 'antd/es/upload/interface'
@@ -277,7 +278,7 @@ export function ExpenseReimbursement() {
     return result
   }, [expenses, searchParams])
 
-  const columns = [
+  const columns: ColumnsType<ExpenseReimbursement> = [
     {
       title: '员工姓名',
       dataIndex: 'employeeName',
@@ -759,12 +760,12 @@ export function ExpenseReimbursement() {
                         >
                           {Array.isArray(accounts)
                             ? accounts
-                                .filter((acc: any) => acc.currency === approveRow?.currencyId)
-                                .map((acc: any) => (
-                                  <Option key={acc.id} value={acc.id}>
-                                    {acc.name} ({acc.currencyCode || acc.currency})
-                                  </Option>
-                                ))
+                              .filter((acc: any) => acc.currency === approveRow?.currencyId)
+                              .map((acc: any) => (
+                                <Option key={acc.id} value={acc.id}>
+                                  {acc.name} ({acc.currencyCode || acc.currency})
+                                </Option>
+                              ))
                             : []}
                         </Select>
                       </Form.Item>
@@ -776,10 +777,10 @@ export function ExpenseReimbursement() {
                         <Select placeholder="请选择支出类别" showSearch optionFilterProp="children">
                           {Array.isArray(categories)
                             ? categories.map((cat: any) => (
-                                <Option key={cat.id} value={cat.id}>
-                                  {cat.name}
-                                </Option>
-                              ))
+                              <Option key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </Option>
+                            ))
                             : []}
                         </Select>
                       </Form.Item>

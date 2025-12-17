@@ -5,7 +5,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH, PATH_TO_KEY } from '../config/menu'
-import { MultiTabs } from '../components/MultiTabs'
+import { MultiTabs } from '../components/layout/MultiTabs'
 import { preloadRoute } from '../router'
 import './MainLayout.css'
 
@@ -22,7 +22,7 @@ export function MainLayout() {
         themeMode,
         toggleTheme
     } = useAppStore()
-    
+
     const [hoverExpanded, setHoverExpanded] = useState(false)
     const siderRef = useRef<HTMLDivElement>(null)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -43,7 +43,7 @@ export function MainLayout() {
             setSelectedKey(menuKey)
         }
     }, [location])
-    
+
     // Hover expand handlers
     const handleSiderMouseEnter = () => {
         if (!collapsed) return
@@ -54,7 +54,7 @@ export function MainLayout() {
         // 始终保留 overlay，直接开动画
         setHoverExpanded(true)
     }
-    
+
     const handleSiderMouseLeave = () => {
         if (!collapsed) return
         if (hoverTimeoutRef.current) {
@@ -65,7 +65,7 @@ export function MainLayout() {
             setHoverExpanded(false)
         }, 150)
     }
-    
+
     useEffect(() => {
         return () => {
             if (hoverTimeoutRef.current) {

@@ -67,10 +67,10 @@ export function LeaveManagement() {
 
   // 使用React Query hook获取员工数据
   const { data: employeesData = [] } = useEmployees(true)
-  
+
   // 转换员工数据格式
   const employees = React.useMemo(() => {
-    return employeesData.map(e => ({
+    return employeesData.map((e: any) => ({
       id: e.id,
       name: e.name || '',
       departmentName: e.departmentName || '',
@@ -80,7 +80,7 @@ export function LeaveManagement() {
 
   // 过滤请假记录
   const filteredLeaves = React.useMemo(() => {
-    return leaves.filter((leave) => {
+    return leaves.filter((leave: EmployeeLeave) => {
       if (searchParams.employee && !leave.employeeName?.toLowerCase().includes(searchParams.employee.toLowerCase())) {
         return false
       }
@@ -444,7 +444,8 @@ export function LeaveManagement() {
               )}
             </Space>
           )}
-          tableProps={{ className: 'table-striped', scroll: { x: 1200 }, pagination: { pageSize: 20 } }}
+          pagination={{ pageSize: 20 }}
+          tableProps={{ className: 'table-striped', scroll: { x: 1200 } }}
         />
 
         <Modal

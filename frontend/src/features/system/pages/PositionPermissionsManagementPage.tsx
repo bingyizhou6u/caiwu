@@ -300,13 +300,13 @@ export function PositionPermissionsManagement() {
   const handleToggleActive = useMemo(() => withErrorHandler(
     async (record: Position, checked: boolean) => {
       setTogglingId(record.id)
-      await updatePosition({ id: record.id, data: { active: checked ? 1 : 0 } })
+      await updatePosition({ id: record.id, data: { active: (checked ? 1 : 0) } as any })
       return `已${checked ? '启用' : '禁用'}职位：${record.name}`
     },
     {
       showSuccess: true,
       onSuccess: (msg) => message.success(msg),
-      onError: () => {},
+      onError: () => { },
       onFinally: () => setTogglingId(null)
     }
   ), [updatePosition])
