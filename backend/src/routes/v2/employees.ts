@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types.js'
-import { hasPermission, getUserPosition, getUserEmployee } from '../../utils/permissions.js'
+import { hasPermission, getUserPosition, getUserEmployee, getDataAccessFilter } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
 import {
@@ -58,15 +58,43 @@ employeesRoutes.openapi(
     const filters: any = { ...query }
     const employee = c.get('userEmployee')
 
-    if (position.level === 2) {
-      if (employee?.departmentId) {
-        filters.departmentId = employee.departmentId
-      }
-    } else if (position.level === 3) {
-      if (employee?.orgDepartmentId) {
-        filters.orgDepartmentId = employee.orgDepartmentId
-      } else {
-        filters.orgDepartmentId = 'NONE'
+    // 使用统一的权限过滤工具函数
+    // 注意：getDataAccessFilter 返回 SQL where 字符串，列名使用 camelCase（与 schema 一致）
+    const { where, binds } = getDataAccessFilter(c, 'employees', {
+      deptColumn: 'departmentId',
+      orgDeptColumn: 'orgDepartmentId',
+    })
+
+    // 如果权限过滤返回 '1=0'，表示无权限，返回空结果
+    if (where === '1=0') {
+      return { results: [] }
+    }
+
+    // 如果权限过滤返回 '1=1'，表示总部人员，无限制
+    if (where === '1=1') {
+      // 总部人员可以查看所有数据，不需要额外过滤
+    } else {
+      // 解析权限过滤条件，转换为 filters 对象
+      // where 格式可能是: "employees.departmentId = ?" 或 "employees.orgDepartmentId = ?"
+      if (where.includes('departmentId = ?')) {
+        if (binds.length > 0) {
+          filters.departmentId = binds[0]
+        }
+      } else if (where.includes('orgDepartmentId = ?')) {
+        if (binds.length > 0) {
+          filters.orgDepartmentId = binds[0]
+        } else {
+          // 如果 orgDepartmentId 为空，返回空结果（安全起见）
+          return { results: [] }
+        }
+      } else if (where.includes('id = ?')) {
+        // Level 4/5 用户只能查看自己的数据
+        if (binds.length > 0) {
+          // 这种情况下，我们需要在 service 层处理，或者返回空结果
+          // 因为 getAll 不支持按 id 过滤（这是单个员工查询）
+          // 安全起见，返回空结果
+          return { results: [] }
+        }
       }
     }
 
@@ -309,7 +337,15 @@ const migrateUserRoute = createRoute({
     body: {
       content: {
         'application/json': {
-          schema: z.any(),
+          schema: MigrateUserSchema.extend({
+            // 兼容旧格式（snake_case）
+            user_id: z.string().optional(),
+            org_department_id: z.string().optional(),
+            position_id: z.string().optional(),
+            join_date: z.string().optional(),
+            probation_salary_cents: z.number().optional(),
+            regular_salary_cents: z.number().optional(),
+          }).passthrough(), // 允许其他字段
         },
       },
     },
@@ -336,15 +372,20 @@ employeesRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
 
-    const raw = c.req.valid('json') as any
+    const raw = c.req.valid('json') as z.infer<typeof MigrateUserSchema> & {
+      user_id?: string
+      org_department_id?: string
+      position_id?: string
+      join_date?: string
+      probation_salary_cents?: number
+      regular_salary_cents?: number
+    }
     const body = {
-      userId: raw.userId ?? raw.user_id,
-      orgDepartmentId: raw.orgDepartmentId ?? raw.org_department_id,
-      positionId: raw.positionId ?? raw.position_id,
-      joinDate: raw.joinDate ?? raw.join_date,
+      userId: raw.userId ?? raw.user_id ?? '',
+      orgDepartmentId: raw.orgDepartmentId ?? raw.org_department_id ?? '',
+      positionId: raw.positionId ?? raw.position_id ?? '',
+      joinDate: raw.joinDate ?? raw.join_date ?? '',
       birthday: raw.birthday,
-      probationSalaryCents: raw.probation_salary_cents,
-      regularSalaryCents: raw.regular_salary_cents,
     }
     const service = c.var.services.employee
 

@@ -42,3 +42,6 @@ environment = "production"
 # 开发环境配置（仅用于本地测试）
 [env.dev.vars]
 AUTH_JWT_SECRET = "dev-jwt-secret-for-local-testing-only"
+# 初始化管理员密码哈希（可选，如果不设置则使用默认值）
+# 生成方式：使用 bcryptjs: bcrypt.hash('your-password', 10)
+# INIT_ADMIN_PASSWORD_HASH = "$2b$10$..."

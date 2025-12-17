@@ -146,23 +146,28 @@ app.openapi(
     }
     const { start, end, departmentIds } = c.req.valid('query')
 
+    // 使用统一的 validateScope 函数验证权限
     const rawIds = departmentIds ? departmentIds.split(',') : []
-    const position = getUserPosition(c)
-    let finalIds: string[] = rawIds
+    const validatedIds: string[] = []
 
-    if (position && position.level >= 2) {
-      const userDeptId = c.get('userEmployee')?.departmentId
-      if (!userDeptId) {
-        finalIds = ['00000000-0000-0000-0000-000000000000']
-      } else {
-        if (finalIds.length > 0) {
-          for (const id of finalIds) {
-            if (id !== userDeptId) {
-      throw Errors.FORBIDDEN('Cannot access other departments')}
+    if (rawIds.length > 0) {
+      // 验证每个 departmentId
+      for (const id of rawIds) {
+        try {
+          const validatedId = validateScope(c, id)
+          if (validatedId && validatedId !== '00000000-0000-0000-0000-000000000000') {
+            validatedIds.push(validatedId)
           }
-        } else {
-          finalIds = [userDeptId]
+        } catch (error) {
+          // validateScope 会在权限不足时抛出错误，直接传播
+          throw error
         }
+      }
+    } else {
+      // 如果没有提供 departmentIds，使用 validateScope 获取用户的 departmentId
+      const userDeptId = validateScope(c, undefined)
+      if (userDeptId && userDeptId !== '00000000-0000-0000-0000-000000000000') {
+        validatedIds.push(userDeptId)
       }
     }
 
@@ -170,7 +175,7 @@ app.openapi(
     const data = await reportService.getDepartmentCashFlow(
       start,
       end,
-      finalIds && finalIds.length > 0 ? finalIds : undefined
+      validatedIds.length > 0 ? validatedIds : undefined
     )
     return data
   }) as any
@@ -764,7 +769,7 @@ app.openapi(
     const data = await reportService.getEmployeeSalaryReport(y, month, validId, false) // 不使用缓存
 
     const csvContent = exportToCSV(
-      (data as any).results || [],
+      (data?.results || []) as Array<Record<string, any>>,
       [
         { header: '员工姓名', key: 'employeeName' },
         { header: '项目', key: 'departmentName' },

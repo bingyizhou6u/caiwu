@@ -206,7 +206,18 @@ app.post('/api/v2/init-if-empty', async c => {
 
     // 数据库为空，执行初始化
     const now = Date.now()
-    const passwordHash = '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve' // password: password
+    
+    // 从环境变量读取初始化密码哈希，如果不存在则使用默认值（仅用于开发环境）
+    // 生产环境应通过 wrangler secret put INIT_ADMIN_PASSWORD_HASH 设置
+    const passwordHash = c.env.INIT_ADMIN_PASSWORD_HASH || '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve'
+    
+    if (!c.env.INIT_ADMIN_PASSWORD_HASH) {
+      Logger.warn(
+        'Using default password hash for initialization. For production, set INIT_ADMIN_PASSWORD_HASH via wrangler secret.',
+        {},
+        c
+      )
+    }
 
     // 1. 创建总部
     await c.env.DB.prepare(
@@ -266,7 +277,9 @@ app.post('/api/v2/init-if-empty', async c => {
         message: '数据库初始化成功',
         adminAccount: {
           email: 'admin@example.com',
-          password: 'password',
+          password: c.env.INIT_ADMIN_PASSWORD_HASH 
+            ? '请使用环境变量中配置的密码' 
+            : 'password (默认密码，请尽快修改)',
         },
       })
     )
