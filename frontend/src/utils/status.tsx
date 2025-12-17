@@ -135,8 +135,6 @@ export const ACCOUNT_STATUS: Record<string, StatusConfig> = {
 export const COMMON_STATUS: Record<string, StatusConfig> = {
   active: { text: '启用', color: 'success' },
   inactive: { text: '停用', color: 'default' },
-  enabled: { text: '启用', color: 'success' },
-  disabled: { text: '禁用', color: 'default' },
   pending: { text: '待处理', color: 'processing' },
   approved: { text: '已批准', color: 'success' },
   rejected: { text: '已驳回', color: 'error' },

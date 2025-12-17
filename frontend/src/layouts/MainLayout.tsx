@@ -94,7 +94,7 @@ export function MainLayout() {
         navigate('/login')
     }
 
-    const userMenu = [
+    const userMenu: MenuProps['items'] = [
         {
             key: 'profile',
             label: (
@@ -111,7 +111,7 @@ export function MainLayout() {
             label: '修改密码',
             onClick: () => navigate('/change-password'),
         },
-        { type: 'divider' },
+        { type: 'divider' as const },
         {
             key: 'logout',
             icon: <LogoutOutlined />,

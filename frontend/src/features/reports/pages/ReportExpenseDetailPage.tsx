@@ -59,7 +59,8 @@ export function ReportExpenseDetail() {
           ]}
           onSearch={handleSearch}
           initialValues={{
-            dateRange: [dayjs().startOf('month'), dayjs()],
+            dateRangeStart: dayjs().startOf('month').format('YYYY-MM-DD'),
+            dateRangeEnd: dayjs().format('YYYY-MM-DD'),
           }}
         />
         <DataTable<ExpenseDetailResponse['rows'][number]>

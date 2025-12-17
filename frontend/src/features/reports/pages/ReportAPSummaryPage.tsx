@@ -50,7 +50,8 @@ export function ReportAPSummary() {
           ]}
           onSearch={handleSearch}
           initialValues={{
-            dateRange: [dayjs().startOf('month'), dayjs()],
+            dateRangeStart: dayjs().startOf('month').format('YYYY-MM-DD'),
+            dateRangeEnd: dayjs().format('YYYY-MM-DD'),
           }}
         />
         <Card bordered={false} className="page-card-inner" style={{ marginTop: 16, marginBottom: 16 }}>
