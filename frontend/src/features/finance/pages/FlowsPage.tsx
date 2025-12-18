@@ -1,17 +1,15 @@
 import { useState, useMemo } from 'react'
-import { Button, Modal, Space, message, Upload, Card } from 'antd'
-import { UploadOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Button, Modal, Space, message, Upload, Card, Popconfirm, Input, Tag } from 'antd'
+import { UploadOutlined, EyeOutlined, UndoOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../../config/api'
 import { isSupportedImageType, uploadImageAsWebP } from '../../../utils/image'
 import { useFlows, useUpdateFlowVoucher } from '../../../hooks'
-import { useBatchDeleteFlow } from '../../../hooks/business/useFlows'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
-import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 import { useAccounts, useAllCategories } from '../../../hooks/useBusinessData'
 import { useMultipleModals } from '../../../hooks/forms/useFormModal'
-import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar, BatchActionButton } from '../../../components/common'
+import { DataTable, type DataTableColumn, AmountDisplay, EmptyText, PageToolbar } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import type { Flow } from '../../../types/business'
 import { PageContainer } from '../../../components/PageContainer'
@@ -26,8 +24,8 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function Flows() {
   // 权限
-  const { hasPermission, isManager: _isManager } = usePermissions()
-  const canDelete = hasPermission('finance', 'flow', 'delete') || _isManager()
+  const { hasPermission } = usePermissions()
+  const canReverse = hasPermission('finance', 'flow', 'reverse')
 
   // 模态框
   const modals = useMultipleModals(['voucherUpload', 'preview'])
@@ -44,22 +42,8 @@ export function Flows() {
   const total = flowsData?.total || 0
 
   const { mutateAsync: updateVoucher, isPending: isUpdatingVoucher } = useUpdateFlowVoucher()
-  const { mutateAsync: batchDeleteFlow } = useBatchDeleteFlow()
 
   const tableActions = useTableActions<Flow>()
-  const { selectedRowKeys, rowSelection } = tableActions
-
-  const { handleBatch: handleBatchDelete, loading: batchDeleting } = useBatchOperation(
-    batchDeleteFlow,
-    tableActions,
-    {
-      onSuccess: () => {
-        refetch()
-        message.success('批量删除成功')
-      },
-      errorMessage: '批量删除失败'
-    }
-  )
 
   // 预览状态
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
@@ -69,6 +53,10 @@ export function Flows() {
   const [voucherUploadFileList, setVoucherUploadFileList] = useState<UploadFile[]>([])
   const [voucherUploadUrls, setVoucherUploadUrls] = useState<string[]>([])
   const [voucherUploading, setVoucherUploading] = useState(false)
+
+  // 红冲相关状态
+  const [reversalReason, setReversalReason] = useState('')
+  const [reversingFlowId, setReversingFlowId] = useState<string | null>(null)
 
   const onUpdateVoucher = async () => {
     if (voucherUploadUrls.length === 0) {
@@ -97,6 +85,31 @@ export function Flows() {
     setPreviewUrls(urls)
     setPreviewIndex(index)
     modals.open('preview')
+  }
+
+  // 红冲处理
+  const handleReverse = async (flowId: string) => {
+    if (!reversalReason.trim()) {
+      message.error('请输入冲正原因')
+      return
+    }
+
+    try {
+      const response = await api.post(`/api/v2/flows/${flowId}/reverse`, {
+        reversalReason: reversalReason.trim(),
+      })
+
+      if (response.data.success) {
+        message.success(
+          `红冲成功！\n原凭证号: ${response.data.data.originalVoucherNo}\n红冲凭证号: ${response.data.data.reversalVoucherNo}`
+        )
+        setReversalReason('')
+        setReversingFlowId(null)
+        refetch()
+      }
+    } catch (error: any) {
+      message.error('红冲失败: ' + (error.message || '未知错误'))
+    }
   }
 
   return (
@@ -166,20 +179,7 @@ export function Flows() {
             {
               label: '刷新',
               onClick: () => refetch()
-            },
-            ...(canDelete ? [{
-              label: '批量删除',
-              component: (
-                <BatchActionButton
-                  label="批量删除"
-                  selectedCount={selectedRowKeys.length}
-                  onConfirm={handleBatchDelete}
-                  icon={<DeleteOutlined />}
-                  loading={batchDeleting}
-                  confirmTitle={(count) => `确定要删除选中的 ${count} 条记录吗？`}
-                />
-              )
-            }] : [])
+            }
           ]}
           style={{ marginTop: 16 }}
         />
@@ -237,6 +237,9 @@ export function Flows() {
               }}
               actions={(record) => {
                 const voucherUrls = record.voucherUrls || (record.voucherUrl ? [record.voucherUrl] : [])
+                const isReversed = (record as any).isReversed === 1
+                const isReversal = (record as any).isReversal === 1
+
                 return (
                   <Space>
                     {voucherUrls.length > 0 ? (
@@ -261,10 +264,57 @@ export function Flows() {
                     >
                       {voucherUrls.length > 0 ? '重新上传' : '补充凭证'}
                     </Button>
+
+                    {/* 红冲按钮 */}
+                    {canReverse && !isReversed && !isReversal && (
+                      <Popconfirm
+                        title="确认红冲此流水？"
+                        description={
+                          <div style={{ width: 300 }}>
+                            <p style={{ marginBottom: 8 }}>红冲将生成一笔反向流水抵消此记录</p>
+                            <Input.TextArea
+                              placeholder="请输入冲正原因（必填）"
+                              rows={3}
+                              value={reversingFlowId === record.id ? reversalReason : ''}
+                              onChange={(e) => {
+                                setReversingFlowId(record.id)
+                                setReversalReason(e.target.value)
+                              }}
+                            />
+                          </div>
+                        }
+                        onConfirm={() => handleReverse(record.id)}
+                        onCancel={() => {
+                          setReversalReason('')
+                          setReversingFlowId(null)
+                        }}
+                        okText="确认红冲"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Button
+                          size="small"
+                          danger
+                          type="dashed"
+                          icon={<UndoOutlined />}
+                        >
+                          红冲
+                        </Button>
+                      </Popconfirm>
+                    )}
+
+                    {/* 已冲正标记 */}
+                    {isReversed && (
+                      <Tag color="red">已冲正</Tag>
+                    )}
+
+                    {/* 红冲记录标记 */}
+                    {isReversal && (
+                      <Tag color="volcano">红冲单</Tag>
+                    )}
                   </Space>
                 )
               }}
-              rowSelection={rowSelection}
               tableProps={{ className: 'table-striped' }}
             />
           )

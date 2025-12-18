@@ -29,6 +29,7 @@ export const AUDIT_ACTIONS = {
   TRANSFER: 'transfer',
   PAYMENT: 'payment',
   SETTLEMENT: 'settlement',
+  REVERSE: 'reverse', // 红冲操作
 
   // 员工操作
   REGULARIZE: 'regularize',

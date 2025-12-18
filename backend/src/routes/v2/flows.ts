@@ -480,3 +480,76 @@ flowsRoutes.openapi(
     return { ok: true }
   }) as any
 )
+
+// 红冲流水
+const reverseFlowRoute = createRoute({
+  method: 'post',
+  path: '/flows/{id}/reverse',
+  summary: 'Reverse a cash flow (红冲)',
+  request: {
+    params: z.object({
+      id: z.string(),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            reversalReason: z.string().min(1, '冲正原因不能为空'),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              ok: z.boolean(),
+              reversalId: z.string(),
+              reversalVoucherNo: z.string(),
+              originalVoucherNo: z.string(),
+            }),
+          }),
+        },
+      },
+      description: 'Reversal result',
+    },
+  },
+})
+
+flowsRoutes.openapi(
+  reverseFlowRoute,
+  createRouteHandler(async (c: any) => {
+    // 权限检查 - 仅财务主管和会计可冲正
+    if (!hasPermission(c, 'finance', 'flow', 'reverse')) {
+      throw Errors.FORBIDDEN('无权进行流水冲正操作')
+    }
+
+    const { id } = c.req.valid('param')
+    const { reversalReason } = c.req.valid('json')
+
+    const result = await c.var.services.finance.reverseFlow(id, {
+      reversalReason,
+      createdBy: c.get('userId'),
+    })
+
+    // 审计日志 - 记录敏感操作
+    logAuditAction(
+      c,
+      'reverse',
+      'cash_flow',
+      id,
+      JSON.stringify({
+        reversalId: result.reversalId,
+        reversalVoucherNo: result.reversalVoucherNo,
+        reason: reversalReason,
+        originalVoucherNo: result.originalVoucherNo,
+      })
+    )
+
+    return result
+  }) as any
+)
