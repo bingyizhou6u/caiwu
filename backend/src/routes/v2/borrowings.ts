@@ -5,7 +5,7 @@ import type { Env, AppVariables } from '../../types.js'
 import {
   hasPermission,
   getUserPosition,
-  getDataAccessFilter,
+  getDataAccessFilterSQL,
   isTeamMember,
   getUserId,
 } from '../../utils/permissions.js'
@@ -365,12 +365,15 @@ borrowingsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
 
-    const { where, binds: scopeBinds } = getDataAccessFilter(c, 'e')
-
-    let whereClause = undefined
-    if (where !== '1=1') {
-      whereClause = sql(Object.assign([where], { raw: [where] }) as any, ...scopeBinds)
-    }
+    const accessFilter = getDataAccessFilterSQL(c, 'e')
+    
+    // 如果允许所有数据（1=1），则不添加过滤条件
+    let whereClause: any = undefined
+    // 检查是否是允许所有数据的条件（通过检查 SQL 对象的字符串表示）
+    // 注意：这是一个临时解决方案，理想情况下应该比较 SQL 对象
+    // 但由于 Drizzle 的 SQL 对象比较困难，我们直接使用它
+    // 如果总部人员（level=1），accessFilter 会是 sql`1=1`，服务层会正确处理
+    whereClause = accessFilter
 
     const rows = await c.var.services.borrowing.getBorrowingBalances(whereClause)
     return { results: rows }

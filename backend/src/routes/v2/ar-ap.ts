@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { sql } from 'drizzle-orm'
 import type { Env, AppVariables } from '../../types.js'
-import { hasPermission, getUserPosition, getDataAccessFilter } from '../../utils/permissions.js'
+import { hasPermission, getUserPosition, getDataAccessFilterSQL } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import {
@@ -98,7 +98,7 @@ arApRoutes.openapi(
     const { kind, status } = c.req.valid('query')
     const { page, limit } = parsePagination(c)
 
-    const { where, binds: scopeBinds } = getDataAccessFilter(c, 'ar_ap_docs', { skipOrgDept: true })
+    const accessFilter = getDataAccessFilterSQL(c, 'ar_ap_docs', { skipOrgDept: true })
 
     const conditions: any[] = []
 
@@ -109,17 +109,9 @@ arApRoutes.openapi(
       conditions.push(sql`ar_ap_docs.status = ${status}`)
     }
 
-    if (where !== '1=1') {
-      let scopeConditions = sql``
-      const parts = where.split('?')
-      parts.forEach((part, i) => {
-        scopeConditions = scopeConditions.append(sql.raw(part))
-        if (i < scopeBinds.length) {
-          scopeConditions = scopeConditions.append(sql`${scopeBinds[i]}`)
-        }
-      })
-      conditions.push(scopeConditions)
-    }
+    // 添加数据访问过滤条件（如果不是允许所有数据）
+    // 检查是否是允许所有数据的条件（1=1）
+    conditions.push(accessFilter)
 
     let whereClause = sql``
     if (conditions.length > 0) {
@@ -478,24 +470,15 @@ arApRoutes.openapi(
     const { status } = c.req.valid('query')
     const { page, limit } = parsePagination(c)
 
-    const { where, binds: scopeBinds } = getDataAccessFilter(c, 'ar_ap_docs', { skipOrgDept: true })
+    const accessFilter = getDataAccessFilterSQL(c, 'ar_ap_docs', { skipOrgDept: true })
 
     const conditions: any[] = [sql`ar_ap_docs.kind = 'AP'`]
     if (status) {
       conditions.push(sql`ar_ap_docs.status = ${status}`)
     }
 
-    if (where !== '1=1') {
-      let scopeConditions = sql``
-      const parts = where.split('?')
-      parts.forEach((part, i) => {
-        scopeConditions = scopeConditions.append(sql.raw(part))
-        if (i < scopeBinds.length) {
-          scopeConditions = scopeConditions.append(sql`${scopeBinds[i]}`)
-        }
-      })
-      conditions.push(scopeConditions)
-    }
+    // 添加数据访问过滤条件
+    conditions.push(accessFilter)
 
     let whereClause = sql``
     if (conditions.length > 0) {

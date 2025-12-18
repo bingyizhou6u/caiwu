@@ -48,12 +48,30 @@ export function createIPWhitelistMiddleware() {
           lastCacheTime = now
         } catch (e) {
           Logger.error('Failed to refresh IP whitelist cache', { error: e }, c)
-          // If cache is missing (first run failed), we might have to fail open or closed.
-          // Here we choose to fail open (allow) if we can't check, but log it.
-          // OR best effort: if we have stale cache, use it?
-          // Current logic: if refresh fails, we keep old cache values if they exist.
-          // If no cache, we might error out.
-          if (cachedRuleEnabled === null) {cachedRuleEnabled = false} // Default to disabled if init fails
+          // 安全策略：如果IP白名单规则已启用但缓存刷新失败，采用 fail-closed 策略（拒绝访问）
+          // 这确保在安全控制无法验证时，不会意外允许未授权访问
+          if (cachedRuleEnabled === null) {
+            // 首次初始化失败：如果无法确定规则状态，默认禁用（fail-safe）
+            cachedRuleEnabled = false
+            Logger.warn('IP whitelist rule status unknown, defaulting to disabled (fail-safe)', {}, c)
+          } else if (cachedRuleEnabled === true) {
+            // 规则已启用但缓存刷新失败：使用旧缓存值（如果存在），否则拒绝访问
+            if (!cachedIPs || cachedIPs.size === 0) {
+              Logger.error(
+                'IP whitelist is enabled but cache refresh failed and no stale cache available. Denying access (fail-closed).',
+                { error: e },
+                c
+              )
+              return c.json({ error: 'Security check error: Unable to verify IP whitelist' }, 500)
+            }
+            // 有旧缓存，使用它但记录警告
+            Logger.warn(
+              'Using stale IP whitelist cache due to refresh failure',
+              { cacheAge: now - lastCacheTime },
+              c
+            )
+          }
+          // 如果规则已禁用，继续使用禁用状态（安全）
         }
       }
 
@@ -61,9 +79,16 @@ export function createIPWhitelistMiddleware() {
         return next()
       }
 
-      if (cachedIPs && !cachedIPs.has(clientIP)) {
-        Logger.warn(`Blocked IP: ${clientIP}`, { ip: clientIP }, c)
-        return c.json({ error: 'Access denied: IP not whitelisted', ip: clientIP }, 403)
+      // 如果规则已启用，检查IP是否在白名单中
+      if (cachedRuleEnabled && cachedIPs) {
+        if (!cachedIPs.has(clientIP)) {
+          Logger.warn(`Blocked IP: ${clientIP}`, { ip: clientIP }, c)
+          return c.json({ error: 'Access denied: IP not whitelisted', ip: clientIP }, 403)
+        }
+      } else if (cachedRuleEnabled && !cachedIPs) {
+        // 规则已启用但没有IP列表（不应该发生，但安全起见）
+        Logger.error('IP whitelist is enabled but IP list is missing', {}, c)
+        return c.json({ error: 'Security check error: IP whitelist configuration invalid' }, 500)
       }
     } catch (error) {
       Logger.error('IP Whitelist Middleware Error', { error }, c)

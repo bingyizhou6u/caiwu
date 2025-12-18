@@ -5,7 +5,7 @@ import {
   hasPermission,
   getUserPosition,
   getUserEmployee,
-  getDataAccessFilter,
+  getDataAccessFilterSQL,
 } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
@@ -128,27 +128,16 @@ flowsRoutes.openapi(
     }
     const { page, limit } = parsePagination(c)
 
-    // 使用 getDataAccessFilter 的自定义过滤逻辑
+    // 使用 getDataAccessFilterSQL 获取数据访问过滤条件（返回 SQL 对象，更安全）
     // cash_flows 表使用 'created_by' 和 'department_id' 列
     // 它没有 org_department_id，所以我们跳过那一层
-    const { where, binds } = getDataAccessFilter(c, 'cash_flows', {
+    const accessFilter = getDataAccessFilterSQL(c, 'cash_flows', {
       ownerColumn: 'created_by',
       deptColumn: 'department_id',
       skipOrgDept: true,
     })
 
-    let whereClause = sql`1=1`
-    if (where !== '1=1') {
-      // 从字符串部分和绑定参数重构 SQL
-      const parts = where.split('?')
-      whereClause = sql``
-      parts.forEach((part: string, i: number) => {
-        whereClause = whereClause.append(sql.raw(part))
-        if (i < binds.length) {
-          whereClause = whereClause.append(sql`${binds[i]}`)
-        }
-      })
-    }
+    const whereClause = accessFilter
 
     const { total, list } = await c.var.services.finance.listCashFlows(page, limit, whereClause)
 
