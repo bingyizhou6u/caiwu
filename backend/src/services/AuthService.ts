@@ -81,6 +81,11 @@ export class AuthService {
       ? twoFaConfig.value === true || twoFaConfig.value === 'true'
       : true // 如果未设置，默认为开启
 
+    // 如果系统强制2FA，但用户已激活且没有绑定2FA，拒绝登录
+    if (is2FaEnabled && user.passwordHash && !user.totpSecret) {
+      throw Errors.FORBIDDEN('账号未绑定2FA，请联系管理员重置后重新绑定')
+    }
+
     // Check TOTP - 只有新设备才需要验证
     if (is2FaEnabled && user.totpSecret) {
       // 生成设备指纹 (SHA-256)
@@ -106,7 +111,6 @@ export class AuthService {
       }
       // 如果是信任设备，跳过 TOTP 验证
     }
-    // 如果用户没有 totpSecret（2FA 未绑定），直接跳过 TOTP 验证
 
     // 登录成功
     await this.db

@@ -105,15 +105,11 @@ export function FlowCreate() {
       }
       const values = await validateWithZod()
 
-      // 根据选择的项目判断 owner_scope
-      const selectedDept = Array.isArray(departments) ? departments.find((d: any) => d.value === values.departmentId) : null
-      const ownerScope = selectedDept?.label === '总部' ? 'hq' : 'department'
-      
+      // 后端会根据 departmentId 自动判断是否为总部范围，无需传递 ownerScope
       await createFlow({
         ...values,
         bizDate: values.bizDate.format('YYYY-MM-DD HH:mm:ss'),
         amountCents: Math.round(values.amount * 100),
-        owner_scope: ownerScope,
         voucherUrls: voucherUrls
       })
 
@@ -133,12 +129,12 @@ export function FlowCreate() {
           <Form.Item name="voucherUrls" hidden>
             <Input />
           </Form.Item>
-          
+
           <Row gutter={24}>
             {/* 左列 */}
             <Col xs={24} md={12}>
               <Form.Item name="bizDate" label="日期时间" rules={[{ required: true, message: '请选择日期时间' }]}>
-                <DatePicker 
+                <DatePicker
                   showTime={{ format: 'HH:mm:ss' }}
                   format="YYYY-MM-DD HH:mm:ss"
                   style={{ width: '100%' }}
@@ -168,7 +164,7 @@ export function FlowCreate() {
                 <Select options={Array.isArray(categories) ? categories : []} placeholder="选择类别" showSearch optionFilterProp="label" />
               </Form.Item>
             </Col>
-            
+
             {/* 右列 */}
             <Col xs={24} md={12}>
               <Form.Item name="departmentId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>

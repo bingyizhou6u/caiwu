@@ -12,11 +12,59 @@ import { Errors } from '../utils/errors.js'
 export class ProjectDepartmentService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
 
-  async getDepartments() {
-    return this.db.select().from(departments).all()
+  /**
+   * 获取总部的 department ID
+   */
+  async getHQDepartmentId(): Promise<string | null> {
+    const hqDept = await this.db.query.departments.findFirst({
+      where: eq(departments.name, '总部'),
+    })
+    return hqDept?.id || null
   }
 
-  async createDepartment(data: { name: string; hqId?: string; code?: string }) {
+  /**
+   * 获取或创建总部的 department ID
+   */
+  async getOrCreateHQDepartmentId(): Promise<string> {
+    let hqDeptId = await this.getHQDepartmentId()
+    if (!hqDeptId) {
+      // 如果不存在总部部门，创建一个
+      hqDeptId = uuid()
+      // 查找或创建 headquarters 记录
+      const defaultHq = await this.db.query.headquarters.findFirst()
+      const hqId = defaultHq?.id || uuid()
+      if (!defaultHq) {
+        await this.db.insert(headquarters).values({ id: hqId, name: '总部', active: 1 }).execute()
+      }
+      await this.db
+        .insert(departments)
+        .values({
+          id: hqDeptId,
+          name: '总部',
+          code: 'HQ',
+          hqId,
+          active: 1,
+          sortOrder: 0, // 总部排序最优先
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+        .execute()
+    }
+    return hqDeptId
+  }
+
+  async getDepartments() {
+    return this.db
+      .select()
+      .from(departments)
+      .orderBy(
+        departments.sortOrder, // 总部 sortOrder = 0，会排在最前面
+        departments.name
+      )
+      .all()
+  }
+
+  async createDepartment(data: { name: string; hqId?: string; code?: string; sortOrder?: number }) {
     const existing = await this.db.query.departments.findFirst({
       where: eq(departments.name, data.name),
     })
@@ -50,6 +98,7 @@ export class ProjectDepartmentService {
         hqId,
         code: data.code,
         active: 1,
+        sortOrder: data.sortOrder ?? 100, // 默认排序值，总部为 0
         createdAt: Date.now(),
         updatedAt: Date.now(),
       })
@@ -58,7 +107,7 @@ export class ProjectDepartmentService {
     return { id, hqId, name: data.name }
   }
 
-  async updateDepartment(id: string, data: { name?: string; hqId?: string; active?: number }) {
+  async updateDepartment(id: string, data: { name?: string; hqId?: string; active?: number; sortOrder?: number }) {
     if (data.name) {
       const existing = await this.db.query.departments.findFirst({
         where: and(eq(departments.name, data.name), ne(departments.id, id)),
@@ -77,6 +126,7 @@ export class ProjectDepartmentService {
     if (data.name !== undefined) {updates.name = data.name}
     if (data.hqId !== undefined) {updates.hqId = data.hqId}
     if (data.active !== undefined) {updates.active = data.active}
+    if (data.sortOrder !== undefined) {updates.sortOrder = data.sortOrder}
 
     await this.db.update(departments).set(updates).where(eq(departments.id, id)).execute()
     return { ok: true }

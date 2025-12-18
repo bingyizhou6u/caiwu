@@ -5,7 +5,8 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
 import { orgDepartments, positions, departments } from '../db/schema.js'
-import { eq, and, isNull, desc } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { Errors } from '../utils/errors.js'
 
@@ -21,10 +22,32 @@ export class OrgDepartmentService {
 
     const conditions = [eq(od.active, 1)]
     if (projectId) {
-      if (projectId === 'hq') {
-        conditions.push(isNull(od.projectId))
-      } else {
-        conditions.push(eq(od.projectId, projectId))
+      // 直接使用 projectId 查询，总部现在也是普通的 department
+      conditions.push(eq(od.projectId, projectId))
+      
+      // 如果查询结果为空，检查是否为总部部门，如果是则自动创建默认组织部门
+      const projectDept = await this.db
+        .select({ name: departments.name })
+        .from(departments)
+        .where(eq(departments.id, projectId))
+        .get()
+      
+      if (projectDept?.name === '总部') {
+        // 检查是否已有组织部门
+        const existingCount = await this.db
+          .select({ count: sql<number>`count(*)` })
+          .from(od)
+          .where(and(eq(od.projectId, projectId), eq(od.active, 1)))
+          .get()
+        
+        // 如果没有组织部门，自动创建
+        if (!existingCount || existingCount.count === 0) {
+          const { DepartmentService } = await import('./DepartmentService.js')
+          const { AuditService } = await import('./AuditService.js')
+          const auditService = new AuditService(this.db)
+          const deptService = new DepartmentService(this.db, auditService)
+          await deptService.createDefaultOrgDepartments(projectId, undefined)
+        }
       }
     }
 
@@ -53,7 +76,6 @@ export class OrgDepartmentService {
       .leftJoin(d, eq(d.id, od.projectId))
       .where(and(...conditions))
       .orderBy(
-        desc(isNull(od.projectId)),
         od.sortOrder,
         od.name
       )

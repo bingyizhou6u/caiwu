@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal, message, Tabs } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../../../../config/api'
 import { handleConflictError } from '../../../../utils/api'
 import { useApiMutation } from '../../../../utils/useApiQuery'
 import { useZodForm } from '../../../../hooks/forms/useZodForm'
-import { updateEmployeeSchema } from '../../../../validations/employee.schema'
+import { createEmployeeSchema, updateEmployeeSchema } from '../../../../validations/employee.schema'
 import { EmployeeForm } from '../forms/EmployeeForm'
 import { EmployeeSalaryForm } from '../forms/EmployeeSalaryForm'
 import { EmployeeStatusForm } from '../forms/EmployeeStatusForm'
@@ -13,45 +13,52 @@ import {
     useEmployeeSalaries,
     useEmployeeAllowances,
     useUpdateEmployeeSalaries,
-    useUpdateEmployeeAllowances
+    useUpdateEmployeeAllowances,
+    useCreateEmployee
 } from '../../../../hooks/business/useEmployees'
+import { withErrorHandler } from '../../../../utils/errorHandler'
 
-interface EditEmployeeModalProps {
+interface EmployeeFormModalProps {
     open: boolean
     onCancel: () => void
     onSuccess: () => void
-    employee: any
+    employee?: any // 如果提供则是编辑模式，否则是新建模式
 }
 
 const { TabPane } = Tabs
-export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditEmployeeModalProps) {
-    const { form, validateWithZod } = useZodForm(updateEmployeeSchema)
-    const { mutateAsync: updateEmployee, isPending: isUpdatingEmployee } = useApiMutation()
 
-    // 薪资和补贴查询
+export function EmployeeFormModal({ open, onCancel, onSuccess, employee }: EmployeeFormModalProps) {
+    const isEdit = !!employee
+    const { form, validateWithZod } = useZodForm(isEdit ? updateEmployeeSchema : createEmployeeSchema)
+    const { mutateAsync: updateEmployee, isPending: isUpdatingEmployee } = useApiMutation()
+    const { mutateAsync: createEmployeeMutation, isPending: isCreating } = useCreateEmployee()
+    const [success, setSuccess] = useState(false)
+    const [createdData, setCreatedData] = useState<any>(null)
+
+    // 薪资和补贴查询（仅编辑模式）
     const { data: probationSalaries } = useEmployeeSalaries({
-        employeeId: employee?.id || '',
+        employeeId: isEdit && employee?.id ? employee.id : '',
         salaryType: 'probation'
     })
     const { data: regularSalaries } = useEmployeeSalaries({
-        employeeId: employee?.id || '',
+        employeeId: isEdit && employee?.id ? employee.id : '',
         salaryType: 'regular'
     })
 
     const { data: livingAllowances } = useEmployeeAllowances({
-        employeeId: employee?.id || '',
+        employeeId: isEdit && employee?.id ? employee.id : '',
         allowanceType: 'living'
     })
     const { data: housingAllowances } = useEmployeeAllowances({
-        employeeId: employee?.id || '',
+        employeeId: isEdit && employee?.id ? employee.id : '',
         allowanceType: 'housing'
     })
     const { data: transportationAllowances } = useEmployeeAllowances({
-        employeeId: employee?.id || '',
+        employeeId: isEdit && employee?.id ? employee.id : '',
         allowanceType: 'transportation'
     })
     const { data: mealAllowances } = useEmployeeAllowances({
-        employeeId: employee?.id || '',
+        employeeId: isEdit && employee?.id ? employee.id : '',
         allowanceType: 'meal'
     })
 
@@ -59,11 +66,11 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
     const { mutateAsync: updateSalaries, isPending: isUpdatingSalaries } = useUpdateEmployeeSalaries()
     const { mutateAsync: updateAllowances, isPending: isUpdatingAllowances } = useUpdateEmployeeAllowances()
 
-    const isUpdating = isUpdatingEmployee || isUpdatingSalaries || isUpdatingAllowances
+    const isSubmitting = isCreating || isUpdatingEmployee || isUpdatingSalaries || isUpdatingAllowances
 
+    // 初始化表单数据（编辑模式）
     useEffect(() => {
         if (open && employee) {
-            // 确定项目ID - 直接使用员工的 departmentId
             const projectId = employee.departmentId
 
             // 解析电话号码
@@ -133,16 +140,16 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
                 emergencyPhone_number: emergencyPhoneNumber,
                 memo: employee.memo,
             })
-        } else {
+        } else if (open && !employee) {
+            // 新建模式：重置表单
             form.resetFields()
         }
     }, [open, employee, form])
 
-    // 当薪资/补贴数据加载后，更新表单
+    // 当薪资/补贴数据加载后，更新表单（仅编辑模式）
     useEffect(() => {
-        if (!open) return
+        if (!open || !isEdit) return
 
-        // 格式化数据，移除不需要的字段以匹配表单结构
         const formatMoneyData = (list: any[]) => {
             if (!list || !Array.isArray(list)) return []
             return list.map(item => ({
@@ -157,9 +164,9 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
         if (housingAllowances) form.setFieldValue('housing_allowances', formatMoneyData(housingAllowances))
         if (transportationAllowances) form.setFieldValue('transportation_allowances', formatMoneyData(transportationAllowances))
         if (mealAllowances) form.setFieldValue('meal_allowances', formatMoneyData(mealAllowances))
-
     }, [
         open,
+        isEdit,
         probationSalaries,
         regularSalaries,
         livingAllowances,
@@ -169,12 +176,91 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
         form
     ])
 
+    const handleCreate = withErrorHandler(
+        async () => {
+            const values = await validateWithZod()
+
+            const {
+                living_allowances,
+                housing_allowances,
+                transportation_allowances,
+                meal_allowances,
+                orgDepartmentId,
+                project_id,
+                probation_salaries,
+                regular_salaries,
+                phone_country_code,
+                phone_number,
+                emergencyPhone_country_code,
+                emergencyPhone_number,
+                joinDate,
+                regularDate,
+                birthday,
+                ...restData
+            } = values
+
+            const employeeData = {
+                ...restData,
+                orgDepartmentId,
+                departmentId: project_id,
+                probationSalaries: probation_salaries as any,
+                regularSalaries: regular_salaries as any,
+                phone: phone_country_code && phone_number ? `${phone_country_code}${phone_number}` : undefined,
+                emergencyPhone: emergencyPhone_country_code && emergencyPhone_number ? `${emergencyPhone_country_code}${emergencyPhone_number}` : undefined,
+                joinDate: joinDate ? joinDate.format('YYYY-MM-DD') : undefined,
+                regularDate: regularDate ? regularDate.format('YYYY-MM-DD') : undefined,
+                birthday: birthday ? birthday.format('YYYY-MM-DD') : undefined,
+            }
+
+            const data = await createEmployeeMutation(employeeData)
+
+            // 创建补贴（批量）
+            const allowanceTypes = ['living', 'housing', 'transportation', 'meal'] as const
+            const allowancePromises: Promise<any>[] = []
+
+            const allowancesMap = {
+                living: living_allowances,
+                housing: housing_allowances,
+                transportation: transportation_allowances,
+                meal: meal_allowances,
+            }
+
+            for (const type of allowanceTypes) {
+                const allowances = allowancesMap[type] || []
+                if (allowances.length > 0) {
+                    allowancePromises.push(updateAllowances({
+                        employeeId: data.id,
+                        allowanceType: type,
+                        allowances: allowances as any,
+                    }))
+                }
+            }
+
+            if (allowancePromises.length > 0) {
+                await Promise.all(allowancePromises)
+            }
+
+            message.success('员工创建成功')
+            onSuccess()
+            onCancel()
+        },
+        {
+            onError: (error: unknown) => {
+                const errorMessage = error instanceof Error ? error.message : ''
+                if (errorMessage === '表单验证失败') {
+                    message.error('请检查表单填写是否完整')
+                } else {
+                    handleConflictError(error, '员工', 'name')
+                }
+            }
+        }
+    )
+
     const handleUpdate = async () => {
         try {
             const values = await validateWithZod()
             if (!employee) return
 
-            // 1. 更新基本信息
             const payload: any = {}
 
             // 基础字段
@@ -182,7 +268,9 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
             if (values.departmentId) payload.departmentId = values.departmentId
             if (values.orgDepartmentId) payload.orgDepartmentId = values.orgDepartmentId
             if (values.positionId) payload.positionId = values.positionId
-            if (values.active !== undefined) payload.active = values.active ? 1 : 0
+            if (isEdit && 'active' in values && values.active !== undefined) {
+                payload.active = values.active ? 1 : 0
+            }
 
             // 日期字段
             if (values.joinDate) {
@@ -228,7 +316,7 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
                 })
             ]
 
-            // 2. 更新薪资
+            // 更新薪资
             if (values.probation_salaries) {
                 promises.push(updateSalaries({
                     employeeId: employee.id,
@@ -244,7 +332,7 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
                 }))
             }
 
-            // 3. 更新补贴
+            // 更新补贴
             const allowanceTypes = ['living', 'housing', 'transportation', 'meal'] as const
             const formValues = values as any
             allowanceTypes.forEach(type => {
@@ -262,32 +350,39 @@ export function EditEmployeeModal({ open, onCancel, onSuccess, employee }: EditE
 
             message.success('更新成功')
             onSuccess()
+            onCancel()
         } catch (error: any) {
             handleConflictError(error, '员工', 'name')
         }
     }
 
+    const handleSubmit = isEdit ? handleUpdate : handleCreate
+
     return (
         <Modal
-            title="编辑员工"
+            title={isEdit ? '编辑员工' : '新建员工'}
             open={open}
-            onOk={handleUpdate}
+            onOk={handleSubmit}
             onCancel={() => {
                 form.resetFields()
+                setSuccess(false)
+                setCreatedData(null)
                 onCancel()
             }}
-            okText="保存"
+            okText={isEdit ? '保存' : '创建'}
             cancelText="取消"
             width={800}
-            confirmLoading={isUpdating}
+            confirmLoading={isSubmitting}
         >
-            <EmployeeForm form={form} isEdit={true} employee={employee}>
+            <EmployeeForm form={form} isEdit={isEdit} employee={employee}>
                 <TabPane tab="薪资与补贴" key="salary">
                     <EmployeeSalaryForm form={form} />
                 </TabPane>
-                <TabPane tab="状态管理" key="status">
-                    <EmployeeStatusForm form={form} employee={employee} onSuccess={onSuccess} />
-                </TabPane>
+                {isEdit && (
+                    <TabPane tab="状态管理" key="status">
+                        <EmployeeStatusForm form={form} employee={employee} onSuccess={onSuccess} />
+                    </TabPane>
+                )}
             </EmployeeForm>
         </Modal>
     )

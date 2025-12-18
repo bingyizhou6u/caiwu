@@ -48,13 +48,7 @@ export function useDepartmentOptions(includeHQ = true) {
                     label: d.name
                 }))
 
-                // 添加总部选项
-                if (includeHQ) {
-                    const hasHQ = options.some((o: SelectOption) => o.value === 'hq')
-                    if (!hasHQ) {
-                        options.unshift({ value: 'hq', label: '总部' })
-                    }
-                }
+                // 移除手动注入总部选项，因为后端现在返回真实的总部部门
 
                 return options
             },

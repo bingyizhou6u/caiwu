@@ -5,7 +5,6 @@ import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
 import {
   EmployeeQuerySchema,
-  MigrateUserSchema,
   UpdateEmployeeSchema,
   RegularizeEmployeeSchema,
   EmployeeLeaveSchema,
@@ -326,79 +325,6 @@ employeesRoutes.openapi(
     logAuditAction(c, 'reset_totp', 'employee', id, JSON.stringify({ result }))
 
     return result
-  }) as any
-)
-
-const migrateUserRoute = createRoute({
-  method: 'post',
-  path: '/employees/create-from-user',
-  summary: 'Create employee from existing user',
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: MigrateUserSchema.extend({
-            // 兼容旧格式（snake_case）
-            user_id: z.string().optional(),
-            org_department_id: z.string().optional(),
-            position_id: z.string().optional(),
-            join_date: z.string().optional(),
-            probation_salary_cents: z.number().optional(),
-            regular_salary_cents: z.number().optional(),
-          }).passthrough(), // 允许其他字段
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({ id: z.string() }),
-          }),
-        },
-      },
-      description: 'Employee created',
-    },
-  },
-})
-
-employeesRoutes.openapi(
-  migrateUserRoute,
-  createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
-
-    const raw = c.req.valid('json') as z.infer<typeof MigrateUserSchema> & {
-      user_id?: string
-      org_department_id?: string
-      position_id?: string
-      join_date?: string
-      probation_salary_cents?: number
-      regular_salary_cents?: number
-    }
-    const body = {
-      userId: raw.userId ?? raw.user_id ?? '',
-      orgDepartmentId: raw.orgDepartmentId ?? raw.org_department_id ?? '',
-      positionId: raw.positionId ?? raw.position_id ?? '',
-      joinDate: raw.joinDate ?? raw.join_date ?? '',
-      birthday: raw.birthday,
-    }
-    const service = c.var.services.employee
-
-    const result = await service
-      .migrateFromUser(body.userId, {
-        orgDepartmentId: body.orgDepartmentId,
-        positionId: body.positionId,
-        joinDate: body.joinDate,
-        birthday: body.birthday,
-      })
-      .catch(() => undefined)
-
-    return result ?? { id: 'employee-stub' }
   }) as any
 )
 

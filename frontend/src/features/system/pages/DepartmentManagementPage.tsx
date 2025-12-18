@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Card, Button, Form, Input, Space, message, Popconfirm, Switch } from 'antd'
+import { Card, Button, Form, Input, Space, message, Popconfirm, Switch, InputNumber } from 'antd'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { FormModal } from '../../../components/FormModal'
@@ -25,7 +25,7 @@ export function DepartmentManagement() {
   const { hasPermission } = usePermissions()
   const canManageDepartments = hasPermission('system', 'department', 'create')
 
-  // 过滤数据
+  // 过滤和排序数据
   const filteredDepartments = useMemo(() => {
     let result = deptData
     if (searchParams.search) {
@@ -37,13 +37,22 @@ export function DepartmentManagement() {
     } else if (searchParams.activeOnly === 'false') {
       result = result.filter((d: Department) => d.active === 0)
     }
+    // 按排序字段排序（后端已排序，这里确保前端也按排序显示）
+    result = [...result].sort((a, b) => {
+      const sortA = a.sortOrder ?? 100
+      const sortB = b.sortOrder ?? 100
+      if (sortA !== sortB) {
+        return sortA - sortB
+      }
+      return (a.name || '').localeCompare(b.name || '', 'zh-CN')
+    })
     return result
   }, [deptData, searchParams])
 
   const createDept = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateWithZod()
-      await createDeptMutation({ ...v, active: v.active as any })
+      await createDeptMutation({ ...v, active: v.active as any, sortOrder: v.sortOrder ?? 100 })
       modal.close()
       deptForm.resetFields()
     },
@@ -57,6 +66,25 @@ export function DepartmentManagement() {
       }
     }
   ), [deptForm, validateWithZod, modal, createDeptMutation])
+
+  const updateDept = useMemo(() => withErrorHandler(
+    async () => {
+      const v = await validateWithZod()
+      if (!modal.data?.id) return
+      await updateDeptMutation({ id: modal.data.id, data: { ...v, active: v.active as any } })
+      modal.close()
+      deptForm.resetFields()
+    },
+    {
+      successMessage: '更新成功',
+      onError: (error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : ''
+        if (errorMessage !== '表单验证失败') {
+          handleConflictError(error, `项目名称"${deptForm.getFieldValue('name')}"已存在，请使用其他名称`)
+        }
+      }
+    }
+  ), [deptForm, validateWithZod, modal, updateDeptMutation])
 
   const deleteDept = useMemo(() => withErrorHandler(
     async (id: string) => {
@@ -83,6 +111,13 @@ export function DepartmentManagement() {
   ), [updateDeptMutation])
 
   const columns = [
+    { 
+      title: '排序', 
+      dataIndex: 'sortOrder', 
+      key: 'sortOrder',
+      width: 100,
+      render: (sortOrder: number | undefined) => sortOrder ?? 100,
+    },
     { title: '名称', dataIndex: 'name', key: 'name' },
     {
       title: '状态',
@@ -138,6 +173,21 @@ export function DepartmentManagement() {
           actions={(record) => (
             <Space>
               {canManageDepartments && (
+                <Button
+                  size="small"
+                  onClick={() => {
+                    modal.openEdit(record)
+                    deptForm.setFieldsValue({
+                      name: record.name,
+                      active: record.active === 1,
+                      sortOrder: record.sortOrder ?? 100,
+                    })
+                  }}
+                >
+                  编辑
+                </Button>
+              )}
+              {canManageDepartments && (
                 <Switch
                   size="small"
                   checked={record.active === 1}
@@ -162,10 +212,10 @@ export function DepartmentManagement() {
         />
 
         <FormModal
-          title="新建项目"
+          title={modal.isEdit ? '编辑项目' : '新建项目'}
           open={modal.isOpen}
           form={deptForm}
-          onSubmit={createDept}
+          onSubmit={modal.isEdit ? updateDept : createDept}
           onCancel={() => {
             modal.close()
             deptForm.resetFields()
@@ -173,6 +223,9 @@ export function DepartmentManagement() {
         >
           <Form.Item name="name" label="项目名称" rules={[{ required: true }]}>
             <Input />
+          </Form.Item>
+          <Form.Item name="sortOrder" label="排序" tooltip="数字越小越靠前，总部默认为0">
+            <InputNumber min={0} style={{ width: '100%' }} placeholder="默认100" />
           </Form.Item>
         </FormModal>
       </Card>

@@ -10,6 +10,7 @@
     "preview": "vite preview --port 5173",
     "test": "vitest",
     "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
     "gen:types": "openapi-typescript ../backend/openapi.json -o src/types/schema.d.ts"
   },
   "dependencies": {

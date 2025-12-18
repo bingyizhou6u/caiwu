@@ -10,6 +10,9 @@ import './Login.css'
 
 const { Header, Content } = Layout
 
+// localStorage key
+const CACHED_EMAIL_KEY = 'caiwu_login_email'
+
 // 表单值类型定义
 interface LoginFormValues {
   email: string
@@ -27,11 +30,20 @@ export function Login() {
     const [loginStep, setLoginStep] = useState<'login' | 'totp'>('login')
     const [loginEmail, setLoginEmail] = useState('')
     const [loginPassword, setLoginPassword] = useState('')
+    const [form] = Form.useForm<LoginFormValues>()
 
     const { data: healthData } = useHealth()
     const apiOk = !!healthData?.checks?.db
 
     const { mutateAsync: login, isPending: loading } = useLogin()
+
+    // 加载缓存的邮箱地址
+    useEffect(() => {
+        const cachedEmail = localStorage.getItem(CACHED_EMAIL_KEY)
+        if (cachedEmail) {
+            form.setFieldsValue({ email: cachedEmail })
+        }
+    }, [form])
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -50,15 +62,19 @@ export function Login() {
                 return
             }
             
+            const email = v.email.trim()
+            // 保存邮箱地址到缓存
+            localStorage.setItem(CACHED_EMAIL_KEY, email)
+            
             const payload = {
-                email: v.email.trim(),
+                email,
                 password: v.password
             }
             const data = await login(payload)
 
             if (data.needTotp) {
                 // 用户需验证 TOTP
-                setLoginEmail(v.email.trim())
+                setLoginEmail(email)
                 setLoginPassword(v.password)
                 setLoginStep('totp')
                 message.info('请输入 Google 验证码')
@@ -121,9 +137,18 @@ export function Login() {
             <Content className="login-content">
                 {loginStep === 'login' ? (
                     <Card title="登录" className="login-card" style={{ width: 400 }}>
-                        <Form layout="vertical" onFinish={onLogin} onFinishFailed={() => message.error('请检查表单填写')}>
+                        <Form form={form} layout="vertical" onFinish={onLogin} onFinishFailed={() => message.error('请检查表单填写')}>
                             <Form.Item name="email" label="邮箱" rules={[{ required: true, message: '请输入登录邮箱' }, { type: 'email', message: '请输入有效的邮箱地址' }]}>
-                                <Input placeholder="请输入邮箱地址" />
+                                <Input 
+                                    placeholder="请输入邮箱地址" 
+                                    onBlur={(e) => {
+                                        // 失去焦点时保存邮箱地址到缓存
+                                        const email = e.target.value.trim()
+                                        if (email) {
+                                            localStorage.setItem(CACHED_EMAIL_KEY, email)
+                                        }
+                                    }}
+                                />
                             </Form.Item>
                             <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
                                 <Input.Password placeholder="请输入密码" />

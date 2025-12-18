@@ -22,9 +22,10 @@ interface EmployeeFormProps {
     form: any
     isEdit?: boolean
     children?: React.ReactNode // 用于额外标签页或内容
+    employee?: any // 员工对象，用于编辑模式下获取部门名称
 }
 
-export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormProps) {
+export function EmployeeForm({ form, isEdit = false, children, employee }: EmployeeFormProps) {
     const { data: departments = [] } = useDepartments()
     const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>()
     const [selectedOrgDepartmentId, setSelectedOrgDepartmentId] = useState<string | undefined>()
@@ -41,10 +42,10 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
         if (orgDepartmentId) setSelectedOrgDepartmentId(orgDepartmentId)
     }, [orgDepartmentId])
 
-    // 查询组织部门
+    // 查询组织部门（直接传递 department ID，后端会自动判断是否为总部）
     const { data: orgDepartments = [] } = useApiQuery<unknown[]>(
         ['orgDepartments', selectedProjectId || ''],
-        `${api.orgDepartments}?project_id=${selectedProjectId === 'hq' ? 'hq' : selectedProjectId}`,
+        `${api.orgDepartments}?project_id=${selectedProjectId || ''}`,
         {
             enabled: !!selectedProjectId,
             select: (data: unknown) => {
@@ -64,6 +65,24 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
     const positions = Array.isArray(positionsData) ? positionsData : (positionsData?.results || [])
     const groupedPositions: Record<string, Position[]> = Array.isArray(positionsData) ? {} : (positionsData?.grouped || {})
     const hasGroupedPositions = Object.keys(groupedPositions).length > 0
+
+    // 处理部门列表：如果编辑模式下当前选中的部门不在列表中，需要添加它
+    const currentOrgDepartmentId = form.getFieldValue('orgDepartmentId')
+    const displayOrgDepartments = [...orgDepartments]
+    
+    // 在编辑模式下，如果当前选中的部门不在列表中（可能被停用或列表未加载），添加它
+    if (isEdit && currentOrgDepartmentId && employee?.orgDepartmentName) {
+        const existsInList = orgDepartments.some((d: any) => d.id === currentOrgDepartmentId)
+        if (!existsInList) {
+            // 如果当前选中的部门不在列表中，添加一个临时选项以正确显示
+            displayOrgDepartments.unshift({
+                id: currentOrgDepartmentId,
+                name: employee.orgDepartmentName,
+                code: employee.orgDepartmentCode || null,
+                active: 1
+            } as any)
+        }
+    }
 
     return (
         <Form form={form} layout="vertical" className="employee-form">
@@ -98,14 +117,13 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
                                 form.setFieldsValue({
                                     orgDepartmentId: undefined,
                                     positionId: undefined,
-                                    departmentId: value === 'hq' ? 'hq' : value
+                                    departmentId: value
                                 })
                                 setSelectedProjectId(value)
                                 setSelectedOrgDepartmentId(undefined)
                             }}
                         >
-                            <Option value="hq">总部</Option>
-                            {departments.filter((d: any) => d.id !== 'hq').map((dept: any) => (
+                            {departments.map((dept: any) => (
                                 <Option key={dept.id} value={dept.id}>
                                     {dept.name}
                                 </Option>
@@ -130,7 +148,7 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
                                 setSelectedOrgDepartmentId(value)
                             }}
                         >
-                            {orgDepartments.filter((d: any) => d.active === 1).map((dept: any) => (
+                            {displayOrgDepartments.filter((d: any) => d.active === 1).map((dept: any) => (
                                 <Option key={dept.id} value={dept.id} label={`${dept.name}${dept.code ? ` (${dept.code})` : ''} `}>
                                     {dept.name}{dept.code ? ` (${dept.code})` : ''}
                                 </Option>
@@ -175,18 +193,16 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
                                 Object.entries(groupedPositions).map(([groupName, groupPositions]) => (
                                     <OptGroup key={groupName} label={groupName}>
                                         {groupPositions.map((pos) => (
-                                            <Option key={pos.id} value={pos.id} label={pos.name}>
-                                                {pos.name}
-                                                {pos.functionRole && <span className="position-role">({pos.functionRole === 'director' ? '主管' : pos.functionRole === 'hr' ? '人事' : pos.functionRole === 'finance' ? '财务' : pos.functionRole === 'admin' ? '行政' : pos.functionRole === 'developer' ? '开发' : pos.functionRole === 'support' ? '客服' : pos.functionRole === 'member' ? '组员' : pos.functionRole})</span>}
+                                            <Option key={pos.id} value={pos.id} label={pos.name || ''}>
+                                                {pos.name || ''}
                                             </Option>
                                         ))}
                                     </OptGroup>
                                 ))
                             ) : (
                                 positions.map((pos: any) => (
-                                    <Option key={pos.id} value={pos.id} label={pos.name}>
-                                        {pos.name}
-                                        {pos.functionRole && <span className="position-role">({pos.functionRole === 'director' ? '主管' : pos.functionRole === 'hr' ? '人事' : pos.functionRole === 'finance' ? '财务' : pos.functionRole === 'admin' ? '行政' : pos.functionRole === 'developer' ? '开发' : pos.functionRole === 'support' ? '客服' : pos.functionRole === 'member' ? '组员' : pos.functionRole})</span>}
+                                    <Option key={pos.id} value={pos.id} label={pos.name || ''}>
+                                        {pos.name || ''}
                                     </Option>
                                 ))
                             )}
@@ -198,6 +214,13 @@ export function EmployeeForm({ form, isEdit = false, children }: EmployeeFormPro
                         rules={[{ required: true, message: '请选择入职日期' }]}
                     >
                         <DatePicker className="full-width" format="YYYY-MM-DD" />
+                    </Form.Item>
+                    <Form.Item
+                        name="regularDate"
+                        label="转正日期"
+                        rules={[{ required: true, message: '请选择转正日期' }]}
+                    >
+                        <DatePicker className="full-width" format="YYYY-MM-DD" placeholder="请选择转正日期" />
                     </Form.Item>
                     <Form.Item
                         name="birthday"

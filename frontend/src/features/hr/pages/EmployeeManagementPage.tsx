@@ -1,17 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { Card, Button, Space, Tag, Descriptions, Dropdown } from 'antd'
-import { SettingOutlined, ReloadOutlined } from '@ant-design/icons'
+import { ReloadOutlined, SettingOutlined } from '@ant-design/icons'
 import type { Employee } from '../../../types'
-import { useEmployees, useFormModal, useToggleUserActive, useResendActivation, useResetTotp, useEmployeeSalaries, useEmployeeAllowances } from '../../../hooks'
+import { useEmployees, useFormModal, useToggleUserActive, useResendActivation, useResetTotp } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
 import { EMPLOYEE_STATUS, ACCOUNT_STATUS } from '../../../utils/status'
 import { StatusTag } from '../../../components/common/StatusTag'
-import { EditEmployeeModal } from '../../../features/employees/components/modals/EditEmployeeModal'
-import { RegularizeEmployeeModal } from '../../../features/employees/components/modals/RegularizeEmployeeModal'
-import { LeaveEmployeeModal } from '../../../features/employees/components/modals/LeaveEmployeeModal'
-import { RejoinEmployeeModal } from '../../../features/employees/components/modals/RejoinEmployeeModal'
-import { SalaryConfigModal } from '../../../features/employees/components/modals/SalaryConfigModal'
-import { AllowanceConfigModal } from '../../../features/employees/components/modals/AllowanceConfigModal'
+import { EmployeeFormModal } from '../../../features/employees/components/modals/EmployeeFormModal'
 import { ResetUserPasswordModal } from '../../../features/employees/components/modals/ResetUserPasswordModal'
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
@@ -24,17 +19,9 @@ import { formatAmountWithCurrency } from '../../../utils/amount'
 export function EmployeeManagement() {
   const modal = useFormModal<Employee>()
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [createModalOpen, setCreateModalOpen] = useState(false)
 
   // 模态框状态
-  const [regularizeOpen, setRegularizeOpen] = useState(false)
-  const [leaveOpen, setLeaveOpen] = useState(false)
-  const [rejoinOpen, setRejoinOpen] = useState(false)
-  const [salaryConfigOpen, setSalaryConfigOpen] = useState(false)
-  const [salaryConfigType, setSalaryConfigType] = useState<'probation' | 'regular'>('probation')
-  const [employeeSalaries, setEmployeeSalaries] = useState<any[]>([])
-  const [allowanceConfigOpen, setAllowanceConfigOpen] = useState(false)
-  const [allowanceConfigType, setAllowanceConfigType] = useState<'living' | 'housing' | 'transportation' | 'meal' | 'birthday'>('living')
-  const [employeeAllowances, setEmployeeAllowances] = useState<any[]>([])
   const [resetUserOpen, setResetUserOpen] = useState(false)
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null)
 
@@ -56,58 +43,6 @@ export function EmployeeManagement() {
 
 
 
-  const handleRegularize = (employee: Employee) => {
-    setCurrentEmployee(employee)
-    setRegularizeOpen(true)
-  }
-
-  const handleLeave = (employee: Employee) => {
-    setCurrentEmployee(employee)
-    setLeaveOpen(true)
-  }
-
-  const handleRejoin = (employee: Employee) => {
-    setCurrentEmployee(employee)
-    setRejoinOpen(true)
-  }
-
-  const handleSalaryConfig = (employee: Employee, type: 'probation' | 'regular') => {
-    setCurrentEmployee(employee)
-    setSalaryConfigType(type)
-    setSalaryConfigOpen(true)
-  }
-
-  const handleAllowanceConfig = (employee: Employee, type: 'living' | 'housing' | 'transportation' | 'meal' | 'birthday') => {
-    setCurrentEmployee(employee)
-    setAllowanceConfigType(type)
-    setAllowanceConfigOpen(true)
-  }
-
-  // 查询薪资和补贴数据
-  const { data: salariesData = [] } = useEmployeeSalaries(
-    currentEmployee && salaryConfigOpen
-      ? { employeeId: currentEmployee.id, salaryType: salaryConfigType }
-      : { employeeId: '', salaryType: 'probation' }
-  )
-
-  const { data: allowancesData = [] } = useEmployeeAllowances(
-    currentEmployee && allowanceConfigOpen
-      ? { employeeId: currentEmployee.id, allowanceType: allowanceConfigType }
-      : { employeeId: '', allowanceType: 'living' }
-  )
-
-  // 使用useEffect更新状态
-  React.useEffect(() => {
-    if (salaryConfigOpen && salariesData.length > 0) {
-      setEmployeeSalaries(salariesData)
-    }
-  }, [salaryConfigOpen, salariesData])
-
-  React.useEffect(() => {
-    if (allowanceConfigOpen && allowancesData.length > 0) {
-      setEmployeeAllowances(allowancesData)
-    }
-  }, [allowanceConfigOpen, allowancesData])
 
   const handleToggleActive = withErrorHandler(
     async (record: Employee) => {
@@ -136,64 +71,41 @@ export function EmployeeManagement() {
       dataIndex: 'name',
       key: 'name',
       width: 100,
+      fixed: 'left' as const,
     },
     {
       title: '项目',
       dataIndex: 'departmentName',
       key: 'departmentName',
-      width: 120,
+      width: 100,
+      render: (text: string) => <EmptyText value={text} />,
     },
     {
       title: '部门',
       dataIndex: 'orgDepartmentName',
       key: 'orgDepartmentName',
-      width: 120,
-      render: (text: string, record: Employee) => {
-        if (!text) return '-'
-        return (
-          <span>
-            {text}
-            {record.orgDepartmentCode && <span style={{ color: '#999', fontSize: '12px' }}> ({record.orgDepartmentCode})</span>}
-          </span>
-        )
-      },
+      width: 100,
+      render: (text: string) => text || '-',
     },
     {
       title: '职位',
       dataIndex: 'positionName',
       key: 'positionName',
-      width: 120,
-      render: (text: string) => <EmptyText value={text} />,
-    },
-    {
-      title: '手机号',
-      dataIndex: 'phone',
-      key: 'phone',
-      width: 150,
-      render: (phone: string, record: Employee) => {
-        if (!phone) return '-'
-        return <SensitiveField value={phone} type="phone" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
-      },
-    },
-    {
-      title: '个人邮箱',
-      dataIndex: 'personalEmail',
-      key: 'personalEmail',
-      width: 180,
-      render: (email: string) => <EmptyText value={email} />,
+      width: 100,
+      render: (text: string) => text || '-',
     },
     {
       title: '入职日期',
       dataIndex: 'joinDate',
       key: 'joinDate',
-      width: 110,
-      render: (date: string) => date,
+      width: 100,
+      render: (date: string) => date || '-',
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 100,
+      width: 80,
       render: (status: string) => <StatusTag status={status} statusMap={EMPLOYEE_STATUS} />,
       filters: [
         { text: '全部', value: 'all' },
@@ -211,88 +123,37 @@ export function EmployeeManagement() {
       },
     },
     {
-      title: '账号权限',
-      key: 'account_permission',
-      width: 180,
+      title: '账号',
+      key: 'account',
+      width: 80,
+      align: 'center' as const,
       render: (_: unknown, record: Employee) => {
+        // 无账号
         if (!record.userId) {
-          return <StatusTag status="no_account" statusMap={ACCOUNT_STATUS} />
+          return <Tag color="default">无</Tag>
         }
+        // 账号已停用
         if (record.userActive === 0) {
-          return <StatusTag status="disabled" statusMap={ACCOUNT_STATUS} />
+          return <Tag color="red">停用</Tag>
         }
+        // 账号正常：显示激活状态和2FA
+        const isActivated = record.isActivated
+        const has2FA = !!record.totpEnabled // 确保转换为布尔值
 
-        const activatedStatus = record.isActivated ? 'activated' : 'not_activated'
-        const levelLabels: Record<number, string> = {
-          1: '总部',
-          2: '项目',
-          3: '组',
-        }
-        const levelLabel = record.positionLevel ? levelLabels[record.positionLevel] || `级别${record.positionLevel}` : ''
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-              <Tag color="blue">{record.positionName || '无职位'}</Tag>
-              <StatusTag status={activatedStatus} statusMap={ACCOUNT_STATUS} />
-              {record.totpEnabled && <StatusTag status="totp_enabled" statusMap={ACCOUNT_STATUS} style={{ marginLeft: 0 }} />}
-            </div>
-            {levelLabel && <div style={{ fontSize: 12, color: '#666' }}>层级: {levelLabel}</div>}
-          </div>
+          <Space size={2}>
+            <Tag color={isActivated ? 'green' : 'orange'} style={{ margin: 0 }}>
+              {isActivated ? '已激活' : '待激活'}
+            </Tag>
+            {has2FA && <Tag color="purple" style={{ margin: 0 }}>2FA</Tag>}
+          </Space>
         )
       },
     },
   ],
-    [canEdit, isManager, statusFilter, handleToggleActive, modal])
+    [statusFilter])
 
   const renderActions = useCallback((record: Employee) => {
-    // 薪资配置菜单项
-    const salaryMenuItems = [
-      {
-        key: 'probation',
-        label: '试用期底薪',
-        onClick: () => handleSalaryConfig(record, 'probation'),
-      },
-      {
-        key: 'regular',
-        label: '转正底薪',
-        onClick: () => handleSalaryConfig(record, 'regular'),
-      },
-    ]
-
-    // 补贴配置菜单项
-    const allowanceMenuItems = [
-      { key: 'living', label: '生活补贴', onClick: () => handleAllowanceConfig(record, 'living') },
-      { key: 'housing', label: '住房补贴', onClick: () => handleAllowanceConfig(record, 'housing') },
-      { key: 'transportation', label: '交通补贴', onClick: () => handleAllowanceConfig(record, 'transportation') },
-      { key: 'meal', label: '伙食补贴', onClick: () => handleAllowanceConfig(record, 'meal') },
-      { key: 'birthday', label: '生日补贴', onClick: () => handleAllowanceConfig(record, 'birthday') },
-    ]
-
-    // 状态操作菜单项
-    const statusMenuItems = []
-    if (record.status === 'probation') {
-      statusMenuItems.push({
-        key: 'regularize',
-        label: '转正',
-        onClick: () => handleRegularize(record),
-      })
-    }
-    if (record.status !== 'resigned') {
-      statusMenuItems.push({
-        key: 'leave',
-        label: '离职',
-        danger: true,
-        onClick: () => handleLeave(record),
-      })
-    }
-    if (record.status === 'resigned') {
-      statusMenuItems.push({
-        key: 'rejoin',
-        label: '重新入职',
-        onClick: () => handleRejoin(record),
-      })
-    }
-
     // 账号管理菜单项
     const accountMenuItems: any[] = []
     if (record.userId) {
@@ -326,23 +187,10 @@ export function EmployeeManagement() {
 
     return (
       <Space size="small">
-        {canEdit && record.status !== 'resigned' && (
-          <>
-            <Button size="small" type="primary" onClick={() => modal.openEdit(record)}>
-              编辑
-            </Button>
-            <Dropdown menu={{ items: salaryMenuItems }} trigger={['click']}>
-              <Button size="small">薪资</Button>
-            </Dropdown>
-            <Dropdown menu={{ items: allowanceMenuItems }} trigger={['click']}>
-              <Button size="small">补贴</Button>
-            </Dropdown>
-          </>
-        )}
-        {canEdit && statusMenuItems.length > 0 && (
-          <Dropdown menu={{ items: statusMenuItems }} trigger={['click']}>
-            <Button size="small">{record.status === 'resigned' ? '入职' : '状态'}</Button>
-          </Dropdown>
+        {canEdit && (
+          <Button size="small" type="primary" onClick={() => modal.openEdit(record)}>
+            编辑
+          </Button>
         )}
         {isManager && accountMenuItems.length > 0 && (
           <Dropdown menu={{ items: accountMenuItems }} trigger={['click']}>
@@ -351,7 +199,7 @@ export function EmployeeManagement() {
         )}
       </Space>
     )
-  }, [canEdit, isManager, handleToggleActive, modal, handleSalaryConfig, handleAllowanceConfig, handleRegularize, handleLeave, handleRejoin, handleResendActivation, handleResetTotp])
+  }, [canEdit, isManager, handleToggleActive, modal, handleResendActivation, handleResetTotp])
   return (
     <PageContainer
       title="人员管理"
@@ -361,7 +209,14 @@ export function EmployeeManagement() {
         bordered={false}
         className="page-card"
         extra={
-          <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}>刷新</Button>
+          <Space>
+            {hasPermission('hr', 'employee', 'create') && (
+              <Button type="primary" onClick={() => setCreateModalOpen(true)}>
+                新建员工
+              </Button>
+            )}
+            <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}>刷新</Button>
+          </Space>
         }
       >
         <DataTable<Employee>
@@ -381,6 +236,15 @@ export function EmployeeManagement() {
             expandable: {
               expandedRowRender: (record) => (
                 <Descriptions bordered size="small" column={2} style={{ margin: '8px 0' }}>
+                  {/* 联系信息 */}
+                  <Descriptions.Item label="手机号">
+                    {record.phone ? (
+                      <SensitiveField value={record.phone} type="phone" permission="hr.employee.view_sensitive" entityId={record.id} entityType="employee" />
+                    ) : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="个人邮箱"><EmptyText value={record.personalEmail} /></Descriptions.Item>
+
+                  {/* 薪资信息 */}
                   <Descriptions.Item label="试用期工资">
                     <SensitiveField value={formatAmountWithCurrency(record.probationSalaryCents || 0, 'CNY', false)} type="salary" permission="hr.salary.view" entityId={record.id} entityType="employee" />
                   </Descriptions.Item>
@@ -466,90 +330,21 @@ export function EmployeeManagement() {
         />
       </Card>
 
-      <EditEmployeeModal
+      <EmployeeFormModal
+        open={createModalOpen}
+        onCancel={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          setCreateModalOpen(false)
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
+        }}
+      />
+
+      <EmployeeFormModal
         open={modal.mode === 'edit' && modal.isOpen}
         employee={modal.data}
         onCancel={modal.close}
         onSuccess={() => {
           modal.close()
-          queryClient.invalidateQueries({ queryKey: ['employees'] })
-        }}
-      />
-
-      <RegularizeEmployeeModal
-        open={regularizeOpen}
-        employee={currentEmployee}
-        onCancel={() => {
-          setRegularizeOpen(false)
-          setCurrentEmployee(null)
-        }}
-        onSuccess={() => {
-          setRegularizeOpen(false)
-          setCurrentEmployee(null)
-          queryClient.invalidateQueries({ queryKey: ['employees'] })
-        }}
-      />
-
-      <LeaveEmployeeModal
-        open={leaveOpen}
-        employee={currentEmployee}
-        onCancel={() => {
-          setLeaveOpen(false)
-          setCurrentEmployee(null)
-        }}
-        onSuccess={() => {
-          setLeaveOpen(false)
-          setCurrentEmployee(null)
-          queryClient.invalidateQueries({ queryKey: ['employees'] })
-        }}
-      />
-
-      <RejoinEmployeeModal
-        open={rejoinOpen}
-        employee={currentEmployee}
-        onCancel={() => {
-          setRejoinOpen(false)
-          setCurrentEmployee(null)
-        }}
-        onSuccess={() => {
-          setRejoinOpen(false)
-          setCurrentEmployee(null)
-          queryClient.invalidateQueries({ queryKey: ['employees'] })
-        }}
-      />
-
-      <SalaryConfigModal
-        open={salaryConfigOpen}
-        employee={currentEmployee}
-        type={salaryConfigType}
-        initialSalaries={employeeSalaries}
-        onCancel={() => {
-          setSalaryConfigOpen(false)
-          setCurrentEmployee(null)
-          setEmployeeSalaries([])
-        }}
-        onSuccess={() => {
-          setSalaryConfigOpen(false)
-          setCurrentEmployee(null)
-          setEmployeeSalaries([])
-          queryClient.invalidateQueries({ queryKey: ['employees'] })
-        }}
-      />
-
-      <AllowanceConfigModal
-        open={allowanceConfigOpen}
-        employee={currentEmployee}
-        type={allowanceConfigType}
-        initialAllowances={employeeAllowances}
-        onCancel={() => {
-          setAllowanceConfigOpen(false)
-          setCurrentEmployee(null)
-          setEmployeeAllowances([])
-        }}
-        onSuccess={() => {
-          setAllowanceConfigOpen(false)
-          setCurrentEmployee(null)
-          setEmployeeAllowances([])
           queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />

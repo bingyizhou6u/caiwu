@@ -251,20 +251,14 @@ async function handleGetMe(c: Context<{ Bindings: Env; Variables: AppVariables }
   const session = await authService.getSession(payload.sid)
   if (!session) {return jsonResponse(c, apiSuccess({ user: null }))}
 
-  const userService = c.var.services.user
-  const user = await userService.getUserById(payload.sub)
+  const employeeService = c.var.services.employee
+  const user = await employeeService.getUserById(payload.sub)
   if (!user || user.active === 0) {return jsonResponse(c, apiSuccess({ user: null }))}
 
-  const position = await userService.getUserPosition(user.id)
+  const position = await employeeService.getUserPosition(user.id)
   if (!position) {return jsonResponse(c, apiSuccess({ user: null }))}
 
-  const db = c.get('db')
-  const employee = await db.query.employees.findFirst({
-    where: (employees, { eq }) => eq(employees.personalEmail, user.email),
-    columns: { name: true },
-  })
-
-  const name = employee?.name || user.email.split('@')[0]
+  const name = user.name || (user.personalEmail || user.email || '').split('@')[0]
 
   return jsonResponse(
     c,
@@ -272,7 +266,7 @@ async function handleGetMe(c: Context<{ Bindings: Env; Variables: AppVariables }
       user: {
         id: user.id,
         name: name,
-        email: user.email,
+        email: user.personalEmail || user.email || '',
         sessionId: session.id,
         position: {
           id: position.id,
@@ -561,14 +555,14 @@ authRoutes.openapi(requestMyResetLinkRoute, createRouteHandler(async c => {
     throw Errors.UNAUTHORIZED('请先登录')
   }
 
-  const userService = c.var.services.user
-  const user = await userService.getUserById(userId)
-  if (!user?.email) {
+  const employeeService = c.var.services.employee
+  const user = await employeeService.getUserById(userId)
+  if (!user?.personalEmail && !user?.email) {
     throw Errors.UNAUTHORIZED('用户信息不完整')
   }
 
   const authService = c.var.services.auth
-  await authService.requestPasswordReset(user.email, c.env)
+  await authService.requestPasswordReset(user.personalEmail || user.email || '', c.env)
 
   return {
     status: 'ok',

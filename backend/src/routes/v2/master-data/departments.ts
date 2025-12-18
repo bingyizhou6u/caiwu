@@ -105,6 +105,8 @@ departmentsRoutes.openapi(
     const result = await service.createDepartment({
       name: body.name,
       hqId: body.hqId || undefined,
+      code: body.code,
+      sortOrder: body.sortOrder,
     })
 
     // 清除部门列表缓存
@@ -175,6 +177,7 @@ departmentsRoutes.openapi(
       name: body.name,
       hqId: body.hqId || undefined,
       active: body.active ?? undefined,
+      sortOrder: body.sortOrder,
     })
 
     // 清除部门列表缓存

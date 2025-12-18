@@ -77,7 +77,6 @@ export const menuIcons: Record<string, React.ReactNode> = {
     
     // 人力资源
     'employee': <TeamOutlined />,
-    'employee-create': <UsergroupAddOutlined />,
     'employee-salary': <MoneyCollectOutlined />,
     'salary-payments': <DollarOutlined />,
     'allowance-payments': <GiftOutlined />,

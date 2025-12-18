@@ -25,6 +25,7 @@ export const departmentSchema = z.object({
   hqId: uuidSchema.optional().nullable(),
   name: z.string().min(1, '名称不能为空'),
   active: z.number().int().min(0).max(1).nullable().default(1),
+  sortOrder: z.number().int().optional().nullable().default(100),
 })
 
 export const createDepartmentSchema = departmentSchema.omit({ id: true })

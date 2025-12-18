@@ -68,6 +68,7 @@ export const departments = sqliteTable('departments', {
   name: text('name').notNull(),
   code: text('code'),
   active: integer('active').default(1),
+  sortOrder: integer('sort_order').default(100),
   createdAt: integer('created_at'),
   updatedAt: integer('updated_at'),
 })

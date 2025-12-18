@@ -64,12 +64,35 @@ export function createAuthMiddleware() {
     c.set('userId', sessionData.session.user_id)
     c.set('sessionId', payload.sid)
 
-    // 异步更新会话最后活跃时间（不阻塞请求）
+    // 滑动窗口续期：活跃用户自动延长 7 天有效期
+    const now = Date.now()
+    const newExpiresAt = now + 1000 * 60 * 60 * 24 * 7 // 7天后过期
+
+    // 异步更新会话过期时间和最后活跃时间（不阻塞请求）
     c.executionCtx.waitUntil(
-      c.env.DB.prepare('UPDATE sessions SET last_active_at = ? WHERE id = ?')
-        .bind(Date.now(), payload.sid)
-        .run()
-        .catch(() => {}) // 忽略更新失败
+      (async () => {
+        // 1. 更新 D1 数据库
+        await c.env.DB.prepare(
+          'UPDATE sessions SET expires_at = ?, last_active_at = ? WHERE id = ?'
+        )
+          .bind(newExpiresAt, now, payload.sid)
+          .run()
+          .catch(() => {}) // 忽略更新失败
+
+        // 2. 更新 KV 缓存的 TTL
+        const updatedSessionData = {
+          ...sessionData,
+          session: {
+            ...sessionData.session,
+            expires_at: newExpiresAt,
+          },
+        }
+        await c.env.SESSIONS_KV.put(
+          `session:${payload.sid}`,
+          JSON.stringify(updatedSessionData),
+          { expirationTtl: 60 * 60 * 24 * 7 } // 7天 TTL
+        ).catch(() => {}) // 忽略更新失败
+      })()
     )
 
     if (!sessionData.position) {

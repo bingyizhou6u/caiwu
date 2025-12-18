@@ -38,7 +38,6 @@ const loaders: Record<string, () => Promise<any>> = {
 
     // HR
     'hr/employees': () => import('../features/hr/pages/EmployeeManagementPage').then(m => ({ default: m.EmployeeManagement })),
-    'hr/employees/create': () => import('../features/hr/pages/CreateEmployeePage').then(m => ({ default: m.CreateEmployee })),
     'hr/salary-report': () => import('../features/reports/pages/ReportEmployeeSalaryPage').then(m => ({ default: m.ReportEmployeeSalary })),
     'hr/salary-payments': () => import('../features/hr/pages/SalaryPaymentsPage').then(m => ({ default: m.SalaryPayments })),
     'hr/allowance-payments': () => import('../features/hr/pages/AllowancePaymentsPage').then(m => ({ default: m.AllowancePayments })),
@@ -108,7 +107,6 @@ const RentalManagement = lazy(loaders['assets/rental'])
 
 // HR
 const EmployeeManagement = lazy(loaders['hr/employees'])
-const CreateEmployee = lazy(loaders['hr/employees/create'])
 const ReportEmployeeSalary = lazy(loaders['hr/salary-report'])
 const SalaryPayments = lazy(loaders['hr/salary-payments'])
 const AllowancePayments = lazy(loaders['hr/allowance-payments'])
@@ -224,7 +222,6 @@ export const router = createBrowserRouter([
 
             // HR
             { path: 'hr/employees', element: <Suspense fallback={<Loading />}><EmployeeManagement /></Suspense> },
-            { path: 'hr/employees/create', element: <Suspense fallback={<Loading />}><CreateEmployee /></Suspense> },
             { path: 'hr/salary-report', element: <Suspense fallback={<Loading />}><ReportEmployeeSalary /></Suspense> },
             { path: 'hr/salary-payments', element: <Suspense fallback={<Loading />}><SalaryPayments /></Suspense> },
             { path: 'hr/allowance-payments', element: <Suspense fallback={<Loading />}><AllowancePayments /></Suspense> },

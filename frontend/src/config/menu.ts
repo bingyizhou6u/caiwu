@@ -32,7 +32,6 @@ export const pageTitles: Record<string, string> = {
     'rental-management': '租房管理',
     // 人力资源
     'employee': '人员管理',
-    'employee-create': '新建员工',
     'employee-salary': '员工薪资报表',
     'salary-payments': '薪资发放管理',
     'allowance-payments': '补贴发放管理',
@@ -133,9 +132,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         // 其他职位根据权限显示
         if (hasPermission(userInfo, 'hr', 'employee', 'view')) {
             employees.push({ key: 'employee', label: '人员管理', icon: getMenuIcon('employee') })
-        }
-        if (hasPermission(userInfo, 'hr', 'employee', 'create')) {
-            employees.push({ key: 'employee-create', label: '新建员工', icon: getMenuIcon('employee-create') })
         }
         if (hasPermission(userInfo, 'hr', 'salary', 'view')) {
             employees.push({ key: 'employee-salary', label: '员工薪资报表', icon: getMenuIcon('employee-salary') })
@@ -277,7 +273,6 @@ export const KEY_TO_PATH: Record<string, string> = {
     'rental-management': '/assets/rental',
 
     'employee': '/hr/employees',
-    'employee-create': '/hr/employees/create',
     'employee-salary': '/hr/salary-report',
     'salary-payments': '/hr/salary-payments',
     'allowance-payments': '/hr/allowance-payments',

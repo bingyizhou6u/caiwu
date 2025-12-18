@@ -2,9 +2,10 @@ import { v4 as uuid } from 'uuid'
 // import { logAudit } from '../utils/audit' // Removed
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, isNull } from 'drizzle-orm'
-import { orgDepartments } from '../db/schema.js'
+import { orgDepartments, departments } from '../db/schema.js'
 import * as schema from '../db/schema.js'
 import { AuditService } from './AuditService.js'
+import { ProjectDepartmentService } from './ProjectDepartmentService.js'
 
 // 项目部门配置
 const PROJECT_DEPARTMENTS = [
@@ -75,15 +76,25 @@ const DEV_GROUPS = [
 ]
 
 export class DepartmentService {
+  private projectDepartmentService: ProjectDepartmentService
+
   constructor(
     private db: DrizzleD1Database<typeof schema>,
     private auditService: AuditService
-  ) {}
+  ) {
+    this.projectDepartmentService = new ProjectDepartmentService(db)
+  }
 
   // 为新项目创建默认组织部门
   async createDefaultOrgDepartments(projectId: string | null, userId?: string) {
     const now = Date.now()
     const createdIds: string[] = []
+
+    // 如果 projectId 为 null，获取或创建总部的 department ID
+    let actualProjectId = projectId
+    if (!actualProjectId) {
+      actualProjectId = await this.projectDepartmentService.getOrCreateHQDepartmentId()
+    }
 
     for (const dept of PROJECT_DEPARTMENTS) {
       // 检查是否已存在相同名称的部门
@@ -92,7 +103,7 @@ export class DepartmentService {
         .from(orgDepartments)
         .where(
           and(
-            projectId ? eq(orgDepartments.projectId, projectId) : isNull(orgDepartments.projectId),
+            eq(orgDepartments.projectId, actualProjectId),
             isNull(orgDepartments.parentId),
             eq(orgDepartments.name, dept.name),
             eq(orgDepartments.active, 1)
@@ -106,7 +117,7 @@ export class DepartmentService {
           .insert(orgDepartments)
           .values({
             id,
-            projectId,
+            projectId: actualProjectId,
             parentId: null,
             name: dept.name,
             code: dept.code,
@@ -156,7 +167,7 @@ export class DepartmentService {
             'org_department',
             id,
             JSON.stringify({
-              project_id: projectId,
+              project_id: actualProjectId,
               name: dept.name,
               code: dept.code,
             })

@@ -4,22 +4,23 @@
 
 /* ========== SIDEBAR ========== */
 .main-sider {
-    overflow: hidden; /* 改为 hidden，避免滚动条闪烁 */
+    overflow: hidden;
+    /* 改为 hidden，避免滚动条闪烁 */
     height: 100vh;
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
     z-index: 1001;
-    background: linear-gradient(165deg, 
-        #0c1929 0%, 
-        #0a1628 15%,
-        #0d1f3c 35%,
-        #162544 55%,
-        #1a2f55 75%,
-        #1e3a68 100%) !important;
+    background: linear-gradient(165deg,
+            #0c1929 0%,
+            #0a1628 15%,
+            #0d1f3c 35%,
+            #162544 55%,
+            #1a2f55 75%,
+            #1e3a68 100%) !important;
     border-right: 1px solid rgba(99, 179, 237, 0.08);
-    box-shadow: 
+    box-shadow:
         4px 0 32px rgba(0, 0, 0, 0.25),
         inset -1px 0 0 rgba(255, 255, 255, 0.02);
     transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -34,13 +35,13 @@
     bottom: 0;
     width: 240px;
     z-index: 1200;
-    background: linear-gradient(165deg, 
-        #0c1929 0%, 
-        #0a1628 15%,
-        #0d1f3c 35%,
-        #162544 55%,
-        #1a2f55 75%,
-        #1e3a68 100%) !important;
+    background: linear-gradient(165deg,
+            #0c1929 0%,
+            #0a1628 15%,
+            #0d1f3c 35%,
+            #162544 55%,
+            #1a2f55 75%,
+            #1e3a68 100%) !important;
     border-right: 1px solid rgba(99, 179, 237, 0.12);
     box-shadow: 8px 0 40px rgba(0, 0, 0, 0.35);
     transform: translate3d(-100%, 0, 0);
@@ -59,6 +60,12 @@
 .sider-hover-overlay .ant-menu,
 .sider-hover-overlay .ant-menu * {
     /* overlay 模式优先保证流畅，禁用我们自定义的“all”过渡，避免大量节点同时 transition */
+    transition: none !important;
+}
+
+/* 主菜单也禁用过渡动画，保持与 overlay 一致的流畅体验 */
+.main-sider .ant-menu,
+.main-sider .ant-menu * {
     transition: none !important;
 }
 
@@ -189,12 +196,12 @@
     left: 20px;
     right: 20px;
     height: 1px;
-    background: linear-gradient(90deg, 
-        transparent 0%, 
-        rgba(99, 179, 237, 0.35) 20%,
-        rgba(99, 179, 237, 0.5) 50%,
-        rgba(99, 179, 237, 0.35) 80%,
-        transparent 100%);
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(99, 179, 237, 0.35) 20%,
+            rgba(99, 179, 237, 0.5) 50%,
+            rgba(99, 179, 237, 0.35) 80%,
+            transparent 100%);
 }
 
 .logo-icon {
@@ -205,10 +212,13 @@
 }
 
 @keyframes logoPulse {
-    0%, 100% {
+
+    0%,
+    100% {
         filter: drop-shadow(0 0 20px rgba(96, 165, 250, 0.75));
         transform: scale(1);
     }
+
     50% {
         filter: drop-shadow(0 0 28px rgba(96, 165, 250, 0.95));
         transform: scale(1.02);
@@ -226,7 +236,7 @@
     opacity: 0;
     transform: translateX(-10px);
     transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s,
-                transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s;
+        transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s;
 }
 
 .logo-container:not(.collapsed) .logo-text {
@@ -249,7 +259,8 @@
     padding: 8px 14px;
     position: relative;
     z-index: 1;
-    transition: none; /* 基础侧边栏禁用菜单自身动画，避免重排抖动 */
+    transition: none;
+    /* 基础侧边栏禁用菜单自身动画，避免重排抖动 */
 }
 
 /* 菜单项文字平滑显示 */
@@ -276,7 +287,7 @@
     margin: 3px 0;
     height: 48px;
     line-height: 48px;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.15s ease, color 0.15s ease;
     color: rgba(226, 232, 240, 0.7);
     font-size: 14px;
     font-weight: 450;
@@ -287,35 +298,32 @@
 
 .main-sider .ant-menu-dark .ant-menu-item .anticon {
     font-size: 18px;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.15s ease, opacity 0.15s ease;
     opacity: 0.85;
 }
 
 /* Menu Item Hover */
 .main-sider .ant-menu-dark .ant-menu-item:hover {
-    background: linear-gradient(90deg, 
-        rgba(96, 165, 250, 0.12) 0%, 
-        rgba(96, 165, 250, 0.06) 50%,
-        transparent 100%);
+    background: linear-gradient(90deg,
+            rgba(96, 165, 250, 0.12) 0%,
+            rgba(96, 165, 250, 0.06) 50%,
+            transparent 100%);
     color: #fff;
-    transform: translateX(3px);
 }
 
 .main-sider .ant-menu-dark .ant-menu-item:hover .anticon {
-    transform: scale(1.12);
     opacity: 1;
     color: #60a5fa;
 }
 
 /* Menu Item Selected */
 .main-sider .ant-menu-dark .ant-menu-item-selected {
-    background: linear-gradient(90deg, 
-        rgba(96, 165, 250, 0.2) 0%, 
-        rgba(96, 165, 250, 0.08) 60%,
-        transparent 100%) !important;
+    background: linear-gradient(90deg,
+            rgba(96, 165, 250, 0.2) 0%,
+            rgba(96, 165, 250, 0.08) 60%,
+            transparent 100%) !important;
     color: #fff !important;
     font-weight: 550;
-    transform: translateX(2px);
 }
 
 .main-sider .ant-menu-dark .ant-menu-item-selected .anticon {
@@ -332,20 +340,23 @@
     width: 3px;
     background: linear-gradient(180deg, #38bdf8 0%, #60a5fa 50%, #818cf8 100%);
     border-radius: 0 6px 6px 0;
-    box-shadow: 
+    box-shadow:
         0 0 12px rgba(96, 165, 250, 0.9),
         0 0 24px rgba(96, 165, 250, 0.5);
     animation: glowPulse 2s ease-in-out infinite;
 }
 
 @keyframes glowPulse {
-    0%, 100% {
-        box-shadow: 
+
+    0%,
+    100% {
+        box-shadow:
             0 0 12px rgba(96, 165, 250, 0.9),
             0 0 24px rgba(96, 165, 250, 0.5);
     }
+
     50% {
-        box-shadow: 
+        box-shadow:
             0 0 16px rgba(96, 165, 250, 1),
             0 0 32px rgba(96, 165, 250, 0.7);
     }
@@ -368,7 +379,7 @@
     margin: 3px 0;
     height: 48px;
     line-height: 48px;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.15s ease, color 0.15s ease;
     color: rgba(226, 232, 240, 0.7);
     font-size: 14px;
     font-weight: 500;
@@ -377,21 +388,19 @@
 
 .main-sider .ant-menu-dark .ant-menu-submenu-title .anticon {
     font-size: 18px;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.15s ease, opacity 0.15s ease;
     opacity: 0.85;
 }
 
 .main-sider .ant-menu-dark .ant-menu-submenu-title:hover {
-    background: linear-gradient(90deg, 
-        rgba(96, 165, 250, 0.12) 0%, 
-        rgba(96, 165, 250, 0.06) 50%,
-        transparent 100%);
+    background: linear-gradient(90deg,
+            rgba(96, 165, 250, 0.12) 0%,
+            rgba(96, 165, 250, 0.06) 50%,
+            transparent 100%);
     color: #fff;
-    transform: translateX(3px);
 }
 
 .main-sider .ant-menu-dark .ant-menu-submenu-title:hover .anticon {
-    transform: scale(1.12);
     opacity: 1;
     color: #60a5fa;
 }
@@ -399,7 +408,7 @@
 /* Submenu Arrow */
 .main-sider .ant-menu-dark .ant-menu-submenu-arrow {
     color: rgba(148, 163, 184, 0.5);
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.15s ease;
 }
 
 .main-sider .ant-menu-dark .ant-menu-submenu-title:hover .ant-menu-submenu-arrow {
@@ -407,23 +416,23 @@
 }
 
 /* Submenu Open State */
-.main-sider .ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title {
+.main-sider .ant-menu-dark .ant-menu-submenu-open>.ant-menu-submenu-title {
     color: #fff;
-    background: linear-gradient(90deg, 
-        rgba(96, 165, 250, 0.1) 0%, 
-        transparent 100%);
+    background: linear-gradient(90deg,
+            rgba(96, 165, 250, 0.1) 0%,
+            transparent 100%);
 }
 
-.main-sider .ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title .anticon {
+.main-sider .ant-menu-dark .ant-menu-submenu-open>.ant-menu-submenu-title .anticon {
     color: #60a5fa;
     opacity: 1;
 }
 
 /* Submenu Container */
 .main-sider .ant-menu-dark .ant-menu-sub {
-    background: linear-gradient(180deg, 
-        rgba(0, 0, 0, 0.12) 0%, 
-        rgba(0, 0, 0, 0.08) 100%) !important;
+    background: linear-gradient(180deg,
+            rgba(0, 0, 0, 0.12) 0%,
+            rgba(0, 0, 0, 0.08) 100%) !important;
     border-radius: 12px;
     padding: 6px 0;
     margin: 6px 0 4px 0;
@@ -439,6 +448,7 @@
     font-weight: 400;
     color: rgba(203, 213, 225, 0.75);
     border-radius: 10px;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .main-sider .ant-menu-dark .ant-menu-sub .ant-menu-item:hover {
@@ -448,9 +458,9 @@
 
 .main-sider .ant-menu-dark .ant-menu-sub .ant-menu-item-selected {
     color: #fff !important;
-    background: linear-gradient(90deg, 
-        rgba(96, 165, 250, 0.18) 0%, 
-        rgba(96, 165, 250, 0.06) 100%) !important;
+    background: linear-gradient(90deg,
+            rgba(96, 165, 250, 0.18) 0%,
+            rgba(96, 165, 250, 0.06) 100%) !important;
 }
 
 /* Menu Group Title */
@@ -568,41 +578,6 @@
     font-size: 14px;
 }
 
-/* ========== GLOBAL SEARCH ========== */
-.global-search-input {
-    width: 240px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(0, 0, 0, 0.03) !important;
-    border-radius: 10px !important;
-    height: 38px !important;
-}
-
-.global-search-input:hover {
-    background: rgba(0, 0, 0, 0.05) !important;
-}
-
-.global-search-input:focus-within {
-    width: 320px;
-    background: white !important;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.global-search-input .ant-select-selector {
-    height: 38px !important;
-    padding: 0 14px !important;
-    border-radius: 10px !important;
-}
-
-.global-search-input .ant-select-selection-placeholder {
-    line-height: 38px !important;
-    font-size: 13px;
-    color: var(--color-text-tertiary);
-}
-
-.global-search-input .ant-select-selection-search-input {
-    height: 38px !important;
-}
-
 /* ========== CONTENT AREA ========== */
 .main-content {
     margin: 0;
@@ -610,7 +585,8 @@
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 64px - 46px); /* 减去 header 高度和 tabs 高度 */
+    height: calc(100vh - 64px - 46px);
+    /* 减去 header 高度和 tabs 高度 */
 }
 
 .content-wrapper {

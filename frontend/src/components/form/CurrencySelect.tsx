@@ -64,6 +64,16 @@ export function CurrencySelect({
       showSearch
       optionFilterProp="label"
       placeholder={props.placeholder || '请选择币种'}
+      getPopupContainer={(triggerNode) => {
+        // 如果在Modal中，将下拉菜单渲染到Modal的body中，避免被遮挡
+        const modalContent = triggerNode.closest('.ant-modal-content')
+        if (modalContent) {
+          const modalBody = modalContent.querySelector('.ant-modal-body')
+          return modalBody || modalContent
+        }
+        // 否则渲染到body中
+        return document.body
+      }}
     />
   )
 }

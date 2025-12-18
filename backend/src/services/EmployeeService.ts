@@ -342,8 +342,11 @@ export class EmployeeService {
         userId: employees.id,
         userActive: employees.active,
         userLastLoginAt: employees.lastLoginAt,
-        isActivated: sql<boolean>`${employees.passwordHash} IS NOT NULL`,
-        totpEnabled: sql<boolean>`${employees.totpSecret} IS NOT NULL`,
+        isActivated: sql<boolean>`CASE WHEN ${employees.passwordHash} IS NOT NULL AND ${employees.passwordHash} != '' THEN 1 ELSE 0 END`,
+        totpEnabled: sql<boolean>`CASE 
+          WHEN ${employees.totpSecret} IS NOT NULL AND ${employees.totpSecret} != '' THEN 1
+          ELSE 0
+        END`,
       })
       .from(employees)
       .leftJoin(departments, eq(employees.departmentId, departments.id))
@@ -398,112 +401,6 @@ export class EmployeeService {
       .get()
   }
 
-  async migrateFromUser(
-    userId: string,
-    data: {
-      orgDepartmentId: string
-      positionId: string
-      joinDate: string
-      birthday?: string
-    }
-  ) {
-    return await this.db.transaction(async tx => {
-      // 1. 检查用户是否存在
-      const user = await tx.select().from(employees).where(eq(employees.id, userId)).get()
-      if (!user) {
-        throw Errors.NOT_FOUND('用户')
-      }
-
-      // 2. 检查员工是否已存在（合并 users 表后允许同一记录继续补全）
-      // 如果存在同邮箱但不同ID则视为冲突
-      const existingEmployee = await tx
-        .select()
-        .from(employees)
-        .where(eq(employees.email, user.email))
-        .get()
-      if (existingEmployee && existingEmployee.id !== userId) {
-        throw Errors.DUPLICATE('员工邮箱')
-      }
-
-      // 3. 获取组织部门
-      const orgDept = await tx
-        .select()
-        .from(orgDepartments)
-        .where(eq(orgDepartments.id, data.orgDepartmentId))
-        .get()
-      if (!orgDept) {
-        throw Errors.NOT_FOUND('组织部门')
-      }
-
-      // 4. 确定部门 (项目)
-      let actualDepartmentId = orgDept.projectId
-      if (!actualDepartmentId) {
-        // 如果没有 project_id，假设是总部。查找或创建 '总部' 部门。
-        // 为简单起见，假设 '总部' 部门存在，或者我们能找到名为 '总部' 的部门
-        const hqDept = await tx.select().from(departments).where(eq(departments.name, '总部')).get()
-        if (hqDept) {
-          actualDepartmentId = hqDept.id
-        } else {
-          // 回退或错误？原始代码有查找总部的逻辑。
-          throw Errors.NOT_FOUND('总部部门')
-        }
-      }
-
-      // 5. 获取职位
-      const position = await tx
-        .select()
-        .from(positions)
-        .where(eq(positions.id, data.positionId))
-        .get()
-      if (!position) {
-        throw Errors.NOT_FOUND('职位')
-      }
-
-      const now = Date.now()
-
-      // 6. 更新现有员工 (用户) 的详细信息
-      await tx
-        .update(employees)
-        .set({
-          departmentId: actualDepartmentId,
-          orgDepartmentId: data.orgDepartmentId,
-          positionId: data.positionId,
-          joinDate: data.joinDate,
-          status: 'probation', // 迁移时默认为试用期
-          active: 1,
-          birthday: data.birthday,
-          updatedAt: now,
-        })
-        .where(eq(employees.id, userId))
-        .run()
-
-      // 同步 user_departments
-      const existingUd = await tx
-        .select()
-        .from(userDepartments)
-        .where(
-          and(
-            eq(userDepartments.userId, userId),
-            eq(userDepartments.departmentId, actualDepartmentId)
-          )
-        )
-        .get()
-
-      if (!existingUd) {
-        await tx
-          .insert(userDepartments)
-          .values({
-            id: uuid(),
-            userId: userId,
-            departmentId: actualDepartmentId,
-            createdAt: now,
-          })
-          .run()
-      }
-
-      return { id: userId }
-    })
-  }
 
   async update(
     id: string,
@@ -723,18 +620,17 @@ export class EmployeeService {
     return []
   }
 
-  // ========== UserService 方法（已合并，users 表已废弃） ==========
+  // ========== 用户相关方法（原 UserService 已合并） ==========
 
   /**
-   * 根据 ID 获取员工信息（兼容 UserService）
-   * @deprecated 使用 getById 代替
+   * 根据 ID 获取员工信息
    */
   async getUserById(id: string) {
     return this.getById(id)
   }
 
   /**
-   * 根据邮箱获取员工信息（兼容 UserService）
+   * 根据邮箱获取员工信息
    */
   async getUserByEmail(email: string) {
     const user = await this.db

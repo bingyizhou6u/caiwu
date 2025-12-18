@@ -1,24 +1,7 @@
 -- Reconstructed schema based on codebase analysis
 
--- Users table (认证专用，name 已移至 employees 表)
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT,
-  active INTEGER DEFAULT 1,
-  must_change_password INTEGER DEFAULT 0,
-  password_changed INTEGER DEFAULT 0,
-  totp_secret TEXT,
-  last_login_at INTEGER,
-  position_id TEXT,
-  department_id TEXT,
-  org_department_id TEXT,
-  activation_token TEXT,
-  activation_expires_at INTEGER,
-  reset_token TEXT,
-  reset_expires_at INTEGER,
-  created_at INTEGER
-);
+-- Note: users table has been merged into employees table
+-- All auth fields are now in employees table
 
 -- Employees table (业务核心，包含员工所有信息)
 DROP TABLE IF EXISTS employees;
@@ -84,6 +67,7 @@ CREATE TABLE IF NOT EXISTS positions (
 CREATE TABLE IF NOT EXISTS departments (
   id TEXT PRIMARY KEY,
   hq_id TEXT,
+  sort_order INTEGER DEFAULT 100,
   name TEXT NOT NULL,
   code TEXT,
   active INTEGER DEFAULT 1,

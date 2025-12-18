@@ -19,6 +19,9 @@ import { performanceMonitor } from './middleware/performance.js'
 import { errorHandlerV2 } from './utils/errors.js'
 import { Logger } from './utils/logger.js'
 import { apiSuccess, jsonResponse } from './utils/response.js'
+import { createDb } from './db/index.js'
+import { DepartmentService } from './services/DepartmentService.js'
+import { AuditService } from './services/AuditService.js'
 
 // Route imports (V2 only)
 import { authRoutes as authRoutesV2 } from './routes/v2/auth.js'
@@ -58,7 +61,7 @@ app.use(
   cors({
     origin: origin => {
       // 允许的前端域名
-      if (!origin) {return null}
+      if (!origin) { return null }
       if (
         origin.includes('.pages.dev') ||
         origin.includes('localhost') ||
@@ -165,17 +168,17 @@ app.get('/api/health', async c => {
         performance: {
           requestDuration: requestDurationStats
             ? {
-                avg: Math.round(requestDurationStats.avg),
-                p95: Math.round(requestDurationStats.p95),
-                p99: Math.round(requestDurationStats.p99),
-              }
+              avg: Math.round(requestDurationStats.avg),
+              p95: Math.round(requestDurationStats.p95),
+              p99: Math.round(requestDurationStats.p99),
+            }
             : null,
           dbQueryDuration: dbQueryStats
             ? {
-                avg: Math.round(dbQueryStats.avg),
-                p95: Math.round(dbQueryStats.p95),
-                p99: Math.round(dbQueryStats.p99),
-              }
+              avg: Math.round(dbQueryStats.avg),
+              p95: Math.round(dbQueryStats.p95),
+              p99: Math.round(dbQueryStats.p99),
+            }
             : null,
         },
       },
@@ -206,11 +209,11 @@ app.post('/api/v2/init-if-empty', async c => {
 
     // 数据库为空，执行初始化
     const now = Date.now()
-    
+
     // 从环境变量读取初始化密码哈希，如果不存在则使用默认值（仅用于开发环境）
     // 生产环境应通过 wrangler secret put INIT_ADMIN_PASSWORD_HASH 设置
     const passwordHash = c.env.INIT_ADMIN_PASSWORD_HASH || '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve'
-    
+
     if (!c.env.INIT_ADMIN_PASSWORD_HASH) {
       Logger.warn(
         'Using default password hash for initialization. For production, set INIT_ADMIN_PASSWORD_HASH via wrangler secret.',
@@ -219,13 +222,16 @@ app.post('/api/v2/init-if-empty', async c => {
       )
     }
 
-    // 1. 创建总部
+    // 1. 创建总部（使用 UUID 格式）
+    const hqId = 'default-hq-001' // 固定 ID 以便 INSERT OR IGNORE 幂等
     await c.env.DB.prepare(
       `
       INSERT OR IGNORE INTO headquarters (id, name, active) 
-      VALUES ('hq', 'Headquarters', 1)
+      VALUES (?, 'Headquarters', 1)
     `
-    ).run()
+    )
+      .bind(hqId)
+      .run()
 
     // 2. 创建职位
     await c.env.DB.prepare(
@@ -242,15 +248,22 @@ app.post('/api/v2/init-if-empty', async c => {
       .bind(now, now)
       .run()
 
-    // 3. 创建部门
+    // 3. 创建部门（使用正确的 UUID 格式）
+    const deptId = 'hq-proj-init-001' // 初始化专用的总部部门 ID
     await c.env.DB.prepare(
       `
-      INSERT OR IGNORE INTO departments (id, hq_id, name, code, active, created_at, updated_at)
-      VALUES ('hq', 'hq', '总部', 'HQ', 1, ?, ?)
+      INSERT OR IGNORE INTO departments (id, hq_id, name, code, active, sort_order, created_at, updated_at)
+      VALUES (?, ?, '总部', 'HQ', 1, 0, ?, ?)
     `
     )
-      .bind(now, now)
+      .bind(deptId, hqId, now, now)
       .run()
+
+    // 3.5. 为总部创建默认组织部门（使用新的逻辑，总部作为普通 department）
+    const db = createDb(c.env.DB)
+    const auditService = new AuditService(db)
+    const deptService = new DepartmentService(db, auditService)
+    await deptService.createDefaultOrgDepartments(deptId, undefined)
 
     // 4. 创建管理员员工（包含认证字段）
     await c.env.DB.prepare(
@@ -260,14 +273,14 @@ app.post('/api/v2/init-if-empty', async c => {
         password_hash, must_change_password, password_changed,
         created_at, updated_at
       ) VALUES (
-        'admin_employee', 'admin@example.com', 'Admin', 'pos-hq-director', 'hq',
+        'admin_employee', 'admin@example.com', 'Admin', 'pos-hq-director', ?,
         '2023-01-01', 'regular', 1,
         ?, 0, 1,
         ?, ?
       )
     `
     )
-      .bind(passwordHash, now, now)
+      .bind(deptId, passwordHash, now, now)
       .run()
 
     return jsonResponse(
@@ -277,8 +290,8 @@ app.post('/api/v2/init-if-empty', async c => {
         message: '数据库初始化成功',
         adminAccount: {
           email: 'admin@example.com',
-          password: c.env.INIT_ADMIN_PASSWORD_HASH 
-            ? '请使用环境变量中配置的密码' 
+          password: c.env.INIT_ADMIN_PASSWORD_HASH
+            ? '请使用环境变量中配置的密码'
             : 'password (默认密码，请尽快修改)',
         },
       })

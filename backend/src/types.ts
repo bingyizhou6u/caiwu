@@ -42,7 +42,6 @@ export type AppVariables = {
   services: {
     systemConfig: SystemConfigService
     finance: FinanceService
-    user: UserService
     employee: EmployeeService
     import: ImportService
     salaryPayment: SalaryPaymentService
@@ -77,7 +76,6 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from './db/schema.js'
 import { SystemConfigService } from './services/SystemConfigService.js'
 import { FinanceService } from './services/FinanceService.js'
-import { UserService } from './services/UserService.js'
 import { EmployeeService } from './services/EmployeeService.js'
 import { ImportService } from './services/ImportService.js'
 import { SalaryPaymentService } from './services/SalaryPaymentService.js'

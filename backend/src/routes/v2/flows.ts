@@ -232,11 +232,13 @@ flowsRoutes.openapi(
     const formData = await c.req.formData()
     const file = formData.get('file') as File
     if (!file) {
-      throw Errors.VALIDATION_ERROR('文件必填')}
+      throw Errors.VALIDATION_ERROR('文件必填')
+    }
 
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      throw Errors.VALIDATION_ERROR('文件过大（最大10MB）')}
+      throw Errors.VALIDATION_ERROR('文件过大（最大10MB）')
+    }
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
@@ -280,8 +282,8 @@ flowsRoutes.openapi(
 // 下载凭证
 flowsRoutes.get('/vouchers/*', async c => {
   if (!getUserPosition(c)) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
 
   const requestPath = c.req.path
   // 只处理 /api/v2/vouchers/ 路径
@@ -351,26 +353,39 @@ flowsRoutes.openapi(
     }
     const body = c.req.valid('json')
 
-    // ownerScope 和 departmentId 的逻辑
-    let ownerScope = body.ownerScope as 'hq' | 'department' | undefined
+    // departmentId 的逻辑：从 siteId 或直接传入的 departmentId 获取
     let departmentId = body.departmentId ?? null
 
     if (!departmentId && body.siteId) {
-      // 我们需要从 siteId 查找 departmentId。
+      // 从 siteId 查找 departmentId
       const r = await (c.env.DB.prepare('select departmentId from sites where id=?')
         .bind(body.siteId)
         .first() as Promise<{ departmentId: string } | null>)
-      if (r?.departmentId) {departmentId = r.departmentId}
+      if (r?.departmentId) { departmentId = r.departmentId }
     }
 
-    if (ownerScope === 'hq') {
-      departmentId = null
-    } else if (ownerScope === 'department') {
-      if (!departmentId) {
-      throw Errors.VALIDATION_ERROR('department所有者需要提供departmentId或siteId')}
-    } else {
-      if (!departmentId) {ownerScope = 'hq'}
-      else {ownerScope = 'department'}
+    // 如果没有 departmentId 且传入了 ownerScope，根据 ownerScope 查找总部部门
+    // 注意：ownerScope 已弃用，保留仅为向后兼容
+    if (!departmentId && body.ownerScope) {
+      if (body.ownerScope === 'hq') {
+        // 查询名为"总部"的部门
+        const hqDept = await (c.env.DB.prepare('select id from departments where name=?')
+          .bind('总部')
+          .first() as Promise<{ id: string } | null>)
+        if (hqDept) {
+          departmentId = hqDept.id
+        }
+      } else if (body.ownerScope === 'department') {
+        throw Errors.VALIDATION_ERROR('department所有者需要提供departmentId或siteId')
+      }
+    }
+
+    // 如果仍然没有 departmentId，默认查找总部部门（向后兼容）
+    if (!departmentId) {
+      const hqDept = await (c.env.DB.prepare('select id from departments where name=?')
+        .bind('总部')
+        .first() as Promise<{ id: string } | null>)
+      if (hqDept) departmentId = hqDept.id
     }
 
     const result = await c.var.services.finance.createCashFlow({
@@ -450,7 +465,8 @@ flowsRoutes.openapi(
       voucherUrls = [body.voucherUrl]
     }
     if (voucherUrls.length === 0) {
-      throw Errors.VALIDATION_ERROR('voucherUrls参数必填')}
+      throw Errors.VALIDATION_ERROR('voucherUrls参数必填')
+    }
 
     await c.var.services.finance.updateCashFlowVoucher(id, voucherUrls)
 

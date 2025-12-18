@@ -136,6 +136,7 @@ export interface Department {
     code?: string
     parentId?: ID
     active: ActiveStatus
+    sortOrder?: number
     createdAt?: Timestamp
     updatedAt?: Timestamp
 }

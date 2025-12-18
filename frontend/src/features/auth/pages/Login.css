@@ -217,6 +217,73 @@
     color: rgba(255, 255, 255, 0.5) !important;
 }
 
+/* 密码输入框优化样式 */
+.login-card .ant-input-password {
+    position: relative;
+}
+
+.login-card .ant-input-password .ant-input-affix-wrapper {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 12px !important;
+    padding: 0 14px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.login-card .ant-input-password .ant-input-affix-wrapper:hover {
+    border-color: rgba(99, 102, 241, 0.6) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 
+        0 4px 12px rgba(99, 102, 241, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    transform: translateY(-1px);
+}
+
+.login-card .ant-input-password .ant-input-affix-wrapper-focused {
+    border-color: var(--color-primary) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 
+        0 0 0 4px rgba(99, 102, 241, 0.2),
+        0 4px 16px rgba(99, 102, 241, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    transform: translateY(-1px);
+}
+
+.login-card .ant-input-password .ant-input {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    height: 44px !important;
+    font-size: 15px !important;
+    letter-spacing: 0.3px !important;
+}
+
+.login-card .ant-input-password .ant-input::placeholder {
+    color: rgba(255, 255, 255, 0.45) !important;
+    font-weight: 400 !important;
+}
+
+.login-card .ant-input-password .ant-input-suffix {
+    padding-left: 8px;
+}
+
+.login-card .ant-input-password .anticon {
+    color: rgba(255, 255, 255, 0.6) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.login-card .ant-input-password .anticon:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
 /* Primary Button */
 .login-card .ant-btn-primary {
     height: 48px !important;

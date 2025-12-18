@@ -8,6 +8,7 @@ export const createEmployeeSchema = z.object({
     departmentId: z.string().optional(),
     positionId: z.string().min(1, '请选择职位'),
     joinDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的入职日期'),
+    regularDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的转正日期'),
     birthday: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的生日'),
     workSchedule: z.any().optional(),
     annualLeaveCycleMonths: z.number().optional(),
@@ -24,11 +25,11 @@ export const createEmployeeSchema = z.object({
     probation_salaries: z.array(z.object({
         currencyId: z.string().optional(),
         amountCents: z.number().min(0).optional(),
-    })).optional(),
+    })).min(1, '请至少填写一种试用薪资'),
     regular_salaries: z.array(z.object({
         currencyId: z.string().optional(),
         amountCents: z.number().min(0).optional(),
-    })).optional(),
+    })).min(1, '请至少填写一种转正薪资'),
     living_allowances: z.array(z.object({
         currencyId: z.string().optional(),
         amountCents: z.number().min(0).optional(),
@@ -57,6 +58,7 @@ export const updateEmployeeSchema = z.object({
     departmentId: z.any().optional(),
     positionId: z.any().optional(),
     joinDate: z.any().optional(),
+    regularDate: z.any().optional(),
     birthday: z.any().optional(),
     workSchedule: z.any().optional(),
     annualLeaveCycleMonths: z.any().optional(),
@@ -73,6 +75,12 @@ export const updateEmployeeSchema = z.object({
     emergencyPhone_country_code: z.any().optional(),
     emergencyPhone_number: z.any().optional(),
     memo: z.any().optional(),
+    probation_salaries: z.any().optional(),
+    regular_salaries: z.any().optional(),
+    living_allowances: z.any().optional(),
+    housing_allowances: z.any().optional(),
+    transportation_allowances: z.any().optional(),
+    meal_allowances: z.any().optional(),
 }).passthrough() // 允许额外字段通过
 
 export type UpdateEmployeeFormData = z.infer<typeof updateEmployeeSchema>

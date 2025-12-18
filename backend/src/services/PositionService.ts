@@ -43,9 +43,10 @@ export class PositionService {
       throw Errors.NOT_FOUND('部门')
     }
 
-    const isHQ = dept.projectId === null
-    const projectIdValue = isHQ ? 'hq' : dept.projectId
-    const projectName = isHQ ? '总部' : dept.projectName
+    // 通过 projectId 关联的 department 名称判断是否为总部
+    const isHQ = dept.projectName === '总部'
+    const projectIdValue = dept.projectId
+    const projectName = dept.projectName || '未知'
 
     // 2. 按级别筛选职位
     let levelCondition

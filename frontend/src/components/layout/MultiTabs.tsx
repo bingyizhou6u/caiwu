@@ -27,19 +27,22 @@ export const MultiTabs: React.FC = () => {
         setActiveKey(path)
 
         // Check if tab exists
-        const exists = items.find(item => item.key === path)
-        if (!exists) {
-            let title = '未命名页面'
+        setItems(prev => {
+            const exists = prev.find(item => item.key === path)
+            if (!exists) {
+                let title = '未命名页面'
 
-            // Find key by path
-            const entry = Object.entries(KEY_TO_PATH).find(([_, p]) => p === path)
-            if (entry) {
-                const key = entry[0]
-                title = pageTitles[key] || title
+                // Find key by path
+                const entry = Object.entries(KEY_TO_PATH).find(([_, p]) => p === path)
+                if (entry) {
+                    const key = entry[0]
+                    title = pageTitles[key] || title
+                }
+
+                return [...prev, { key: path, label: title, closable: true }]
             }
-
-            setItems(prev => [...prev, { key: path, label: title, closable: true }])
-        }
+            return prev
+        })
     }, [location.pathname])
 
     const onChange = (key: string) => {
@@ -149,7 +152,11 @@ export const MultiTabs: React.FC = () => {
             type="editable-card"
             hideAdd
             activeKey={activeKey}
-            items={items.map(item => ({ ...item, label: renderTabLabel(item) }))}
+            items={items.map(item => ({ 
+                key: item.key,
+                label: renderTabLabel(item),
+                closable: item.closable
+            }))}
             onChange={onChange}
             onEdit={onEdit}
         />

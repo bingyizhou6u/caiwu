@@ -17,6 +17,8 @@
     "migrate:status:remote": "tsx scripts/migrate-status.ts --remote",
     "migrate:existing": "tsx scripts/migrate-existing.ts",
     "migrate:existing:remote": "tsx scripts/migrate-existing.ts --remote",
+    "migrate:hq-org": "tsx scripts/migrate-hq-org-departments.ts",
+    "migrate:hq-org:remote": "tsx scripts/migrate-hq-org-departments.ts --remote",
     "gen:openapi": "tsx scripts/export-openapi.ts",
     "seed": "tsx scripts/generate-seed.ts > src/db/seed.sql && wrangler d1 execute caiwu-db --file src/db/seed.sql",
     "test": "vitest",

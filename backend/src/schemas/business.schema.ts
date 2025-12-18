@@ -23,6 +23,7 @@ export const createCashFlowSchema = z
     method: z.string().optional(),
     siteId: uuidSchema.optional(),
     departmentId: uuidSchema.optional(),
+    // ownerScope 已弃用，保留仅为向后兼容。建议直接使用 departmentId
     ownerScope: z.enum(['hq', 'department']).optional(),
     counterparty: z.string().optional(),
     memo: z.string().optional(),
@@ -663,7 +664,7 @@ export const allocateDormitorySchema = z.object({
  */
 export const updateEmployeeSchema = z.object({
   name: z.string().min(1).optional(),
-  departmentId: z.string().optional(), // 允许 "hq" 或其他字符串，后端会处理
+  departmentId: z.string().optional(), // department ID，如果对应部门名称为"总部"则视为总部范围
   orgDepartmentId: z.string().optional().nullable(), // 允许特殊值，后端会处理
   positionId: z.string().optional().nullable(), // 允许特殊值（如 "p001"），后端会处理
   joinDate: dateSchema.optional(),

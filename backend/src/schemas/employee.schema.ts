@@ -33,14 +33,6 @@ export const EmployeeQuerySchema = z.object({
   offset: z.string().transform(Number).optional().openapi({ example: '0' }),
 })
 
-export const MigrateUserSchema = z.object({
-  userId: z.string().openapi({ example: 'user-123' }),
-  orgDepartmentId: z.string().openapi({ example: 'org-dept-1' }),
-  positionId: z.string().openapi({ example: 'pos-1' }),
-  joinDate: z.string().openapi({ example: '2023-01-01' }),
-  // Salary data now managed via employee_salaries table
-  birthday: z.string().optional().openapi({ example: '1990-01-01' }),
-})
 
 export const UpdateEmployeeSchema = z.object({
   name: z.string().optional(),

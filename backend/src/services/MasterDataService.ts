@@ -48,7 +48,7 @@ export class MasterDataService {
     return this.projectDepartmentService.createDepartment(data)
   }
 
-  async updateDepartment(id: string, data: { name?: string; hqId?: string; active?: number }) {
+  async updateDepartment(id: string, data: { name?: string; hqId?: string; active?: number; sortOrder?: number }) {
     return this.projectDepartmentService.updateDepartment(id, data)
   }
 

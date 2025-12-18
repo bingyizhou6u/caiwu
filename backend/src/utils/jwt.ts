@@ -56,7 +56,7 @@ async function getKey(secret: string) {
 export const AUTH_COOKIE_NAME = 'caiwu_auth'
 export const AUTH_HEADER_NAME = 'Authorization'
 export const ALT_AUTH_HEADER = 'x-caiwu-token'
-export const AUTH_TOKEN_TTL = 60 * 60 * 2 // 2 hours
+export const AUTH_TOKEN_TTL = 60 * 60 * 24 * 7 // 7 days (与 Session 过期时间一致)
 
 export type AuthTokenPayload = {
   sid: string
@@ -124,8 +124,8 @@ export async function verifyAuthToken(token: string, secret: string): Promise<Au
 }
 
 export function extractBearerToken(header?: string | null) {
-  if (!header) {return null}
+  if (!header) { return null }
   const [type, token] = header.split(' ')
-  if (!token || type.toLowerCase() !== 'bearer') {return null}
+  if (!token || type.toLowerCase() !== 'bearer') { return null }
   return token.trim()
 }

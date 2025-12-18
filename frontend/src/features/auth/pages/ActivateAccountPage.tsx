@@ -66,7 +66,7 @@ export function ActivateAccount() {
         setPassword(values.newPassword)
         setLoadingQr(true)
 
-        // 生成 TOTP 密钥和二维码
+        // 生成 TOTP 密钥和二维码（系统强制2FA，必须绑定）
         try {
             const res = await fetch(api.auth.generateTotpForActivation, {
                 method: 'POST',
@@ -81,49 +81,15 @@ export function ActivateAccount() {
                 setTotpData(data)
                 setStep(1)
             } else {
-                // 若未启用 2FA，直接激活
-                await activateWithoutTotp(values.newPassword)
-            }
-        } catch (error) {
-            console.error('Get TOTP QR error:', error)
-            // 若获取二维码失败，尝试不带 TOTP 激活（可能未启用 2FA）
-            await activateWithoutTotp(values.newPassword)
-        } finally {
-            setLoadingQr(false)
-        }
-    }
-
-    const activateWithoutTotp = async (pwd: string) => {
-        if (!token) return
-        setSubmitting(true)
-        try {
-            const res = await fetch(api.auth.activate, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    token,
-                    password: pwd
-                })
-            })
-            const json = await res.json()
-            // V2 API 响应格式: { success: true, data: { ok: true, user: {...}, token: "..." } }
-            const data = json.data || json
-
-            if (res.ok && (data.ok || json.success)) {
-                setUserInfo(data.user)
-                setToken(data.token)
-                message.success('账号激活成功！正在跳转...')
-                setTimeout(() => {
-                    navigate('/dashboard')
-                }, 1500)
-            } else {
-                const msg = json.error?.message || json.message || data.error || '激活失败，请联系管理员'
+                // 系统强制2FA，如果获取二维码失败，显示错误
+                const msg = json.error?.message || json.message || data.error || '获取2FA二维码失败，请联系管理员'
                 message.error(msg)
             }
         } catch (error) {
-            message.error('网络连接失败，请检查您的网络')
+            console.error('Get TOTP QR error:', error)
+            message.error('获取2FA二维码失败，请检查网络连接或联系管理员')
         } finally {
-            setSubmitting(false)
+            setLoadingQr(false)
         }
     }
 
