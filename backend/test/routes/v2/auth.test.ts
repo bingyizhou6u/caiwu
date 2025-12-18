@@ -8,6 +8,7 @@ import schemaSql from '../../../src/db/schema.sql?raw'
 import bcrypt from 'bcryptjs'
 import app from '../../../src/index.js'
 import { authenticator } from 'otplib'
+import { createTestEnv } from '../../test-constants.js'
 
 describe('Auth API V2', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>
@@ -54,7 +55,7 @@ describe('Auth API V2', () => {
 
     const testEnv = {
       ...env,
-      AUTH_JWT_SECRET: 'test-secret-key-min-32-chars-for-security-reasons',
+      ...createTestEnv(),
     }
 
     const tasks: Promise<any>[] = []
@@ -126,7 +127,7 @@ describe('Auth API V2', () => {
 
     const testEnv = {
       ...env,
-      AUTH_JWT_SECRET: 'test-secret-key-min-32-chars-for-security-reasons',
+      ...createTestEnv(),
     }
 
     const tasks: Promise<any>[] = []

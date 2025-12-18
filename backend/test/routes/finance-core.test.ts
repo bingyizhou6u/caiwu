@@ -249,6 +249,7 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
+          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 
@@ -299,6 +300,7 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
+          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 
@@ -332,6 +334,7 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
+          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 
@@ -367,6 +370,7 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
+          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 
@@ -402,6 +406,7 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
+          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 

@@ -20,6 +20,7 @@
     "migrate:hq-org": "tsx scripts/migrate-hq-org-departments.ts",
     "migrate:hq-org:remote": "tsx scripts/migrate-hq-org-departments.ts --remote",
     "gen:openapi": "tsx scripts/export-openapi.ts",
+    "gen:password-hash": "tsx scripts/gen-password-hash.ts",
     "seed": "tsx scripts/generate-seed.ts > src/db/seed.sql && wrangler d1 execute caiwu-db --file src/db/seed.sql",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
