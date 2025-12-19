@@ -276,6 +276,166 @@ export class FinanceService {
     return account?.currency
   }
 
+  /**
+   * 红冲流水 - 生成反向记账记录
+   * @param originalFlowId 原始流水ID
+   * @param data 冲正数据（包含原因和操作人）
+   * @returns 红冲记录信息
+   */
+  async reverseFlow(
+    originalFlowId: string,
+    data: {
+      reversalReason: string // 冲正原因（必填）
+      createdBy: string
+    }
+  ) {
+    return await this.db.transaction(async tx => {
+      // 1. 查找原始流水
+      const originalFlow = await tx
+        .select()
+        .from(cashFlows)
+        .where(eq(cashFlows.id, originalFlowId))
+        .get()
+
+      if (!originalFlow) {
+        throw createError(404, ErrorCodes.BUS_NOT_FOUND, '原始流水不存在')
+      }
+
+      // 2. 检查是否已被冲正
+      if (originalFlow.isReversed === 1) {
+        throw createError(
+          400,
+          ErrorCodes.BUSINESS_ERROR,
+          '该流水已被冲正，不能重复操作',
+          { reversedByFlowId: originalFlow.reversedByFlowId }
+        )
+      }
+
+      // 3. 检查是否为红冲记录（红冲记录不能再被冲正）
+      if (originalFlow.isReversal === 1) {
+        throw createError(
+          400,
+          ErrorCodes.BUSINESS_ERROR,
+          '红冲记录不能再次冲正',
+          { originalFlowId: originalFlow.reversalOfFlowId }
+        )
+      }
+
+      // 4. 生成红冲记录
+      const reversalId = uuid()
+      const now = Date.now()
+      const reversalDate = new Date().toISOString().split('T')[0]
+      const reversalVoucherNo = await this.getNextVoucherNo(reversalDate, tx)
+
+      // 红冲记录：收入变支出，支出变收入（金额相同）
+      const reversalType = originalFlow.type === 'income' ? 'expense' : 'income'
+
+      // 5. 获取账户余额并创建红冲流水
+      const account = await tx
+        .select({
+          openingCents: accounts.openingCents,
+          version: accounts.version,
+        })
+        .from(accounts)
+        .where(eq(accounts.id, originalFlow.accountId))
+        .get()
+
+      if (!account) {
+        throw createError(404, ErrorCodes.BUS_NOT_FOUND, '账户不存在')
+      }
+
+      // 6. 乐观锁更新账户版本
+      const updateResult = await tx
+        .update(accounts)
+        .set({ version: (account.version || 0) + 1 })
+        .where(and(eq(accounts.id, originalFlow.accountId), eq(accounts.version, account.version || 0)))
+        .run()
+
+      // @ts-ignore - D1 result handling
+      if (updateResult.meta.changes === 0) {
+        throw createError(
+          409,
+          ErrorCodes.BUS_CONCURRENT_MODIFICATION,
+          '账户状态已更变（并发冲突），请重试',
+          { accountId: originalFlow.accountId }
+        )
+      }
+
+      // 7. 计算余额
+      const balanceBefore = await this.getAccountBalanceBefore(
+        originalFlow.accountId,
+        reversalDate,
+        now,
+        tx
+      )
+
+      const delta = reversalType === 'income' ? originalFlow.amountCents : -originalFlow.amountCents
+      const balanceAfter = balanceBefore + delta
+
+      // 8. 插入红冲流水记录
+      const voucherUrlJson = originalFlow.voucherUrl || JSON.stringify([])
+      await tx
+        .insert(cashFlows)
+        .values({
+          id: reversalId,
+          voucherNo: reversalVoucherNo,
+          bizDate: reversalDate,
+          type: reversalType,
+          accountId: originalFlow.accountId,
+          categoryId: originalFlow.categoryId,
+          method: originalFlow.method,
+          amountCents: originalFlow.amountCents,
+          siteId: originalFlow.siteId,
+          departmentId: originalFlow.departmentId,
+          counterparty: originalFlow.counterparty,
+          memo: `【红冲】原凭证号:${originalFlow.voucherNo} | 冲正原因:${data.reversalReason}`,
+          voucherUrl: voucherUrlJson,
+          createdBy: data.createdBy,
+          createdAt: now,
+          // 红冲标记
+          isReversal: 1,
+          reversalOfFlowId: originalFlowId,
+          isReversed: 0,
+          reversedByFlowId: null,
+        })
+        .execute()
+
+      // 9. 创建账户交易记录
+      const transactionId = uuid()
+      await tx
+        .insert(accountTransactions)
+        .values({
+          id: transactionId,
+          accountId: originalFlow.accountId,
+          flowId: reversalId,
+          transactionDate: reversalDate,
+          transactionType: reversalType,
+          amountCents: originalFlow.amountCents,
+          balanceBeforeCents: balanceBefore,
+          balanceAfterCents: balanceAfter,
+          createdAt: now,
+        })
+        .execute()
+
+      // 10. 标记原始流水已被冲正
+      await tx
+        .update(cashFlows)
+        .set({
+          isReversed: 1,
+          reversedByFlowId: reversalId,
+        })
+        .where(eq(cashFlows.id, originalFlowId))
+        .execute()
+
+      return {
+        ok: true,
+        reversalId,
+        reversalVoucherNo,
+        originalVoucherNo: originalFlow.voucherNo,
+      }
+    })
+  }
+
   // --- Borrowings ---
 
   // --- Site Bills Logic moved to SiteBillService ---

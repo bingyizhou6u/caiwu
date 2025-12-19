@@ -19,6 +19,7 @@ export const ACTION_LABELS: Record<string, string> = {
   login: '登录',
   logout: '登出',
   reject: '拒绝',
+  reverse: '红冲', // 冲正操作
 }
 
 // 操作类型颜色
@@ -38,6 +39,7 @@ export const ACTION_COLORS: Record<string, string> = {
   login: 'green',
   logout: 'default',
   reject: 'red',
+  reverse: 'volcano', // 红冲操作用红色
 }
 
 // 对象类型映射
@@ -249,6 +251,8 @@ export function formatEntityId(entityId: string | null | undefined): string {
   
   return entityId
 }
+
+
 
 
 

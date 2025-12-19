@@ -174,10 +174,16 @@ export const cashFlows = sqliteTable(
     voucherUrl: text('voucher_url'),
     createdBy: text('created_by'),
     createdAt: integer('created_at'),
+    // 红冲相关字段
+    isReversal: integer('is_reversal').default(0), // 是否为红冲记录
+    reversalOfFlowId: text('reversal_of_flow_id'), // 冲正的原始流水ID
+    isReversed: integer('is_reversed').default(0), // 是否已被冲正
+    reversedByFlowId: text('reversed_by_flow_id'), // 冲正记录ID
   },
   t => ({
     idxAccountBiz: index('idx_cash_flows_account_biz').on(t.accountId, t.bizDate),
     idxType: index('idx_cash_flows_type').on(t.type),
+    idxReversal: index('idx_cash_flows_reversal').on(t.reversalOfFlowId),
   })
 )
 
