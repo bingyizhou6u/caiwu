@@ -10,9 +10,9 @@
 
 import { drizzle } from 'drizzle-orm/d1'
 import Database from 'better-sqlite3'
-import * as schema from '../../src/db/schema'
-import { getAllFixtures, getMinimalFixtures } from '../../test/fixtures'
-import { bulkInsert } from '../../test/helpers/db-helper'
+import * as schema from '../src/db/schema.js'
+import { getAllFixtures, getMinimalFixtures } from '../test/fixtures/index.js'
+import { bulkInsert } from '../test/helpers/db-helper.js'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { execSync } from 'child_process'

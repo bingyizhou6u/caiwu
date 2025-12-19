@@ -10,8 +10,8 @@
 
 import { drizzle } from 'drizzle-orm/d1'
 import Database from 'better-sqlite3'
-import * as schema from '../../src/db/schema'
-import { truncateTable, truncateAllTables } from '../../test/helpers/db-helper'
+import * as schema from '../src/db/schema.js'
+import { truncateTable, truncateAllTables } from '../test/helpers/db-helper.js'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 

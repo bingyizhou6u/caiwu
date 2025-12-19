@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { auditRoutes } from '../../src/routes/v2/audit.js'
+import * as auditUtils from '../../src/utils/audit.js'
 
 // Mock audit utils
 vi.mock('../../src/utils/audit.js', () => ({
@@ -135,7 +136,7 @@ describe('Audit Routes', () => {
     const data = (await res.json()) as any
     // V2 响应格式
     expect(data.success).toBe(true)
-    expect(logAuditAction).toHaveBeenCalledWith(
+    expect(auditUtils.logAuditAction).toHaveBeenCalledWith(
       expect.anything(),
       'view_sensitive',
       'employee',
