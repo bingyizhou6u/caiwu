@@ -62,6 +62,7 @@ describe('Auth API', () => {
     const testEnv = {
       ...env,
       AUTH_JWT_SECRET: 'test-secret-key-min-32-chars-for-security-reasons',
+      INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
     }
 
     const tasks: Promise<any>[] = []
@@ -122,6 +123,7 @@ describe('Auth API', () => {
     const testEnv = {
       ...env,
       AUTH_JWT_SECRET: 'test-secret-key-min-32-chars-for-security-reasons',
+      INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
     }
 
     const tasks: Promise<any>[] = []

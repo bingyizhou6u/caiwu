@@ -15,7 +15,7 @@ export type Env = {
   CF_ZONE_ID?: string // Zone ID（创建自定义规则需要）
   CF_IP_LIST_ID?: string // IP List ID（如果已创建，可指定）
   AUTH_JWT_SECRET: string
-  INIT_ADMIN_PASSWORD_HASH?: string // 初始化管理员密码哈希（可选，用于数据库初始化）
+  INIT_ADMIN_PASSWORD_HASH: string // 初始化管理员密码哈希（必需，用于数据库初始化）
 }
 
 export type AppVariables = {

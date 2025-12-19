@@ -26,7 +26,29 @@ npx wrangler d1 execute caiwu-db --remote --file src/db/migration_update_hq_org_
 npx wrangler d1 execute caiwu-db --remote --command "SELECT COUNT(*) as count FROM org_departments WHERE project_id IS NULL"
 ```
 
-### 2. 部署后端代码
+### 2. 设置必需的环境变量
+
+在部署前，确保已设置所有必需的环境变量：
+
+```bash
+cd backend
+
+# JWT 密钥（如果尚未设置）
+wrangler secret put AUTH_JWT_SECRET
+
+# 初始化管理员密码哈希（必需）
+# 首先生成密码哈希
+npm run gen:password-hash "your-secure-password"
+# 然后设置 Secret
+wrangler secret put INIT_ADMIN_PASSWORD_HASH
+
+# 邮件服务 Token（如果使用）
+wrangler secret put EMAIL_TOKEN
+```
+
+**重要**: `INIT_ADMIN_PASSWORD_HASH` 是必需的。如果未设置，系统初始化将失败。
+
+### 3. 部署后端代码
 
 ```bash
 cd backend
@@ -35,7 +57,7 @@ cd backend
 npm run deploy
 ```
 
-### 3. 验证部署
+### 4. 验证部署
 
 部署完成后，测试以下功能：
 

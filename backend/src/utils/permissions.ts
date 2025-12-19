@@ -1,5 +1,6 @@
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../types.js'
+import { sql, SQL } from 'drizzle-orm'
 
 /**
  * 职位权限系统工具函数
@@ -186,8 +187,82 @@ export function getUserPermissions(c: Context<{ Bindings: Env; Variables: AppVar
 // ============================================
 
 /**
- * 获取数据访问范围过滤条件
+ * 获取数据访问范围过滤条件（返回 Drizzle SQL 对象，推荐使用）
  * 根据用户职位层级返回SQL过滤条件
+ * @param c Context
+ * @param tableAlias 表别名（如 e）
+ * @param options 配置项
+ * @returns Drizzle SQL 对象
+ */
+export function getDataAccessFilterSQL(
+  c: Context<{ Bindings: Env; Variables: AppVariables }>,
+  tableAlias: string = '',
+  options: {
+    deptColumn?: string // 部门字段，默认 'departmentId'
+    orgDeptColumn?: string // 组织/组字段，默认 'orgDepartmentId'
+    ownerColumn?: string // 所有者字段，默认 'id' (用于工程师查看自己)
+    skipOrgDept?: boolean // 是否跳过组级别过滤 (如果不分层级)
+  } = {}
+): SQL {
+  const position = getUserPosition(c)
+  const employee = getUserEmployee(c)
+  const deptId = employee?.departmentId
+  const orgDeptId = employee?.orgDepartmentId
+
+  if (!position || !employee) {
+    return sql`1=0`
+  }
+
+  // 列名白名单验证（确保列名只包含字母、数字和下划线，防止SQL注入）
+  const validateColumnName = (name: string): string => {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+      throw new Error(`Invalid column name: ${name}`)
+    }
+    return name
+  }
+
+  const deptCol = validateColumnName(options.deptColumn || 'departmentId')
+  const orgDeptCol = validateColumnName(options.orgDeptColumn || 'orgDepartmentId')
+  const ownerCol = validateColumnName(options.ownerColumn || 'id')
+  
+  // 构建表别名前缀（如果提供，也需要验证）
+  const aliasPrefix = tableAlias ? `${validateColumnName(tableAlias)}.` : ''
+
+  // 总部人员（level=1）：可以访问所有数据
+  if (position.level === 1) {
+    return sql`1=1`
+  }
+
+  // 项目人员（level=2）：只能访问本项目数据
+  if (position.level === 2) {
+    if (!deptId) {
+      return sql`1=0`
+    }
+    // 使用 sql.raw() 插入列名（列名已通过白名单验证）
+    // 注意：虽然使用 sql.raw()，但列名来自受控的选项参数，不是用户输入
+    return sql.raw(`${aliasPrefix}${deptCol} = ?`, [deptId])
+  }
+
+  // 组长（team_leader）：只能访问本组数据
+  if (position.code === 'team_leader') {
+    if (options.skipOrgDept) {
+      // 如果表没有组字段，回退到查看自己创建的
+      return sql.raw(`${aliasPrefix}${ownerCol} = ?`, [employee.id])
+    }
+
+    if (!orgDeptId) {
+      return sql`1=0`
+    }
+    return sql.raw(`${aliasPrefix}${orgDeptCol} = ?`, [orgDeptId])
+  }
+
+  // 工程师（team_engineer）或其他：只能访问自己的数据
+  return sql.raw(`${aliasPrefix}${ownerCol} = ?`, [employee.id])
+}
+
+/**
+ * 获取数据访问范围过滤条件（旧版本，返回字符串和绑定参数）
+ * @deprecated 请使用 getDataAccessFilterSQL() 替代，它返回更安全的 SQL 对象
  * @param c Context
  * @param tableAlias 表别名（如 e）
  * @param options 配置项

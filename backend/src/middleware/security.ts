@@ -36,12 +36,14 @@ export function securityHeaders(): MiddlewareHandler<{ Bindings: Env; Variables:
     }
 
     // Content-Security-Policy: 内容安全策略
-    // 默认只允许同源资源，允许内联脚本和样式（Ant Design 需要）
+    // 默认只允许同源资源，允许内联脚本和样式（Ant Design 5.x 需要 unsafe-inline）
     // 允许 Cloudflare 的 CDN 和图片服务
     // 注意：如果前端部署在 Cloudflare Pages，需要允许 cloudflarets.com 域名
+    // Ant Design 5.x 不需要 unsafe-eval，已移除以提高安全性
+    // 如果遇到脚本执行错误，可以临时添加 'unsafe-eval'，但应优先排查问题根源
     const csp = [
       "default-src 'self' https://cloudflarets.com",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cloudflarets.com https://*.cloudflare.com", // unsafe-eval 用于 Ant Design
+      "script-src 'self' 'unsafe-inline' https://cloudflarets.com https://*.cloudflare.com",
       "script-src-elem 'self' 'unsafe-inline' https://cloudflarets.com https://*.cloudflare.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cloudflarets.com",
       "font-src 'self' https://fonts.gstatic.com data: https://cloudflarets.com",
