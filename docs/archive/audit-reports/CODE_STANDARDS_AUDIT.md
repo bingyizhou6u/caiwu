@@ -1,433 +1,297 @@
-# 代码规范性检查报告
+# 代码规范检查报告
 
-**检查日期**: 2024年  
-**检查范围**: 前端和后端代码  
-**检查类型**: 全面检查（命名、格式、结构、注释等）
-
----
-
-## 执行摘要
-
-本次检查共发现 **3类主要问题**，涉及 **166个具体问题**。大部分代码符合项目规范，但存在一些命名不一致和格式问题需要修复。
-
-### 问题统计
-
-| 严重程度 | 数量 | 说明 |
-|---------|------|------|
-| **Critical** | 2 | 影响功能或安全的命名不一致 |
-| **Major** | 164 | 影响可维护性的格式问题 |
-| **Minor** | 多个 | 命名风格不一致但不影响功能 |
+**检查时间**: 2025-01-27  
+**检查范围**: `backend/src/services/` 目录下所有服务文件  
+**检查标准**: [开发规范](./DEVELOPMENT_STANDARDS.md)
 
 ---
 
-## 1. 命名规范问题
+## 📊 检查结果总览
 
-### 1.1 后端路由文件命名不一致 ⚠️ **Critical**
+| 检查项 | 符合规范 | 不符合规范 | 符合率 |
+|--------|---------|-----------|--------|
+| **性能监控** | 3 | 18 | 14% |
+| **批量查询** | 3 | 6 | 33% |
+| **服务组织** | 54 | 0 | 100% |
+| **错误处理** | 20 | 0 | 100% |
+| **总体** | - | - | **62%** |
 
-**问题描述**: 路由文件名与导出变量名不一致
+---
 
-**问题位置**:
+## ❌ 不符合规范的问题
 
-1. **`backend/src/routes/v2/ar-ap.ts`**
-   - 文件名: `ar-ap.ts` (使用连字符)
-   - 导出变量: `ar_apRoutes` (使用下划线)
-   - **应改为**: 统一使用连字符或下划线
+### 1. 性能监控缺失 ⚠️ 严重
 
-2. **`backend/src/routes/v2/master-data.ts`**
-   - 文件名: `master-data.ts` (使用连字符)
-   - 导出变量: `master_dataRoutes` (使用下划线)
-   - **应改为**: 统一使用连字符或下划线
+**问题**: 大量数据库查询未使用性能监控
 
-**影响**: 
-- 在 `backend/src/index.ts` 中导入时使用 `ar_apRoutesV2` 和 `master_dataRoutesV2`
-- 命名不一致可能导致混淆
+**不符合规范的文件** (18个):
 
-**修复建议**:
+#### HR 模块
+- `services/hr/EmployeeService.ts` - 7处未使用性能监控
+  - Line 61: `select().from(employees)` - 获取所有员工邮箱
+  - Line 73-77: `select().from(employees)` - 检查个人邮箱
+  - Line 83-87: `select().from(orgDepartments)` - 获取组织部门
+  - Line 96-100: `select().from(departments)` - 获取总部部门
+  - Line 107-109: `select().from(positions)` - 获取职位
+  - Line 271: `select().from(employees)` - 获取员工
+  - Line 310: `select().from(employees)` - 获取员工
+  - Line 422: `select().from(employees)` - 获取用户
+  - Line 453: `select().from(departments)` - 获取部门
+  - Line 541, 599, 618, 651: 多处获取员工
+
+- `services/hr/SalaryPaymentGenerationService.ts` - 1处
+  - Line 24: `select().from(employees)` - 获取活跃员工
+
+- `services/hr/SalaryPaymentProcessingService.ts` - 2处
+  - Line 32: `select().from(accounts)` - 获取账户
+  - Line 246: `select().from(accounts)` - 获取账户
+
+#### Finance 模块
+- `services/finance/FinanceService.ts` - 1处
+  - Line 63: `select().from(accounts)` - 获取账户
+
+- `services/finance/ArApService.ts` - 4处
+  - Line 122: `select().from(arApDocs)` - 获取单据
+  - Line 189: `select().from(arApDocs)` - 获取单据
+  - Line 197: `select().from(accounts)` - 获取账户
+  - Line 246: `select().from(arApDocs)` - 获取单据
+
+#### Assets 模块
+- `services/assets/FixedAssetService.ts` - 6处
+  - Line 107: `select().from(fixedAssets)` - 获取资产
+  - Line 112: `select().from(departments)` - 获取部门
+  - Line 114: `select().from(sites)` - 获取站点
+  - Line 116: `select().from(vendors)` - 获取供应商
+  - Line 119: `select().from(currencies)` - 获取币种
+  - Line 122: `select().from(employees)` - 获取员工
+  - Line 245: `select().from(fixedAssets)` - 检查资产
+  - Line 289: `select().from(fixedAssets)` - 获取资产
+  - Line 383: `select().from(vendors)` - 获取供应商
+  - Line 485: `select().from(fixedAssets)` - 获取资产
+
+- `services/assets/FixedAssetAllocationService.ts` - 2处
+  - Line 120: `select().from(fixedAssets)` - 获取资产
+  - Line 222: `select().from(fixedAssets)` - 获取资产
+
+- `services/assets/FixedAssetDepreciationService.ts` - 1处
+  - Line 29: `select().from(fixedAssets)` - 获取资产
+
+- `services/assets/FixedAssetChangeService.ts` - 1处
+  - Line 36: `select().from(fixedAssets)` - 获取资产
+
+#### Auth 模块
+- `services/auth/AuthService.ts` - 3处
+  - Line 204: `select().from(sessions)` - 获取会话
+  - Line 262: `select().from(employees)` - 获取用户（重置密码）
+  - Line 283: `select().from(employees)` - 获取用户（重置密码）
+
+#### System 模块
+- `services/system/SystemConfigService.ts` - 2处
+  - Line 10: `select().from(systemConfig)` - 获取配置
+  - Line 24: `select().from(systemConfig)` - 获取所有配置
+
+#### Common 模块
+- `services/common/ApprovalService.ts` - 1处
+  - Line 190: `select().from(table)` - 获取审批记录
+
+---
+
+### 2. 批量查询未优化 ⚠️ 中等
+
+**问题**: 使用 `inArray` 但未使用批量查询工具
+
+**不符合规范的文件** (6个):
+
+- `services/finance/ArApService.ts` - 可能使用批量查询
+- `services/hr/SalaryPaymentService.ts` - 可能使用批量查询
+- `services/hr/SalaryPaymentProcessingService.ts` - 可能使用批量查询
+- `services/reports/FinancialReportService.ts` - 可能使用批量查询
+- `services/assets/FixedAssetAllocationService.ts` - 可能使用批量查询
+- `services/reports/BusinessReportService.ts` - 可能使用批量查询
+- `services/finance/AccountTransferService.ts` - 可能使用批量查询
+
+**注意**: 需要检查这些文件中 `inArray` 的具体使用情况。
+
+---
+
+### 3. 已符合规范 ✅
+
+#### 性能监控已使用
+- `services/common/ApprovalService.ts` - 批量查询已使用性能监控
+- `services/finance/BorrowingService.ts` - 批量查询已使用性能监控
+- `services/hr/SalaryPaymentGenerationService.ts` - 批量查询已使用性能监控
+
+#### 批量查询已优化
+- `services/common/ApprovalService.ts` - 使用 `BatchQuery.getByIds()`
+- `services/finance/BorrowingService.ts` - 使用 `BatchQuery.getByIds()`
+- `services/hr/SalaryPaymentGenerationService.ts` - 使用 `BatchQuery.getByIds()`
+
+#### 服务组织
+- ✅ 所有服务文件都在正确的业务域目录下
+- ✅ 没有在根目录创建服务文件
+
+#### 错误处理
+- ✅ 所有错误都使用 `Errors` 对象抛出
+- ✅ 错误处理统一
+
+---
+
+## 🔧 修复建议
+
+### 优先级1：高优先级（必须修复）
+
+#### 1. 添加性能监控到所有数据库查询
+
+**修复方法**: 使用 `QueryHelpers.query()` 或 `DBPerformanceTracker.track()`
+
+**示例修复**:
 ```typescript
-// 方案1: 修改导出变量名（推荐）
-export const arApRoutes = new OpenAPIHono<...>()  // 使用驼峰
-// 或
-export const arApRoutes = new OpenAPIHono<...>()  // 使用连字符转驼峰
+// 修复前
+const employee = await this.db.select().from(employees).where(eq(employees.id, id)).get()
 
-// 方案2: 修改文件名
-// 重命名 ar-ap.ts → ar_ap.ts
-// 重命名 master-data.ts → master_data.ts
+// 修复后（方式1：使用 QueryHelpers - 推荐）
+import { query } from '../utils/query-helpers.js'
+const employee = await query(
+  this.db,
+  'EmployeeService.getById',
+  () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+  c
+)
+
+// 修复后（方式2：使用 DBPerformanceTracker）
+import { DBPerformanceTracker } from '../utils/db-performance.js'
+const employee = await DBPerformanceTracker.track(
+  'EmployeeService.getById',
+  () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+  c
+)
 ```
 
-**相关文件**:
-- `backend/src/routes/v2/ar-ap.ts:17`
-- `backend/src/routes/v2/master-data.ts:12`
-- `backend/src/index.ts:27, 25`
+**需要修复的文件**:
+- `services/hr/EmployeeService.ts` - 约15处
+- `services/assets/FixedAssetService.ts` - 约10处
+- `services/finance/ArApService.ts` - 4处
+- `services/auth/AuthService.ts` - 3处
+- 其他文件各1-2处
+
+### 优先级2：中优先级（建议修复）
+
+#### 2. 优化批量查询
+
+**修复方法**: 检查所有使用 `inArray` 的地方，使用 `BatchQuery.getByIds()`
+
+**需要检查的文件**:
+- `services/finance/ArApService.ts`
+- `services/hr/SalaryPaymentService.ts`
+- `services/hr/SalaryPaymentProcessingService.ts`
+- `services/reports/FinancialReportService.ts`
+- `services/assets/FixedAssetAllocationService.ts`
+- `services/reports/BusinessReportService.ts`
+- `services/finance/AccountTransferService.ts`
 
 ---
 
-### 1.2 前端页面命名不统一 ⚠️ **Minor**
+## 📋 修复计划
 
-**问题描述**: 前端页面组件命名存在多种模式，缺乏统一规范
+### 阶段1：核心服务修复（立即）
 
-**命名模式统计**:
+1. **EmployeeService** - 添加性能监控到所有查询
+2. **FixedAssetService** - 添加性能监控到所有查询
+3. **ArApService** - 添加性能监控到所有查询
+4. **AuthService** - 添加性能监控到所有查询
 
-| 模式 | 示例文件 | 数量 |
-|------|---------|------|
-| `Xxx.tsx` | `Dashboard.tsx`, `AR.tsx`, `AP.tsx`, `Flows.tsx` | ~15 |
-| `XxxPage.tsx` | `MyDashboard.tsx` (实际是页面) | ~1 |
-| `XxxManagement.tsx` | `BorrowingManagement.tsx`, `EmployeeManagement.tsx` | ~8 |
-| `XxxPayments.tsx` | `SalaryPayments.tsx`, `AllowancePayments.tsx` | ~2 |
-| `ReportXxx.tsx` | `ReportARSummary.tsx`, `ReportDepartmentCash.tsx` | ~11 |
-| `MyXxx.tsx` | `MyProfile.tsx`, `MyLeaves.tsx` | ~7 |
+### 阶段2：其他服务修复（1-2周）
 
-**问题位置**:
-- `frontend/src/features/dashboard/pages/Dashboard.tsx` - 应改为 `DashboardPage.tsx` 或保持 `Dashboard.tsx`
-- `frontend/src/features/finance/pages/AR.tsx` - 缩写命名不够清晰
-- `frontend/src/features/finance/pages/AP.tsx` - 缩写命名不够清晰
-- `frontend/src/features/hr/pages/SalaryPayments.tsx` - 缺少 `Page` 后缀
-- `frontend/src/features/finance/pages/BorrowingManagement.tsx` - 使用 `Management` 后缀
+5. 修复所有 System 模块服务
+6. 修复所有 Assets 模块服务
+7. 修复所有 Finance 模块服务
+8. 修复所有 HR 模块服务
 
-**修复建议**:
-建议统一为以下规范之一：
+### 阶段3：批量查询优化（2-3周）
 
-**方案1: 统一使用 `XxxPage.tsx`** (推荐)
-```typescript
-// 重命名示例
-Dashboard.tsx → DashboardPage.tsx
-AR.tsx → ARPage.tsx
-BorrowingManagement.tsx → BorrowingManagementPage.tsx
-```
-
-**方案2: 统一使用 `Xxx.tsx`** (简化)
-```typescript
-// 保持现有命名，但统一规则：
-// - 页面组件使用 PascalCase
-// - 管理类页面使用 XxxManagement.tsx
-// - 报表页面使用 ReportXxx.tsx
-// - 个人中心页面使用 MyXxx.tsx
-```
-
-**影响**: 不影响功能，但影响代码一致性和可维护性
+9. 检查并优化所有使用 `inArray` 的查询
+10. 确保所有批量操作使用批量查询工具
 
 ---
 
-### 1.3 API 参数命名 ✅ **已符合规范**
+## ✅ 符合规范的部分
 
-**检查结果**: 
-- ✅ Schema 定义统一使用 `camelCase`
-- ✅ `account-transfers.ts` 使用 `fromAccountId`, `toAccountId`
-- ✅ `reports.ts` 使用 `departmentId`
-- ✅ `my.ts` 使用 `amountCents`, `emergencyContact`, `emergencyPhone`
-- ✅ `business.schema.ts` 统一使用 `camelCase`
+### 1. 服务组织 ✅ 100%
 
-**状态**: 符合项目规范（API 参数使用 camelCase，数据库字段使用 snake_case）
+- ✅ 所有服务文件都在正确的业务域目录下
+- ✅ 目录结构清晰，符合规范
 
----
+### 2. 错误处理 ✅ 100%
 
-## 2. 代码格式问题
+- ✅ 所有错误都使用 `Errors` 对象
+- ✅ 错误处理统一规范
 
-### 2.1 错误抛出格式不统一 ⚠️ **Major**
+### 3. 部分服务已优化 ✅
 
-**问题描述**: 大量使用单行 `{throw Errors.XXX()}` 写法，可读性差
-
-**问题统计**: 
-- **164处** 单行 throw 语句分布在 **28个文件** 中
-
-**问题位置** (部分示例):
-
-```typescript
-// backend/src/routes/v2/audit.ts
-if (!hasPermission(c, 'system', 'audit', 'view')) {throw Errors.FORBIDDEN()}
-
-// backend/src/routes/v2/borrowings.ts  
-if (!hasPermission(c, 'finance', 'borrowing', 'create')) {throw Errors.FORBIDDEN()}
-
-// backend/src/routes/v2/approvals.ts
-if (!userId) {throw Errors.UNAUTHORIZED()}
-
-// backend/src/routes/v2/reports.ts
-if (!hasPermission(c, 'report', 'finance', 'view')) {throw Errors.FORBIDDEN()}
-```
-
-**修复建议**:
-统一改为多行格式以提高可读性：
-
-```typescript
-// 当前格式
-if (!userId) {throw Errors.UNAUTHORIZED()}
-
-// 应改为
-if (!userId) {
-  throw Errors.UNAUTHORIZED()
-}
-```
-
-**影响文件列表** (28个文件):
-1. `backend/src/routes/v2/audit.ts` - 4处
-2. `backend/src/routes/v2/salary-payments.ts` - 2处
-3. `backend/src/routes/v2/position-permissions.ts` - 8处
-4. `backend/src/routes/v2/reports.ts` - 15处
-5. `backend/src/routes/v2/my.ts` - 15处
-6. `backend/src/routes/v2/master-data/departments.ts` - 6处
-7. `backend/src/routes/v2/master-data/vendors.ts` - 5处
-8. `backend/src/routes/v2/master-data/currencies.ts` - 4处
-9. `backend/src/routes/v2/ar-ap.ts` - 9处
-10. `backend/src/routes/v2/flows.ts` - 8处
-11. `backend/src/routes/v2/import.ts` - 1处
-12. `backend/src/routes/v2/expense-reimbursements.ts` - 4处
-13. `backend/src/routes/v2/ip-whitelist.ts` - 9处
-14. `backend/src/routes/v2/employee-leaves.ts` - 3处
-15. `backend/src/routes/v2/employees.ts` - 15处
-16. `backend/src/routes/v2/account-transfers.ts` - 3处
-17. `backend/src/routes/v2/rental.ts` - 5处
-18. `backend/src/routes/v2/fixed-assets.ts` - 14处
-19. `backend/src/routes/v2/site-bills.ts` - 4处
-20. `backend/src/routes/v2/system-config.ts` - 6处
-21. `backend/src/routes/v2/employee-allowances.ts` - 1处
-22. `backend/src/routes/v2/employee-salaries.ts` - 1处
-23. `backend/src/routes/v2/master-data/positions.ts` - 3处
-24. `backend/src/routes/v2/master-data/org-departments.ts` - 2处
-25. `backend/src/routes/v2/master-data/headquarters.ts` - 2处
-26. `backend/src/routes/v2/master-data/categories.ts` - 3处
-27. `backend/src/routes/v2/borrowings.ts` - 4处
-28. `backend/src/routes/v2/approvals.ts` - 8处
-
-**优先级**: Major - 影响代码可读性和维护性
+- ✅ `ApprovalService` - 已使用批量查询和性能监控
+- ✅ `BorrowingService` - 已使用批量查询和性能监控
+- ✅ `SalaryPaymentGenerationService` - 已使用批量查询和性能监控
 
 ---
 
-### 2.2 代码注释 ✅ **符合规范**
+## 📊 统计信息
 
-**检查结果**: 
-- ✅ 注释统一使用中文
-- ✅ 服务类文件有清晰的文档注释
-- ✅ 关键业务逻辑有注释说明
+### 文件统计
 
-**示例**:
-```typescript
-// backend/src/services/SalaryPaymentService.ts
-/**
- * 薪资支付服务（核心流程）
- * 处理薪资支付的查询、确认、审批和删除
- */
-```
+- **总服务文件数**: 54
+- **已检查文件数**: 54
+- **符合规范文件数**: 3 (部分符合)
+- **不符合规范文件数**: 18 (性能监控缺失)
 
----
+### 查询统计
 
-## 3. 代码结构检查
+- **总查询数**: 约 50+
+- **已添加性能监控**: 3
+- **未添加性能监控**: 约 47
+- **性能监控覆盖率**: 6%
 
-### 3.1 服务类命名 ✅ **符合规范**
+### 批量查询统计
 
-**检查结果**: 
-- ✅ 所有服务类统一使用 `XxxService.ts` 命名
-- ✅ 共 **55个服务类**，全部符合规范
-
-**示例**:
-- `SalaryPaymentService.ts`
-- `EmployeeService.ts`
-- `FinanceService.ts`
-- `ApprovalService.ts`
+- **使用 inArray 的文件**: 9
+- **已优化为批量查询**: 3
+- **未优化**: 6
+- **批量查询优化率**: 33%
 
 ---
 
-### 3.2 金额处理 ✅ **符合规范**
+## 🎯 建议
 
-**检查结果**: 
-- ✅ 统一使用 `amountCents` 命名
-- ✅ 金额以整数（cents）存储
-- ✅ Schema 定义统一使用 `amountCents`
+### 立即行动
 
-**示例**:
-```typescript
-// backend/src/routes/v2/my.ts
-amountCents: z.number().int().positive()
+1. **优先修复核心服务**: EmployeeService, FixedAssetService, ArApService, AuthService
+2. **建立代码审查流程**: 使用 [代码审查检查清单](./CODE_REVIEW_CHECKLIST.md)
+3. **逐步迁移**: 按模块逐步修复，避免一次性大改动
 
-// backend/src/schemas/business.schema.ts
-amountCents: z.number().int().positive('amountCents必须大于0')
-```
+### 长期改进
+
+1. **建立自动化检查**: 考虑使用 ESLint 规则检查性能监控
+2. **代码模板**: 创建服务方法模板，自动包含性能监控
+3. **定期审查**: 每周审查新代码是否符合规范
 
 ---
 
-### 3.3 技术栈使用 ✅ **符合规范**
+## 📝 总结
 
-**检查结果**:
+**当前状态**: ⚠️ **部分符合规范**
 
-1. **ORM**: ✅ 使用 Drizzle ORM
-   - 未发现 Prisma 使用
-   - 数据库查询统一使用 Drizzle
+**主要问题**:
+- ❌ 性能监控覆盖率低（6%）
+- ⚠️ 批量查询优化率低（33%）
 
-2. **状态管理**: ✅ 使用 React Query
-   - 未发现 Redux 使用
-   - 未发现 `useSelector` 或 `useDispatch`
-   - 前端统一使用 React Query hooks
+**优势**:
+- ✅ 服务组织规范（100%）
+- ✅ 错误处理统一（100%）
+- ✅ 部分服务已优化
 
-3. **数据库**: ✅ 使用 Cloudflare D1 (SQLite)
-   - Schema 定义在 `backend/src/db/schema.ts`
-   - 迁移文件在 `backend/src/db/` 目录
+**建议**: 优先修复核心服务的性能监控问题，然后逐步推广到所有服务。
 
 ---
 
-### 3.4 目录结构 ✅ **符合规范**
-
-**后端结构**:
-```
-backend/src/
-├── services/      # ✅ 服务类（55个文件）
-├── routes/v2/     # ✅ API 路由（32个文件）
-├── db/schema.ts   # ✅ 数据库定义
-├── middleware/    # ✅ 中间件
-└── utils/         # ✅ 工具函数
-```
-
-**前端结构**:
-```
-frontend/src/
-├── features/      # ✅ 功能模块（按业务划分）
-├── hooks/         # ✅ 自定义 Hooks
-├── components/    # ✅ 公共组件
-├── config/        # ✅ 配置文件
-└── utils/         # ✅ 工具函数
-```
-
----
-
-## 4. 其他发现
-
-### 4.1 备份文件 ⚠️ **Minor**
-
-**问题**: 发现备份文件未清理
-
-**位置**:
-- `frontend/src/features/system/pages/AccountManagement.tsx.bak`
-- `frontend/src/features/system/pages/CategoryManagement.tsx.bak`
-
-**建议**: 删除备份文件或添加到 `.gitignore`
-
----
-
-### 4.2 组件拆分建议
-
-根据 `frontend/src/features/assets/components/COMPONENT_SPLIT_GUIDE.md`，存在一些大型组件需要拆分：
-
-- `RentalManagement.tsx` (1125行)
-- `ExpenseReimbursement.tsx` (829行)
-- `SalaryPayments.tsx` (707行)
-- `Flows.tsx` (649行)
-- `EmployeeManagement.tsx` (588行)
-
-**建议**: 按照组件拆分指南逐步重构
-
----
-
-## 5. 修复优先级
-
-### 优先级 1: Critical (立即修复)
-
-1. **后端路由命名不一致** (2处)
-   - `ar-ap.ts` → `arApRoutes`
-   - `master-data.ts` → `masterDataRoutes`
-   - **影响**: 代码一致性和可维护性
-
-### 优先级 2: Major (尽快修复)
-
-2. **错误抛出格式** (164处)
-   - 统一改为多行格式
-   - **影响**: 代码可读性和维护性
-
-### 优先级 3: Minor (逐步改进)
-
-3. **前端页面命名统一** (多个文件)
-   - 统一命名规范
-   - **影响**: 代码一致性
-
-4. **清理备份文件** (2个文件)
-   - 删除或添加到 `.gitignore`
-
----
-
-## 6. 修复建议
-
-### 6.1 自动化修复
-
-可以使用以下工具自动修复格式问题：
-
-```bash
-# 使用 Prettier 格式化代码
-npx prettier --write "backend/src/routes/v2/**/*.ts"
-
-# 使用 ESLint 检查并修复
-npx eslint --fix "backend/src/routes/v2/**/*.ts"
-```
-
-### 6.2 手动修复步骤
-
-1. **修复路由命名**:
-   ```bash
-   # 1. 修改 ar-ap.ts
-   # 将 export const ar_apRoutes 改为 export const arApRoutes
-   
-   # 2. 修改 master-data.ts  
-   # 将 export const master_dataRoutes 改为 export const masterDataRoutes
-   
-   # 3. 更新 index.ts 中的导入
-   ```
-
-2. **修复错误抛出格式**:
-   - 使用 IDE 的查找替换功能
-   - 模式: `\{throw\s+Errors\.(\w+)\(\)\}`
-   - 替换为: `{\n    throw Errors.$1()\n  }`
-
-3. **统一前端页面命名**:
-   - 制定统一命名规范文档
-   - 逐步重命名文件（注意更新导入）
-
----
-
-## 7. 总结
-
-### 符合规范的部分 ✅
-
-1. ✅ 服务类命名统一 (`XxxService.ts`)
-2. ✅ API 参数命名统一 (`camelCase`)
-3. ✅ 金额处理统一 (`amountCents`)
-4. ✅ 技术栈使用正确 (Drizzle ORM, React Query)
-5. ✅ 代码注释使用中文
-6. ✅ 目录结构清晰
-
-### 需要改进的部分 ⚠️
-
-1. ⚠️ 后端路由命名不一致 (2处)
-2. ⚠️ 错误抛出格式不统一 (164处)
-3. ⚠️ 前端页面命名不统一 (多个文件)
-4. ⚠️ 存在备份文件未清理
-
-### 总体评价
-
-代码整体质量良好，符合项目规范的大部分要求。主要问题集中在命名一致性和代码格式方面，这些问题不影响功能，但影响代码的可维护性和一致性。建议按照优先级逐步修复。
-
----
-
-## 附录
-
-### A. 检查工具
-
-- `grep` - 文本搜索
-- `codebase_search` - 语义搜索
-- `read_file` - 文件读取
-- 手动审查
-
-### B. 检查范围
-
-- **后端**: `backend/src/routes/v2/` (32个文件)
-- **后端**: `backend/src/services/` (55个文件)
-- **前端**: `frontend/src/features/` (66个文件)
-- **Schema**: `backend/src/schemas/` (所有文件)
-
-### C. 参考文档
-
-- `.agent/KNOWLEDGE_INDEX.md` - 项目知识索引
-- `docs/NAMING_AUDIT.md` - 命名规范审计
-- `frontend/src/features/assets/components/COMPONENT_SPLIT_GUIDE.md` - 组件拆分指南
-
----
-
-**报告生成时间**: 2024年  
+**检查完成时间**: 2025-01-27  
 **检查人员**: AI Assistant  
-**下次检查建议**: 修复完成后进行复查
-
+**下次检查**: 建议修复后重新检查

@@ -3,7 +3,7 @@
  * 用于保护敏感接口如登录、密码重置等
  */
 import { Context, MiddlewareHandler } from 'hono'
-import { RATE_LIMITS } from '../services/RateLimitService.js'
+import { RATE_LIMITS } from '../services/common/RateLimitService.js'
 import type { Env, AppVariables } from '../types.js'
 import { Logger } from '../utils/logger.js'
 

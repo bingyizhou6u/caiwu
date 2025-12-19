@@ -6,12 +6,11 @@
 
 ## 项目概述
 
-**项目名称**: caiwu-main  
-**类型**: 企业财务管理系统  
-**技术栈**: React + TypeScript + Vite (前端) | Hono + Cloudflare Workers + D1 (后端)  
-**语言**: 代码用英文，注释和文档用中文  
-**开发阶段**: **测试阶段** (开发过程中不考虑兼容性问题，优先使用最新特性)
-
+**项目名称**: caiwu-main 
+**类型**: 企业财务管理系统 
+**技术栈**: React + TypeScript + Vite (前端) | Hono + Cloudflare Workers + D1 (后端) 
+**语言**: 代码用英文，注释和文档用中文 
+**开发阶段**: **开发阶段** (不考虑向后兼容，新功能必须完整推广)
 
 ---
 
@@ -31,6 +30,46 @@
    - **用户表**: 严禁寻找 `users` 表，所有用户数据都在 `employees` 表中
    - **金额格式**: 所有金额以 **整数 (cents)** 存储
 
+3. **开发规范**:
+   - **新功能必须完整推广**: 如果增加了新的优化工具或功能，必须在所有相关位置完整推广使用
+   - **禁止部分使用**: 不允许部分方法使用新工具，部分使用旧方式
+   - **必须性能监控**: 所有数据库查询必须添加性能监控
+   - **必须批量优化**: 所有批量操作必须使用批量查询工具
+
+---
+
+## 开发规范（重要）
+
+### 新功能完整推广原则
+
+**核心原则**: 开发阶段不考虑向后兼容，新功能必须在所有相关位置完整推广使用。
+
+**必须遵循的规范**:
+
+1. **数据库查询**:
+   - ✅ 所有查询必须使用 `DBPerformanceTracker.track()` 进行性能监控
+   - ✅ 所有批量操作必须使用 `BatchQuery` 工具
+   - ✅ 推荐使用 `QueryHelpers` 辅助类简化代码
+
+2. **缓存使用**:
+   - ✅ 主数据查询必须使用 `KVCachedMasterDataService`（已统一启用）
+   - ✅ 新增主数据时必须同时添加缓存版本和失效机制
+
+3. **服务组织**:
+   - ✅ 所有服务必须放在对应的业务域目录（hr/finance/assets/reports/system/auth/common）
+   - ✅ 禁止在 services 根目录创建服务文件
+
+4. **错误处理**:
+   - ✅ 必须使用 `Errors` 对象抛出错误
+   - ✅ 路由层统一使用 `errorHandlerV2`
+
+**禁止事项**:
+- ❌ 禁止部分使用新工具，部分保留旧实现
+- ❌ 禁止跳过性能监控
+- ❌ 禁止在根目录创建服务文件
+
+**参考文档**: `docs/DEVELOPMENT_STANDARDS.md`
+
 ---
 
 ## 核心技术决策
@@ -43,10 +82,20 @@
    - 功能权限层: RBAC基于职位
    - 数据范围层: getDataAccessFilter
    - 审批流程层: ApprovalService
-3. **用户模型**: 已删除 `users` 表，用户信息合并到 `employees` 表
-4. **前端状态**: 使用 React Query 管理服务端状态，不用 Redux
-5. **UI组件库**: Ant Design
-6. **部署平台**: Cloudflare Workers + Pages
+
+2. **用户模型**: 已删除 `users` 表，用户信息合并到 `employees` 表
+
+3. **前端状态**: 使用 React Query 管理服务端状态，不用 Redux
+
+4. **UI组件库**: Ant Design
+
+5. **部署平台**: Cloudflare Workers + Pages
+
+6. **服务层组织**: 按业务域分组（hr/finance/assets/reports/system/auth/common）
+
+7. **缓存策略**: 主数据使用 KV 缓存，已统一启用
+
+8. **性能监控**: 所有数据库查询必须添加性能监控
 
 ### 编码规范
 
@@ -54,6 +103,7 @@
 - 后端路由命名: `xxx.ts` (小写复数)
 - 前端页面命名: `XxxPage.tsx`
 - API 路径: `/api/xxx`
+- 查询名称格式: `ServiceName.methodName.queryName`
 
 ---
 
@@ -61,11 +111,22 @@
 
 ```
 backend/src/
-├── services/      # 业务逻辑层 (重要)
+├── services/      # 业务逻辑层 (按业务域分组)
+│   ├── hr/        # 人事相关
+│   ├── finance/   # 财务相关
+│   ├── assets/    # 资产管理
+│   ├── reports/   # 报表
+│   ├── system/    # 系统管理
+│   ├── auth/      # 认证
+│   └── common/    # 通用服务
 ├── routes/        # API 路由
 ├── db/schema.ts   # 数据库表定义 (核心)
 ├── middleware/    # 中间件
-└── utils/permissions.ts  # 权限定义
+└── utils/         # 工具函数
+    ├── query-helpers.ts    # 查询辅助工具（推荐使用）
+    ├── batch-query.ts      # 批量查询工具
+    ├── db-performance.ts   # 性能监控工具
+    └── kv-cache.ts         # KV 缓存工具
 
 frontend/src/
 ├── features/      # 功能模块 (按业务划分)
@@ -73,6 +134,57 @@ frontend/src/
 ├── components/    # 公共组件
 └── config/menu.ts # 菜单配置
 ```
+
+---
+
+## 优化工具使用
+
+### 查询辅助工具（推荐）
+
+使用 `QueryHelpers` 可以自动应用性能监控和批量优化：
+
+```typescript
+import { query, getByIds } from '../utils/query-helpers.js'
+
+// 单个查询（自动性能监控）
+const employee = await query(
+  this.db,
+  'EmployeeService.getById',
+  () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
+  c
+)
+
+// 批量获取（自动性能监控 + 批量优化）
+const employees = await getByIds(
+  this.db,
+  employees,
+  employeeIds,
+  'EmployeeService.getByIds',
+  { batchSize: 100, parallel: true },
+  c
+)
+```
+
+### 批量查询工具
+
+```typescript
+import { BatchQuery } from '../utils/batch-query.js'
+import { DBPerformanceTracker } from '../utils/db-performance.js'
+
+const employees = await DBPerformanceTracker.track(
+  'ServiceName.methodName',
+  () => BatchQuery.getByIds(db, table, ids, {
+    batchSize: 100,
+    parallel: true,
+    queryName: 'getEmployees'
+  }),
+  c
+)
+```
+
+### KV 缓存
+
+主数据服务已统一启用 KV 缓存，无需额外配置。
 
 ---
 
@@ -85,6 +197,8 @@ frontend/src/
 - 数据库设计文档
 - 认证与权限系统说明
 
+**开发规范**: `docs/DEVELOPMENT_STANDARDS.md`  
+**使用指南**: `docs/USAGE_GUIDE.md`  
 **知识索引**: `.agent/KNOWLEDGE_INDEX.md`
 
 ---
@@ -94,6 +208,7 @@ frontend/src/
 - 财务流程优化
 - 报表功能完善
 - 性能优化
+- **新功能完整推广**
 
 ---
 
@@ -103,6 +218,7 @@ frontend/src/
 - 代码注释: **中文**
 - 解释风格: **简洁直接**
 - 错误处理: **详细说明原因**
+- **开发规范**: **新功能必须完整推广，不考虑向后兼容**
 
 ---
 
@@ -129,6 +245,9 @@ cd frontend && npx playwright test
 2. 数据库是 SQLite (D1)，语法与 MySQL 不同
 3. 修改 schema.ts 后需要生成迁移文件
 4. 敏感信息（密码、API Key）不要硬编码
+5. **新功能必须完整推广，不允许部分使用**
+6. **所有数据库查询必须添加性能监控**
+7. **所有批量操作必须使用批量查询工具**
 
 ---
 
@@ -213,7 +332,7 @@ cd frontend && npx playwright test
 | `AuthService` | 认证、JWT、密码 | login, verifyTotp, changePassword |
 | `FinanceService` | 财务流水、账户 | createFlow, getAccountBalance |
 | `SalaryService` | 薪资发放全流程 | generatePayment, confirmPayment |
-| `MasterDataService` | 主数据管理 | 各类基础数据 CRUD |
+| `MasterDataService` | 主数据管理（已启用KV缓存） | 各类基础数据 CRUD |
 | `ApprovalService` | 审批流程 | approve, reject |
 | `ReportService` | 报表生成 | 各类统计报表 |
 
@@ -223,22 +342,22 @@ cd frontend && npx playwright test
 
 ```
 职位层级 (level):
-  1 - 超级管理员 (hq_manager)
-  2 - 项目主管 (project_manager)
-  3 - 组长 (team_leader)
-  4 - 高级工程师 (senior_engineer)
-  5 - 工程师 (engineer)
+ 1 - 超级管理员 (hq_manager)
+ 2 - 项目主管 (project_manager)
+ 3 - 组长 (team_leader)
+ 4 - 高级工程师 (senior_engineer)
+ 5 - 工程师 (engineer)
 
 功能角色 (functionRole):
-  - manager: 管理类
-  - finance: 财务类
-  - hr: 人事类
-  - engineer: 工程类
+ - manager: 管理类
+ - finance: 财务类
+ - hr: 人事类
+ - engineer: 工程类
 
 数据范围:
-  - 总部主管: 可见所有项目
-  - 项目主管: 仅可见本项目
-  - 组长及以下: 仅可见本组
+ - 总部主管: 可见所有项目
+ - 项目主管: 仅可见本项目
+ - 组长及以下: 仅可见本组
 ```
 
 ---
@@ -246,10 +365,11 @@ cd frontend && npx playwright test
 ## 常见开发任务
 
 ### 添加新的 API 端点
-1. 在 `backend/src/routes/` 创建或修改路由文件
-2. 在 `backend/src/services/` 添加业务逻辑
+1. 在 `backend/src/routes/v2/` 创建或修改路由文件
+2. 在 `backend/src/services/` 对应业务域目录添加业务逻辑
 3. 在 `backend/src/index.ts` 注册路由
 4. 添加权限检查 (`protectRoute` 或 `hasPermission`)
+5. **必须添加性能监控**
 
 ### 添加新的数据表
 1. 在 `backend/src/db/schema.ts` 定义表结构
@@ -261,10 +381,17 @@ cd frontend && npx playwright test
 2. 在 `frontend/src/router/index.tsx` 添加路由
 3. 在 `frontend/src/config/menu.ts` 添加菜单项
 
+### 添加新的服务
+1. **确定业务域**，在对应目录创建服务文件
+2. 在 `backend/src/middleware/di.ts` 注册服务
+3. **使用 QueryHelpers 或添加性能监控**
+4. **批量操作必须使用 BatchQuery**
+
 ### 调试 API 问题
 1. 检查浏览器控制台的网络请求
 2. 后端日志在 Wrangler 终端输出
 3. 使用 `console.log` 调试（Workers 环境支持）
+4. 查看性能监控数据（`/api/health`）
 
 ---
 
@@ -308,7 +435,7 @@ cd frontend && npx playwright test
 | **Workers** | caiwu-email | EMAIL_SERVICE | 邮件发送 |
 | **D1** | caiwu-db | DB | SQLite 数据库 |
 | **R2** | caiwu-vouchers | VOUCHERS | 凭证图片存储 |
-| **KV** | sessions | SESSIONS_KV | 会话存储 |
+| **KV** | sessions | SESSIONS_KV | 会话存储 + 主数据缓存 |
 
 ### 环境变量
 

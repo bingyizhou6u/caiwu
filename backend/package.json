@@ -36,6 +36,7 @@
     "test:seed:minimal": "tsx scripts/seed-test-data.ts --minimal",
     "test:clean": "tsx scripts/clean-test-data.ts",
     "test:ci": "vitest run --coverage --reporter=verbose",
+    "check:standards": "tsx scripts/check-standards.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",

@@ -1,6 +1,6 @@
 import { Context } from 'hono'
 import type { Env, AppVariables } from '../types.js'
-import { IPWhitelistService } from '../services/IPWhitelistService.js'
+import { IPWhitelistService } from '../services/system/IPWhitelistService.js'
 import { Logger } from '../utils/logger.js'
 
 // Simple in-memory cache for hot workers

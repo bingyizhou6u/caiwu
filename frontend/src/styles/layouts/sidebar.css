@@ -651,7 +651,6 @@
     border-radius: 8px;
     padding: 8px 16px;
     font-weight: 500;
-<<<<<<< HEAD:frontend/src/layouts/MainLayout.css
     font-size: 13px;
     color: #ffffff;
     max-width: 200px;
@@ -728,6 +727,3 @@
 [data-theme="dark"] .user-menu-email {
     color: #94a3b8;
 }
-=======
-}
->>>>>>> origin/cursor/front-end-style-analysis-98bb:frontend/src/styles/layouts/sidebar.css

@@ -21,7 +21,7 @@ import {
   totpResetRateLimit,
   resetRateLimit,
 } from '../../middleware/rateLimit.js'
-import { RATE_LIMITS } from '../../services/RateLimitService.js'
+import { RATE_LIMITS } from '../../services/common/RateLimitService.js'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
