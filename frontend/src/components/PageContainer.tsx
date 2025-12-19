@@ -2,7 +2,7 @@ import React from 'react'
 import { Breadcrumb, Spin } from 'antd'
 import { Link } from 'react-router-dom'
 import { ErrorBoundary } from './ErrorBoundary'
-import './PageContainer.css'
+import '../styles/layouts/page-container.css'
 
 interface BreadcrumbItem {
     title: React.ReactNode

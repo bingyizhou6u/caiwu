@@ -1,0 +1,135 @@
+/**
+ * 无障碍支持工具类
+ * 提供焦点可见性、屏幕阅读器等无障碍功能
+ */
+
+/* ========== Screen Reader Only ========== */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+.sr-only-focusable:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* ========== Skip Link ========== */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    z-index: 9999;
+    padding: 8px 16px;
+    background: var(--color-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 0 0 var(--radius-base) 0;
+    transition: top var(--transition-fast);
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* ========== Focus Visible ========== */
+.focus-visible-ring {
+    outline: none;
+}
+
+.focus-visible-ring:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+.focus-visible-ring-inset:focus-visible {
+    outline-offset: -2px;
+}
+
+/* ========== High Contrast Mode ========== */
+@media (prefers-contrast: high) {
+    .high-contrast-border {
+        border: 2px solid currentColor;
+    }
+    
+    .high-contrast-text {
+        font-weight: var(--font-weight-bold);
+    }
+}
+
+/* ========== Reduced Motion ========== */
+@media (prefers-reduced-motion: reduce) {
+    .motion-safe {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* ========== Print Styles ========== */
+@media print {
+    .print-hidden {
+        display: none !important;
+    }
+    
+    .print-visible {
+        display: block !important;
+    }
+    
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+        color: #666;
+    }
+    
+    a[href^="#"]::after {
+        content: "";
+    }
+}
+
+/* ========== ARIA Live Regions ========== */
+.aria-live {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* ========== Keyboard Navigation ========== */
+.keyboard-only:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* ========== Color Contrast Helpers ========== */
+.contrast-check {
+    /* 用于检查颜色对比度的辅助类 */
+    border: 1px dashed var(--color-error);
+}
+
+/* ========== Landmark Regions ========== */
+.main-landmark {
+    /* 主内容区域标识 */
+}
+
+.navigation-landmark {
+    /* 导航区域标识 */
+}
+
+.contentinfo-landmark {
+    /* 页脚信息区域标识 */
+}

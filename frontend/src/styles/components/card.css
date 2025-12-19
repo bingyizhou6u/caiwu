@@ -1,0 +1,26 @@
+/**
+ * 卡片组件样式
+ * Ant Design Card 组件增强样式和通用卡片样式
+ */
+
+/* Card Styles */
+.page-card {
+    background: var(--color-bg-container);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    transition: var(--transition-base);
+}
+
+.page-card:hover {
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+    border-color: var(--color-primary-bg);
+}
+
+.page-card .ant-card-head {
+    border-bottom: 1px solid var(--color-border);
+    padding: 16px 20px;
+}
+
+.page-card .ant-card-body {
+    padding: 20px;
+}

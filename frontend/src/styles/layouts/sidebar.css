@@ -1,8 +1,9 @@
-.main-layout {
-    min-height: 100vh;
-}
+/**
+ * 侧边栏样式
+ * 主布局侧边栏的样式定义
+ */
 
-/* ========== SIDEBAR ========== */
+/* Sidebar Container */
 .main-sider {
     overflow: hidden;
     /* 改为 hidden，避免滚动条闪烁 */
@@ -253,7 +254,7 @@
     right: 8px;
 }
 
-/* ========== MENU STYLES ========== */
+/* Menu Styles */
 .main-sider .ant-menu.ant-menu-dark {
     background: transparent;
     padding: 8px 14px;
@@ -650,6 +651,7 @@
     border-radius: 8px;
     padding: 8px 16px;
     font-weight: 500;
+<<<<<<< HEAD:frontend/src/layouts/MainLayout.css
     font-size: 13px;
     color: #ffffff;
     max-width: 200px;
@@ -726,3 +728,6 @@
 [data-theme="dark"] .user-menu-email {
     color: #94a3b8;
 }
+=======
+}
+>>>>>>> origin/cursor/front-end-style-analysis-98bb:frontend/src/styles/layouts/sidebar.css

@@ -1,0 +1,94 @@
+/**
+ * 其他组件样式
+ * Ant Design 其他组件的增强样式
+ */
+
+/* Tag Enhancements */
+.ant-tag {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 2px 10px;
+}
+
+/* Descriptions Enhancements */
+.ant-descriptions-bordered .ant-descriptions-item-label {
+    background: var(--color-bg-layout);
+    font-weight: 500;
+}
+
+/* Breadcrumb Enhancements */
+.ant-breadcrumb {
+    font-size: 13px;
+}
+
+.ant-breadcrumb a {
+    color: var(--color-text-secondary);
+    transition: color 0.2s ease;
+}
+
+.ant-breadcrumb a:hover {
+    color: var(--color-primary);
+}
+
+/* Empty State */
+.ant-empty {
+    padding: 40px 0;
+}
+
+.ant-empty-description {
+    color: var(--color-text-tertiary);
+}
+
+/* Loading Spinner Enhancement */
+.ant-spin-dot-item {
+    background-color: var(--color-primary);
+}
+
+/* Dropdown Menu Enhancement */
+.ant-dropdown-menu {
+    border-radius: var(--radius-base);
+    padding: 4px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.ant-dropdown-menu-item {
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.ant-dropdown-menu-item:hover {
+    background: rgba(99, 102, 241, 0.06);
+}
+
+/* Tooltip Enhancement */
+.ant-tooltip-inner {
+    border-radius: var(--radius-base);
+}
+
+/* Popover Enhancement */
+.ant-popover-inner {
+    border-radius: var(--radius-lg);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Message Enhancement */
+.ant-message-notice-content {
+    border-radius: var(--radius-base);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Notification Enhancement */
+.ant-notification-notice {
+    border-radius: var(--radius-lg);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Collapse Enhancement */
+.ant-collapse {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.ant-collapse-header {
+    font-weight: 500;
+}

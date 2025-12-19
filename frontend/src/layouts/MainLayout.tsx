@@ -7,7 +7,7 @@ import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH, PATH_TO_KEY } from '../config/menu'
 import { MultiTabs } from '../components/layout/MultiTabs'
 import { preloadRoute } from '../router'
-import './MainLayout.css'
+import '../styles/layouts/main-layout.css'
 
 const { Header, Sider, Content } = Layout
 

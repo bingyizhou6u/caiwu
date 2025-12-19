@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ThunderboltFilled, MailOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { useRequestTotpReset } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import './Login.css'
+import '../../../styles/features/auth/login.css'
 
 const { Header, Content } = Layout
 const { Paragraph } = Typography

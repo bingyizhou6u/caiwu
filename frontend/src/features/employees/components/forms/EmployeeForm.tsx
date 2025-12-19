@@ -6,7 +6,7 @@ import { useDepartments } from '../../../../hooks'
 import { useApiQuery } from '../../../../utils/useApiQuery'
 import { api } from '../../../../config/api'
 import type { Position } from '../../../../types'
-import './EmployeeForm.css'
+import '../../../../styles/features/employees/employee-form.css'
 
 // 职位数据响应类型（可能包含 grouped 字段）
 interface PositionsResponse {

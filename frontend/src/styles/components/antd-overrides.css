@@ -1,0 +1,29 @@
+/**
+ * Ant Design 全局覆盖样式
+ * 覆盖 Ant Design 组件的全局默认样式
+ */
+
+/* Layout Overrides */
+.ant-layout-sider {
+    box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.1);
+}
+
+.ant-menu-dark {
+    background: transparent;
+}
+
+/* NProgress Customization */
+#nprogress .bar {
+    background: #6366f1 !important; /* Primary Indigo */
+    height: 3px !important;
+    box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
+}
+
+#nprogress .peg {
+    box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
+}
+
+#nprogress .spinner-icon {
+    border-top-color: #6366f1;
+    border-left-color: #6366f1;
+}

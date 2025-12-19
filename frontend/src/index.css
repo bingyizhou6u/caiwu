@@ -1,9 +1,41 @@
-@import './styles/variables.css';
-@import './styles/components.css';
-@import './styles/animations.css';
-/* NProgress Customization */
+/**
+ * 全局样式入口文件
+ * 按层次导入所有样式文件
+ */
+
+/* ========== 1. 基础层 ========== */
+@import './styles/base/variables.css';
+@import './styles/base/reset.css';
+@import './styles/base/typography.css';
+@import './styles/base/scrollbar.css';
+
+/* ========== 2. 组件层 ========== */
+@import './styles/components/antd-overrides.css';
+@import './styles/components/table.css';
+@import './styles/components/form.css';
+@import './styles/components/button.css';
+@import './styles/components/card.css';
+@import './styles/components/modal.css';
+@import './styles/components/other.css';
+@import './styles/components/dark-mode.css';
+
+/* ========== 3. 布局层 ========== */
+@import './styles/layouts/main-layout.css';
+@import './styles/layouts/page-container.css';
+@import './styles/layouts/multi-tabs.css';
+
+/* ========== 4. 工具层 ========== */
+@import './styles/utilities/animations.css';
+@import './styles/utilities/transitions.css';
+@import './styles/utilities/layout.css';
+@import './styles/utilities/states.css';
+@import './styles/utilities/responsive.css';
+@import './styles/utilities/accessibility.css';
+
+/* ========== 5. 第三方样式 ========== */
 @import 'nprogress/nprogress.css';
 
+/* ========== 6. 全局样式覆盖 ========== */
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -27,45 +59,6 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5);
-  border-radius: 3px;
-  transition: all 0.3s;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.8);
-}
-
-/* Dark Mode Scrollbar */
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.6); /* Slate 600 */
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8); /* Slate 500 */
-}
-
-/* Firefox Scrollbar */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
-}
-
-[data-theme="dark"] * {
-  scrollbar-color: rgba(71, 85, 105, 0.6) transparent;
 }
 
 /* Ant Design Overrides for Premium Feel */

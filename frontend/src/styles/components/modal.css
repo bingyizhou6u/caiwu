@@ -1,0 +1,18 @@
+/**
+ * 模态框组件样式
+ * Ant Design Modal 组件增强样式
+ */
+
+.ant-modal-content {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.ant-modal-header {
+    border-bottom: 1px solid var(--color-border);
+    padding: 16px 24px;
+}
+
+.ant-modal-body {
+    padding: 24px;
+}

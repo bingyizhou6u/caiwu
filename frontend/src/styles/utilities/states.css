@@ -1,0 +1,243 @@
+/**
+ * 状态样式工具类
+ * 提供加载、禁用、选中等状态样式
+ */
+
+/* ========== Loading State ========== */
+.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========== Disabled State ========== */
+.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ========== Focus States ========== */
+.focus-ring {
+    outline: none;
+}
+
+.focus-ring:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+.focus-ring-inset:focus-visible {
+    outline-offset: -2px;
+}
+
+/* ========== Active State ========== */
+.active {
+    background: var(--color-bg-active);
+}
+
+.active-primary {
+    background: var(--color-primary-bg);
+    color: var(--color-primary);
+}
+
+/* ========== Selected State ========== */
+.selected {
+    background: var(--color-primary-bg);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+/* ========== Hover States ========== */
+.hover-lift {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.hover-scale {
+    transition: transform var(--transition-fast);
+}
+
+.hover-scale:hover {
+    transform: scale(1.02);
+}
+
+.hover-glow:hover {
+    box-shadow: var(--shadow-glow);
+}
+
+/* ========== Status Badges ========== */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+}
+
+.status-badge-success {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+}
+
+.status-badge-warning {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+}
+
+.status-badge-error {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+}
+
+.status-badge-info {
+    background: var(--color-info-bg);
+    color: var(--color-info);
+}
+
+.status-badge-primary {
+    background: var(--color-primary-bg);
+    color: var(--color-primary);
+}
+
+/* ========== Skeleton Loading ========== */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--color-bg-hover) 25%,
+        var(--color-bg-active) 50%,
+        var(--color-bg-hover) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-text {
+    height: 1em;
+    margin-bottom: 0.5em;
+}
+
+.skeleton-title {
+    height: 1.5em;
+    width: 60%;
+    margin-bottom: 1em;
+}
+
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+}
+
+.skeleton-button {
+    height: 36px;
+    width: 100px;
+}
+
+/* ========== Empty State ========== */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xxl);
+    text-align: center;
+    color: var(--color-text-tertiary);
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: var(--spacing-md);
+    opacity: 0.5;
+}
+
+.empty-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.empty-state-description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-tertiary);
+}
+
+/* ========== Error State ========== */
+.error-state {
+    padding: var(--spacing-md);
+    background: var(--color-error-bg);
+    border: 1px solid var(--color-error);
+    border-radius: var(--radius-base);
+    color: var(--color-error);
+}
+
+.error-state-title {
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-xs);
+}
+
+/* ========== Success State ========== */
+.success-state {
+    padding: var(--spacing-md);
+    background: var(--color-success-bg);
+    border: 1px solid var(--color-success);
+    border-radius: var(--radius-base);
+    color: var(--color-success);
+}
+
+.success-state-title {
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-xs);
+}
+
+/* ========== Warning State ========== */
+.warning-state {
+    padding: var(--spacing-md);
+    background: var(--color-warning-bg);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-base);
+    color: var(--color-warning);
+}
+
+.warning-state-title {
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-xs);
+}

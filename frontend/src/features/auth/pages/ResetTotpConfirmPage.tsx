@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ThunderboltFilled } from '@ant-design/icons'
 import { useVerifyTotpResetToken, useConfirmTotpReset } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import './Login.css'
+import '../../../styles/features/auth/login.css'
 
 const { Header, Content } = Layout
 
