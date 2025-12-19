@@ -1,8 +1,8 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, sql } from 'drizzle-orm'
-import { attendanceRecords } from '../db/schema.js'
-import * as schema from '../db/schema.js'
-import { uuid } from '../utils/db.js'
+import { attendanceRecords } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
+import { uuid } from '../../utils/db.js'
 
 export class AttendanceService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { env } from 'cloudflare:test'
-import { SiteBillService } from '../../src/services/SiteBillService'
+import { SiteBillService } from '../../src/services/finance/SiteBillService.js'
 import { createDb } from '../../src/utils/db'
 import { uuid } from '../../src/utils/db'
 import { sites, employees, siteBills } from '../../src/db/schema'

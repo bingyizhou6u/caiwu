@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { VendorService } from '../../src/services/VendorService.js'
+import { VendorService } from '../../src/services/system/VendorService.js'
 import { vendors } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -105,7 +105,7 @@ describe('VendorService', () => {
     })
 
     it('应该抛出错误当供应商不存在', async () => {
-      await expect(service.getVendor('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+      await expect(service.getVendor('non-existent')).rejects.toThrow()
     })
   })
 

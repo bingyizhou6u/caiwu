@@ -3,11 +3,11 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
-import { categories, cashFlows } from '../db/schema.js'
+import * as schema from '../../db/schema.js'
+import { categories, cashFlows } from '../../db/schema.js'
 import { eq, and, ne } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 
 export class CategoryService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

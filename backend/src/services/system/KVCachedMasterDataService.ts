@@ -4,7 +4,7 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { MasterDataService } from './MasterDataService.js'
 import { KVCache, createKVCache } from '../../utils/kv-cache.js'
 import { cacheKeys, cacheTTL } from '../../utils/query-cache.js'
@@ -23,7 +23,7 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.currencies(search)}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getCurrencies(search)
@@ -37,7 +37,7 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.departments()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getDepartments()
@@ -51,7 +51,7 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.sites()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getSites()
@@ -65,7 +65,7 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.categories()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getCategories()
@@ -79,7 +79,7 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.vendors()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getVendors()
@@ -90,10 +90,10 @@ export class KVCachedMasterDataService extends MasterDataService {
   // ========== Accounts ==========
 
   async getAccounts(search?: string) {
-    const cacheKey = `kv:${cacheKeys.masterData.accounts()}${search ? `:search:${search}` : ''}`
+    const cacheKey = `kv:${cacheKeys.masterData.accounts(search)}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getAccounts(search)
@@ -107,7 +107,7 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.headquarters()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getHeadquarters()
@@ -121,7 +121,7 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.business.positions()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getPositions()

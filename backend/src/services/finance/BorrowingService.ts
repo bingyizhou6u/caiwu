@@ -9,14 +9,14 @@ import {
   departments,
   orgDepartments,
   positions,
-} from '../db/schema.js'
-import { uuid } from '../utils/db.js'
-import { Errors } from '../utils/errors.js'
-import { BatchQuery } from '../utils/batch-query.js'
-import { DBPerformanceTracker } from '../utils/db-performance.js'
+} from '../../db/schema.js'
+import { uuid } from '../../utils/db.js'
+import { Errors } from '../../utils/errors.js'
+import { BatchQuery } from '../../utils/batch-query.js'
+import { DBPerformanceTracker } from '../../utils/db-performance.js'
 
 export class BorrowingService {
-  constructor(private db: DrizzleD1Database<any>) {}
+  constructor(private db: DrizzleD1Database<any>) { }
 
   async listBorrowings(page: number = 1, pageSize: number = 20, whereClause?: any) {
     const offset = (page - 1) * pageSize
@@ -52,19 +52,19 @@ export class BorrowingService {
       [
         async () =>
           userIds.size > 0
-            ? BatchQuery.getByIds(this.db, employees, Array.from(userIds), {
-                batchSize: 100,
-                parallel: true,
-                queryName: 'getEmployeesForBorrowings',
-              })
+            ? BatchQuery.getByIds<typeof employees.$inferSelect>(this.db, employees, Array.from(userIds), {
+              batchSize: 100,
+              parallel: true,
+              queryName: 'getEmployeesForBorrowings',
+            })
             : [],
         async () =>
           accountIds.size > 0
-            ? BatchQuery.getByIds(this.db, accounts, Array.from(accountIds), {
-                batchSize: 100,
-                parallel: true,
-                queryName: 'getAccountsForBorrowings',
-              })
+            ? BatchQuery.getByIds<typeof accounts.$inferSelect>(this.db, accounts, Array.from(accountIds), {
+              batchSize: 100,
+              parallel: true,
+              queryName: 'getAccountsForBorrowings',
+            })
             : [],
       ],
       undefined // Context 可选
@@ -104,7 +104,7 @@ export class BorrowingService {
       .where(eq(borrowings.id, id))
       .get()
 
-    if (!result) {return null}
+    if (!result) { return null }
 
     return {
       ...result.borrowing,
@@ -223,7 +223,7 @@ export class BorrowingService {
       .where(eq(repayments.id, id))
       .get()
 
-    if (!result) {return null}
+    if (!result) { return null }
 
     return {
       ...result.repayment,

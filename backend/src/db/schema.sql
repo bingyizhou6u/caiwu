@@ -199,7 +199,11 @@ CREATE TABLE IF NOT EXISTS cash_flows (
   memo TEXT,
   voucher_url TEXT,
   created_by TEXT,
-  created_at INTEGER
+  created_at INTEGER,
+  is_reversal INTEGER DEFAULT 0,
+  reversal_of_flow_id TEXT,
+  is_reversed INTEGER DEFAULT 0,
+  reversed_by_flow_id TEXT
 );
 
 -- Account Transactions table
@@ -267,6 +271,7 @@ CREATE TABLE IF NOT EXISTS employee_leaves (
   memo TEXT,
   approved_by TEXT,
   approved_at INTEGER,
+  version INTEGER DEFAULT 1,
   created_at INTEGER,
   updated_at INTEGER
 );
@@ -290,6 +295,10 @@ CREATE TABLE IF NOT EXISTS salary_payments (
   payment_voucher_path TEXT,
   payment_confirmed_by TEXT,
   payment_confirmed_at INTEGER,
+  rollback_reason TEXT,
+  rollback_by TEXT,
+  rollback_at INTEGER,
+  version INTEGER DEFAULT 1,
   created_at INTEGER,
   updated_at INTEGER
 );
@@ -311,7 +320,7 @@ CREATE TABLE IF NOT EXISTS salary_payment_allocations (
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(email);
 CREATE INDEX IF NOT EXISTS idx_employees_department_id ON employees(department_id);
 CREATE INDEX IF NOT EXISTS idx_employees_org_department_id ON employees(org_department_id);
 CREATE INDEX IF NOT EXISTS idx_employees_active ON employees(active);
@@ -379,6 +388,7 @@ CREATE TABLE IF NOT EXISTS borrowings (
   status TEXT DEFAULT 'outstanding', -- outstanding, partial, repaid, pending, approved, rejected
   approved_by TEXT,
   approved_at INTEGER,
+  version INTEGER DEFAULT 1,
   created_at INTEGER,
   updated_at INTEGER
 );
@@ -674,4 +684,18 @@ CREATE TABLE IF NOT EXISTS site_config (
   is_encrypted INTEGER DEFAULT 0,
   created_at INTEGER,
   updated_at INTEGER
+);
+
+-- Business Operation History table
+CREATE TABLE IF NOT EXISTS business_operation_history (
+  id TEXT PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  operator_id TEXT,
+  operator_name TEXT,
+  before_data TEXT,
+  after_data TEXT,
+  memo TEXT,
+  created_at INTEGER NOT NULL
 );

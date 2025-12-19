@@ -4,27 +4,27 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   rentalPayments,
   rentalProperties,
   rentalPayableBills,
   cashFlows,
   accountTransactions,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { eq, and, desc, sql, isNotNull, gte, lte, asc } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
-import { FinanceService } from './FinanceService.js'
+import { Errors } from '../../utils/errors.js'
+import { FinanceService } from '../finance/FinanceService.js'
 
 export class RentalPaymentService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listPayments(query: { propertyId?: string; year?: number; month?: number }) {
     const conditions = []
-    if (query.propertyId) {conditions.push(eq(rentalPayments.propertyId, query.propertyId))}
-    if (query.year) {conditions.push(eq(rentalPayments.year, query.year))}
-    if (query.month) {conditions.push(eq(rentalPayments.month, query.month))}
+    if (query.propertyId) { conditions.push(eq(rentalPayments.propertyId, query.propertyId)) }
+    if (query.year) { conditions.push(eq(rentalPayments.year, query.year)) }
+    if (query.month) { conditions.push(eq(rentalPayments.month, query.month)) }
 
     return await this.db
       .select({
@@ -260,7 +260,7 @@ export class RentalPaymentService {
     const generated: any[] = []
 
     for (const prop of properties) {
-      if (!prop.leaseStartDate || !prop.leaseEndDate) {continue}
+      if (!prop.leaseStartDate || !prop.leaseEndDate) { continue }
 
       const leaseStart = new Date(prop.leaseStartDate)
       const leaseEnd = new Date(prop.leaseEndDate)
@@ -279,14 +279,14 @@ export class RentalPaymentService {
         }
       }
 
-      if (nextPaymentDate > leaseEnd) {continue}
+      if (nextPaymentDate > leaseEnd) { continue }
 
       const billDate = new Date(nextPaymentDate)
       billDate.setDate(billDate.getDate() - 15)
       const billDateStr = billDate.toISOString().split('T')[0]
       const dueDateStr = nextPaymentDate.toISOString().split('T')[0]
 
-      if (billDateStr > todayStr) {continue}
+      if (billDateStr > todayStr) { continue }
 
       let amountCents = 0
       if (prop.rentType === 'yearly') {
@@ -308,7 +308,7 @@ export class RentalPaymentService {
         )
         .get()
 
-      if (existingBill) {continue}
+      if (existingBill) { continue }
 
       const billId = uuid()
       await this.db
@@ -350,10 +350,10 @@ export class RentalPaymentService {
     endDate?: string
   }) {
     const conditions = []
-    if (query.propertyId) {conditions.push(eq(rentalPayableBills.propertyId, query.propertyId))}
-    if (query.status) {conditions.push(eq(rentalPayableBills.status, query.status))}
-    if (query.startDate) {conditions.push(gte(rentalPayableBills.dueDate, query.startDate))}
-    if (query.endDate) {conditions.push(lte(rentalPayableBills.dueDate, query.endDate))}
+    if (query.propertyId) { conditions.push(eq(rentalPayableBills.propertyId, query.propertyId)) }
+    if (query.status) { conditions.push(eq(rentalPayableBills.status, query.status)) }
+    if (query.startDate) { conditions.push(gte(rentalPayableBills.dueDate, query.startDate)) }
+    if (query.endDate) { conditions.push(lte(rentalPayableBills.dueDate, query.endDate)) }
 
     return await this.db
       .select({

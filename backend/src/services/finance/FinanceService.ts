@@ -12,13 +12,13 @@ import {
   siteBills,
   employees,
   currencies,
-} from '../db/schema.js'
-import { uuid } from '../utils/db.js'
-import { Errors, createError } from '../utils/errors.js'
-import { ErrorCodes } from '../constants/errorCodes.js'
-import { query } from '../utils/query-helpers.js'
+} from '../../db/schema.js'
+import { uuid } from '../../utils/db.js'
+import { Errors, createError } from '../../utils/errors.js'
+import { ErrorCodes } from '../../constants/errorCodes.js'
+import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class FinanceService {
   constructor(private db: DrizzleD1Database<any>) { }
@@ -65,7 +65,7 @@ export class FinanceService {
       return lastTx.balanceAfterCents
     }
 
-    const account = await query(
+    const account = await query<typeof accounts.$inferSelect | undefined>(
       db as any,
       'FinanceService.getAccountBalanceBefore.getAccount',
       () => db.select().from(accounts).where(eq(accounts.id, accountId)).get(),
@@ -313,7 +313,7 @@ export class FinanceService {
       if (originalFlow.isReversed === 1) {
         throw createError(
           400,
-          ErrorCodes.BUSINESS_ERROR,
+          ErrorCodes.BUS_GENERAL,
           '该流水已被冲正，不能重复操作',
           { reversedByFlowId: originalFlow.reversedByFlowId }
         )
@@ -323,7 +323,7 @@ export class FinanceService {
       if (originalFlow.isReversal === 1) {
         throw createError(
           400,
-          ErrorCodes.BUSINESS_ERROR,
+          ErrorCodes.BUS_GENERAL,
           '红冲记录不能再次冲正',
           { originalFlowId: originalFlow.reversalOfFlowId }
         )

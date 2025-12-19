@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
-import { AllowanceService } from '../../src/services/AllowanceService'
+import { AllowanceService } from '../../src/services/hr/AllowanceService.js'
 import schemaSql from '../../src/db/schema.sql?raw'
 import * as schema from '../../src/db/schema'
 import { createDb } from '../../src/utils/db'

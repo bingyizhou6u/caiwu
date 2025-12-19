@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
-import { SystemConfigService } from '../../src/services/SystemConfigService'
+import { SystemConfigService } from '../../src/services/system/SystemConfigService.js'
 import schemaSql from '../../src/db/schema.sql?raw'
 import * as schema from '../../src/db/schema'
 import { systemConfig } from '../../src/db/schema' // Import the table definition

@@ -1,9 +1,9 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { AuthService } from '../../src/services/AuthService.js'
-import { EmployeeService } from '../../src/services/EmployeeService.js'
-import { SystemConfigService } from '../../src/services/SystemConfigService.js'
+import { AuthService } from '../../src/services/auth/AuthService.js'
+import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
+import { SystemConfigService } from '../../src/services/system/SystemConfigService.js'
 import { employees, departments, orgDepartments, positions } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -36,13 +36,14 @@ describe('Password Reset Flow', () => {
 
     employeeService = new EmployeeService(db, mockEmailService)
     const mockSystemConfigService = { get: async () => ({ value: 'false' }) } as any
-    const mockAuditService = { log: async () => {} } as any
+    const mockAuditService = { log: async () => { } } as any
     authService = new AuthService(
       db,
       env.SESSIONS_KV,
       mockSystemConfigService,
       mockAuditService,
-      mockEmailService
+      mockEmailService,
+      employeeService
     )
   })
 

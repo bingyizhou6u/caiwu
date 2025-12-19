@@ -98,7 +98,7 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
   // const auditService = new AuditService(db) // Moved up
   const ipWhitelistService = new IPWhitelistService(c.env)
   const rateLimitService = new RateLimitService(c.env.SESSIONS_KV)
-  const positionService = new PositionService(db, c.env.SESSIONS_KV)
+  const positionService = new PositionService(db)
   const salaryService = new SalaryService(db)
   const allowanceService = new AllowanceService(db)
 

@@ -17,12 +17,12 @@ import { performanceMonitor } from './middleware/performance.js'
 import { createVersionMiddleware } from './middleware/version.js'
 
 // Utility imports
-import { errorHandlerV2 } from './utils/errors.js'
+import { errorHandlerV2, Errors } from './utils/errors.js'
 import { Logger } from './utils/logger.js'
 import { apiSuccess, jsonResponse } from './utils/response.js'
 import { createDb } from './db/index.js'
-import { DepartmentService } from './services/DepartmentService.js'
-import { AuditService } from './services/AuditService.js'
+import { DepartmentService } from './services/system/DepartmentService.js'
+import { AuditService } from './services/system/AuditService.js'
 
 // Route imports (V2 only)
 import { authRoutes as authRoutesV2 } from './routes/v2/auth.js'

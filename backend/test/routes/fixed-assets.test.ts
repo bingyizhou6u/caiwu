@@ -11,8 +11,8 @@ vi.mock('../../src/utils/audit.js', () => ({
 // Mock permissions
 vi.mock('../../src/utils/permissions.js', () => ({
   hasPermission: vi.fn(() => true),
-  getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager', level: 1 })),
-  getUserEmployee: vi.fn(() => null),
+  getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager', level: 1, function_role: 'admin' })),
+  getUserEmployee: vi.fn(() => ({ id: 'emp1', name: 'Test User', departmentId: 'dept1' })),
   getUserId: vi.fn(() => 'user1'),
 }))
 
@@ -49,26 +49,25 @@ describe('Fixed Assets Routes', () => {
     vi.clearAllMocks()
     app = new Hono()
 
-    // Mock middleware
-    app.use('*', async (c, next) => {
-      c.set('userId', 'user123')
-      const services = {
-        fixedAsset: mockFixedAssetService,
-        fixedAssetAllocation: mockFixedAssetAllocationService,
-        fixedAssetDepreciation: mockFixedAssetDepreciationService,
-        fixedAssetChange: mockFixedAssetChangeService,
-      } as any
-      c.set('services', services)
-      // 同时设置到 c.var 以确保路由可以访问
-      ;(c as any).var = { ...(c as any).var, services }
-      await next()
-    })
-
+    // Error handler first
     app.onError((err, c) => {
+      console.error('Route error:', err.message)
       if (err instanceof Error && 'statusCode' in err) {
         return c.json({ error: err.message }, (err as any).statusCode)
       }
       return c.json({ error: err.message }, 500)
+    })
+
+    // Mock middleware - must set services before routes
+    app.use('*', async (c, next) => {
+      c.set('userId', 'user123')
+      c.set('services', {
+        fixedAsset: mockFixedAssetService,
+        fixedAssetAllocation: mockFixedAssetAllocationService,
+        fixedAssetDepreciation: mockFixedAssetDepreciationService,
+        fixedAssetChange: mockFixedAssetChangeService,
+      })
+      await next()
     })
 
     app.route('/', fixedAssetsRoutes)

@@ -1,9 +1,9 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { eq, and, desc, inArray } from 'drizzle-orm'
-import { businessOperationHistory, employees } from '../db/schema.js'
-import { uuid } from '../utils/db.js'
-import { Logger } from '../utils/logger.js'
+import { businessOperationHistory, employees } from '../../db/schema.js'
+import { uuid } from '../../utils/db.js'
+import { Logger } from '../../utils/logger.js'
 
 export class OperationHistoryService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

@@ -1,21 +1,21 @@
 import { eq, and, like, or, inArray, desc, sql, isNotNull } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { employees, departments, orgDepartments, positions, userDepartments } from '../db/schema.js'
-import * as schema from '../db/schema.js'
+import { employees, departments, orgDepartments, positions, userDepartments } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
-import { Logger } from '../utils/logger.js'
+import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
 import { EmailRoutingService } from '../common/EmailRoutingService.js'
 import { EmailService } from '../common/EmailService.js'
-import { query } from '../utils/query-helpers.js'
+import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class EmployeeService {
   constructor(
     private db: DrizzleD1Database<typeof schema>,
     private emailService: EmailService
-  ) {}
+  ) { }
 
   /**
    * 创建员工（包含用户账号创建、邮箱路由创建和欢迎邮件发送）
@@ -418,7 +418,7 @@ export class EmployeeService {
       conditions.push(eq(employees.positionId, filters.positionId))
     }
 
-    let query = this.buildEmployeeQuery()
+    let query: any = this.buildEmployeeQuery()
     if (conditions.length > 0) {
       query = query.where(and(...conditions))
     }
@@ -607,24 +607,22 @@ export class EmployeeService {
     }
 
     const updateData: any = { updatedAt: Date.now() }
-    if (data.name !== undefined) {updateData.name = data.name}
-    if (data.departmentId !== undefined) {updateData.departmentId = data.departmentId}
-    if (data.orgDepartmentId !== undefined) {updateData.orgDepartmentId = data.orgDepartmentId}
-    if (data.positionId !== undefined) {updateData.positionId = data.positionId}
-    if (data.joinDate !== undefined) {updateData.joinDate = data.joinDate}
-    if (data.active !== undefined) {updateData.active = Number(data.active)}
-    if (data.phone !== undefined) {updateData.phone = data.phone}
-    if (data.personalEmail !== undefined) {updateData.personalEmail = data.personalEmail.toLowerCase()}
-    if (data.usdtAddress !== undefined) {updateData.usdtAddress = data.usdtAddress}
-    if (data.emergencyContact !== undefined) {updateData.emergencyContact = data.emergencyContact}
-    if (data.emergencyPhone !== undefined) {updateData.emergencyPhone = data.emergencyPhone}
-    if (data.address !== undefined) {updateData.address = data.address}
-    if (data.memo !== undefined) {updateData.memo = data.memo}
-    if (data.birthday !== undefined) {updateData.birthday = data.birthday}
-    if (data.annualLeaveCycleMonths !== undefined)
-      {updateData.annualLeaveCycleMonths = Number(data.annualLeaveCycleMonths) || null}
-    if (data.annualLeaveDays !== undefined)
-      {updateData.annualLeaveDays = Number(data.annualLeaveDays) || null}
+    if (data.name !== undefined) { updateData.name = data.name }
+    if (data.departmentId !== undefined) { updateData.departmentId = data.departmentId }
+    if (data.orgDepartmentId !== undefined) { updateData.orgDepartmentId = data.orgDepartmentId }
+    if (data.positionId !== undefined) { updateData.positionId = data.positionId }
+    if (data.joinDate !== undefined) { updateData.joinDate = data.joinDate }
+    if (data.active !== undefined) { updateData.active = Number(data.active) }
+    if (data.phone !== undefined) { updateData.phone = data.phone }
+    if (data.personalEmail !== undefined) { updateData.personalEmail = data.personalEmail.toLowerCase() }
+    if (data.usdtAddress !== undefined) { updateData.usdtAddress = data.usdtAddress }
+    if (data.emergencyContact !== undefined) { updateData.emergencyContact = data.emergencyContact }
+    if (data.emergencyPhone !== undefined) { updateData.emergencyPhone = data.emergencyPhone }
+    if (data.address !== undefined) { updateData.address = data.address }
+    if (data.memo !== undefined) { updateData.memo = data.memo }
+    if (data.birthday !== undefined) { updateData.birthday = data.birthday }
+    if (data.annualLeaveCycleMonths !== undefined) { updateData.annualLeaveCycleMonths = Number(data.annualLeaveCycleMonths) || null }
+    if (data.annualLeaveDays !== undefined) { updateData.annualLeaveDays = Number(data.annualLeaveDays) || null }
     if (data.workSchedule !== undefined) {
       updateData.workSchedule =
         typeof data.workSchedule === 'string'
@@ -635,6 +633,7 @@ export class EmployeeService {
     await this.db.update(employees).set(updateData).where(eq(employees.id, id)).run()
 
     if (data.departmentId) {
+      const deptId = data.departmentId
       const existingUd = await query(
         this.db,
         'EmployeeService.update.checkUserDepartment',
@@ -642,7 +641,7 @@ export class EmployeeService {
           .select()
           .from(userDepartments)
           .where(
-            and(eq(userDepartments.userId, id), eq(userDepartments.departmentId, data.departmentId))
+            and(eq(userDepartments.userId, id), eq(userDepartments.departmentId, deptId))
           )
           .get(),
         c
@@ -772,14 +771,14 @@ export class EmployeeService {
       .where(eq(schema.employees.id, userId))
       .get()
 
-    if (!employee || !employee.positionId) {return []}
+    if (!employee || !employee.positionId) { return [] }
 
     const position = await this.db
       .select()
       .from(schema.positions)
       .where(eq(schema.positions.id, employee.positionId))
       .get()
-    if (!position || !position.canManageSubordinates) {return []}
+    if (!position || !position.canManageSubordinates) { return [] }
 
     // Level 1: 总部 (查看所有员工)
     if (position.level === 1) {
@@ -859,9 +858,10 @@ export class EmployeeService {
       c
     )
 
-    if (!employee?.positionId) {return null}
+    if (!employee?.positionId) { return null }
 
-    const { positions } = await import('../db/schema.js')
+    const { positions } = await import('../../db/schema.js')
+    const posId = employee.positionId
     const result = await query(
       this.db,
       'EmployeeService.getUserPosition.getPosition',
@@ -876,12 +876,12 @@ export class EmployeeService {
           permissions: positions.permissions,
         })
         .from(positions)
-        .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
+        .where(and(eq(positions.id, posId), eq(positions.active, 1)))
         .get(),
       c
     )
 
-    if (!result) {return null}
+    if (!result) { return null }
 
     let permissions = {}
     try {
@@ -905,7 +905,7 @@ export class EmployeeService {
    * 检查用户是否为总部用户
    */
   async isHQUser(userId: string): Promise<boolean> {
-    const { userDepartments, departments } = await import('../db/schema.js')
+    const { userDepartments, departments } = await import('../../db/schema.js')
     const result = await this.db
       .select({ isHq: departments.name })
       .from(userDepartments)
@@ -921,9 +921,9 @@ export class EmployeeService {
    */
   async getUserGroupId(userId: string): Promise<string | null> {
     const employee = await this.getUserById(userId)
-    if (!employee?.orgDepartmentId) {return null}
+    if (!employee?.orgDepartmentId) { return null }
 
-    const { orgDepartments } = await import('../db/schema.js')
+    const { orgDepartments } = await import('../../db/schema.js')
     const { isNotNull } = await import('drizzle-orm')
     const group = await this.db
       .select({ id: orgDepartments.id })
@@ -948,7 +948,7 @@ export class EmployeeService {
    * 获取用户部门 ID 列表
    */
   async getUserDepartmentIds(userId: string): Promise<string[]> {
-    const { userDepartments } = await import('../db/schema.js')
+    const { userDepartments } = await import('../../db/schema.js')
     const userDepts = await this.db
       .select({ departmentId: userDepartments.departmentId })
       .from(userDepartments)

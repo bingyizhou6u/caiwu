@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ImportService } from '../../src/services/ImportService'
-import { FinanceService } from '../../src/services/FinanceService'
+import { ImportService } from '../../src/services/finance/ImportService.js'
+import { FinanceService } from '../../src/services/finance/FinanceService.js'
 import { createDb } from '../../src/db/index.js'
 import { applySchema } from '../setup.js'
 import { accounts, cashFlows, accountTransactions } from '../../src/db/schema.js'

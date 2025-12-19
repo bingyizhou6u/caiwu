@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { OperationHistoryService } from '../../src/services/OperationHistoryService'
+import { OperationHistoryService } from '../../src/services/system/OperationHistoryService.js'
 import { createDb } from '../../src/db'
 import { env } from 'cloudflare:test'
 import { applySchema } from '../setup'

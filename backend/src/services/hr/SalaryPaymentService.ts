@@ -4,29 +4,29 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   salaryPayments,
   salaryPaymentAllocations,
   employees,
   departments,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { eq, and, sql, inArray, desc } from 'drizzle-orm'
-import { Errors } from '../utils/errors.js'
-import { Logger } from '../utils/logger.js'
-import { salaryPaymentStateMachine } from '../utils/state-machine.js'
-import { validateVersion, incrementVersion } from '../utils/optimistic-lock.js'
+import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
+import { salaryPaymentStateMachine } from '../../utils/state-machine.js'
+import { validateVersion, incrementVersion } from '../../utils/optimistic-lock.js'
 import type { OperationHistoryService } from '../system/OperationHistoryService.js'
-import { QueryBuilder } from '../utils/query-builder.js'
-import { query } from '../utils/query-helpers.js'
+import { QueryBuilder } from '../../utils/query-builder.js'
+import { query as dbQuery } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class SalaryPaymentService {
   constructor(
     private db: DrizzleD1Database<typeof schema>,
     private operationHistoryService?: OperationHistoryService
-  ) {}
+  ) { }
 
   async list(
     query: { year?: number; month?: number; status?: string; employeeId?: string },
@@ -63,7 +63,7 @@ export class SalaryPaymentService {
     const paymentIds = payments.map((p: any) => p.payment.id)
     let allocations: any[] = []
     if (paymentIds.length > 0) {
-      allocations = await query(
+      allocations = await dbQuery(
         this.db,
         'SalaryPaymentService.list.getAllocations',
         () => this.db

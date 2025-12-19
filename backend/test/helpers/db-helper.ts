@@ -4,6 +4,7 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
+import { eq, desc } from 'drizzle-orm'
 import * as schema from '../../src/db/schema'
 import { v4 as uuid } from 'uuid'
 
@@ -18,7 +19,7 @@ export async function bulkInsert<T extends keyof typeof schema>(
   records: any[]
 ): Promise<void> {
   if (records.length === 0) return
-  
+
   const table = schema[tableName]
   await db.insert(table as any).values(records).execute()
 }
@@ -43,20 +44,20 @@ export async function truncateAllTables(db: DbType): Promise<void> {
     // 审计和历史记录
     'auditLogs',
     'businessOperationHistory',
-    
+
     // 资产相关
     'fixedAssetAllocations',
     'fixedAssetDepreciations',
     'fixedAssetChanges',
     'fixedAssets',
-    
+
     // 租赁相关
     'dormitoryAllocations',
     'rentalPayableBills',
     'rentalPayments',
     'rentalChanges',
     'rentalProperties',
-    
+
     // 人事相关
     'salaryPaymentAllocations',
     'salaryPayments',
@@ -65,22 +66,22 @@ export async function truncateAllTables(db: DbType): Promise<void> {
     'expenseReimbursements',
     'employeeAllowances',
     'employeeSalaries',
-    
+
     // 财务相关
     'accountTransactions',
     'cashFlows',
     'borrowings',
     'borrowers',
     'arApDocs',
-    
+
     // 会话相关
     'trustedDevices',
     'sessions',
     'userDepartments',
-    
+
     // 员工
     'employees',
-    
+
     // 主数据
     'sites',
     'accounts',
@@ -128,7 +129,7 @@ export const createTestEntity = {
       updatedAt: now,
       ...overrides,
     }
-    
+
     await db.insert(schema.employees).values(employeeData).execute()
     return employeeData
   },
@@ -150,7 +151,7 @@ export const createTestEntity = {
       version: 1,
       ...overrides,
     }
-    
+
     await db.insert(schema.accounts).values(accountData).execute()
     return accountData
   },
@@ -171,7 +172,7 @@ export const createTestEntity = {
       updatedAt: now,
       ...overrides,
     }
-    
+
     await db.insert(schema.departments).values(deptData).execute()
     return deptData
   },
@@ -195,7 +196,7 @@ export const createTestEntity = {
       updatedAt: now,
       ...overrides,
     }
-    
+
     await db.insert(schema.positions).values(posData).execute()
     return posData
   },
@@ -218,7 +219,7 @@ export const createTestEntity = {
       createdAt: now,
       ...overrides,
     }
-    
+
     await db.insert(schema.cashFlows).values(flowData).execute()
     return flowData
   },
@@ -244,7 +245,7 @@ export const createTestEntity = {
       updatedAt: now,
       ...overrides,
     }
-    
+
     await db.insert(schema.fixedAssets).values(assetData).execute()
     return assetData
   },
@@ -261,7 +262,7 @@ export const findEntity = {
     const results = await db
       .select()
       .from(schema.employees)
-      .where(schema.employees.id.eq(id))
+      .where(eq(schema.employees.id, id))
       .execute()
     return results[0] || null
   },
@@ -273,7 +274,7 @@ export const findEntity = {
     const results = await db
       .select()
       .from(schema.employees)
-      .where(schema.employees.email.eq(email))
+      .where(eq(schema.employees.email, email))
       .execute()
     return results[0] || null
   },
@@ -285,7 +286,7 @@ export const findEntity = {
     const results = await db
       .select()
       .from(schema.accounts)
-      .where(schema.accounts.id.eq(id))
+      .where(eq(schema.accounts.id, id))
       .execute()
     return results[0] || null
   },
@@ -296,20 +297,20 @@ export const findEntity = {
   async accountBalance(db: DbType, accountId: string): Promise<number> {
     const account = await findEntity.accountById(db, accountId)
     if (!account) return 0
-    
+
     // 查询最后一条交易记录
     const transactions = await db
       .select()
       .from(schema.accountTransactions)
-      .where(schema.accountTransactions.accountId.eq(accountId))
-      .orderBy(schema.accountTransactions.createdAt.desc())
+      .where(eq(schema.accountTransactions.accountId, accountId))
+      .orderBy(desc(schema.accountTransactions.createdAt))
       .limit(1)
       .execute()
-    
+
     if (transactions.length > 0) {
       return transactions[0].balanceAfterCents
     }
-    
+
     return account.openingCents || 0
   },
 }
@@ -334,12 +335,12 @@ export const countRecords = {
    * 计数员工数
    */
   async employees(db: DbType, filters?: { active?: number }): Promise<number> {
-    let query = db.select().from(schema.employees)
-    
+    let query: any = db.select().from(schema.employees)
+
     if (filters?.active !== undefined) {
-      query = query.where(schema.employees.active.eq(filters.active))
+      query = query.where(eq(schema.employees.active, filters.active))
     }
-    
+
     const results = await query.execute()
     return results.length
   },
@@ -351,7 +352,7 @@ export const countRecords = {
     const results = await db
       .select()
       .from(schema.cashFlows)
-      .where(schema.cashFlows.accountId.eq(accountId))
+      .where(eq(schema.cashFlows.accountId, accountId))
       .execute()
     return results.length
   },

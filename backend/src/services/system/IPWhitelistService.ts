@@ -1,6 +1,6 @@
-import type { Env } from '../types.js'
-import { Errors } from '../utils/errors.js'
-import { Logger } from '../utils/logger.js'
+import type { Env } from '../../types.js'
+import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
 import {
   fetchCloudflareIPListItems,
   addIPToCloudflareList,
@@ -10,7 +10,7 @@ import {
   getWhitelistRuleStatus,
   toggleWhitelistRule,
   getOrCreateWhitelistRule,
-} from '../utils/cloudflare.js'
+} from '../../utils/cloudflare.js'
 
 export class IPWhitelistService {
   constructor(private env: Env) {}

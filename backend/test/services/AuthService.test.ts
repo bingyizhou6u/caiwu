@@ -4,8 +4,9 @@ import { drizzle } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
 import * as schema from '../../src/db/schema.js'
 import { employees, sessions, positions } from '../../src/db/schema.js'
-import { AuthService } from '../../src/services/AuthService.js'
-import { AuditService } from '../../src/services/AuditService.js'
+import { AuthService } from '../../src/services/auth/AuthService.js'
+import { AuditService } from '../../src/services/system/AuditService.js'
+import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
 import bcrypt from 'bcryptjs'
@@ -40,12 +41,14 @@ describe('AuthService', () => {
       sendTotpResetEmail: vi.fn(),
       sendEmail: vi.fn(),
     } as any
+    const employeeService = new EmployeeService(db, mockEmailService)
     service = new AuthService(
       db,
       env.SESSIONS_KV,
       mockSystemConfigService,
       auditService,
-      mockEmailService
+      mockEmailService,
+      employeeService
     )
   })
 

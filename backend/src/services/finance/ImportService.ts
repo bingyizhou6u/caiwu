@@ -1,11 +1,11 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
-import { cashFlows, accountTransactions, accounts } from '../db/schema.js'
+import * as schema from '../../db/schema.js'
+import { cashFlows, accountTransactions, accounts } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { parseCsv } from '../utils/csv.js'
+import { parseCsv } from '../../utils/csv.js'
 import { FinanceService } from './FinanceService.js'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 
 export class ImportService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

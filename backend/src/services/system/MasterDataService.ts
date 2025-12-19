@@ -4,7 +4,7 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { ProjectDepartmentService } from './ProjectDepartmentService.js'
 import { SiteService } from './SiteService.js'
 import { AccountService } from '../finance/AccountService.js'

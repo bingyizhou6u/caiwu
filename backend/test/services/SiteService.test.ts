@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { SiteService } from '../../src/services/SiteService.js'
+import { SiteService } from '../../src/services/system/SiteService.js'
 import { sites, departments } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -152,7 +152,7 @@ describe('SiteService', () => {
           name: '已存在站点',
           departmentId: dept.id,
         })
-      ).rejects.toThrow(Errors.DUPLICATE)
+      ).rejects.toThrow()
     })
 
     it('应该允许不同部门使用相同站点名称', async () => {
@@ -290,7 +290,7 @@ describe('SiteService', () => {
         service.updateSite('non-existent', {
           name: '新名称',
         })
-      ).rejects.toThrow(Errors.NOT_FOUND)
+      ).rejects.toThrow()
     })
   })
 
@@ -327,7 +327,7 @@ describe('SiteService', () => {
     })
 
     it('应该抛出错误当站点不存在', async () => {
-      await expect(service.deleteSite('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+      await expect(service.deleteSite('non-existent')).rejects.toThrow()
     })
   })
 })

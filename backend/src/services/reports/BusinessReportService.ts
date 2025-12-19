@@ -4,7 +4,7 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   cashFlows,
   departments,
@@ -13,20 +13,20 @@ import {
   employeeLeaves,
   employeeSalaries,
   currencies,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
 import { AnnualLeaveService } from '../hr/AnnualLeaveService.js'
-import { Logger } from '../utils/logger.js'
-import { query } from '../utils/query-helpers.js'
+import { Logger } from '../../utils/logger.js'
+import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class BusinessReportService {
   constructor(
     private db: DrizzleD1Database<typeof schema>,
     private annualLeaveService: AnnualLeaveService,
     private kv: KVNamespace
-  ) {}
+  ) { }
 
   async getDepartmentCashFlow(start: string, end: string, departmentIds?: string[]) {
     const cacheKey = `report:dept_flow:${start}:${end}:${departmentIds ? departmentIds.sort().join(',') : 'all'}`
@@ -224,9 +224,8 @@ export class BusinessReportService {
         .groupBy(sites.id, sites.name)
         .all(),
       undefined
-    ),
-      undefined
     )
+
 
     return {
       rows: rows.map(r => ({

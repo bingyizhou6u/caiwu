@@ -6,6 +6,7 @@
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { getMonitoringService } from './monitoring.js'
+import { ErrorSeverity } from './monitoring.js'
 
 /**
  * 数据库查询性能追踪器
@@ -38,14 +39,14 @@ export class DBPerformanceTracker {
       const monitoring = getMonitoringService()
 
       // 记录性能指标
-      monitoring.recordMetric('db.query.duration', duration, {
+      monitoring.recordMetric('db.query.duration', duration, 'ms', {
         query: queryName,
         success: String(success),
       })
 
       // 记录慢查询（超过1秒）
       if (duration > 1000) {
-        monitoring.recordMetric('db.query.slow', duration, {
+        monitoring.recordMetric('db.query.slow', duration, 'ms', {
           query: queryName,
           duration: String(duration),
         })
@@ -68,7 +69,7 @@ export class DBPerformanceTracker {
           requestId: c?.get('requestId'),
           userId: c?.get('userId'),
           path: c?.req.path,
-        }, 'medium')
+        }, ErrorSeverity.MEDIUM)
       }
     }
   }
@@ -79,11 +80,11 @@ export class DBPerformanceTracker {
    * @param queries 查询函数数组
    * @param c Hono Context（可选）
    */
-  static async trackBatch<T>(
+  static async trackBatch<T extends any[]>(
     queryName: string,
-    queries: Array<() => Promise<T>>,
+    queries: { [K in keyof T]: () => Promise<T[K]> },
     c?: Context<{ Bindings: Env; Variables: AppVariables }>
-  ): Promise<T[]> {
+  ): Promise<T> {
     const startTime = Date.now()
     const monitoring = getMonitoringService()
 
@@ -92,15 +93,15 @@ export class DBPerformanceTracker {
       const results = await Promise.all(queries.map((q) => q()))
       const duration = Date.now() - startTime
 
-      monitoring.recordMetric('db.query.batch.duration', duration, {
+      monitoring.recordMetric('db.query.batch.duration', duration, 'ms', {
         query: queryName,
         count: String(queries.length),
       })
 
-      return results
+      return results as any as T
     } catch (error) {
       const duration = Date.now() - startTime
-      monitoring.recordMetric('db.query.batch.duration', duration, {
+      monitoring.recordMetric('db.query.batch.duration', duration, 'ms', {
         query: queryName,
         count: String(queries.length),
         success: 'false',

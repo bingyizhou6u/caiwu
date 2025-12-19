@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { AccountService } from '../../src/services/AccountService.js'
+import { AccountService } from '../../src/services/finance/AccountService.js'
 import { accounts, currencies, cashFlows, categories, accountTransactions } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'

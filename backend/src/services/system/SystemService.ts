@@ -3,8 +3,8 @@ import { DepartmentService } from './DepartmentService.js'
 import { AuditService } from './AuditService.js'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
-import { headquarters, currencies } from '../db/schema.js'
-import * as schema from '../db/schema.js'
+import { headquarters, currencies } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
 
 export class SystemService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

@@ -1,9 +1,9 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, lt } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import * as schema from '../db/schema.js'
-import { trustedDevices } from '../db/schema.js'
-import { Logger } from '../utils/logger.js'
+import * as schema from '../../db/schema.js'
+import { trustedDevices } from '../../db/schema.js'
+import { Logger } from '../../utils/logger.js'
 
 // 设备信任有效期：90天（毫秒）
 const DEVICE_TRUST_TTL = 90 * 24 * 60 * 60 * 1000

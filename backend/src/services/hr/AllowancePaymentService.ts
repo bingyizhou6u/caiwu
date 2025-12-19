@@ -1,13 +1,14 @@
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { employees } from '../db/schema.js'
-import * as schema from '../db/schema.js'
+import { employees } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 import { alias } from 'drizzle-orm/sqlite-core'
+import { query as dbQuery } from '../../utils/query-helpers.js'
 
 export class AllowancePaymentService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async list(query: {
     year?: number
@@ -16,11 +17,10 @@ export class AllowancePaymentService {
     allowanceType?: string
   }) {
     const conditions = []
-    if (query.year) {conditions.push(eq(schema.allowancePayments.year, query.year))}
-    if (query.month) {conditions.push(eq(schema.allowancePayments.month, query.month))}
-    if (query.employeeId) {conditions.push(eq(schema.allowancePayments.employeeId, query.employeeId))}
-    if (query.allowanceType)
-      {conditions.push(eq(schema.allowancePayments.allowanceType, query.allowanceType))}
+    if (query.year) { conditions.push(eq(schema.allowancePayments.year, query.year)) }
+    if (query.month) { conditions.push(eq(schema.allowancePayments.month, query.month)) }
+    if (query.employeeId) { conditions.push(eq(schema.allowancePayments.employeeId, query.employeeId)) }
+    if (query.allowanceType) { conditions.push(eq(schema.allowancePayments.allowanceType, query.allowanceType)) }
 
     const creator = alias(employees, 'creator')
 
@@ -123,7 +123,7 @@ export class AllowancePaymentService {
       .from(schema.allowancePayments)
       .where(eq(schema.allowancePayments.id, id))
       .get()
-    if (!payment) {return null}
+    if (!payment) { return null }
 
     await this.db
       .delete(schema.allowancePayments)
@@ -154,7 +154,7 @@ export class AllowancePaymentService {
 
   async generate(year: number, month: number, paymentDate: string, userId: string) {
     // 1. 获取在职员工 - 使用性能监控
-    const activeEmployees = await query(
+    const activeEmployees = await dbQuery(
       this.db,
       'AllowancePaymentService.generate.getActiveEmployees',
       () => this.db
@@ -166,7 +166,7 @@ export class AllowancePaymentService {
     )
 
     // 2. 获取所有津贴 - 使用性能监控
-    const allAllowances = await query(
+    const allAllowances = await dbQuery(
       this.db,
       'AllowancePaymentService.generate.getAllAllowances',
       () => this.db.select().from(schema.employeeAllowances).all(),
@@ -174,7 +174,7 @@ export class AllowancePaymentService {
     )
     const allowancesMap = new Map<string, typeof allAllowances>()
     allAllowances.forEach(a => {
-      if (!allowancesMap.has(a.employeeId)) {allowancesMap.set(a.employeeId, [])}
+      if (!allowancesMap.has(a.employeeId)) { allowancesMap.set(a.employeeId, []) }
       allowancesMap.get(a.employeeId)!.push(a)
     })
 
@@ -201,19 +201,19 @@ export class AllowancePaymentService {
       const joinYear = joinDate.getFullYear()
       const joinMonth = joinDate.getMonth() + 1
 
-      if (joinYear > year || (joinYear === year && joinMonth > month)) {continue}
+      if (joinYear > year || (joinYear === year && joinMonth > month)) { continue }
 
       const empAllowances = allowancesMap.get(emp.id) || []
 
       for (const allowance of empAllowances) {
         if (allowance.allowanceType === 'birthday') {
-          if (!emp.birthday) {continue}
+          if (!emp.birthday) { continue }
           const birthday = new Date(emp.birthday + 'T00:00:00Z')
-          if (birthday.getMonth() + 1 !== month) {continue}
+          if (birthday.getMonth() + 1 !== month) { continue }
         }
 
         const key = `${emp.id}:${year}:${month}:${allowance.allowanceType}:${allowance.currencyId}`
-        if (existingSet.has(key)) {continue}
+        if (existingSet.has(key)) { continue }
 
         const id = uuid()
         await this.db

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { env } from 'cloudflare:test'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { createDb } from '../../src/utils/db.js'
-import { MasterDataService } from '../../src/services/MasterDataService.js'
+import { MasterDataService } from '../../src/services/system/MasterDataService.js'
 import * as schema from '../../src/db/schema.js'
 import schemaSql from '../../src/db/schema.sql?raw'
 

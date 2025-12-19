@@ -3,7 +3,7 @@
  * 用于管理员工邮箱路由
  */
 
-import { Logger } from '../utils/logger.js'
+import { Logger } from '../../utils/logger.js'
 
 interface EmailRoutingEnv {
   CF_ACCOUNT_ID: string

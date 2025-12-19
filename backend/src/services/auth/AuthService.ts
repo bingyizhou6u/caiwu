@@ -1,19 +1,22 @@
 import bcrypt from 'bcryptjs'
 import QRCode from 'qrcode-svg'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
-import { generateTotpSecret, verifyTotp } from '../utils/auth.js'
-// import { logAudit } from '../utils/audit.js' // Removed
+import { Errors } from '../../utils/errors.js'
+import { generateTotpSecret, verifyTotp } from '../../utils/auth.js'
+// import { logAudit } from '../../utils/audit.js' // Removed
 import { SystemConfigService } from '../system/SystemConfigService.js'
 import { TrustedDeviceService } from './TrustedDeviceService.js'
 import { EmployeeService } from '../hr/EmployeeService.js'
-import { getUserFullContext } from '../utils/db.js'
+import { getUserFullContext } from '../../utils/db.js'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { eq, and, or } from 'drizzle-orm'
-import { employees, sessions } from '../db/schema.js'
+import { employees, sessions } from '../../db/schema.js'
 import { AuditService } from '../system/AuditService.js'
 import { EmailService } from '../common/EmailService.js'
+import { query } from '../../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../../types.js'
 
 export class AuthService {
   private employeeService: EmployeeService
@@ -100,8 +103,8 @@ export class AuthService {
 
       if (!isTrusted) {
         // 新设备需要验证 TOTP
-        if (!totp) {return { status: 'need_totp', message: '新设备首次登录，请输入Google验证码' }}
-        if (!verifyTotp(totp, user.totpSecret)) {throw Errors.UNAUTHORIZED('Google验证码错误')}
+        if (!totp) { return { status: 'need_totp', message: '新设备首次登录，请输入Google验证码' } }
+        if (!verifyTotp(totp, user.totpSecret)) { throw Errors.UNAUTHORIZED('Google验证码错误') }
 
         // TOTP 验证成功，添加到信任设备
         await this.trustedDeviceService.addTrustedDevice(user.id, deviceFingerprint, {
@@ -212,8 +215,8 @@ export class AuthService {
       undefined // getSession 方法没有 Context
     )
 
-    if (!s) {return null}
-    if (s.expiresAt && s.expiresAt < Date.now()) {return null}
+    if (!s) { return null }
+    if (s.expiresAt && s.expiresAt < Date.now()) { return null }
 
     return {
       id: s.id,

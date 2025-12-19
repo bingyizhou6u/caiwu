@@ -1,17 +1,17 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, desc, inArray } from 'drizzle-orm'
-import { accountTransfers, accounts, accountTransactions } from '../db/schema.js'
+import { accountTransfers, accounts, accountTransactions } from '../../db/schema.js'
 import { v4 as uuid } from 'uuid'
 import { FinanceService } from './FinanceService.js'
-import { getByIds } from '../utils/query-helpers.js'
+import { getByIds } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class AccountTransferService {
   constructor(
     private db: DrizzleD1Database<any>,
     private financeService: FinanceService
-  ) {}
+  ) { }
 
   async list(limit: number = 200, whereClause?: any) {
     const transfers = await this.db
@@ -29,7 +29,7 @@ export class AccountTransferService {
     })
 
     // 使用批量查询优化
-    const accountsList = await getByIds(
+    const accountsList = await getByIds<typeof accounts.$inferSelect>(
       this.db,
       accounts,
       Array.from(accountIds),
@@ -136,7 +136,7 @@ export class AccountTransferService {
       .from(accountTransfers)
       .where(eq(accountTransfers.id, id))
       .get()
-    if (!transfer) {return null}
+    if (!transfer) { return null }
 
     const [fromAccount, toAccount] = await Promise.all([
       this.db.select().from(accounts).where(eq(accounts.id, transfer.fromAccountId)).get(),

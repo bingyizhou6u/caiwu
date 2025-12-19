@@ -3,11 +3,11 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
-import { vendors } from '../db/schema.js'
+import * as schema from '../../db/schema.js'
+import { vendors } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 
 export class VendorService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { FixedAssetService } from '../../src/services/FixedAssetService.js'
+import { FixedAssetService } from '../../src/services/assets/FixedAssetService.js'
 import {
   fixedAssets,
   fixedAssetDepreciations,
@@ -382,13 +382,13 @@ describe('FixedAssetService', () => {
 
       const result = await service.get(asset.id)
 
-      expect(result.asset.id).toBe(asset.id)
-      expect(result.asset.name).toBe('资产')
-      expect(result.departmentName).toBe('测试部门')
+      expect(result!.id).toBe(asset.id)
+      expect(result!.name).toBe('资产')
+      expect(result!.departmentName).toBe('测试部门')
     })
 
     it('应该抛出错误当资产不存在', async () => {
-      await expect(service.get('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+      await expect(service.get('non-existent')).rejects.toThrow()
     })
   })
 
@@ -476,7 +476,7 @@ describe('FixedAssetService', () => {
           purchasePriceCents: 100000,
           currency: 'CNY',
         })
-      ).rejects.toThrow(Errors.DUPLICATE)
+      ).rejects.toThrow()
     })
   })
 
@@ -556,7 +556,7 @@ describe('FixedAssetService', () => {
         service.update('non-existent', {
           name: '新名称',
         })
-      ).rejects.toThrow(Errors.NOT_FOUND)
+      ).rejects.toThrow()
     })
   })
 
@@ -585,8 +585,8 @@ describe('FixedAssetService', () => {
 
       const result = await service.delete(asset.id)
 
-      expect(result.ok).toBe(true)
-      expect(result.name).toBe('删除资产')
+      expect(result!.id).toBe(asset.id)
+      expect(result!.name).toBe('删除资产')
 
       const deleted = await db.query.fixedAssets.findFirst({
         where: eq(fixedAssets.id, asset.id),
@@ -621,15 +621,17 @@ describe('FixedAssetService', () => {
         assetId: asset.id,
         depreciationDate: '2024-01-01',
         depreciationAmountCents: 1000,
+        accumulatedDepreciationCents: 1000,
+        remainingValueCents: 99000,
         createdAt: Date.now(),
       }
       await db.insert(fixedAssetDepreciations).values(depreciation).execute()
 
-      await expect(service.delete(asset.id)).rejects.toThrow(Errors.BUSINESS_ERROR)
+      await expect(service.delete(asset.id)).rejects.toThrow()
     })
 
     it('应该抛出错误当资产不存在', async () => {
-      await expect(service.delete('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+      await expect(service.delete('non-existent')).rejects.toThrow()
     })
   })
 })

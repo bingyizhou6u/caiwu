@@ -12,14 +12,15 @@ import {
   currencies,
 } from '../../src/db/schema'
 import schemaSql from '../../src/db/schema.sql?raw'
-import { FinanceService } from '../../src/services/FinanceService'
-import { AuthService } from '../../src/services/AuthService'
-import { MasterDataService } from '../../src/services/MasterDataService'
-import { SalaryPaymentService } from '../../src/services/SalaryPaymentService'
-import { ArApService } from '../../src/services/ArApService'
-import { BorrowingService } from '../../src/services/BorrowingService'
-import { SiteBillService } from '../../src/services/SiteBillService'
-import { AccountTransferService } from '../../src/services/AccountTransferService'
+import { FinanceService } from '../../src/services/finance/FinanceService.js'
+import { AuthService } from '../../src/services/auth/AuthService.js'
+import { MasterDataService } from '../../src/services/system/MasterDataService.js'
+import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
+import { SalaryPaymentService } from '../../src/services/hr/SalaryPaymentService.js'
+import { ArApService } from '../../src/services/finance/ArApService.js'
+import { BorrowingService } from '../../src/services/finance/BorrowingService.js'
+import { SiteBillService } from '../../src/services/finance/SiteBillService.js'
+import { AccountTransferService } from '../../src/services/finance/AccountTransferService.js'
 
 // Mock permissions
 vi.mock('../../src/utils/permissions', async () => {
@@ -91,7 +92,7 @@ describe('Finance Core Routes', () => {
 
     // Setup services
     const mockSystemConfigService = { get: async () => ({ value: 'false' }) } as any
-    const mockAuditService = { log: async () => {} } as any
+    const mockAuditService = { log: async () => { } } as any
     const mockEmailService = {
       sendActivationEmail: vi.fn(),
       sendLoginNotificationEmail: vi.fn(),
@@ -100,12 +101,14 @@ describe('Finance Core Routes', () => {
       sendTotpResetEmail: vi.fn(),
       sendEmail: vi.fn(),
     } as any
+    const employeeService = new EmployeeService(db, mockEmailService)
     const authService = new AuthService(
       db,
       env.SESSIONS_KV,
       mockSystemConfigService,
       mockAuditService,
-      mockEmailService
+      mockEmailService,
+      employeeService
     )
     const masterDataService = new MasterDataService(db)
     const financeService = new FinanceService(db)
@@ -126,6 +129,7 @@ describe('Finance Core Routes', () => {
         borrowing: borrowingService,
         siteBill: siteBillService,
         accountTransfer: accountTransferService,
+        employee: employeeService,
       } as any)
       c.set('userId', '550e8400-e29b-41d4-a716-446655440000')
       await next()

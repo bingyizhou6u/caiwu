@@ -1,9 +1,9 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, sql } from 'drizzle-orm'
-import { expenseReimbursements, employees } from '../db/schema.js'
-import * as schema from '../db/schema.js'
+import { expenseReimbursements, employees } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { nanoid } from 'nanoid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 
 export class ExpenseReimbursementService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

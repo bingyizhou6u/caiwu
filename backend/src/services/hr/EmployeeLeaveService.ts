@@ -1,7 +1,7 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, sql } from 'drizzle-orm'
-import { employeeLeaves, employees } from '../db/schema.js'
-import * as schema from '../db/schema.js'
+import { employeeLeaves, employees } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { nanoid } from 'nanoid'
 
 export class EmployeeLeaveService {

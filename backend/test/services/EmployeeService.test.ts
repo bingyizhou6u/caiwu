@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { EmployeeService } from '../../src/services/EmployeeService.js'
+import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
 import { employees, departments, orgDepartments, positions } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -157,8 +157,8 @@ describe('EmployeeService', () => {
 
     const results = await service.getAll({ status: 'regular' })
     expect(results.length).toBeGreaterThanOrEqual(1)
-    expect(results.find(e => e.id === id1)).toBeDefined()
-    expect(results.find(e => e.id === id2)).toBeUndefined()
+    expect(results.find((e: any) => e.id === id1)).toBeDefined()
+    expect(results.find((e: any) => e.id === id2)).toBeUndefined()
   })
 
   it('should migrate user to employee', async () => {

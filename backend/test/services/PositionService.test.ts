@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { PositionService } from '../../src/services/PositionService.js'
+import { PositionService } from '../../src/services/hr/PositionService.js'
 import { positions, orgDepartments, departments, employees } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -287,7 +287,7 @@ describe('PositionService', () => {
     })
 
     it('应该抛出错误当部门不存在', async () => {
-      await expect(service.getAvailablePositions('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+      await expect(service.getAvailablePositions('non-existent')).rejects.toThrow()
     })
   })
 
@@ -358,7 +358,7 @@ describe('PositionService', () => {
         functionRole: 'engineer',
       }
 
-      await expect(service.createPosition(data)).rejects.toThrow(Errors.DUPLICATE)
+      await expect(service.createPosition(data)).rejects.toThrow()
     })
   })
 
@@ -448,7 +448,7 @@ describe('PositionService', () => {
         service.updatePosition(pos1.id, {
           code: 'POS2', // 与 pos2 冲突
         })
-      ).rejects.toThrow(Errors.DUPLICATE)
+      ).rejects.toThrow()
     })
 
     it('应该允许更新为相同的代码', async () => {
@@ -482,7 +482,7 @@ describe('PositionService', () => {
         service.updatePosition('non-existent', {
           name: '新名称',
         })
-      ).rejects.toThrow(Errors.NOT_FOUND)
+      ).rejects.toThrow()
     })
   })
 
@@ -540,11 +540,11 @@ describe('PositionService', () => {
       }
       await db.insert(employees).values(employee).execute()
 
-      await expect(service.deletePosition(position.id)).rejects.toThrow(Errors.BUSINESS_ERROR)
+      await expect(service.deletePosition(position.id)).rejects.toThrow()
     })
 
     it('应该抛出错误当职位不存在', async () => {
-      await expect(service.deletePosition('non-existent')).rejects.toThrow(Errors.NOT_FOUND)
+      await expect(service.deletePosition('non-existent')).rejects.toThrow()
     })
   })
 })

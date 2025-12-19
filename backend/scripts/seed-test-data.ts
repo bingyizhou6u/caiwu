@@ -8,7 +8,8 @@
  *   npm run test:seed -- --remote    # 生成到远程数据库
  */
 
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle as drizzleD1 } from 'drizzle-orm/d1'
+import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3'
 import Database from 'better-sqlite3'
 import * as schema from '../src/db/schema.js'
 import { getAllFixtures, getMinimalFixtures } from '../test/fixtures/index.js'
@@ -33,15 +34,15 @@ console.log('='.repeat(60))
 
 async function seedLocalDatabase() {
   console.log('\n开始生成本地数据库种子数据...')
-  
+
   // 使用better-sqlite3创建本地数据库
   const sqlite = new Database(':memory:')
-  
+
   // 应用schema
   console.log('应用数据库schema...')
   const schemaSql = readFileSync(resolve(process.cwd(), 'src/db/schema.sql'), 'utf-8')
   const statements = schemaSql.split(';').filter(s => s.trim().length > 0)
-  
+
   for (const statement of statements) {
     try {
       sqlite.exec(statement)
@@ -49,12 +50,12 @@ async function seedLocalDatabase() {
       console.warn('Schema应用警告:', error)
     }
   }
-  
-  const db = drizzle(sqlite, { schema }) as any
-  
+
+  const db = drizzleSqlite(sqlite as any, { schema }) as any
+
   // 生成种子数据
   await seedDatabase(db)
-  
+
   console.log('✓ 本地数据库种子数据生成完成')
   sqlite.close()
 }
@@ -62,18 +63,18 @@ async function seedLocalDatabase() {
 async function seedRemoteDatabase() {
   console.log('\n开始生成远程数据库种子数据...')
   console.log('注意: 远程数据库种子生成需要wrangler配置')
-  
+
   // 这里需要通过wrangler访问远程D1数据库
   // 实际实现需要根据wrangler的API来操作
   console.warn('远程数据库种子生成暂未实现，请手动执行或使用本地模式')
 }
 
 async function seedDatabase(db: any) {
-  const fixtures = isMinimal ? getMinimalFixtures() : getAllFixtures()
-  
+  const fixtures = (isMinimal ? getMinimalFixtures() : getAllFixtures()) as any
+
   console.log('\n开始插入种子数据...')
   let insertedCount = 0
-  
+
   // 按依赖顺序插入数据
   const insertionOrder: Array<{ name: string; table: keyof typeof schema; data: any[] }> = [
     { name: '币种', table: 'currencies', data: fixtures.currencies || [] },
@@ -102,7 +103,7 @@ async function seedDatabase(db: any) {
     { name: '宿舍分配', table: 'dormitoryAllocations', data: fixtures.dormitoryAllocations || [] },
     { name: '租金账单', table: 'rentalPayableBills', data: fixtures.rentalPayableBills || [] },
   ]
-  
+
   for (const { name, table, data } of insertionOrder) {
     if (data && data.length > 0) {
       if (isDryRun) {
@@ -120,7 +121,7 @@ async function seedDatabase(db: any) {
       }
     }
   }
-  
+
   console.log(`\n总计插入: ${insertedCount} 条记录`)
 }
 
@@ -129,17 +130,17 @@ async function main() {
     if (isDryRun) {
       console.log('\n[试运行模式] 以下是将要执行的操作:')
     }
-    
+
     if (isRemote) {
       await seedRemoteDatabase()
     } else {
       await seedLocalDatabase()
     }
-    
+
     console.log('\n' + '='.repeat(60))
     console.log('种子数据生成完成!')
     console.log('='.repeat(60))
-    
+
     if (!isDryRun) {
       console.log('\n提示: 你可以使用以下命令运行测试:')
       console.log('  npm test')

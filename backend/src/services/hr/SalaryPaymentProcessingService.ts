@@ -4,20 +4,23 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   salaryPayments,
   salaryPaymentAllocations,
   accounts,
   currencies,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { eq, and, sql, inArray } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
-import { Logger } from '../utils/logger.js'
-import { salaryPaymentStateMachine } from '../utils/state-machine.js'
-import { validateVersion, incrementVersion } from '../utils/optimistic-lock.js'
-import type { OperationHistoryService } from './OperationHistoryService.js'
+import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
+import { salaryPaymentStateMachine } from '../../utils/state-machine.js'
+import { validateVersion, incrementVersion } from '../../utils/optimistic-lock.js'
+import type { OperationHistoryService } from '../system/OperationHistoryService.js'
+import { query } from '../../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../../types.js'
 import type { SalaryPaymentService } from './SalaryPaymentService.js'
 
 export class SalaryPaymentProcessingService {
@@ -25,7 +28,7 @@ export class SalaryPaymentProcessingService {
     private db: DrizzleD1Database<typeof schema>,
     private operationHistoryService?: OperationHistoryService,
     private salaryPaymentService?: SalaryPaymentService
-  ) {}
+  ) { }
 
   async paymentTransfer(id: string, accountId: string, userId: string, expectedVersion?: number | null, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
     // 验证账户
@@ -248,10 +251,11 @@ export class SalaryPaymentProcessingService {
 
         // 如果提供了账户，则进行验证
         if (alloc.accountId) {
+          const accountId = alloc.accountId
           const account = await query(
             tx as any,
             'SalaryPaymentProcessingService.confirmPayment.getAccount',
-            () => tx.select().from(accounts).where(eq(accounts.id, alloc.accountId)).get(),
+            () => tx.select().from(accounts).where(eq(accounts.id, accountId)).get(),
             undefined // 事务中暂时不传递 Context
           )
           if (!account) {

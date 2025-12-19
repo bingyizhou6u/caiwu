@@ -1,9 +1,9 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema'
-import { siteBills, sites, accounts, categories, currencies, employees } from '../db/schema'
+import * as schema from '../../db/schema'
+import { siteBills, sites, accounts, categories, currencies, employees } from '../../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 
 export class SiteBillService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

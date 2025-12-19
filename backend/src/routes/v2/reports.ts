@@ -100,10 +100,9 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view') && !getUserPosition(c))
-      {
-        throw Errors.FORBIDDEN()
-      }
+    if (!hasPermission(c, 'report', 'finance', 'view') && !getUserPosition(c)) {
+      throw Errors.FORBIDDEN()
+    }
     const { departmentId } = c.req.valid('query')
     const startId = validateScope(c, departmentId)
     const reportService = c.var.services.report
@@ -769,7 +768,7 @@ app.openapi(
     const data = await reportService.getEmployeeSalaryReport(y, month, validId, false) // 不使用缓存
 
     const csvContent = exportToCSV(
-      (data?.results || []) as Array<Record<string, any>>,
+      ((data as any)?.results || []) as Array<Record<string, any>>,
       [
         { header: '员工姓名', key: 'employeeName' },
         { header: '项目', key: 'departmentName' },

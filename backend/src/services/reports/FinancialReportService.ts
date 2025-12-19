@@ -4,7 +4,7 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   arApDocs,
   cashFlows,
@@ -15,12 +15,12 @@ import {
   borrowings,
   repayments,
   employees,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
-import { Logger } from '../utils/logger.js'
-import { query } from '../utils/query-helpers.js'
+import { Logger } from '../../utils/logger.js'
+import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class FinancialReportService {
   constructor(

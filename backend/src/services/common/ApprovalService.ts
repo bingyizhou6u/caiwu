@@ -1,22 +1,25 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, inArray, sql } from 'drizzle-orm'
-import * as schema from '../db/schema.js'
-import { Errors } from '../utils/errors.js'
-import { Logger } from '../utils/logger.js'
+import * as schema from '../../db/schema.js'
+import { Errors } from '../../utils/errors.js'
+import { Logger } from '../../utils/logger.js'
 import { EmployeeService } from '../hr/EmployeeService.js'
 import { FinanceService } from '../finance/FinanceService.js'
 import { PermissionService } from '../hr/PermissionService.js'
 import { NotificationService } from './NotificationService.js'
 import type { OperationHistoryService } from '../system/OperationHistoryService.js'
-import { BatchQuery } from '../utils/batch-query.js'
-import { DBPerformanceTracker } from '../utils/db-performance.js'
+import { BatchQuery } from '../../utils/batch-query.js'
+import { DBPerformanceTracker } from '../../utils/db-performance.js'
 import {
   borrowingStateMachine,
   leaveStateMachine,
   reimbursementStateMachine,
   StateMachine,
-} from '../utils/state-machine.js'
-import { QueryBuilder } from '../utils/query-builder.js'
+} from '../../utils/state-machine.js'
+import { QueryBuilder } from '../../utils/query-builder.js'
+import { query } from '../../utils/query-helpers.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../../types.js'
 
 interface ApprovalRecord {
   id: string
@@ -38,7 +41,7 @@ export class ApprovalService {
     private financeService: FinanceService,
     private notificationService: NotificationService,
     private operationHistoryService?: OperationHistoryService
-  ) {}
+  ) { }
 
   async getPendingApprovals(userId: string) {
     const subordinateIds = await this.employeeService.getSubordinateEmployeeIds(userId)
@@ -172,7 +175,7 @@ export class ApprovalService {
     memo?: string
     getEmployeeId?: (record: any, tx: any) => Promise<string>
     afterUpdate?: (record: any, tx: any, newStatus: string) => Promise<void>
-  }) {
+  }, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
     const {
       table,
       id,
@@ -629,18 +632,18 @@ export class ApprovalService {
    */
   private async getBorrowingCategoryId(tx?: any): Promise<string | null> {
     const db = tx || this.db
-    
+
     // 尝试从系统配置获取
     const configRow = await db
       .select({ value: schema.systemConfig.value })
       .from(schema.systemConfig)
       .where(eq(schema.systemConfig.key, 'borrowing_category_id'))
       .get()
-    
+
     if (configRow?.value) {
       return configRow.value
     }
-    
+
     // 从categories表查询借款类别
     const category = await db
       .select({ id: schema.categories.id })
@@ -655,7 +658,7 @@ export class ApprovalService {
       )
       .limit(1)
       .get()
-    
+
     return category?.id || null
   }
 }

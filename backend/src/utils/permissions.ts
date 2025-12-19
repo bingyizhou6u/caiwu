@@ -104,7 +104,7 @@ export function hasPermission(
   action: string
 ): boolean {
   const position = getUserPosition(c)
-  if (!position || !position.permissions) {return false}
+  if (!position || !position.permissions) { return false }
 
   // 1. 先检查部门是否允许访问该模块（总部人员跳过此检查）
   if (!hasDepartmentModuleAccess(c, module)) {
@@ -113,10 +113,10 @@ export function hasPermission(
 
   // 2. 再检查职位是否有该操作权限
   const modulePerms = position.permissions[module]
-  if (!modulePerms) {return false}
+  if (!modulePerms) { return false }
 
   const subModulePerms = modulePerms[subModule]
-  if (!subModulePerms) {return false}
+  if (!subModulePerms) { return false }
 
   if (Array.isArray(subModulePerms)) {
     return subModulePerms.includes(action)
@@ -178,7 +178,7 @@ export function hasPositionCode(
  */
 export function getUserPermissions(c: Context<{ Bindings: Env; Variables: AppVariables }>): any {
   const position = getUserPosition(c)
-  if (!position || !position.permissions) {return {}}
+  if (!position || !position.permissions) { return {} }
   return position.permissions
 }
 
@@ -224,7 +224,7 @@ export function getDataAccessFilterSQL(
   const deptCol = validateColumnName(options.deptColumn || 'departmentId')
   const orgDeptCol = validateColumnName(options.orgDeptColumn || 'orgDepartmentId')
   const ownerCol = validateColumnName(options.ownerColumn || 'id')
-  
+
   // 构建表别名前缀（如果提供，也需要验证）
   const aliasPrefix = tableAlias ? `${validateColumnName(tableAlias)}.` : ''
 
@@ -239,25 +239,29 @@ export function getDataAccessFilterSQL(
       return sql`1=0`
     }
     // 使用 sql.raw() 插入列名（列名已通过白名单验证）
-    // 注意：虽然使用 sql.raw()，但列名来自受控的选项参数，不是用户输入
-    return sql.raw(`${aliasPrefix}${deptCol} = ?`, [deptId])
+    // 使用 sql.raw() 插入列名（列名已通过白名单验证）
+    return sql`${sql.raw(`${aliasPrefix}${deptCol}`)} = ${deptId}`
   }
 
   // 组长（team_leader）：只能访问本组数据
   if (position.code === 'team_leader') {
     if (options.skipOrgDept) {
       // 如果表没有组字段，回退到查看自己创建的
-      return sql.raw(`${aliasPrefix}${ownerCol} = ?`, [employee.id])
+      return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
+    }
+
+    if (!orgDeptId) {
+      return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
     }
 
     if (!orgDeptId) {
       return sql`1=0`
     }
-    return sql.raw(`${aliasPrefix}${orgDeptCol} = ?`, [orgDeptId])
+    return sql`${sql.raw(`${aliasPrefix}${orgDeptCol}`)} = ${orgDeptId}`
   }
 
   // 工程师（team_engineer）或其他：只能访问自己的数据
-  return sql.raw(`${aliasPrefix}${ownerCol} = ?`, [employee.id])
+  return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
 }
 
 /**

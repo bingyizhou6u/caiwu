@@ -1,9 +1,9 @@
 import { eq, and, sql } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { employees } from '../db/schema.js'
-import * as schema from '../db/schema.js'
+import { employees } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { v4 as uuid } from 'uuid'
-import { Logger } from '../utils/logger.js'
+import { Logger } from '../../utils/logger.js'
 
 export class SalaryService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

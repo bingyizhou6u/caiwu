@@ -6,7 +6,7 @@ import {
   Position,
   Employee,
 } from '../../src/utils/permissions'
-import { PermissionService } from '../../src/services/PermissionService'
+import { PermissionService } from '../../src/services/hr/PermissionService.js'
 import { createDb } from '../../src/utils/db'
 import * as schema from '../../src/db/schema'
 import { employees } from '../../src/db/schema'

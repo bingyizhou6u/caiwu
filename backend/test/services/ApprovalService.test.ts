@@ -1,12 +1,12 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { ApprovalService } from '../../src/services/ApprovalService.js'
-import { PermissionService } from '../../src/services/PermissionService.js'
-import { EmployeeService } from '../../src/services/EmployeeService.js'
-import { FinanceService } from '../../src/services/FinanceService.js'
-import { NotificationService } from '../../src/services/NotificationService.js'
-import { OperationHistoryService } from '../../src/services/OperationHistoryService.js'
+import { ApprovalService } from '../../src/services/common/ApprovalService.js'
+import { PermissionService } from '../../src/services/hr/PermissionService.js'
+import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
+import { FinanceService } from '../../src/services/finance/FinanceService.js'
+import { NotificationService } from '../../src/services/common/NotificationService.js'
+import { OperationHistoryService } from '../../src/services/system/OperationHistoryService.js'
 import {
   employees,
   departments,
@@ -25,6 +25,8 @@ import schemaSql from '../../src/db/schema.sql?raw'
 describe('ApprovalService', () => {
   let service: ApprovalService
   let db: ReturnType<typeof drizzle<typeof schema>>
+  let operationHistoryService: OperationHistoryService
+
 
   // Data IDs
   let managerUserId: string

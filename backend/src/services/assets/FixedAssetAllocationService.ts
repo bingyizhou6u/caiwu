@@ -4,24 +4,24 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   fixedAssets,
   fixedAssetAllocations,
   fixedAssetChanges,
   departments,
   employees,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { eq, and, desc, sql, inArray, isNull, isNotNull } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
-import { QueryBuilder } from '../utils/query-builder.js'
-import { query, getByIds } from '../utils/query-helpers.js'
+import { Errors } from '../../utils/errors.js'
+import { QueryBuilder } from '../../utils/query-builder.js'
+import { query, getByIds } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class FixedAssetAllocationService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   /**
    * 列出资产分配记录
@@ -59,14 +59,14 @@ export class FixedAssetAllocationService {
     // 批量获取关联数据 - 使用批量查询优化
     const [assetsList, relatedData] = await Promise.all([
       assetIds.size > 0
-        ? getByIds(
-            this.db,
-            fixedAssets,
-            Array.from(assetIds),
-            'FixedAssetAllocationService.list.getAssets',
-            { batchSize: 100, parallel: true },
-            undefined
-          )
+        ? getByIds<typeof fixedAssets.$inferSelect>(
+          this.db,
+          fixedAssets,
+          Array.from(assetIds),
+          'FixedAssetAllocationService.list.getAssets',
+          { batchSize: 100, parallel: true },
+          undefined
+        )
         : [],
       QueryBuilder.fetchRelatedData(this.db, {
         employeeIds: Array.from(employeeIds),
@@ -83,14 +83,14 @@ export class FixedAssetAllocationService {
     )
     const depts =
       deptIds.size > 0
-        ? await getByIds(
-            this.db,
-            departments,
-            Array.from(deptIds),
-            'FixedAssetAllocationService.list.getDepartments',
-            { batchSize: 100, parallel: true },
-            undefined
-          )
+        ? await getByIds<typeof departments.$inferSelect>(
+          this.db,
+          departments,
+          Array.from(deptIds),
+          'FixedAssetAllocationService.list.getDepartments',
+          { batchSize: 100, parallel: true },
+          undefined
+        )
         : []
     const deptMap = QueryBuilder.createMaps(depts)
 

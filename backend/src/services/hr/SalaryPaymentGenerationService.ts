@@ -4,19 +4,24 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   salaryPayments,
   employees,
   employeeSalaries,
   employeeLeaves,
   currencies,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { eq, and, sql, inArray } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
+import { query } from '../../utils/query-helpers.js'
+import { BatchQuery } from '../../utils/batch-query.js'
+import { DBPerformanceTracker } from '../../utils/db-performance.js'
+import type { Context } from 'hono'
+import type { Env, AppVariables } from '../../types.js'
 
 export class SalaryPaymentGenerationService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async generate(year: number, month: number, userId: string) {
     return await this.db.transaction(async tx => {
@@ -231,14 +236,14 @@ export class SalaryPaymentGenerationService {
       const allEmployees = await DBPerformanceTracker.track(
         'SalaryPaymentGenerationService.generatePayments.getEmployees',
         () =>
-          BatchQuery.getByIds(tx as any, employees, employeeIds, {
+          BatchQuery.getByIds<typeof employees.$inferSelect>(tx as any, employees, employeeIds, {
             batchSize: 100,
             parallel: true,
             queryName: 'getEmployeesForSalaryGeneration',
           }),
         undefined // Context 可选
       )
-      
+
       // 过滤活跃员工
       const eligibleEmployees = allEmployees.filter((emp) => emp.active === 1)
 

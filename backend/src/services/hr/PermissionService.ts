@@ -1,7 +1,7 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
-import * as schema from '../db/schema.js'
-import { employees, positions } from '../db/schema.js'
+import * as schema from '../../db/schema.js'
+import { employees, positions } from '../../db/schema.js'
 
 export class PermissionService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

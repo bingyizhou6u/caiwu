@@ -1,18 +1,18 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, sql, inArray } from 'drizzle-orm'
-import { arApDocs, settlements, sites, accounts, cashFlows } from '../db/schema.js'
+import { arApDocs, settlements, sites, accounts, cashFlows } from '../../db/schema.js'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 import { FinanceService } from './FinanceService.js'
-import { query, getByIds } from '../utils/query-helpers.js'
+import { query, getByIds } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class ArApService {
   constructor(
     private db: DrizzleD1Database<any>,
     private financeService: FinanceService
-  ) {}
+  ) { }
 
   async getNextDocNo(kind: 'AR' | 'AP', date: string) {
     const result = await this.db
@@ -54,29 +54,29 @@ export class ArApService {
     const [settlementsList, sitesList] = await Promise.all([
       docIds.length > 0
         ? query(
-            this.db,
-            'ArApService.list.getSettlements',
-            () => this.db
-              .select({
-                docId: settlements.docId,
-                sumSettle: sql<number>`sum(${settlements.settleAmountCents})`,
-              })
-              .from(settlements)
-              .where(inArray(settlements.docId, docIds))
-              .groupBy(settlements.docId)
-              .all(),
-            undefined
-          )
+          this.db,
+          'ArApService.list.getSettlements',
+          () => this.db
+            .select({
+              docId: settlements.docId,
+              sumSettle: sql<number>`sum(${settlements.settleAmountCents})`,
+            })
+            .from(settlements)
+            .where(inArray(settlements.docId, docIds))
+            .groupBy(settlements.docId)
+            .all(),
+          undefined
+        )
         : [],
       siteIds.size > 0
-        ? getByIds(
-            this.db,
-            sites,
-            Array.from(siteIds),
-            'ArApService.list.getSites',
-            { batchSize: 100, parallel: true },
-            undefined
-          )
+        ? getByIds<typeof sites.$inferSelect>(
+          this.db,
+          sites,
+          Array.from(siteIds),
+          'ArApService.list.getSites',
+          { batchSize: 100, parallel: true },
+          undefined
+        )
         : [],
     ])
 
@@ -130,13 +130,13 @@ export class ArApService {
 
   async refreshStatus(docId: string, tx?: any, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
     const db = tx || this.db
-    const doc = await query(
+    const doc = await query<typeof arApDocs.$inferSelect | undefined>(
       db as any,
       'ArApService.refreshStatus.getDoc',
       () => db.select().from(arApDocs).where(eq(arApDocs.id, docId)).get(),
       c
     )
-    if (!doc) {return}
+    if (!doc) { return }
 
     const result = await db
       .select({ sum: sql<number>`sum(settle_amount_cents)` })

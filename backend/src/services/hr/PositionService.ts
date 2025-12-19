@@ -3,10 +3,10 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
-import { positions, orgDepartments, departments, employees } from '../db/schema.js'
+import * as schema from '../../db/schema.js'
+import { positions, orgDepartments, departments, employees } from '../../db/schema.js'
 import { eq, and, or } from 'drizzle-orm'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
 export class PositionService {

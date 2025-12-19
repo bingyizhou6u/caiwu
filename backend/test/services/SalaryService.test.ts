@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../../src/db/schema.js'
 import { employees, currencies, employeeSalaries } from '../../src/db/schema.js'
-import { SalaryService } from '../../src/services/SalaryService.js'
+import { SalaryService } from '../../src/services/hr/SalaryService.js'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
 

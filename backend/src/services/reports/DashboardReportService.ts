@@ -4,7 +4,7 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   cashFlows,
   accounts,
@@ -13,9 +13,9 @@ import {
   repayments,
   departments,
   categories,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { sql, eq, and, gte, lte, desc } from 'drizzle-orm'
-import { Logger } from '../utils/logger.js'
+import { Logger } from '../../utils/logger.js'
 
 export class DashboardReportService {
   constructor(

@@ -6,9 +6,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineWorkersConfig({
     test: {
+        // Reduce concurrency to avoid port exhaustion
+        maxConcurrency: 1,
+        fileParallelism: false,
+        sequence: {
+            shuffle: false,
+        },
         poolOptions: {
             workers: {
                 wrangler: { configPath: './wrangler.toml' },
+                singleWorker: true,
                 miniflare: {
                     d1Databases: ['DB'],
                     kvNamespaces: ['SESSIONS_KV'],

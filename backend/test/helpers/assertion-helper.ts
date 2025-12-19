@@ -182,7 +182,7 @@ export const assertResponse = {
    */
   async isError(response: Response, expectedStatus: number = 400): Promise<any> {
     expect(response.status).toBe(expectedStatus)
-    const data = await response.json()
+    const data = (await response.json()) as any
     expect(data.error).toBeDefined()
     return data
   },

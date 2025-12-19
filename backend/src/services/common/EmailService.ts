@@ -96,7 +96,7 @@ const primaryButton = (text: string, url: string) => `
   ${text}
 </a>`
 
-import { Logger } from '../utils/logger.js'
+import { Logger } from '../../utils/logger.js'
 
 export class EmailService {
   constructor(private env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }) {}

@@ -4,15 +4,15 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   dormitoryAllocations,
   rentalProperties,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { eq, and, desc, isNull, isNotNull } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 
 export class DormitoryAllocationService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

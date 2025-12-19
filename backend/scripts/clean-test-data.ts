@@ -8,7 +8,8 @@
  *   npm run test:clean -- --remote  # 清理远程数据库
  */
 
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle as drizzleD1 } from 'drizzle-orm/d1'
+import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3'
 import Database from 'better-sqlite3'
 import * as schema from '../src/db/schema.js'
 import { truncateTable, truncateAllTables } from '../test/helpers/db-helper.js'
@@ -82,13 +83,13 @@ const MODULE_TABLES: Record<string, Array<keyof typeof schema>> = {
 
 async function cleanLocalDatabase() {
   console.log('\n开始清理本地数据库...')
-  
+
   const sqlite = new Database(':memory:')
-  
+
   // 应用schema
   const schemaSql = readFileSync(resolve(process.cwd(), 'src/db/schema.sql'), 'utf-8')
   const statements = schemaSql.split(';').filter(s => s.trim().length > 0)
-  
+
   for (const statement of statements) {
     try {
       sqlite.exec(statement)
@@ -96,19 +97,19 @@ async function cleanLocalDatabase() {
       // 忽略错误
     }
   }
-  
-  const db = drizzle(sqlite, { schema }) as any
-  
+
+  const db = drizzleSqlite(sqlite as any, { schema }) as any
+
   // 清理数据
   await cleanDatabase(db)
-  
+
   console.log('✓ 本地数据库清理完成')
   sqlite.close()
 }
 
 async function cleanDatabase(db: any) {
   let cleanedCount = 0
-  
+
   if (targetModule) {
     // 清理指定模块
     const tables = MODULE_TABLES[targetModule]
@@ -117,9 +118,9 @@ async function cleanDatabase(db: any) {
       console.log(`可用模块: ${Object.keys(MODULE_TABLES).join(', ')}`)
       process.exit(1)
     }
-    
+
     console.log(`\n清理模块: ${targetModule}`)
-    
+
     for (const tableName of tables) {
       if (isDryRun) {
         console.log(`  [试运行] 清理表: ${tableName}`)
@@ -136,7 +137,7 @@ async function cleanDatabase(db: any) {
   } else {
     // 清理所有表
     console.log('\n清理所有表...')
-    
+
     if (isDryRun) {
       console.log('  [试运行] 将清理所有业务表')
     } else {
@@ -144,7 +145,7 @@ async function cleanDatabase(db: any) {
       console.log('  ✓ 所有表已清理')
     }
   }
-  
+
   if (!isDryRun) {
     console.log(`\n已清理 ${cleanedCount > 0 ? cleanedCount : '所有'} 个表`)
   }
@@ -158,13 +159,13 @@ async function main() {
       console.log('\n警告: 这将永久删除测试数据!')
       console.log('请确认这是测试环境...')
     }
-    
+
     if (isRemote) {
       console.warn('\n远程数据库清理暂未实现，请手动执行或使用本地模式')
     } else {
       await cleanLocalDatabase()
     }
-    
+
     console.log('\n' + '='.repeat(60))
     console.log('数据清理完成!')
     console.log('='.repeat(60))

@@ -19,16 +19,16 @@ export class QueryCache {
       // 使用 Cloudflare Cache API
       // @ts-ignore - caches.default 在 Cloudflare Workers 运行时可用
       const cache = typeof caches !== 'undefined' ? caches.default : null
-      if (!cache) {return null}
-      
+      if (!cache) { return null }
+
       const request = new Request(`https://cache.local/${key}`)
       const cached = await cache.match(request)
-      
+
       if (cached) {
         const data = await cached.json()
         return data as T
       }
-      
+
       return null
     } catch {
       // 如果缓存不可用（如测试环境），返回 null
@@ -46,7 +46,7 @@ export class QueryCache {
     try {
       // @ts-ignore - caches.default 在 Cloudflare Workers 运行时可用
       const cache = typeof caches !== 'undefined' ? caches.default : null
-      if (!cache) {return}
+      if (!cache) { return }
 
       const request = new Request(`https://cache.local/${key}`)
 
@@ -75,8 +75,8 @@ export class QueryCache {
     try {
       // @ts-ignore - caches.default 在 Cloudflare Workers 运行时可用
       const cache = typeof caches !== 'undefined' ? caches.default : null
-      if (!cache) {return}
-      
+      if (!cache) { return }
+
       const request = new Request(`https://cache.local/${key}`)
       await cache.delete(request)
     } catch {
@@ -110,7 +110,7 @@ export const cacheKeys = {
     sites: () => 'master-data:sites',
     categories: () => 'master-data:categories',
     vendors: (search?: string) => `master-data:vendors${search ? `:search:${search}` : ''}`,
-    accounts: () => 'master-data:accounts',
+    accounts: (search?: string) => `master-data:accounts${search ? `:search:${search}` : ''}`,
     headquarters: () => 'master-data:headquarters',
   },
 

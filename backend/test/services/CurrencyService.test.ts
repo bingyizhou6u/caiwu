@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
-import { CurrencyService } from '../../src/services/CurrencyService.js'
+import { CurrencyService } from '../../src/services/system/CurrencyService.js'
 import { currencies, accounts } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import schemaSql from '../../src/db/schema.sql?raw'

@@ -59,6 +59,7 @@ export const Errors = {
  */
 import { ZodError } from 'zod'
 import { Logger } from './logger.js'
+import { ErrorSeverity } from './monitoring.js'
 
 export async function errorHandler(err: Error, c: Context) {
   if (err instanceof AppError) {
@@ -153,7 +154,7 @@ export async function errorHandlerV2(err: Error, c: Context) {
     )
 
     // 记录错误到监控服务
-    monitoring.recordError(err, monitoring.extractContext(c as any), 'medium')
+    monitoring.recordError(err, monitoring.extractContext(c as any), ErrorSeverity.MEDIUM)
 
     return c.json(
       {
@@ -179,7 +180,7 @@ export async function errorHandlerV2(err: Error, c: Context) {
     )
 
     // 验证错误通常是低严重程度
-    monitoring.recordError(err, monitoring.extractContext(c as any), 'low')
+    monitoring.recordError(err, monitoring.extractContext(c as any), ErrorSeverity.LOW)
 
     return c.json(
       {
@@ -211,7 +212,7 @@ export async function errorHandlerV2(err: Error, c: Context) {
   )
 
   // 未预期的错误通常是高严重程度
-  monitoring.recordError(err, monitoring.extractContext(c as any), 'high')
+  monitoring.recordError(err, monitoring.extractContext(c as any), ErrorSeverity.HIGH)
 
   return c.json(
     {

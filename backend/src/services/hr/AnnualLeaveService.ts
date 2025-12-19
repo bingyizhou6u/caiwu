@@ -5,8 +5,8 @@
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { like, eq, and, gte, lte } from 'drizzle-orm'
-import { systemConfig, employeeLeaves } from '../db/schema.js'
-import * as schema from '../db/schema.js'
+import { systemConfig, employeeLeaves } from '../../db/schema.js'
+import * as schema from '../../db/schema.js'
 
 export interface AnnualLeaveConfig {
   cycleMonths: number // 周期月数: 6 或 12

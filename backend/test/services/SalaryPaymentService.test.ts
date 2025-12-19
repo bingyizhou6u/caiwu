@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { SalaryPaymentService } from '../../src/services/SalaryPaymentService'
-import { SalaryPaymentGenerationService } from '../../src/services/SalaryPaymentGenerationService'
+import { SalaryPaymentService } from '../../src/services/hr/SalaryPaymentService.js'
+import { SalaryPaymentGenerationService } from '../../src/services/hr/SalaryPaymentGenerationService.js'
+import { SalaryPaymentProcessingService } from '../../src/services/hr/SalaryPaymentProcessingService.js'
 import { createDb } from '../../src/db'
 import { env } from 'cloudflare:test'
 import { applySchema } from '../setup'
@@ -19,6 +20,9 @@ describe('SalaryPaymentService', () => {
     await applySchema(env.DB)
     salaryPaymentService = new SalaryPaymentService(db)
     salaryPaymentGenerationService = new SalaryPaymentGenerationService(db)
+    // @ts-ignore
+    salaryPaymentService.salaryPaymentProcessingService = new SalaryPaymentProcessingService(db, undefined, salaryPaymentService)
+
 
     // Setup test data
     // 1. Currency
@@ -95,7 +99,9 @@ describe('SalaryPaymentService', () => {
     // Service.requestAllocation doesn't check status strictly in my implementation, but let's follow flow
 
     // Request Allocation
-    await salaryPaymentService.requestAllocation(
+    // Request Allocation
+    // @ts-ignore
+    await salaryPaymentService.salaryPaymentProcessingService.requestAllocation(
       id,
       [{ currencyId: 'USDT', amountCents: 50000 }],
       'emp1'
@@ -108,7 +114,9 @@ describe('SalaryPaymentService', () => {
     expect(payment?.allocations[0].status).toBe('pending')
 
     // Approve Allocation
-    await salaryPaymentService.approveAllocation(id, undefined, true, 'finance1')
+    // Approve Allocation
+    // @ts-ignore
+    await salaryPaymentService.salaryPaymentProcessingService.approveAllocation(id, undefined, true, 'finance1')
 
     payment = await salaryPaymentService.get(id)
     expect(payment?.allocationStatus).toBe('approved')
@@ -201,7 +209,8 @@ describe('SalaryPaymentService', () => {
       // 总薪资是 100000 USDT
       // 分配 50000 USDT + 50000 CNY（假设汇率 1:1）
       await expect(
-        salaryPaymentService.requestAllocation(
+        // @ts-ignore
+        salaryPaymentService.salaryPaymentProcessingService.requestAllocation(
           id,
           [
             { currencyId: 'USDT', amountCents: 50000, exchangeRate: 1 },
@@ -219,7 +228,8 @@ describe('SalaryPaymentService', () => {
       // 总薪资是 100000 USDT
       // 分配 50000 USDT + 60000 CNY（假设汇率 1:1），总计 110000，超出 1% 误差
       await expect(
-        salaryPaymentService.requestAllocation(
+        // @ts-ignore
+        salaryPaymentService.salaryPaymentProcessingService.requestAllocation(
           id,
           [
             { currencyId: 'USDT', amountCents: 50000, exchangeRate: 1 },

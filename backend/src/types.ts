@@ -70,6 +70,12 @@ export type AppVariables = {
     arAp: ArApService
     accountTransfer: AccountTransferService
     rateLimit: RateLimitService
+    salaryPaymentGeneration: SalaryPaymentGenerationService
+    salaryPaymentProcessing: SalaryPaymentProcessingService
+    operationHistory: OperationHistoryService
+    fixedAssetAllocation: FixedAssetAllocationService
+    fixedAssetChange: FixedAssetChangeService
+    fixedAssetDepreciation: FixedAssetDepreciationService
   }
 }
 
@@ -80,10 +86,16 @@ import { FinanceService } from './services/finance/FinanceService.js'
 import { EmployeeService } from './services/hr/EmployeeService.js'
 import { ImportService } from './services/finance/ImportService.js'
 import { SalaryPaymentService } from './services/hr/SalaryPaymentService.js'
+import { SalaryPaymentGenerationService } from './services/hr/SalaryPaymentGenerationService.js'
+import { SalaryPaymentProcessingService } from './services/hr/SalaryPaymentProcessingService.js'
 import { ReportService } from './services/reports/ReportService.js'
+import { OperationHistoryService } from './services/system/OperationHistoryService.js'
 import { AuthService } from './services/auth/AuthService.js'
 import { MasterDataService } from './services/system/MasterDataService.js'
 import { FixedAssetService } from './services/assets/FixedAssetService.js'
+import { FixedAssetAllocationService } from './services/assets/FixedAssetAllocationService.js'
+import { FixedAssetChangeService } from './services/assets/FixedAssetChangeService.js'
+import { FixedAssetDepreciationService } from './services/assets/FixedAssetDepreciationService.js'
 import { RentalService } from './services/assets/RentalService.js'
 import type { MyService } from './services/common/MyService.js'
 import type { ApprovalService } from './services/common/ApprovalService.js'

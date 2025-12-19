@@ -1,8 +1,8 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, sql, like, or, gte, lte } from 'drizzle-orm'
-import * as schema from '../db/schema.js'
-import { auditLogs, employees } from '../db/schema.js'
-import { Errors } from '../utils/errors.js'
+import * as schema from '../../db/schema.js'
+import { auditLogs, employees } from '../../db/schema.js'
+import { Errors } from '../../utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
 // 标准化审计操作类型

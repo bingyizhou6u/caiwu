@@ -3,8 +3,8 @@ import { Hono } from 'hono'
 import { env } from 'cloudflare:test'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { createDb } from '../../src/utils/db.js'
-import { MasterDataService } from '../../src/services/MasterDataService.js'
-import { master_dataRoutes } from '../../src/routes/v2/master-data.js'
+import { MasterDataService } from '../../src/services/system/MasterDataService.js'
+import { masterDataRoutes } from '../../src/routes/v2/master-data.js'
 import * as schema from '../../src/db/schema.js'
 import { AppVariables, Env } from '../../src/types.js'
 import schemaSql from '../../src/db/schema.sql?raw'
@@ -77,7 +77,7 @@ describe('MasterData Routes', () => {
       await next()
     })
 
-    app.route('/api/v2/master-data', master_dataRoutes)
+    app.route('/api/v2/master-data', masterDataRoutes)
   })
 
   describe('Departments', () => {

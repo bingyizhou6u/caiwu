@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { env } from 'cloudflare:test'
-import { FinanceService } from '../../src/services/FinanceService'
-import { AccountTransferService } from '../../src/services/AccountTransferService'
+import { FinanceService } from '../../src/services/finance/FinanceService.js'
+import { AccountTransferService } from '../../src/services/finance/AccountTransferService.js'
 import { createDb } from '../../src/utils/db'
 import { uuid } from '../../src/utils/db'
 import {

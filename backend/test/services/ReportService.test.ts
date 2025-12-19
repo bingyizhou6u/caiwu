@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createDb } from '../../src/db/index.js'
-import { ReportService } from '../../src/services/ReportService.js'
+import { ReportService } from '../../src/services/reports/ReportService.js'
 import { applySchema } from '../setup.js'
 import {
   cashFlows,
@@ -15,7 +15,7 @@ import {
   employees,
   employeeLeaves,
 } from '../../src/db/schema.js'
-import { AnnualLeaveService } from '../../src/services/AnnualLeaveService.js'
+import { AnnualLeaveService } from '../../src/services/hr/AnnualLeaveService.js'
 import { uuid } from '../../src/utils/db.js'
 
 describe('ReportService', () => {

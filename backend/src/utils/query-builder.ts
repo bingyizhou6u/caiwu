@@ -20,11 +20,11 @@ export class QueryBuilder {
    * 构建员工关联查询
    * 自动关联员工、部门、组织部门、职位表
    */
-  static buildEmployeeJoinQuery<T extends { employeeId: any }>(
+  static buildEmployeeJoinQuery<T extends { employeeId: any }, TSelect extends Record<string, any>>(
     db: DrizzleD1Database<typeof schema>,
     baseTable: any,
     employeeIdField: any,
-    selectFields: Record<string, any> = {}
+    selectFields: TSelect
   ) {
     return db
       .select({
@@ -62,38 +62,38 @@ export class QueryBuilder {
       await Promise.all([
         departmentIds && departmentIds.length > 0
           ? db
-              .select()
-              .from(departments)
-              .where(inArray(departments.id, departmentIds))
-              .execute()
+            .select()
+            .from(departments)
+            .where(inArray(departments.id, departmentIds))
+            .execute()
           : Promise.resolve([]),
         employeeIds && employeeIds.length > 0
           ? db
-              .select()
-              .from(employees)
-              .where(inArray(employees.id, employeeIds))
-              .execute()
+            .select()
+            .from(employees)
+            .where(inArray(employees.id, employeeIds))
+            .execute()
           : Promise.resolve([]),
         currencyIds && currencyIds.length > 0
           ? db
-              .select()
-              .from(currencies)
-              .where(inArray(currencies.code, currencyIds))
-              .execute()
+            .select()
+            .from(currencies)
+            .where(inArray(currencies.code, currencyIds))
+            .execute()
           : Promise.resolve([]),
         vendorIds && vendorIds.length > 0
           ? db
-              .select()
-              .from(vendors)
-              .where(inArray(vendors.id, vendorIds))
-              .execute()
+            .select()
+            .from(vendors)
+            .where(inArray(vendors.id, vendorIds))
+            .execute()
           : Promise.resolve([]),
         siteIds && siteIds.length > 0
           ? db
-              .select()
-              .from(sites)
-              .where(inArray(sites.id, siteIds))
-              .execute()
+            .select()
+            .from(sites)
+            .where(inArray(sites.id, siteIds))
+            .execute()
           : Promise.resolve([]),
       ])
 

@@ -4,7 +4,7 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import { MasterDataService } from './MasterDataService.js'
 import { QueryCache, cacheKeys, cacheTTL, createQueryCache } from '../../utils/query-cache.js'
 
@@ -22,7 +22,7 @@ export class CachedMasterDataService extends MasterDataService {
     const cacheKey = cacheKeys.masterData.currencies(search)
     const cached = await this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getCurrencies(search)
@@ -36,7 +36,7 @@ export class CachedMasterDataService extends MasterDataService {
     const cacheKey = cacheKeys.masterData.departments()
     const cached = await this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getDepartments()
@@ -50,7 +50,7 @@ export class CachedMasterDataService extends MasterDataService {
     const cacheKey = cacheKeys.masterData.sites()
     const cached = await this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getSites()
@@ -64,7 +64,7 @@ export class CachedMasterDataService extends MasterDataService {
     const cacheKey = cacheKeys.masterData.categories()
     const cached = await this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getCategories()
@@ -74,28 +74,28 @@ export class CachedMasterDataService extends MasterDataService {
 
   // ========== Vendors ==========
 
-  async getVendors(search?: string) {
-    const cacheKey = cacheKeys.masterData.vendors(search)
+  async getVendors() {
+    const cacheKey = cacheKeys.masterData.vendors()
     const cached = await this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
-    const result = await super.getVendors(search)
+    const result = await super.getVendors()
     await this.cache.set(cacheKey, result, cacheTTL.masterData)
     return result
   }
 
   // ========== Accounts ==========
 
-  async getAccounts() {
-    const cacheKey = cacheKeys.masterData.accounts()
+  async getAccounts(search?: string) {
+    const cacheKey = cacheKeys.masterData.accounts(search)
     const cached = await this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
-    const result = await super.getAccounts()
+    const result = await super.getAccounts(search)
     await this.cache.set(cacheKey, result, cacheTTL.masterData)
     return result
   }
@@ -106,7 +106,7 @@ export class CachedMasterDataService extends MasterDataService {
     const cacheKey = cacheKeys.masterData.headquarters()
     const cached = await this.cache.get(cacheKey)
     if (cached) {
-      return cached
+      return cached as any
     }
 
     const result = await super.getHeadquarters()

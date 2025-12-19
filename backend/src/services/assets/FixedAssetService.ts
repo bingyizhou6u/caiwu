@@ -1,5 +1,5 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
+import * as schema from '../../db/schema.js'
 import {
   fixedAssets,
   fixedAssetDepreciations,
@@ -12,18 +12,18 @@ import {
   accounts,
   cashFlows,
   accountTransactions,
-} from '../db/schema.js'
+} from '../../db/schema.js'
 import { eq, and, like, or, desc, sql, inArray } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 import { FinanceService } from '../finance/FinanceService.js'
-import { QueryBuilder } from '../utils/query-builder.js'
-import { query } from '../utils/query-helpers.js'
+import { QueryBuilder } from '../../utils/query-builder.js'
+import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../../types.js'
 
 export class FixedAssetService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async list(query: {
     search?: string
@@ -45,10 +45,10 @@ export class FixedAssetService {
         )
       )
     }
-    if (query.status) {conditions.push(eq(fixedAssets.status, query.status))}
-    if (query.departmentId) {conditions.push(eq(fixedAssets.departmentId, query.departmentId))}
-    if (query.category) {conditions.push(eq(fixedAssets.category, query.category))}
-    if (query.createdBy) {conditions.push(eq(fixedAssets.createdBy, query.createdBy))}
+    if (query.status) { conditions.push(eq(fixedAssets.status, query.status)) }
+    if (query.departmentId) { conditions.push(eq(fixedAssets.departmentId, query.departmentId)) }
+    if (query.category) { conditions.push(eq(fixedAssets.category, query.category)) }
+    if (query.createdBy) { conditions.push(eq(fixedAssets.createdBy, query.createdBy)) }
 
     const assets = await this.db
       .select()
@@ -113,48 +113,48 @@ export class FixedAssetService {
       () => this.db.select().from(fixedAssets).where(eq(fixedAssets.id, id)).get(),
       c
     )
-    if (!asset) {return null}
+    if (!asset) { return null }
 
     const [dept, site, vendor, currency, user] = await Promise.all([
       asset.departmentId
         ? query(
-            this.db,
-            'FixedAssetService.get.getDepartment',
-            () => this.db.select().from(departments).where(eq(departments.id, asset.departmentId)).get(),
-            c
-          )
+          this.db,
+          'FixedAssetService.get.getDepartment',
+          () => this.db.select().from(departments).where(eq(departments.id, asset.departmentId!)).get(),
+          c
+        )
         : Promise.resolve(null),
       asset.siteId
         ? query(
-            this.db,
-            'FixedAssetService.get.getSite',
-            () => this.db.select().from(sites).where(eq(sites.id, asset.siteId)).get(),
-            c
-          )
+          this.db,
+          'FixedAssetService.get.getSite',
+          () => this.db.select().from(sites).where(eq(sites.id, asset.siteId!)).get(),
+          c
+        )
         : Promise.resolve(null),
       asset.vendorId
         ? query(
-            this.db,
-            'FixedAssetService.get.getVendor',
-            () => this.db.select().from(vendors).where(eq(vendors.id, asset.vendorId)).get(),
-            c
-          )
+          this.db,
+          'FixedAssetService.get.getVendor',
+          () => this.db.select().from(vendors).where(eq(vendors.id, asset.vendorId!)).get(),
+          c
+        )
         : Promise.resolve(null),
       asset.currency
         ? query(
-            this.db,
-            'FixedAssetService.get.getCurrency',
-            () => this.db.select().from(currencies).where(eq(currencies.code, asset.currency)).get(),
-            c
-          )
+          this.db,
+          'FixedAssetService.get.getCurrency',
+          () => this.db.select().from(currencies).where(eq(currencies.code, asset.currency)).get(),
+          c
+        )
         : Promise.resolve(null),
       asset.createdBy
         ? query(
-            this.db,
-            'FixedAssetService.get.getEmployee',
-            () => this.db.select().from(employees).where(eq(employees.id, asset.createdBy)).get(),
-            c
-          )
+          this.db,
+          'FixedAssetService.get.getEmployee',
+          () => this.db.select().from(employees).where(eq(employees.id, asset.createdBy!)).get(),
+          c
+        )
         : Promise.resolve(null),
     ])
 
@@ -276,7 +276,7 @@ export class FixedAssetService {
       memo?: string
       createdBy?: string // 用于变更日志
     }
-  ), c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
+    , c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
     const existing = await query(
       this.db,
       'FixedAssetService.update.getAsset',
@@ -438,7 +438,7 @@ export class FixedAssetService {
       const vendor = await query(
         this.db,
         'FixedAssetService.create.getVendor',
-        () => this.db.select().from(vendors).where(eq(vendors.id, data.vendorId)).get(),
+        () => this.db.select().from(vendors).where(eq(vendors.id, data.vendorId!)).get(),
         undefined
       )
       vendorName = vendor?.name || null

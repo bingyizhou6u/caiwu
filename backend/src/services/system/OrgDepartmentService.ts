@@ -3,12 +3,12 @@
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
-import { orgDepartments, positions, departments } from '../db/schema.js'
+import * as schema from '../../db/schema.js'
+import { orgDepartments, positions, departments } from '../../db/schema.js'
 import { eq, and } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import { Errors } from '../utils/errors.js'
+import { Errors } from '../../utils/errors.js'
 
 export class OrgDepartmentService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}
