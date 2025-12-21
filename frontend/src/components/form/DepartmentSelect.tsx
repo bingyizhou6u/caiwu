@@ -4,7 +4,7 @@
  */
 
 import { Select, SelectProps } from 'antd'
-import { useDepartments } from '../../hooks'
+import { useDepartmentOptions } from '../../hooks'
 import type { SelectOption } from '../../types/business'
 
 export interface DepartmentSelectProps extends Omit<SelectProps, 'options' | 'loading'> {
@@ -26,7 +26,7 @@ export function DepartmentSelect({
   formatLabel,
   ...props
 }: DepartmentSelectProps) {
-  const { data: departments = [], isLoading } = useDepartments()
+  const { data: departments = [], isLoading } = useDepartmentOptions()
 
   // 确保 departments 是数组
   const safeDepartments = Array.isArray(departments) ? departments : []
@@ -36,11 +36,11 @@ export function DepartmentSelect({
     let label: string
     if (formatLabel) {
       label = formatLabel({
-        id: dept.value,
-        name: dept.label,
+        id: String(dept.value),
+        name: String(dept.label),
       })
     } else {
-      label = dept.label
+      label = String(dept.label)
     }
 
     return {

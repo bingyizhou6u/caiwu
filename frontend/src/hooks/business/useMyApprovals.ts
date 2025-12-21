@@ -45,24 +45,12 @@ export interface PendingReimbursement {
   createdAt: number | null
 }
 
-export interface PendingBorrowing {
-  id: string
-  userId: string
-  employeeName?: string | null
-  amountCents: number
-  currency_symbol?: string | null
-  memo?: string | null
-  createdAt: number | null
-}
-
 export interface PendingApprovalsResponse {
   leaves: PendingLeave[]
   reimbursements: PendingReimbursement[]
-  borrowings: PendingBorrowing[]
   counts: {
     leaves: number
     reimbursements: number
-    borrowings: number
   }
 }
 
@@ -143,31 +131,4 @@ export function useRejectReimbursement() {
   })
 }
 
-export function useApproveBorrowing() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, memo }: { id: string; memo?: string }) => {
-      await apiClient.post(api.approvals.borrowingApprove(id), { memo })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my', 'approvals'] })
-      queryClient.invalidateQueries({ queryKey: ['borrowings'] })
-      queryClient.invalidateQueries({ queryKey: ['my', 'dashboard'] })
-    },
-  })
-}
-
-export function useRejectBorrowing() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, memo }: { id: string; memo?: string }) => {
-      await apiClient.post(api.approvals.borrowingReject(id), { memo })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my', 'approvals'] })
-      queryClient.invalidateQueries({ queryKey: ['borrowings'] })
-      queryClient.invalidateQueries({ queryKey: ['my', 'dashboard'] })
-    },
-  })
-}
 

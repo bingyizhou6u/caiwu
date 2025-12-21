@@ -5,7 +5,8 @@ import { api } from '../../../config/api'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { EyeOutlined, UploadOutlined, ReloadOutlined } from '@ant-design/icons'
-import { useCurrencies, useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
+import { useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
+import { useCurrencyOptions } from '../../../hooks'
 import { uploadImageAsWebP } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useApproveExpense, usePayExpense } from '../../../hooks/business/useExpenses'
@@ -80,7 +81,7 @@ export function ExpenseReimbursement() {
 
   // Business data hooks
   const { data: employeesData = [] } = useEmployees()
-  const { data: currenciesData = [] } = useCurrencies()
+  const { data: currenciesData = [] } = useCurrencyOptions()
   const { data: accountsData = [] } = useAccounts()
   const { data: categoriesData = [] } = useExpenseCategories()
 

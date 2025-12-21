@@ -84,9 +84,24 @@ describe('MasterData Routes', () => {
     it('GET /api/master-data/departments should return departments', async () => {
       await service.createDepartment({ name: 'Dept 1' })
 
-      const res = await app.request('/api/v2/master-data/departments', {
-        method: 'GET',
-      })
+      const tasks: Promise<any>[] = []
+      const executionCtx = {
+        waitUntil: (promise: Promise<any>) => {
+          tasks.push(promise)
+        },
+        passThroughOnException: () => {},
+      }
+
+      const res = await app.request(
+        '/api/v2/master-data/departments',
+        {
+          method: 'GET',
+        },
+        env,
+        executionCtx as any
+      )
+
+      await Promise.all(tasks)
 
       expect(res.status).toBe(200)
       const response = (await res.json()) as any
@@ -97,11 +112,26 @@ describe('MasterData Routes', () => {
     })
 
     it('POST /api/master-data/departments should create department', async () => {
-      const res = await app.request('/api/v2/master-data/departments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'New Dept', code: 'ND' }),
-      })
+      const tasks: Promise<any>[] = []
+      const executionCtx = {
+        waitUntil: (promise: Promise<any>) => {
+          tasks.push(promise)
+        },
+        passThroughOnException: () => {},
+      }
+
+      const res = await app.request(
+        '/api/v2/master-data/departments',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'New Dept', code: 'ND' }),
+        },
+        env,
+        executionCtx as any
+      )
+
+      await Promise.all(tasks)
 
       expect(res.status).toBe(200)
       const response = (await res.json()) as any
@@ -116,11 +146,26 @@ describe('MasterData Routes', () => {
 
   describe('Currencies', () => {
     it('POST /api/master-data/currencies should create currency', async () => {
-      const res = await app.request('/api/v2/master-data/currencies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: 'USD', name: 'Dollar' }),
-      })
+      const tasks: Promise<any>[] = []
+      const executionCtx = {
+        waitUntil: (promise: Promise<any>) => {
+          tasks.push(promise)
+        },
+        passThroughOnException: () => {},
+      }
+
+      const res = await app.request(
+        '/api/v2/master-data/currencies',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: 'USD', name: 'Dollar' }),
+        },
+        env,
+        executionCtx as any
+      )
+
+      await Promise.all(tasks)
 
       expect(res.status).toBe(200)
       const response = (await res.json()) as any

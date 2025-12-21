@@ -3,37 +3,11 @@ import { api } from '../config/api'
 import { CACHE_TIME } from '../config/cache'
 import { SelectOption } from '../types/business'
 
-export function useCurrencies() {
-    return useApiQuery<SelectOption[]>(
-        ['currencies'],
-        api.currencies,
-        {
-            select: (data: any) => (Array.isArray(data) ? data : data?.results || []).filter((r: any) => r.active === 1).map((r: any) => ({
-                value: String(r.code),
-                label: `${r.code} - ${r.name}`
-            })),
-            staleTime: CACHE_TIME.MASTER_DATA
-        }
-    )
-}
+// 注意: useCurrencies 已移至 hooks/business/useCurrencies.ts
+// 请使用 useCurrencyOptions 获取 SelectOption[] 格式的币种选项
 
-export function useDepartments() {
-    return useApiQuery<SelectOption[]>(
-        ['departments'],
-        api.departments,
-        {
-            select: (data: any) => {
-                const rawData = Array.isArray(data) ? data : (data?.results || [])
-                if (!Array.isArray(rawData)) return []
-                return rawData.filter((r: any) => r.active === 1).map((r: any) => ({
-                    value: String(r.id),
-                    label: r.name
-                }))
-            },
-            staleTime: CACHE_TIME.MASTER_DATA
-        }
-    )
-}
+// 注意: useDepartments 已移至 hooks/business/useDepartments.ts
+// 请使用 useDepartmentOptions 获取 SelectOption[] 格式的部门选项
 
 export function useAccounts() {
     return useApiQuery<SelectOption[]>(

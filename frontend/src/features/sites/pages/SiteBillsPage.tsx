@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { Card, Button, Modal, Form, Input, Space, Select, DatePicker, Radio, Popconfirm } from 'antd'
 import { AmountInput, CurrencySelect, AccountSelect } from '../../../components/form'
 import dayjs from 'dayjs'
-import { useCurrencies, useAccounts, useExpenseCategories, useSites } from '../../../hooks/useBusinessData'
+import { useAccounts, useExpenseCategories, useSites } from '../../../hooks/useBusinessData'
+import { useCurrencyOptions } from '../../../hooks'
 import { useSiteBills, useCreateSiteBill, useUpdateSiteBill, useDeleteSiteBill } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
@@ -69,7 +70,7 @@ export function SiteBills() {
   } = useFormModal<any>()
 
   // Business data hooks
-  const { data: currenciesData = [] } = useCurrencies()
+  const { data: currenciesData = [] } = useCurrencyOptions()
   const { data: accountsData = [] } = useAccounts()
   const { data: categoriesData = [] } = useExpenseCategories()
   const { data: sitesData = [] } = useSites()

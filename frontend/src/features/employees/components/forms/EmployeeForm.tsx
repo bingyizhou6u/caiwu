@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Form, Input, Select, DatePicker, InputNumber, Switch, Tabs, Space } from 'antd'
 import { WorkScheduleEditor } from '../WorkScheduleEditor'
 import { COUNTRY_CODES } from '../../../../shared/constants'
-import { useDepartments } from '../../../../hooks'
+import { useDepartmentOptions } from '../../../../hooks'
 import { useApiQuery } from '../../../../utils/useApiQuery'
 import { api } from '../../../../config/api'
 import type { Position } from '../../../../types'
@@ -26,7 +26,7 @@ interface EmployeeFormProps {
 }
 
 export function EmployeeForm({ form, isEdit = false, children, employee }: EmployeeFormProps) {
-    const { data: departments = [] } = useDepartments()
+    const { data: departmentOptions = [] } = useDepartmentOptions()
     const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>()
     const [selectedOrgDepartmentId, setSelectedOrgDepartmentId] = useState<string | undefined>()
 
@@ -123,9 +123,9 @@ export function EmployeeForm({ form, isEdit = false, children, employee }: Emplo
                                 setSelectedOrgDepartmentId(undefined)
                             }}
                         >
-                            {departments.map((dept: any) => (
-                                <Option key={dept.id} value={dept.id}>
-                                    {dept.name}
+                            {departmentOptions.map((dept: any) => (
+                                <Option key={dept.value} value={dept.value}>
+                                    {dept.label}
                                 </Option>
                             ))}
                         </Select>

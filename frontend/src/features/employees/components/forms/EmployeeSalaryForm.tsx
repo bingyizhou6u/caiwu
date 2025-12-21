@@ -2,7 +2,6 @@ import React from 'react'
 import { Form, Space, Button, Select, Tabs } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { CurrencySelect, AmountInput } from '../../../../components/form'
-import { useCurrencies } from '../../../../hooks'
 import type { FormInstance } from 'antd/es/form'
 interface EmployeeSalaryFormProps {
     form: FormInstance
@@ -12,8 +11,6 @@ const { Option } = Select
 const { TabPane } = Tabs
 
 export const EmployeeSalaryForm: React.FC<EmployeeSalaryFormProps> = ({ form }) => {
-    const { data: currencies = [] } = useCurrencies()
-
     const ALLOWANCE_TYPES = [
         { type: 'living', label: '生活补贴' },
         { type: 'housing', label: '住房补贴' },

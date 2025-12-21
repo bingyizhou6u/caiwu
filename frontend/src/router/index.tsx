@@ -23,8 +23,6 @@ const loaders: Record<string, () => Promise<any>> = {
     'finance/transfer': () => import('../features/finance/pages/AccountTransferPage').then(m => ({ default: m.AccountTransfer })),
     'finance/transactions': () => import('../features/finance/pages/AccountTransactionsPage').then(m => ({ default: m.AccountTransactions })),
     'finance/import': () => import('../features/finance/pages/ImportCenterPage').then(m => ({ default: m.ImportCenter })),
-    'finance/borrowings': () => import('../features/finance/pages/BorrowingManagementPage').then(m => ({ default: m.BorrowingManagement })),
-    'finance/repayments': () => import('../features/finance/pages/RepaymentManagementPage').then(m => ({ default: m.RepaymentManagement })),
     'finance/ar': () => import('../features/finance/pages/ARPage').then(m => ({ default: m.AR })),
     'finance/ap': () => import('../features/finance/pages/APPage').then(m => ({ default: m.AP })),
 
@@ -54,19 +52,16 @@ const loaders: Record<string, () => Promise<any>> = {
     'reports/expense-summary': () => import('../features/reports/pages/ReportExpenseSummaryPage').then(m => ({ default: m.ReportExpenseSummary })),
     'reports/expense-detail': () => import('../features/reports/pages/ReportExpenseDetailPage').then(m => ({ default: m.ReportExpenseDetail })),
     'reports/account-balance': () => import('../features/reports/pages/ReportAccountBalancePage').then(m => ({ default: m.ReportAccountBalance })),
-    'reports/borrowing': () => import('../features/reports/pages/ReportBorrowingPage').then(m => ({ default: m.ReportBorrowing })),
 
     // My
     'my/center': () => import('../features/my/pages/MyCenterPage').then(m => ({ default: m.MyCenter })),
     'my/leaves': () => import('../features/my/pages/MyLeavesPage').then(m => ({ default: m.MyLeaves })),
     'my/reimbursements': () => import('../features/my/pages/MyReimbursementsPage').then(m => ({ default: m.MyReimbursements })),
-    'my/borrowings': () => import('../features/my/pages/MyBorrowingsPage').then(m => ({ default: m.MyBorrowings })),
     'my/assets': () => import('../features/my/pages/MyAssetsPage').then(m => ({ default: m.MyAssets })),
     'my/policies': () => import('../features/my/pages/CompanyPoliciesPage').then(m => ({ default: m.CompanyPolicies })),
     'my/approvals': () => import('../features/my/pages/MyApprovalsPage').then(m => ({ default: m.MyApprovals })),
 
-    // Dashboard & Auth
-    'dashboard': () => import('../features/dashboard/pages/DashboardPage').then(m => ({ default: m.Dashboard })),
+    // Auth
     'change-password': () => import('../features/auth/pages/ChangePasswordPage').then(m => ({ default: m.ChangePassword })),
     'login': () => import('../features/auth/pages/LoginPage').then(m => ({ default: m.Login })),
     'auth/activate': () => import('../features/auth/pages/ActivateAccountPage').then(m => ({ default: m.ActivateAccount })),
@@ -92,8 +87,6 @@ const FlowCreate = lazy(loaders['finance/flows/create'])
 const AccountTransfer = lazy(loaders['finance/transfer'])
 const AccountTransactions = lazy(loaders['finance/transactions'])
 const ImportCenter = lazy(loaders['finance/import'])
-const BorrowingManagement = lazy(loaders['finance/borrowings'])
-const RepaymentManagement = lazy(loaders['finance/repayments'])
 const AR = lazy(loaders['finance/ar'])
 const AP = lazy(loaders['finance/ap'])
 
@@ -123,17 +116,14 @@ const ReportAPDetail = lazy(loaders['reports/ap-detail'])
 const ReportExpenseSummary = lazy(loaders['reports/expense-summary'])
 const ReportExpenseDetail = lazy(loaders['reports/expense-detail'])
 const ReportAccountBalance = lazy(loaders['reports/account-balance'])
-const ReportBorrowing = lazy(loaders['reports/borrowing'])
 
 // My
 const MyCenter = lazy(loaders['my/center'])
 const MyLeaves = lazy(loaders['my/leaves'])
 const MyReimbursements = lazy(loaders['my/reimbursements'])
-const MyBorrowings = lazy(loaders['my/borrowings'])
 const MyAssets = lazy(loaders['my/assets'])
 const CompanyPolicies = lazy(loaders['my/policies'])
 const MyApprovals = lazy(loaders['my/approvals'])
-const Dashboard = lazy(loaders['dashboard'])
 const ChangePassword = lazy(loaders['change-password'])
 const Login = lazy(loaders['login'])
 const ActivateAccount = lazy(loaders['auth/activate'])
@@ -188,15 +178,13 @@ export const router = createBrowserRouter([
         path: '/',
         element: <PrivateRoute><MainLayout /></PrivateRoute>,
         children: [
-            { index: true, element: <Navigate to="/dashboard" replace /> },
-            { path: 'dashboard', element: <Suspense fallback={<Loading />}><Dashboard /></Suspense> },
+            { index: true, element: <Navigate to="/my/center" replace /> },
             { path: 'change-password', element: <Suspense fallback={<Loading />}><ChangePassword /></Suspense> },
 
             // My
             { path: 'my/center', element: <Suspense fallback={<Loading />}><MyCenter /></Suspense> },
             { path: 'my/leaves', element: <Suspense fallback={<Loading />}><MyLeaves /></Suspense> },
             { path: 'my/reimbursements', element: <Suspense fallback={<Loading />}><MyReimbursements /></Suspense> },
-            { path: 'my/borrowings', element: <Suspense fallback={<Loading />}><MyBorrowings /></Suspense> },
             { path: 'my/assets', element: <Suspense fallback={<Loading />}><MyAssets /></Suspense> },
             { path: 'my/policies', element: <Suspense fallback={<Loading />}><CompanyPolicies /></Suspense> },
             { path: 'my/approvals', element: <Suspense fallback={<Loading />}><MyApprovals /></Suspense> },
@@ -207,8 +195,6 @@ export const router = createBrowserRouter([
             { path: 'finance/transfer', element: <Suspense fallback={<Loading />}><AccountTransfer /></Suspense> },
             { path: 'finance/transactions', element: <Suspense fallback={<Loading />}><AccountTransactions /></Suspense> },
             { path: 'finance/import', element: <Suspense fallback={<Loading />}><ImportCenter /></Suspense> },
-            { path: 'finance/borrowings', element: <Suspense fallback={<Loading />}><BorrowingManagement /></Suspense> },
-            { path: 'finance/repayments', element: <Suspense fallback={<Loading />}><RepaymentManagement /></Suspense> },
             { path: 'finance/ar', element: <Suspense fallback={<Loading />}><AR /></Suspense> },
             { path: 'finance/ap', element: <Suspense fallback={<Loading />}><AP /></Suspense> },
 
@@ -238,7 +224,6 @@ export const router = createBrowserRouter([
             { path: 'reports/expense-summary', element: <Suspense fallback={<Loading />}><ReportExpenseSummary /></Suspense> },
             { path: 'reports/expense-detail', element: <Suspense fallback={<Loading />}><ReportExpenseDetail /></Suspense> },
             { path: 'reports/account-balance', element: <Suspense fallback={<Loading />}><ReportAccountBalance /></Suspense> },
-            { path: 'reports/borrowing', element: <Suspense fallback={<Loading />}><ReportBorrowing /></Suspense> },
 
             // System
             { path: 'system/departments', element: <Suspense fallback={<Loading />}><DepartmentManagement /></Suspense> },

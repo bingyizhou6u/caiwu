@@ -22,7 +22,18 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: [
+    ['list'],
+    ['monocart-reporter', {
+      name: "Caiwu E2E Coverage Report",
+      outputFile: './coverage/report.html',
+      coverage: {
+        enable: true,
+        reports: ['html', 'lcov', 'text-summary'],
+        sourceFilter: (sourcePath: string) => sourcePath.search(/src\//) !== -1 && sourcePath.search(/node_modules/) === -1,
+      }
+    }]
+  ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
@@ -75,5 +86,11 @@ export default defineConfig({
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
+    env: {
+      // 线上测试时使用远程后端
+      VITE_API_HOST: process.env.LIVE_TEST_URL 
+        ? `${process.env.LIVE_TEST_URL.replace(/\/$/, '')}` 
+        : 'http://localhost:8787',
+    },
   },
 });

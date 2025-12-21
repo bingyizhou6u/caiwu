@@ -81,8 +81,17 @@ async function buildAuthSuccessPayload(
 // 登录处理器
 async function handleLogin(c: Context<{ Bindings: Env; Variables: AppVariables }>) {
   try {
+    Logger.info('Login attempt started', { path: c.req.path }, c)
+    
     const body = (await c.req.json()) as { email: string; password: string; totp?: string }
+    Logger.info('Login body parsed', { email: body.email }, c)
+    
     const authService = c.var.services.auth
+    if (!authService) {
+      Logger.error('AuthService not found in context', {}, c)
+      throw new Error('AuthService not initialized')
+    }
+    Logger.info('AuthService obtained', {}, c)
 
     // 获取设备信息
     const deviceInfo = {
@@ -90,7 +99,9 @@ async function handleLogin(c: Context<{ Bindings: Env; Variables: AppVariables }
       userAgent: c.req.header('User-Agent') || undefined,
     }
 
+    Logger.info('Calling authService.login', { email: body.email }, c)
     const result = await authService.login(body.email, body.password, body.totp, c, deviceInfo)
+    Logger.info('Login result', { status: result.status }, c)
 
     if (result.status === 'success' && result.session && result.position) {
       clearLegacyCookie(c)

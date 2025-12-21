@@ -6,7 +6,7 @@ import { useEmployees, useFormModal, useToggleUserActive, useResendActivation, u
 import { usePermissions } from '../../../utils/permissions'
 import { EMPLOYEE_STATUS, ACCOUNT_STATUS } from '../../../utils/status'
 import { StatusTag } from '../../../components/common/StatusTag'
-import { EmployeeFormModal } from '../../../features/employees/components/modals/EmployeeFormModal'
+import { EmployeeFormDrawer } from '../../../features/employees/components/EmployeeFormDrawer'
 import { ResetUserPasswordModal } from '../../../features/employees/components/modals/ResetUserPasswordModal'
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
@@ -330,19 +330,19 @@ export function EmployeeManagement() {
         />
       </Card>
 
-      <EmployeeFormModal
+      <EmployeeFormDrawer
         open={createModalOpen}
-        onCancel={() => setCreateModalOpen(false)}
+        onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
           setCreateModalOpen(false)
           queryClient.invalidateQueries({ queryKey: ['employees'] })
         }}
       />
 
-      <EmployeeFormModal
+      <EmployeeFormDrawer
         open={modal.mode === 'edit' && modal.isOpen}
         employee={modal.data}
-        onCancel={modal.close}
+        onClose={modal.close}
         onSuccess={() => {
           modal.close()
           queryClient.invalidateQueries({ queryKey: ['employees'] })

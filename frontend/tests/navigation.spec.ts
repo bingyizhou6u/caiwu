@@ -1,37 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { setupCommonMocks } from './utils/mock-api';
 
 test('navigate to employee management', async ({ page }) => {
-    // Mock health check
-    await page.route('**/api/health', async route => {
-        await route.fulfill({ json: { checks: { db: true }, status: 'healthy' } });
-    });
+    // Setup Common Mocks (Handles Login, Health, etc)
+    await setupCommonMocks(page);
 
-    // Mock login API
-    await page.route('**/api/auth/login-password', async route => {
-        await route.fulfill({
-            json: {
-                token: 'mock-token',
-                user: {
-                    id: '1',
-                    name: 'Admin',
-                    email: 'admin@example.com',
-                    role: 'admin',
-                    permissions: [],
-                    position: {
-                        code: 'hq_manager',
-                        permissions: {
-                            hr: {
-                                employee: ['view']
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    });
-
-    // Mock employees API
-    await page.route('**/api/employees**', async route => {
+    // Mock employees API (v2)
+    await page.route('**/api/v2/employees**', async route => {
         await route.fulfill({
             json: {
                 results: [],
@@ -47,7 +22,7 @@ test('navigate to employee management', async ({ page }) => {
     const submitButton = page.locator('button[type="submit"]');
     await expect(submitButton).toBeEnabled({ timeout: 10000 });
     await submitButton.click();
-    await expect(page).toHaveURL(/.*\/dashboard/);
+    await expect(page).toHaveURL(/.*\/my\/center/);
 
     // Navigate to Employee Management
     // Click on "HR" or "Employees" in the menu

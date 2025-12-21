@@ -5,9 +5,21 @@ import react from '@vitejs/plugin-react'
 import viteCompression from 'vite-plugin-compression'
 import { visualizer } from 'rollup-plugin-visualizer'
 
+import istanbul from 'vite-plugin-istanbul';
+
+// Istanbul 只在 E2E 测试覆盖率模式下启用
+const enableCoverage = process.env.VITE_COVERAGE === 'true'
+
 export default defineConfig({
   plugins: [
     react(),
+    // 只在需要覆盖率时启用 Istanbul（VITE_COVERAGE=true npm run build）
+    ...(enableCoverage ? [istanbul({
+      include: 'src/**/*',
+      exclude: ['node_modules', 'test/'],
+      extension: ['.js', '.ts', '.tsx'],
+      requireEnv: false,
+    })] : []),
     viteCompression({
       algorithm: 'gzip',
       ext: '.gz',
@@ -16,11 +28,12 @@ export default defineConfig({
       algorithm: 'brotliCompress',
       ext: '.br',
     }),
-    visualizer({
+    // visualizer 只在分析时使用，避免每次构建都打开
+    ...(process.env.ANALYZE === 'true' ? [visualizer({
       open: true,
       gzipSize: true,
       brotliSize: true,
-    })
+    })] : []),
   ],
   server: {
     proxy: {

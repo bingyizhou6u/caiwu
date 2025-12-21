@@ -28,13 +28,12 @@ interface DashboardData {
     salary: Array<{ total_cents: number; currencyId: string }>
     annualLeave: { cycleMonths: number; cycleNumber: number; cycleStart: string | null; cycleEnd: string | null; isFirstCycle: boolean; total: number; used: number; remaining: number }
     pendingReimbursementCents: number
-    borrowingBalanceCents: number
   }
   recentApplications: Array<{ id: string; type: string; sub_type: string; status: string; amount: string; createdAt: number }>
 }
 
 interface ProfileData {
-  id: string; name: string; email: string; phone: string | null; idCard: string | null; bankAccount: string | null; bankName: string | null
+  id: string; name: string; email: string; phone: string | null
   position: string; positionCode: string; department: string; orgDepartment: string; entryDate: string; contractEndDate: string | null
   emergencyContact: string | null; emergencyPhone: string | null; status: string; workSchedule: WorkSchedule | null
   annualLeaveCycleMonths: number; annualLeaveDays: number
@@ -110,7 +109,6 @@ export function MyCenter() {
       salary: dashboard.stats.salary.map((s: { totalCents: number; currencyId: string }) => ({ total_cents: s.totalCents, currencyId: s.currencyId })),
       annualLeave: dashboard.stats.annualLeave,
       pendingReimbursementCents: dashboard.stats.pendingReimbursementCents,
-      borrowingBalanceCents: dashboard.stats.borrowingBalanceCents,
     },
     recentApplications: dashboard.recentApplications.map((app: { id: string; type: string; subType: string; status: string | null; amount: string | null; createdAt: number | null }) => ({
       ...app,
@@ -167,7 +165,7 @@ export function MyCenter() {
                       <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>周期：{dashboardData.stats.annualLeave.cycleMonths === 6 ? '半年制' : '年制'} | 第 {dashboardData.stats.annualLeave.cycleNumber} 周期{dashboardData.stats.annualLeave.cycleStart && ` (${dashboardData.stats.annualLeave.cycleStart} - ${dashboardData.stats.annualLeave.cycleEnd})`}</div></>) : <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无年假数据</div>}
                   </Card>
                   <Card title={<><WalletOutlined /> 财务概览</>} style={{ marginTop: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                    <Row gutter={16}><Col span={12}><Statistic title="待报销" value={formatCents(dashboardData?.stats.pendingReimbursementCents || 0)} prefix="¥" valueStyle={{ color: '#faad14' }} /></Col><Col span={12}><Statistic title="借支余额" value={formatCents(dashboardData?.stats.borrowingBalanceCents || 0)} prefix="¥" valueStyle={{ color: dashboardData?.stats.borrowingBalanceCents ? '#ff4d4f' : '#52c41a' }} /></Col></Row>
+                    <Row gutter={16}><Col span={24}><Statistic title="待报销" value={formatCents(dashboardData?.stats.pendingReimbursementCents || 0)} prefix="¥" valueStyle={{ color: '#faad14' }} /></Col></Row>
                   </Card>
                 </Col>
                 <Col span={24}>
@@ -221,15 +219,6 @@ export function MyCenter() {
                       <Col xs={12} sm={8} md={6}><Statistic title="交通补贴" value={profileData?.transportationAllowanceCents ? formatCents(profileData.transportationAllowanceCents) : '-'} prefix={profileData?.transportationAllowanceCents ? '¥' : ''} /></Col>
                       <Col xs={12} sm={8} md={6}><Statistic title="餐饮补贴" value={profileData?.mealAllowanceCents ? formatCents(profileData.mealAllowanceCents) : '-'} prefix={profileData?.mealAllowanceCents ? '¥' : ''} /></Col>
                     </Row>
-                  </Card>
-                </Col>
-                <Col span={24}>
-                  <Card title="银行信息" className="page-card-inner">
-                    <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small">
-                      <Descriptions.Item label="身份证号"><EmptyText value={profileData?.idCard} /></Descriptions.Item>
-                      <Descriptions.Item label="银行名称"><EmptyText value={profileData?.bankName} /></Descriptions.Item>
-                      <Descriptions.Item label="银行账号"><EmptyText value={profileData?.bankAccount} /></Descriptions.Item>
-                    </Descriptions>
                   </Card>
                 </Col>
               </Row>

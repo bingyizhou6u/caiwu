@@ -85,12 +85,6 @@ app.openapi(
                     openCents: z.number(),
                   })
                 ),
-                borrowings: z.object({
-                  borrowerCount: z.number(),
-                  totalBorrowedCents: z.number(),
-                  totalRepaidCents: z.number(),
-                  balanceCents: z.number(),
-                }),
                 recentFlows: z.array(z.any()),
               }),
             }),
@@ -509,87 +503,6 @@ app.openapi(
     const { asOf } = c.req.valid('query')
     const reportService = c.var.services.report
     const data = await reportService.getAccountBalance(asOf)
-    return data
-  }) as any
-)
-
-// 借款汇总
-app.openapi(
-  createRoute({
-    method: 'get',
-    path: '/borrowing-summary',
-    tags: ['Reports'],
-    summary: 'Get borrowing summary',
-    request: {
-      query: z.object({
-        start: z.string().optional(),
-        end: z.string().optional(),
-        userId: z.string().optional(),
-        currency: z.string().optional(),
-        status: z.string().optional(),
-      }),
-    },
-    responses: {
-      200: {
-        description: 'Borrowing summary',
-        content: {
-          'application/json': {
-            schema: z.object({
-              success: z.boolean(),
-              data: z.any(),
-            }),
-          },
-        },
-      },
-    },
-  }),
-  createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
-    const { start, end, userId } = c.req.valid('query')
-    const reportService = c.var.services.report
-    const data = await reportService.getBorrowingSummary(start, end, userId)
-    return data
-  }) as any
-)
-
-// Borrowing Detail
-app.openapi(
-  createRoute({
-    method: 'get',
-    path: '/borrowing-detail/{id}',
-    tags: ['Reports'],
-    summary: 'Get borrowing detail for user',
-    request: {
-      params: idParamSchema,
-      query: z.object({
-        start: z.string().optional(),
-        end: z.string().optional(),
-      }),
-    },
-    responses: {
-      200: {
-        description: 'Borrowing detail',
-        content: {
-          'application/json': {
-            schema: z.object({
-              success: z.boolean(),
-              data: z.any(),
-            }),
-          },
-        },
-      },
-    },
-  }),
-  createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
-    const { id } = c.req.valid('param')
-    const { start, end } = c.req.valid('query')
-    const reportService = c.var.services.report
-    const data = await reportService.getBorrowingDetail(id, start, end)
     return data
   }) as any
 )

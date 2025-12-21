@@ -5,7 +5,9 @@ import { UploadOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
 import dayjs from 'dayjs'
-import { useCurrencies, useDepartments, useAccounts, useExpenseCategories, useSites } from '../../../hooks/useBusinessData'
+import { useDepartmentOptions } from '../../../hooks'
+import { useAccounts, useExpenseCategories, useSites } from '../../../hooks/useBusinessData'
+import { useCurrencyOptions } from '../../../hooks'
 import { useVendors, useFixedAssets, useFixedAssetPurchase } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
@@ -53,8 +55,8 @@ export function FixedAssetPurchase() {
   const isFinance = checkIsFinance()
 
   // Business data hooks
-  const { data: currencies = [] } = useCurrencies()
-  const { data: departments = [] } = useDepartments()
+  const { data: currencies = [] } = useCurrencyOptions()
+  const { data: departments = [] } = useDepartmentOptions()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useExpenseCategories()
   const { data: sitesData = [] } = useSites()

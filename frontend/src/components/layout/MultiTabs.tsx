@@ -15,9 +15,9 @@ export const MultiTabs: React.FC = () => {
     const location = useLocation()
     const navigate = useNavigate()
     const [items, setItems] = useState<TabItem[]>([
-        { key: '/dashboard', label: '仪表盘', closable: false }
+        { key: '/my/center', label: '个人中心', closable: false }
     ])
-    const [activeKey, setActiveKey] = useState<string>('/dashboard')
+    const [activeKey, setActiveKey] = useState<string>('/my/center')
 
     // Sync location with tabs
     useEffect(() => {
@@ -77,7 +77,7 @@ export const MultiTabs: React.FC = () => {
                 remove(key)
                 break
             case 'closeOthers':
-                const newItemsOthers = items.filter(item => item.key === key || item.key === '/dashboard')
+                const newItemsOthers = items.filter(item => item.key === key || item.key === '/my/center')
                 setItems(newItemsOthers)
                 if (activeKey !== key) {
                     setActiveKey(key)
@@ -94,10 +94,10 @@ export const MultiTabs: React.FC = () => {
                 }
                 break
             case 'closeAll':
-                const newItemsAll = items.filter(item => item.key === '/dashboard')
+                const newItemsAll = items.filter(item => item.key === '/my/center')
                 setItems(newItemsAll)
-                setActiveKey('/dashboard')
-                navigate('/dashboard')
+                setActiveKey('/my/center')
+                navigate('/my/center')
                 break
         }
     }

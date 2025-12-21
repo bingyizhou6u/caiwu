@@ -98,19 +98,18 @@ describe('SalaryPaymentService', () => {
     // Employee Confirm first (needed for some logic, though service doesn't strictly enforce it for allocation request, but route does)
     // Service.requestAllocation doesn't check status strictly in my implementation, but let's follow flow
 
-    // Request Allocation
-    // Request Allocation
+    // Request Allocation - 分配全部薪资（100000 cents = 1000 USDT）
     // @ts-ignore
     await salaryPaymentService.salaryPaymentProcessingService.requestAllocation(
       id,
-      [{ currencyId: 'USDT', amountCents: 50000 }],
+      [{ currencyId: 'USDT', amountCents: 100000 }],
       'emp1'
     )
 
     let payment = await salaryPaymentService.get(id)
     expect(payment?.allocationStatus).toBe('requested')
     expect(payment?.allocations.length).toBe(1)
-    expect(payment?.allocations[0].amountCents).toBe(50000)
+    expect(payment?.allocations[0].amountCents).toBe(100000)
     expect(payment?.allocations[0].status).toBe('pending')
 
     // Approve Allocation
@@ -128,7 +127,7 @@ describe('SalaryPaymentService', () => {
       const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
       const id = genResult.ids[0]
       const payment = await salaryPaymentService.get(id)
-      const version = payment?.version || 1
+      const version = payment?.version ?? 0
 
       // 使用正确的版本号应该成功
       await salaryPaymentService.employeeConfirm(id, 'emp1', version)
@@ -140,10 +139,12 @@ describe('SalaryPaymentService', () => {
       const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
       const id = genResult.ids[0]
       const payment = await salaryPaymentService.get(id)
-      const version = payment?.version || 1
+      const version = payment?.version ?? 0
 
       // 先更新一次，版本号会变化
       await salaryPaymentService.employeeConfirm(id, 'emp1', version)
+      const updatedPayment = await salaryPaymentService.get(id)
+      const newVersion = updatedPayment?.version ?? version + 1
 
       // 使用旧的版本号应该失败
       await expect(
@@ -206,8 +207,12 @@ describe('SalaryPaymentService', () => {
       const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
       const id = genResult.ids[0]
 
-      // 总薪资是 100000 USDT
-      // 分配 50000 USDT + 50000 CNY（假设汇率 1:1）
+      // 先确认员工，因为分配需要状态为 pending_payment
+      await salaryPaymentService.employeeConfirm(id, 'emp1')
+      await salaryPaymentService.financeApprove(id, 'finance1')
+
+      // 总薪资是 100000 USDT (1000.00)
+      // 分配 50000 USDT + 50000 CNY（假设汇率 1:1），总计 100000，符合要求
       await expect(
         // @ts-ignore
         salaryPaymentService.salaryPaymentProcessingService.requestAllocation(
@@ -225,7 +230,11 @@ describe('SalaryPaymentService', () => {
       const genResult = await salaryPaymentGenerationService.generate(2023, 10, 'admin')
       const id = genResult.ids[0]
 
-      // 总薪资是 100000 USDT
+      // 先确认员工，因为分配需要状态为 pending_payment
+      await salaryPaymentService.employeeConfirm(id, 'emp1')
+      await salaryPaymentService.financeApprove(id, 'finance1')
+
+      // 总薪资是 100000 USDT (1000.00)
       // 分配 50000 USDT + 60000 CNY（假设汇率 1:1），总计 110000，超出 1% 误差
       await expect(
         // @ts-ignore

@@ -148,7 +148,7 @@ describe('Auth API', () => {
     await Promise.all(tasks)
 
     const loginBody = (await loginRes.json()) as any
-    const token = loginBody.token
+    const token = loginBody.data.token
 
     // Then call /me
     const tasks2: Promise<any>[] = []

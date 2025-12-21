@@ -16,17 +16,21 @@ vi.mock('../../src/utils/permissions.js', async () => {
   return {
     ...actual,
     hasPermission: () => true,
-    // Mock getUserPosition to return a high-level position
-    getUserPosition: () => ({
-      id: 'pos-admin',
-      level: 1, // Admin level sees all
-      permissions: {},
-    }),
-    getUserEmployee: () => ({
-      id: 'emp-admin',
-      departmentId: 'dept-1',
-      orgDepartmentId: 'org-dept-1',
-    }),
+    // Mock getUserPosition to return a high-level position from context
+    getUserPosition: (c: any) => {
+      return c.get('userPosition') || {
+        id: 'pos-admin',
+        level: 1, // Admin level sees all
+        permissions: {},
+      }
+    },
+    getUserEmployee: (c: any) => {
+      return c.get('userEmployee') || {
+        id: 'emp-admin',
+        departmentId: 'dept-1',
+        orgDepartmentId: 'org-dept-1',
+      }
+    },
   }
 })
 
@@ -85,7 +89,7 @@ describe('Employees API Integration', () => {
       await next()
     })
 
-    app.route('/api', employeesRoutes)
+    app.route('/api/v2', employeesRoutes)
   })
 
   it('POST /employees should create an employee', async () => {

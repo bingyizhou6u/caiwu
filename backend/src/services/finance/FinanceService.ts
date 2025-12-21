@@ -78,7 +78,7 @@ export class FinanceService {
   async createCashFlow(
     data: {
       bizDate: string
-      type: 'income' | 'expense'
+      type: 'income' | 'expense' | 'borrowing_in' | 'lending_out' | 'repayment_in' | 'repayment_out'
       accountId: string
       amountCents: number
       categoryId?: string | null
@@ -112,6 +112,13 @@ export class FinanceService {
     if (!account) {
       throw createError(404, ErrorCodes.BUS_NOT_FOUND, '账户不存在')
     }
+
+    // 计算余额
+    const balanceBefore = await this.getAccountBalanceBefore(data.accountId, data.bizDate, now, db)
+    // 借入/收回借款增加余额，借出/偿还借款减少余额
+    const isIncome = ['income', 'borrowing_in', 'repayment_in'].includes(data.type)
+    const delta = isIncome ? data.amountCents : -data.amountCents
+    const balanceAfter = balanceBefore + delta
 
     // 计算之前的余额 (Logic remains mostly same, but we rely on transactions for history)
     // Note: getAccountBalanceBefore checks history. If no history, it uses account.openingCents.
@@ -153,15 +160,52 @@ export class FinanceService {
 
     // 2. 乐观锁检查: 尝试更新 account version
     // 这充当了一个 "Mutex"，确保同一账户的交易是串行写入的 (至少在并发冲突时会失败)
-    const updateResult = await db
-      .update(accounts)
-      .set({
-        version: (account.version || 0) + 1,
-        // D1/SQLite specific: ensuring we have a change
-      })
-      .where(and(eq(accounts.id, data.accountId), eq(accounts.version, account.version || 0)))
-      .run()
+    // 使用事务确保原子性
+    const result = await db.batch([
+      db
+        .update(accounts)
+        .set({
+          version: (account.version || 0) + 1,
+        })
+        .where(and(eq(accounts.id, data.accountId), eq(accounts.version, account.version || 0))),
 
+      db
+        .insert(cashFlows)
+        .values({
+          id,
+          voucherNo,
+          bizDate: data.bizDate,
+          type: data.type,
+          accountId: data.accountId,
+          categoryId: data.categoryId,
+          method: data.method,
+          amountCents: data.amountCents,
+          siteId: data.siteId,
+          departmentId: data.departmentId,
+          counterparty: data.counterparty,
+          memo: data.memo,
+          voucherUrl: voucherUrlJson,
+          createdBy: data.createdBy ?? 'system',
+          createdAt: now,
+        }),
+
+      db
+        .insert(accountTransactions)
+        .values({
+          id: uuid(),
+          accountId: data.accountId,
+          flowId: id,
+          transactionDate: data.bizDate,
+          transactionType: data.type,
+          amountCents: data.amountCents,
+          balanceBeforeCents: balanceBefore,
+          balanceAfterCents: balanceAfter,
+          createdAt: now,
+        })
+    ])
+
+    // Check update result (first operation in batch)
+    const updateResult = result[0]
     // @ts-ignore - D1 result handling
     if (updateResult.meta.changes === 0) {
       throw createError(
@@ -171,67 +215,6 @@ export class FinanceService {
         { accountId: data.accountId }
       )
     }
-
-    // 3. 重新计算余额 (Now we 'locked' the account virtually)
-    // 注意: 由于我们刚刚"锁定"了版本号，此刻计算的 balanceBefore 应该是安全的，
-    // 前提是所有修改都会经过这个锁。
-    const balanceBefore = await this.getAccountBalanceBefore(data.accountId, data.bizDate, now, db)
-
-    // 检查余额 (仅支出)
-    if (data.type === 'expense') {
-      if (balanceBefore < data.amountCents) {
-        throw createError(
-          400,
-          ErrorCodes.BUSINESS_INSUFFICIENT_BALANCE,
-          '账户余额不足',
-          {
-            accountId: data.accountId,
-            balance: balanceBefore,
-            required: data.amountCents,
-          }
-        )
-      }
-    }
-
-    const delta = data.type === 'income' ? data.amountCents : -data.amountCents
-    const balanceAfter = balanceBefore + delta
-
-    await db
-      .insert(cashFlows)
-      .values({
-        id,
-        voucherNo,
-        bizDate: data.bizDate,
-        type: data.type,
-        accountId: data.accountId,
-        categoryId: data.categoryId,
-        method: data.method,
-        amountCents: data.amountCents,
-        siteId: data.siteId,
-        departmentId: data.departmentId,
-        counterparty: data.counterparty,
-        memo: data.memo,
-        voucherUrl: voucherUrlJson,
-        createdBy: data.createdBy ?? 'system',
-        createdAt: now,
-      })
-      .execute()
-
-    const transactionId = uuid()
-    await db
-      .insert(accountTransactions)
-      .values({
-        id: transactionId,
-        accountId: data.accountId,
-        flowId: id,
-        transactionDate: data.bizDate,
-        transactionType: data.type,
-        amountCents: data.amountCents,
-        balanceBeforeCents: balanceBefore,
-        balanceAfterCents: balanceAfter,
-        createdAt: now,
-      })
-      .execute()
 
     return { id, voucherNo }
   }

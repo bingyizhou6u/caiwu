@@ -116,7 +116,7 @@ export function ActivateAccount() {
                 setToken(data.token)
                 message.success('账号激活成功！正在跳转...')
                 setTimeout(() => {
-                    navigate('/dashboard')
+                    navigate('/my/center')
                 }, 1500)
             } else {
                 const msg = json.error?.message || json.message || data.error || '激活失败，请联系管理员'

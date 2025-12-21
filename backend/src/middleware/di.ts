@@ -24,7 +24,6 @@ import { AnnualLeaveService } from '../services/hr/AnnualLeaveService.js'
 // Finance services
 import { FinanceService } from '../services/finance/FinanceService.js'
 import { ImportService } from '../services/finance/ImportService.js'
-import { BorrowingService } from '../services/finance/BorrowingService.js'
 import { SiteBillService } from '../services/finance/SiteBillService.js'
 import { ArApService } from '../services/finance/ArApService.js'
 import { AccountTransferService } from '../services/finance/AccountTransferService.js'
@@ -47,6 +46,7 @@ import { RateLimitService } from '../services/common/RateLimitService.js'
 import type { Env, AppVariables } from '../types.js'
 
 export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>, next: Next) => {
+  try {
   const db = createDb(c.env.DB)
 
   // Initialize services
@@ -93,7 +93,6 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     notificationService,
     operationHistoryService
   )
-  const borrowingService = new BorrowingService(db)
   const allowancePaymentService = new AllowancePaymentService(db)
   // const auditService = new AuditService(db) // Moved up
   const ipWhitelistService = new IPWhitelistService(c.env)
@@ -117,8 +116,7 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     fixedAssetAllocationService,
     employeeService,
     annualLeaveService,
-    salaryService,
-    borrowingService
+    salaryService
   )
 
   // Inject into context
@@ -153,7 +151,6 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     annualLeave: annualLeaveService,
     permission: permissionService,
     email: emailService,
-    borrowing: borrowingService,
     arAp: arApService,
     accountTransfer: accountTransferService,
     siteBill: siteBillService,
@@ -162,4 +159,8 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
   })
 
   await next()
+  } catch (error) {
+    console.error('DI initialization error:', error)
+    throw error
+  }
 }

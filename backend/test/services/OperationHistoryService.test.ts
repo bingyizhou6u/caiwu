@@ -92,7 +92,7 @@ describe('OperationHistoryService', () => {
       const entityId = uuid()
       const operatorId = 'emp1'
 
-      // 记录多条历史
+      // 记录多条历史，添加小延迟确保时间戳不同
       await operationHistoryService.recordOperation(
         'salary_payment',
         entityId,
@@ -101,6 +101,9 @@ describe('OperationHistoryService', () => {
         null,
         { status: 'pending' }
       )
+
+      // 添加延迟确保时间戳不同（增加延迟时间）
+      await new Promise(resolve => setTimeout(resolve, 50))
 
       await operationHistoryService.recordOperation(
         'salary_payment',

@@ -32,7 +32,6 @@ import { arApRoutes as arApRoutesV2 } from './routes/v2/ar-ap.js'
 import reportsRoutesV2 from './routes/v2/reports.js'
 import { importRoutes as importRoutesV2 } from './routes/v2/import.js'
 import { employeesRoutes as employeesRoutesV2 } from './routes/v2/employees.js'
-import { borrowingsRoutes as borrowingsRoutesV2 } from './routes/v2/borrowings.js'
 import { ipWhitelistRoutes as ipWhitelistRoutesV2 } from './routes/v2/ip-whitelist.js'
 import { auditRoutes as auditRoutesV2 } from './routes/v2/audit.js'
 import { salaryPaymentsRoutes as salaryPaymentsRoutesV2 } from './routes/v2/salary-payments.js'
@@ -332,7 +331,6 @@ v2.route('/', arApRoutesV2)
 v2.route('/reports', reportsRoutesV2)
 v2.route('/', employeesRoutesV2)
 v2.route('/', salaryPaymentsRoutesV2)
-v2.route('/', borrowingsRoutesV2)
 v2.route('/', accountTransfersRoutesV2)
 v2.route('/', fixedAssetsRoutesV2)
 v2.route('/', rentalRoutesV2)

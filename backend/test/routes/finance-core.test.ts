@@ -316,10 +316,10 @@ describe('Finance Core Routes', () => {
     })
   })
 
-  describe('POST /api/v2/ar-ap/docs', () => {
+  describe('POST /api/v2/ar/docs', () => {
     it('should create an AR doc', async () => {
       const res = await app.request(
-        '/api/v2/ar-ap/docs',
+        '/api/v2/ar/docs',
         {
           method: 'POST',
           headers: {

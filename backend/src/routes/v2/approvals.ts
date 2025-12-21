@@ -54,24 +54,6 @@ const ReimbursementSchema = z.object({
   currencySymbol: z.string().nullable().optional(),
 })
 
-const BorrowingSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  borrowerId: z.string().nullable(),
-  accountId: z.string(),
-  amountCents: z.number(),
-  currency: z.string(),
-  borrowDate: z.string(),
-  memo: z.string().nullable(),
-  status: z.string().nullable(),
-  approvedBy: z.string().nullable(),
-  approvedAt: z.number().nullable(),
-  createdAt: z.number().nullable(),
-  updatedAt: z.number().nullable(),
-  employeeName: z.string().nullable(),
-  currencySymbol: z.string().nullable().optional(),
-})
-
 // GET /approvals/pending - 获取待审批列表
 const getPendingApprovalsRoute = createRoute({
   method: 'get',
@@ -86,11 +68,9 @@ const getPendingApprovalsRoute = createRoute({
             data: z.object({
               leaves: z.array(LeaveSchema),
               reimbursements: z.array(ReimbursementSchema),
-              borrowings: z.array(BorrowingSchema),
               counts: z.object({
                 leaves: z.number(),
                 reimbursements: z.number(),
-                borrowings: z.number(),
               }),
             }),
           }),
@@ -137,7 +117,6 @@ const getApprovalHistoryRoute = createRoute({
             data: z.object({
               leaves: z.array(LeaveSchema),
               reimbursements: z.array(ReimbursementSchema),
-              borrowings: z.array(BorrowingSchema),
             }),
           }),
         },
@@ -367,116 +346,6 @@ approvalsRoutes.openapi(
       c,
       'reject',
       'expense_reimbursement',
-      id,
-      JSON.stringify({ action: 'reject', memo: body.memo })
-    )
-    return { ok: true }
-  }) as any
-)
-
-// POST /approvals/borrowing/:id/approve - 批准借款申请
-const approveBorrowingRoute = createRoute({
-  method: 'post',
-  path: '/approvals/borrowing/{id}/approve',
-  summary: 'Approve borrowing request',
-  request: {
-    params: z.object({ id: z.string() }),
-    body: {
-      content: {
-        'application/json': {
-          schema: ApprovalActionSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({ ok: z.boolean() }),
-          }),
-        },
-      },
-      description: 'Approved successfully',
-    },
-  },
-})
-
-approvalsRoutes.openapi(
-  approveBorrowingRoute,
-  createRouteHandler(async (c: any) => {
-    const userId = c.get('userId')
-    if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-
-    if (!hasPermission(c, 'finance', 'borrowing', 'approve')) {
-      throw Errors.FORBIDDEN('没有审批借支的权限')
-    }
-
-    const id = c.req.param('id')
-    const body = c.req.valid('json') as { memo?: string }
-    const service = c.var.services.approval
-
-    await service.approveBorrowing(id, userId, body.memo)
-    logAuditAction(c, 'approve', 'borrowing', id, JSON.stringify({ action: 'approve' }))
-    return { ok: true }
-  }) as any
-)
-
-// POST /approvals/borrowing/:id/reject - 拒绝借款申请
-const rejectBorrowingRoute = createRoute({
-  method: 'post',
-  path: '/approvals/borrowing/{id}/reject',
-  summary: 'Reject borrowing request',
-  request: {
-    params: z.object({ id: z.string() }),
-    body: {
-      content: {
-        'application/json': {
-          schema: ApprovalActionSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({ ok: z.boolean() }),
-          }),
-        },
-      },
-      description: 'Rejected successfully',
-    },
-  },
-})
-
-approvalsRoutes.openapi(
-  rejectBorrowingRoute,
-  createRouteHandler(async (c: any) => {
-    const userId = c.get('userId')
-    if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-
-    if (!hasPermission(c, 'finance', 'borrowing', 'approve')) {
-      throw Errors.FORBIDDEN('没有审批借支的权限')
-    }
-
-    const id = c.req.param('id')
-    const body = c.req.valid('json') as { memo?: string }
-    const service = c.var.services.approval
-
-    await service.rejectBorrowing(id, userId, body.memo)
-    logAuditAction(
-      c,
-      'reject',
-      'borrowing',
       id,
       JSON.stringify({ action: 'reject', memo: body.memo })
     )

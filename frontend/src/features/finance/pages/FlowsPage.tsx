@@ -3,6 +3,7 @@ import { Button, Modal, Space, message, Upload, Card, Popconfirm, Input, Tag } f
 import { UploadOutlined, EyeOutlined, UndoOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../../config/api'
 import { isSupportedImageType, uploadImageAsWebP } from '../../../utils/image'
 import { useFlows, useUpdateFlowVoucher } from '../../../hooks'
@@ -20,9 +21,14 @@ const TYPE_LABELS: Record<string, string> = {
   expense: '支出',
   transfer: '转账',
   adjust: '调整',
+  borrowing_in: '借入资金',
+  lending_out: '借出资金',
+  repayment_in: '收回借款',
+  repayment_out: '偿还借款',
 }
 
 export function Flows() {
+  const navigate = useNavigate()
   // 权限
   const { hasPermission } = usePermissions()
   const canReverse = hasPermission('finance', 'flow', 'reverse')
@@ -129,8 +135,10 @@ export function Flows() {
                 { label: '全部', value: '' },
                 { value: 'income', label: '收入' },
                 { value: 'expense', label: '支出' },
-                { value: 'transfer', label: '转账' },
-                { value: 'adjust', label: '调整' },
+                { value: 'borrowing_in', label: '借入资金' },
+                { value: 'lending_out', label: '借出资金' },
+                { value: 'repayment_in', label: '收回借款' },
+                { value: 'repayment_out', label: '偿还借款' },
               ],
             },
             {
@@ -176,6 +184,11 @@ export function Flows() {
 
         <PageToolbar
           actions={[
+            {
+              label: '新建记账',
+              type: 'primary',
+              onClick: () => navigate('/finance/flows/create')
+            },
             {
               label: '刷新',
               onClick: () => refetch()

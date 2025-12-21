@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('Authentication', () => {
     test.beforeEach(async ({ page }) => {
@@ -10,7 +10,7 @@ test.describe('Authentication', () => {
 
     test('Basic Login Flow (No 2FA)', async ({ page }) => {
         // Mock login API
-        await page.route('**/api/auth/login-password', async route => {
+        await page.route('**/api/v2/auth/login', async route => {
             const body = JSON.parse(route.request().postData() || '{}');
             if (body.email === 'admin@example.com' && body.password === 'password') {
                 await route.fulfill({
@@ -41,13 +41,13 @@ test.describe('Authentication', () => {
         await expect(submitButton).toBeEnabled({ timeout: 10000 });
         await submitButton.click();
 
-        await expect(page).toHaveURL(/.*\/dashboard/);
+        await expect(page).toHaveURL(/.*\/my\/center/);
         await expect(page.getByText('工作台')).toBeVisible();
     });
 
     test('2FA (TOTP) Login Flow', async ({ page }) => {
         // Mock login step 1 (return needTotp)
-        await page.route('**/api/auth/login-password', async route => {
+        await page.route('**/api/v2/auth/login', async route => {
             const body = JSON.parse(route.request().postData() || '{}');
 
             // Step 2: With TOTP
@@ -95,11 +95,11 @@ test.describe('Authentication', () => {
         await page.fill('input[id="totp"]', '123456');
         await page.click('button[type="submit"]');
 
-        await expect(page).toHaveURL(/.*\/dashboard/);
+        await expect(page).toHaveURL(/.*\/my\/center/);
     });
 
     test('Login Error Handling', async ({ page }) => {
-        await page.route('**/api/auth/login-password', async route => {
+        await page.route('**/api/v2/auth/login', async route => {
             await route.fulfill({ status: 401, json: { error: '用户名或密码错误' } });
         });
 

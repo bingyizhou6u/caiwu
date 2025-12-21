@@ -34,7 +34,6 @@ const dashboardSchema = z.object({
       remaining: z.number(),
     }),
     pendingReimbursementCents: z.number(),
-    borrowingBalanceCents: z.number(),
   }),
   recentApplications: z.array(
     z.object({
@@ -116,35 +115,6 @@ const createReimbursementSchema = z.object({
   voucherUrl: z.string().optional(),
 })
 
-const borrowingSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  borrowerId: z.string().nullable(),
-  accountId: z.string(),
-  amountCents: z.number(),
-  currency: z.string(),
-  borrowDate: z.string(),
-  memo: z.string().nullable(),
-  status: z.string().nullable(),
-  approvedBy: z.string().nullable(),
-  approvedAt: z.number().nullable(),
-  createdAt: z.number().nullable(),
-  updatedAt: z.number().nullable(),
-  accountName: z.string().nullable().optional(),
-  repaidCents: z.number().optional(),
-})
-
-const borrowingStatsSchema = z.object({
-  totalBorrowedCents: z.number(),
-  totalRepaidCents: z.number(),
-  balanceCents: z.number(),
-})
-
-const createBorrowingSchema = z.object({
-  amountCents: z.number().int().positive(),
-  currency: z.string().default('CNY'),
-  memo: z.string().optional(),
-})
 
 const allowanceSchema = z.object({
   id: z.string(),
@@ -194,9 +164,6 @@ const profileSchema = z.object({
   name: z.string().nullable(),
   email: z.string(),
   phone: z.string().nullable(),
-  idCard: z.string().nullable().optional(),
-  bankAccount: z.string().nullable().optional(),
-  bankName: z.string().nullable().optional(),
   position: z.string().nullable().optional(),
   positionCode: z.string().nullable().optional(),
   department: z.string().nullable().optional(),
@@ -431,81 +398,6 @@ myRoutes.openapi(createReimbursementRoute, createRouteHandler(async (c: any) => 
   const body = c.req.valid('json') as any
   const result = await c.var.services.my.createReimbursement(userId, body)
   logAuditAction(c, 'create', 'expense_reimbursement', result.id, JSON.stringify(body))
-  return result
-}))
-
-// 借款
-const getBorrowingsRoute = createRoute({
-  method: 'get',
-  path: '/my/borrowings',
-  tags: ['My'],
-  summary: 'Get my borrowings',
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({
-              borrowings: z.array(borrowingSchema),
-              stats: borrowingStatsSchema,
-            }),
-          }),
-        },
-      },
-      description: 'Borrowings list and stats',
-    },
-  },
-})
-
-myRoutes.openapi(getBorrowingsRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  return await c.var.services.my.getBorrowings(userId)
-}))
-
-const createBorrowingRoute = createRoute({
-  method: 'post',
-  path: '/my/borrowings',
-  tags: ['My'],
-  summary: 'Create borrowing request',
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: createBorrowingSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({
-              ok: z.boolean(),
-              id: z.string(),
-            }),
-          }),
-        },
-      },
-      description: 'Borrowing created',
-    },
-  },
-})
-
-myRoutes.openapi(createBorrowingRoute, createRouteHandler(async (c: any) => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  const body = c.req.valid('json') as any
-  const result = await c.var.services.my.createBorrowing(userId, body)
-  logAuditAction(c, 'create', 'borrowing', result.id, JSON.stringify(body))
   return result
 }))
 

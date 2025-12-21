@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Card, Tabs, Tag, Button, Space, Modal, Input, message, Badge, Typography, Empty } from 'antd'
-import { CheckOutlined, CloseOutlined, CalendarOutlined, FileTextOutlined, BankOutlined } from '@ant-design/icons'
+import { CheckOutlined, CloseOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { useMyPendingApprovals, useApproveLeaveMy, useRejectLeave, useApproveReimbursement, useRejectReimbursement, useApproveBorrowing, useRejectBorrowing } from '../../../hooks'
+import { useMyPendingApprovals, useApproveLeaveMy, useRejectLeave, useApproveReimbursement, useRejectReimbursement } from '../../../hooks'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { AmountDisplay } from '../../../components/common'
@@ -36,19 +36,9 @@ interface PendingReimbursement {
   createdAt: number
 }
 
-interface PendingBorrowing {
-  id: string
-  employeeName: string
-  amountCents: number
-  currency_symbol: string
-  memo: string
-  createdAt: number
-}
-
 interface ApprovalCounts {
   leaves: number
   reimbursements: number
-  borrowings: number
 }
 
 const leaveTypeLabels: Record<string, string> = {
@@ -75,8 +65,6 @@ export function MyApprovals() {
   const { mutateAsync: rejectLeave } = useRejectLeave()
   const { mutateAsync: approveReimbursement } = useApproveReimbursement()
   const { mutateAsync: rejectReimbursement } = useRejectReimbursement()
-  const { mutateAsync: approveBorrowing } = useApproveBorrowing()
-  const { mutateAsync: rejectBorrowing } = useRejectBorrowing()
 
   const [memo, setMemo] = useState('')
 
@@ -89,8 +77,7 @@ export function MyApprovals() {
 
   const leaves = data?.leaves || []
   const reimbursements = data?.reimbursements || []
-  const borrowings = data?.borrowings || []
-  const counts = data?.counts || { leaves: 0, reimbursements: 0, borrowings: 0 }
+  const counts = data?.counts || { leaves: 0, reimbursements: 0 }
 
   const handleAction = withErrorHandler(
     async () => {
@@ -109,12 +96,6 @@ export function MyApprovals() {
           await approveReimbursement({ id, memo })
         } else {
           await rejectReimbursement({ id, memo })
-        }
-      } else if (type === 'borrowing') {
-        if (action === 'approve') {
-          await approveBorrowing({ id, memo })
-        } else {
-          await rejectBorrowing({ id, memo })
         }
       }
     },
@@ -170,23 +151,7 @@ export function MyApprovals() {
     },
   ]
 
-  const borrowingColumns = [
-    { title: '申请人', dataIndex: 'employeeName' },
-    { title: '金额', dataIndex: 'amountCents', render: (v: number, r: PendingBorrowing) => <AmountDisplay cents={v} currency={r.currency_symbol || 'CNY'} showSymbol={false} /> },
-    { title: '原因', dataIndex: 'memo', ellipsis: true },
-    { title: '申请时间', dataIndex: 'createdAt', render: (v: number) => dayjs(v).format('MM-DD HH:mm') },
-    {
-      title: '操作',
-      render: (_: any, r: PendingBorrowing) => (
-        <Space>
-          <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => showActionModal('borrowing', r.id, 'approve')}>通过</Button>
-          <Button danger size="small" icon={<CloseOutlined />} onClick={() => showActionModal('borrowing', r.id, 'reject')}>驳回</Button>
-        </Space>
-      )
-    },
-  ]
-
-  const totalPending = counts.leaves + counts.reimbursements + counts.borrowings
+  const totalPending = counts.leaves + counts.reimbursements
 
   return (
     <PageContainer
@@ -227,20 +192,6 @@ export function MyApprovals() {
                 tableProps={{ className: 'table-striped' }}
               />
             ) : <Empty description="暂无待审批报销" />
-          },
-          {
-            key: 'borrowings',
-            label: <><BankOutlined /> 借支 <Badge count={counts.borrowings} size="small" /></>,
-            children: borrowings.length > 0 ? (
-              <DataTable<any>
-                columns={borrowingColumns}
-                data={borrowings}
-                loading={loading}
-                rowKey="id"
-                pagination={{ pageSize: 10 }}
-                tableProps={{ className: 'table-striped' }}
-              />
-            ) : <Empty description="暂无待审批借支" />
           },
         ]} />
 

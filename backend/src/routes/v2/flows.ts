@@ -23,7 +23,7 @@ const cashFlowResponseSchema = z.object({
   id: z.string(),
   voucherNo: z.string().nullable(),
   bizDate: z.string(),
-  type: z.enum(['income', 'expense']),
+  type: z.enum(['income', 'expense', 'borrowing_in', 'lending_out', 'repayment_in', 'repayment_out']),
   accountId: z.string(),
   categoryId: z.string().nullable(),
   method: z.string().nullable(),

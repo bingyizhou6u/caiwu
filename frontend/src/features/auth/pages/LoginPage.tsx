@@ -47,7 +47,7 @@ export function Login() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            navigate('/dashboard')
+            navigate('/my/center')
         }
     }, [isAuthenticated, navigate])
 
@@ -83,7 +83,7 @@ export function Login() {
                 setUserInfo(data.user as unknown as Parameters<typeof setUserInfo>[0])
                 setToken(data.token ?? null)
                 message.success('登录成功')
-                navigate('/dashboard')
+                navigate('/my/center')
             }
         },
         {
@@ -107,7 +107,7 @@ export function Login() {
             setUserInfo(data.user as unknown as Parameters<typeof setUserInfo>[0])
             setToken(data.token ?? null)
             message.success('登录成功')
-            navigate('/dashboard')
+            navigate('/my/center')
         },
         {
             showSuccess: false, // 登录成功消息已手动处理

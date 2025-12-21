@@ -13,8 +13,8 @@ export const createCashFlowSchema = z
     accountId: uuidSchema,
     categoryId: uuidSchema,
     bizDate: dateSchema,
-    type: z.enum(['income', 'expense'], {
-      errorMap: () => ({ message: 'type必须为income或expense' }),
+    type: z.enum(['income', 'expense', 'borrowing_in', 'lending_out', 'repayment_in', 'repayment_out'], {
+      errorMap: () => ({ message: 'type必须为有效的记账类型' }),
     }),
     amountCents: z.number().int().positive('amountCents必须大于0'),
     voucherUrls: z.array(z.string().url('凭证URL格式不正确')).optional(),

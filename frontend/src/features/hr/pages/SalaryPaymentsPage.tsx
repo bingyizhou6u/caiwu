@@ -5,7 +5,8 @@ import type { ColumnsType } from 'antd/es/table'
 import { UploadOutlined, EyeOutlined } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
 import { api } from '../../../config/api'
-import { useCurrencies, useAccounts } from '../../../hooks/useBusinessData'
+import { useAccounts } from '../../../hooks/useBusinessData'
+import { useCurrencyOptions } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { useSalaryPayments, useGenerateSalaryPayments, useEmployeeConfirmSalary, useFinanceApproveSalary, usePaymentTransferSalary, useRequestAllocationSalary, useApproveAllocationSalary, useConfirmPaymentSalary } from '../../../hooks/business/useSalaryPayments'
@@ -83,7 +84,7 @@ export function SalaryPayments() {
 
   // Business data hooks
   const { data: accounts = [] } = useAccounts()
-  const { data: currencies = [] } = useCurrencies()
+  const { data: currencies = [] } = useCurrencyOptions()
 
   // 初始化生成表单
   useEffect(() => {

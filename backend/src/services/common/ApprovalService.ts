@@ -11,7 +11,6 @@ import type { OperationHistoryService } from '../system/OperationHistoryService.
 import { BatchQuery } from '../../utils/batch-query.js'
 import { DBPerformanceTracker } from '../../utils/db-performance.js'
 import {
-  borrowingStateMachine,
   leaveStateMachine,
   reimbursementStateMachine,
   StateMachine,
@@ -25,11 +24,7 @@ interface ApprovalRecord {
   id: string
   status: string | null
   employeeId?: string
-  userId?: string // 借款使用 userId 而不是 employeeId
   memo?: string | null
-  borrowDate?: string
-  accountId?: string
-  amountCents?: number
   [key: string]: any
 }
 
@@ -50,8 +45,7 @@ export class ApprovalService {
       return {
         leaves: [],
         reimbursements: [],
-        borrowings: [],
-        counts: { leaves: 0, reimbursements: 0, borrowings: 0 },
+        counts: { leaves: 0, reimbursements: 0 },
       }
     }
 
@@ -96,43 +90,6 @@ export class ApprovalService {
       .orderBy(desc(schema.expenseReimbursements.createdAt))
       .execute()
 
-    // 待审批借款 - 使用批量查询优化
-    const users = await DBPerformanceTracker.track(
-      'ApprovalService.getPendingApprovals.getEmployees',
-      () =>
-        BatchQuery.getByIds(
-          this.db,
-          schema.employees,
-          subordinateIds,
-          {
-            batchSize: 100,
-            parallel: true,
-            queryName: 'getEmployeesForApproval',
-          }
-        ).then((employees) => employees.map((e) => ({ id: e.id }))),
-      undefined // Context 可选
-    )
-
-    const userIds = users.map(u => u.id)
-
-    let pendingBorrowings: any[] = []
-    if (userIds.length > 0) {
-      pendingBorrowings = await this.db
-        .select({
-          borrowing: schema.borrowings,
-          employeeName: schema.employees.name,
-          currencySymbol: schema.currencies.symbol,
-        })
-        .from(schema.borrowings)
-        .leftJoin(schema.employees, eq(schema.employees.id, schema.borrowings.userId))
-        .leftJoin(schema.currencies, eq(schema.currencies.code, schema.borrowings.currency))
-        .where(
-          and(eq(schema.borrowings.status, 'pending'), inArray(schema.borrowings.userId, userIds))
-        )
-        .orderBy(desc(schema.borrowings.createdAt))
-        .execute()
-    }
-
     return {
       leaves: pendingLeaves.map(r => ({
         ...r.leave,
@@ -147,15 +104,9 @@ export class ApprovalService {
         orgDepartmentName: r.orgDepartmentName,
         currencySymbol: r.currencySymbol,
       })),
-      borrowings: pendingBorrowings.map(r => ({
-        ...r.borrowing,
-        employeeName: r.employeeName,
-        currencySymbol: r.currencySymbol,
-      })),
       counts: {
         leaves: pendingLeaves.length,
         reimbursements: pendingReimbursements.length,
-        borrowings: pendingBorrowings.length,
       },
     }
   }
@@ -170,7 +121,7 @@ export class ApprovalService {
     userId: string
     action: 'approve' | 'reject'
     stateMachine: StateMachine
-    entityType: 'leave' | 'reimbursement' | 'borrowing'
+    entityType: 'leave' | 'reimbursement'
     entityName: string
     memo?: string
     getEmployeeId?: (record: any, tx: any) => Promise<string>
@@ -203,10 +154,10 @@ export class ApprovalService {
       const newStatus = action === 'approve' ? 'approved' : 'rejected'
       stateMachine.validateTransition(record.status || 'pending', newStatus)
 
-      // 获取员工ID（支持自定义逻辑，如借款需要特殊处理）
+      // 获取员工ID
       const employeeId = getEmployeeId
         ? await getEmployeeId(record, tx)
-        : (record.employeeId || record.userId)
+        : record.employeeId
 
       const canApprove = await this.permissionService.canApprove(userId, employeeId)
       if (!canApprove) {
@@ -229,7 +180,7 @@ export class ApprovalService {
         .where(eq(table.id, id))
         .execute()
 
-      // 执行额外的更新后逻辑（如借款需要创建现金流）
+      // 执行额外的更新后逻辑
       if (afterUpdate) {
         await afterUpdate(record, tx, newStatus)
       }
@@ -255,7 +206,6 @@ export class ApprovalService {
     const names: Record<string, string> = {
       leave: '请假记录',
       reimbursement: '报销记录',
-      borrowing: '借支记录',
     }
     return names[entityType] || '记录'
   }
@@ -304,25 +254,6 @@ export class ApprovalService {
       .limit(limit)
       .execute()
 
-    const approvedBorrowings = await this.db
-      .select({
-        borrowing: schema.borrowings,
-        employeeName: schema.employees.name,
-        currencySymbol: schema.currencies.symbol,
-      })
-      .from(schema.borrowings)
-      .leftJoin(schema.employees, eq(schema.employees.id, schema.borrowings.userId))
-      .leftJoin(schema.currencies, eq(schema.currencies.code, schema.borrowings.currency))
-      .where(
-        and(
-          eq(schema.borrowings.approvedBy, userId),
-          inArray(schema.borrowings.status, ['approved', 'rejected'])
-        )
-      )
-      .orderBy(desc(schema.borrowings.approvedAt))
-      .limit(limit)
-      .execute()
-
     return {
       leaves: approvedLeaves.map(r => ({
         ...r.leave,
@@ -333,11 +264,6 @@ export class ApprovalService {
         ...r.reimbursement,
         employeeName: r.employeeName,
         departmentName: r.departmentName,
-        currencySymbol: r.currencySymbol,
-      })),
-      borrowings: approvedBorrowings.map(r => ({
-        ...r.borrowing,
-        employeeName: r.employeeName,
         currencySymbol: r.currencySymbol,
       })),
     }
@@ -392,61 +318,6 @@ export class ApprovalService {
       entityType: 'reimbursement',
       entityName: '报销记录',
       memo,
-    })
-  }
-
-  async approveBorrowing(id: string, userId: string, memo?: string) {
-    return this.processApproval({
-      table: schema.borrowings,
-      id,
-      userId,
-      action: 'approve',
-      stateMachine: borrowingStateMachine,
-      entityType: 'borrowing',
-      entityName: '借支记录',
-      memo,
-      getEmployeeId: async (record, tx) => {
-        return this.getBorrowerEmployeeId(record.userId, tx)
-      },
-      afterUpdate: async (record, tx, newStatus) => {
-        // 审批通过后自动创建支出流水
-        if (newStatus === 'approved') {
-          try {
-            const borrowingCategoryId = await this.getBorrowingCategoryId(tx)
-            await this.financeService.createCashFlow(
-              {
-                bizDate: record.borrowDate,
-                type: 'expense',
-                accountId: record.accountId,
-                amountCents: record.amountCents,
-                categoryId: borrowingCategoryId,
-                memo: `借款放款：${record.memo || ''}`,
-                createdBy: userId,
-              },
-              tx
-            )
-          } catch (error: any) {
-            // 如果创建现金流失败，记录错误但不影响审批流程
-            Logger.error('Failed to create cash flow for borrowing', { error })
-          }
-        }
-      },
-    })
-  }
-
-  async rejectBorrowing(id: string, userId: string, memo?: string) {
-    return this.processApproval({
-      table: schema.borrowings,
-      id,
-      userId,
-      action: 'reject',
-      stateMachine: borrowingStateMachine,
-      entityType: 'borrowing',
-      entityName: '借支记录',
-      memo,
-      getEmployeeId: async (record, tx) => {
-        return this.getBorrowerEmployeeId(record.userId, tx)
-      },
     })
   }
 
@@ -548,117 +419,5 @@ export class ApprovalService {
     }
 
     return results
-  }
-
-  /**
-   * 批量审批借款
-   */
-  async batchApproveBorrowings(
-    ids: string[],
-    userId: string,
-    memo?: string
-  ): Promise<{ success: string[]; failed: Array<{ id: string; error: string }> }> {
-    const results = {
-      success: [] as string[],
-      failed: [] as Array<{ id: string; error: string }>,
-    }
-
-    for (const id of ids) {
-      try {
-        await this.approveBorrowing(id, userId, memo)
-        results.success.push(id)
-      } catch (error: any) {
-        results.failed.push({ id, error: error.message || '审批失败' })
-      }
-    }
-
-    return results
-  }
-
-  /**
-   * 批量拒绝借款
-   */
-  async batchRejectBorrowings(
-    ids: string[],
-    userId: string,
-    memo?: string
-  ): Promise<{ success: string[]; failed: Array<{ id: string; error: string }> }> {
-    const results = {
-      success: [] as string[],
-      failed: [] as Array<{ id: string; error: string }>,
-    }
-
-    for (const id of ids) {
-      try {
-        await this.rejectBorrowing(id, userId, memo)
-        results.success.push(id)
-      } catch (error: any) {
-        results.failed.push({ id, error: error.message || '拒绝失败' })
-      }
-    }
-
-    return results
-  }
-
-  // 辅助方法
-  // checkApprovalPermission removed
-
-  private async getBorrowerEmployeeId(borrowerUserId: string, tx?: any): Promise<string> {
-    const db = tx || this.db
-    const borrowerUser = await db
-      .select({ email: schema.employees.email })
-      .from(schema.employees)
-      .where(eq(schema.employees.id, borrowerUserId))
-      .get()
-    if (!borrowerUser) {
-      throw Errors.FORBIDDEN('无法找到申请人信息')
-    }
-
-    const borrowerEmployee = await db
-      .select({ id: schema.employees.id })
-      .from(schema.employees)
-      .where(eq(schema.employees.email, borrowerUser.email))
-      .get()
-    if (!borrowerEmployee) {
-      throw Errors.FORBIDDEN('无法找到申请人员工信息')
-    }
-
-    return borrowerEmployee.id
-  }
-
-  /**
-   * 获取借款类别ID
-   * 优先从系统配置获取，否则从categories表查询名为"借款"或"借支"的类别
-   */
-  private async getBorrowingCategoryId(tx?: any): Promise<string | null> {
-    const db = tx || this.db
-
-    // 尝试从系统配置获取
-    const configRow = await db
-      .select({ value: schema.systemConfig.value })
-      .from(schema.systemConfig)
-      .where(eq(schema.systemConfig.key, 'borrowing_category_id'))
-      .get()
-
-    if (configRow?.value) {
-      return configRow.value
-    }
-
-    // 从categories表查询借款类别
-    const category = await db
-      .select({ id: schema.categories.id })
-      .from(schema.categories)
-      .where(
-        and(
-          eq(schema.categories.kind, 'expense'),
-          eq(schema.categories.active, 1),
-          // 查询名称包含"借款"或"借支"的类别
-          sql`(${schema.categories.name} LIKE '%借款%' OR ${schema.categories.name} LIKE '%借支%')`
-        )
-      )
-      .limit(1)
-      .get()
-
-    return category?.id || null
   }
 }

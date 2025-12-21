@@ -1,0 +1,554 @@
+/**
+ * 员工表单抽屉组件样式
+ * 现代化设计：分步表单、卡片分区、双列布局
+ */
+
+/* ==========================================
+   Drawer 容器
+   ========================================== */
+.employee-drawer .ant-drawer-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-bottom: none;
+    padding: 20px 24px;
+}
+
+.employee-drawer .ant-drawer-title {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.employee-drawer .ant-drawer-close {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.employee-drawer .ant-drawer-close:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.employee-drawer .ant-drawer-body {
+    padding: 0;
+    background: #f5f7fa;
+}
+
+.employee-drawer .ant-drawer-footer {
+    border-top: 1px solid #e8e8e8;
+    padding: 16px 24px;
+    background: #fff;
+}
+
+/* ==========================================
+   分步表单头部
+   ========================================== */
+.employee-steps-header {
+    background: #fff;
+    padding: 24px 32px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.employee-steps-header .ant-steps-item-title {
+    font-weight: 500;
+}
+
+.employee-steps-header .ant-steps-item-process .ant-steps-item-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+}
+
+.employee-steps-header .ant-steps-item-finish .ant-steps-item-icon {
+    background: #52c41a;
+    border-color: #52c41a;
+}
+
+.employee-steps-header .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon {
+    color: #fff;
+}
+
+/* ==========================================
+   表单内容区域
+   ========================================== */
+.employee-form-content {
+    padding: 24px 32px;
+    min-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.employee-form-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.employee-form-content::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+}
+
+/* ==========================================
+   表单卡片
+   ========================================== */
+.form-section-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid #f0f0f0;
+    transition: all 0.3s ease;
+}
+
+.form-section-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.form-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #f5f5f5;
+}
+
+.form-section-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #fff;
+}
+
+.form-section-icon.basic {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.form-section-icon.contact {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.form-section-icon.salary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.form-section-icon.status {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.form-section-icon.leave {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.form-section-title-group {
+    flex: 1;
+}
+
+.form-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+}
+
+.form-section-desc {
+    font-size: 13px;
+    color: #8c8c8c;
+    margin: 4px 0 0 0;
+}
+
+/* ==========================================
+   双列布局
+   ========================================== */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 24px;
+}
+
+.form-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px 24px;
+}
+
+.form-col-full {
+    grid-column: 1 / -1;
+}
+
+/* ==========================================
+   表单项增强
+   ========================================== */
+.employee-form-content .ant-form-item {
+    margin-bottom: 16px;
+}
+
+.employee-form-content .ant-form-item-label > label {
+    font-weight: 500;
+    color: #333;
+}
+
+.employee-form-content .ant-input,
+.employee-form-content .ant-input-number,
+.employee-form-content .ant-picker,
+.employee-form-content .ant-select-selector {
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.employee-form-content .ant-input:focus,
+.employee-form-content .ant-input-focused,
+.employee-form-content .ant-input-number:focus,
+.employee-form-content .ant-input-number-focused,
+.employee-form-content .ant-picker-focused,
+.employee-form-content .ant-select-focused .ant-select-selector {
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+/* ==========================================
+   薪资补贴卡片
+   ========================================== */
+.salary-entry-card {
+    background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.salary-entry-card:hover {
+    border-color: #d9d9d9;
+}
+
+.salary-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.salary-entry-type {
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+.salary-entry-content {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.salary-currency-select {
+    width: 120px;
+}
+
+.salary-amount-input {
+    flex: 1;
+}
+
+.salary-delete-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+/* ==========================================
+   补贴分组
+   ========================================== */
+.allowance-group {
+    background: #fafafa;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.allowance-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.allowance-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.allowance-group-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #fff;
+}
+
+.allowance-group-icon.living {
+    background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+}
+
+.allowance-group-icon.housing {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.allowance-group-icon.transport {
+    background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+}
+
+.allowance-group-icon.meal {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+/* ==========================================
+   添加按钮
+   ========================================== */
+.add-salary-btn {
+    width: 100%;
+    height: 44px;
+    border: 2px dashed #d9d9d9;
+    border-radius: 10px;
+    background: #fafafa;
+    color: #666;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.add-salary-btn:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.04);
+}
+
+/* ==========================================
+   状态卡片
+   ========================================== */
+.status-info-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.status-info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.status-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.status-info-label {
+    width: 100px;
+    color: #666;
+    font-size: 14px;
+}
+
+.status-info-value {
+    flex: 1;
+    font-weight: 500;
+    color: #333;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-badge.probation {
+    background: #fff7e6;
+    color: #fa8c16;
+}
+
+.status-badge.regular {
+    background: #f6ffed;
+    color: #52c41a;
+}
+
+.status-badge.resigned {
+    background: #fff1f0;
+    color: #ff4d4f;
+}
+
+/* ==========================================
+   操作区域
+   ========================================== */
+.status-action-group {
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.status-action-title {
+    font-weight: 600;
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-action-title.danger {
+    color: #ff4d4f;
+}
+
+/* ==========================================
+   底部按钮
+   ========================================== */
+.drawer-footer-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.drawer-footer-left {
+    display: flex;
+    gap: 12px;
+}
+
+.drawer-footer-right {
+    display: flex;
+    gap: 12px;
+}
+
+.step-btn {
+    min-width: 100px;
+    height: 40px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.step-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.step-btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+}
+
+/* ==========================================
+   Tab 样式（编辑模式）
+   ========================================== */
+.employee-edit-tabs .ant-tabs-nav {
+    background: #fff;
+    padding: 0 24px;
+    margin: 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.employee-edit-tabs .ant-tabs-tab {
+    padding: 16px 0;
+    font-weight: 500;
+}
+
+.employee-edit-tabs .ant-tabs-tab-active {
+    font-weight: 600;
+}
+
+.employee-edit-tabs .ant-tabs-ink-bar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+}
+
+/* ==========================================
+   响应式
+   ========================================== */
+@media (max-width: 768px) {
+    .form-row,
+    .form-row-3 {
+        grid-template-columns: 1fr;
+    }
+    
+    .employee-form-content {
+        padding: 16px;
+    }
+    
+    .form-section-card {
+        padding: 16px;
+    }
+    
+    .form-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+/* ==========================================
+   Dark Mode
+   ========================================== */
+[data-theme="dark"] .employee-drawer .ant-drawer-body {
+    background: #141414;
+}
+
+[data-theme="dark"] .form-section-card {
+    background: #1f1f1f;
+    border-color: #303030;
+}
+
+[data-theme="dark"] .form-section-title {
+    color: #fff;
+}
+
+[data-theme="dark"] .form-section-desc {
+    color: #8c8c8c;
+}
+
+[data-theme="dark"] .employee-steps-header {
+    background: #1f1f1f;
+    border-color: #303030;
+}
+
+[data-theme="dark"] .salary-entry-card {
+    background: #262626;
+    border-color: #303030;
+}
+
+[data-theme="dark"] .allowance-group {
+    background: #262626;
+}
+
+[data-theme="dark"] .status-info-card {
+    background: linear-gradient(135deg, #262626 0%, #1a1a1a 100%);
+}
+
+[data-theme="dark"] .status-action-group {
+    background: #1f1f1f;
+    border-color: #303030;
+}
+
+[data-theme="dark"] .employee-edit-tabs .ant-tabs-nav {
+    background: #1f1f1f;
+    border-color: #303030;
+}
+
+[data-theme="dark"] .add-salary-btn {
+    background: #262626;
+    border-color: #434343;
+    color: #8c8c8c;
+}
+
+[data-theme="dark"] .add-salary-btn:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+

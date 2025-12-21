@@ -306,7 +306,12 @@ export function SearchFilters({
         )
       case 'dateRange':
         return (
-          <Form.Item {...commonProps}>
+          <Form.Item 
+            {...commonProps} 
+            // 当使用 QuickDateRangePicker 时，禁用 label 的 htmlFor 属性
+            // 因为 QuickDateRangePicker 返回多个元素而非单一表单控件
+            htmlFor={field.showQuickSelect ? '' : undefined}
+          >
             {field.showQuickSelect ? (
               <QuickDateRangePicker
                 allowClear={field.allowClear !== false}

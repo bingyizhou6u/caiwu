@@ -6,7 +6,8 @@ import type { UploadFile } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { api } from '../../../config/api'
 import dayjs from 'dayjs'
-import { useCurrencies, useAccounts, useEmployees } from '../../../hooks/useBusinessData'
+import { useAccounts, useEmployees } from '../../../hooks/useBusinessData'
+import { useCurrencyOptions } from '../../../hooks'
 import { uploadImageAsWebP, isSupportedImageType } from '../../../utils/image'
 import { usePermissions } from '../../../utils/permissions'
 import { useAllowances, useCreateAllowance, useUpdateAllowance, useDeleteAllowance, useGenerateAllowances } from '../../../hooks/business/useAllowances'
@@ -81,7 +82,7 @@ export function AllowancePayments() {
   const { form: generateForm, validateWithZod: validateGenerate } = useZodForm(allowancePaymentGenerateSchema)
 
   // Business data hooks
-  const { data: currenciesData = [] } = useCurrencies()
+  const { data: currenciesData = [] } = useCurrencyOptions()
   const { data: accountsData = [] } = useAccounts()
   const { data: employeesData = [] } = useEmployees()
 

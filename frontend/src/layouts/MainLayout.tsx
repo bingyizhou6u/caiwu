@@ -6,6 +6,7 @@ import NProgress from 'nprogress'
 import { useAppStore } from '../store/useAppStore'
 import { buildMenuItems, KEY_TO_PATH, PATH_TO_KEY } from '../config/menu'
 import { MultiTabs } from '../components/layout/MultiTabs'
+import { PWAInstallPrompt } from '../components/PWAInstallPrompt'
 import { preloadRoute } from '../router'
 import '../styles/layouts/main-layout.css'
 
@@ -280,6 +281,7 @@ export function MainLayout() {
                     </div>
                 </Content>
             </Layout>
+            <PWAInstallPrompt />
         </Layout>
     )
 }

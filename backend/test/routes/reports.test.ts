@@ -134,7 +134,7 @@ describe('Reports API', () => {
       .execute()
 
     const res = await app.request(
-      `/api/v2/reports/ar-ap/summary?kind=AR&start=${today}&end=${today}&departmentId=${deptId}`,
+      `/api/v2/reports/ar-summary?start=${today}&end=${today}&departmentId=${deptId}`,
       {},
       env
     )

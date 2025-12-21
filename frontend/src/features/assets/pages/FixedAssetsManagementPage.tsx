@@ -7,7 +7,7 @@ import { useFixedAssets, useCreateFixedAsset, useUpdateFixedAsset, useDeleteFixe
 import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 import { useMultipleModals } from '../../../hooks/forms/useFormModal'
-import { useDepartments, useSites, useVendors, useCurrencies } from '../../../hooks'
+import { useDepartmentOptions, useSites, useVendors, useCurrencyOptions } from '../../../hooks'
 import { VirtualTable } from '../../../components/common/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton, AmountDisplay, EmptyText } from '../../../components/common'
@@ -75,16 +75,15 @@ export function FixedAssetsManagement() {
   const canDelete = isManager
 
   // Hooks
-  const { data: departments = [] } = useDepartments()
+  const { data: departments = [] } = useDepartmentOptions()
   const { data: sites = [] } = useSites()
   const { data: vendors = [] } = useVendors()
-  const { data: currencies = [] } = useCurrencies()
+  const { data: currencyOptions = [] } = useCurrencyOptions()
 
   // 确保所有数据都是数组
   const safeDepartments = Array.isArray(departments) ? departments : []
   const safeSites = Array.isArray(sites) ? sites : []
   const safeVendors = Array.isArray(vendors) ? vendors : []
-  const safeCurrencies = Array.isArray(currencies) ? currencies : []
 
   // 表单
   const [cForm] = Form.useForm()
@@ -378,7 +377,7 @@ export function FixedAssetsManagement() {
               <InputNumber className="form-full-width" min={0} precision={2} placeholder="请输入购买价格" />
             </Form.Item>
             <Form.Item name="currency" label="币种" required className="form-no-margin-bottom">
-              <Select options={safeCurrencies} showSearch optionFilterProp="label" placeholder="选择币种" />
+              <Select options={currencyOptions} showSearch optionFilterProp="label" placeholder="选择币种" />
             </Form.Item>
             <Form.Item name="vendorId" label="供应商" className="form-no-margin-bottom">
               <VendorSelect placeholder="选择供应商" allowClear />
@@ -429,7 +428,7 @@ export function FixedAssetsManagement() {
               <InputNumber className="form-full-width" min={0} precision={2} />
             </Form.Item>
             <Form.Item name="currency" label="币种" required className="form-no-margin-bottom">
-              <Select options={currencies} showSearch optionFilterProp="label" />
+              <Select options={currencyOptions} showSearch optionFilterProp="label" />
             </Form.Item>
             <Form.Item name="vendorId" label="供应商" className="form-no-margin-bottom">
               <VendorSelect allowClear />

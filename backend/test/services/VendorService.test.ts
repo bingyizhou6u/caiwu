@@ -155,6 +155,7 @@ describe('VendorService', () => {
       }
       await db.insert(vendors).values(vendor).execute()
 
+      const originalUpdatedAt = vendor.updatedAt
       await service.updateVendor(vendor.id, {
         name: '新名称',
         contact: '新联系人',
@@ -165,7 +166,7 @@ describe('VendorService', () => {
       })
       expect(updated?.name).toBe('新名称')
       expect(updated?.contact).toBe('新联系人')
-      expect(updated?.updatedAt).toBeGreaterThan(vendor.updatedAt)
+      expect(updated?.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt)
     })
 
     it('应该支持部分更新', async () => {

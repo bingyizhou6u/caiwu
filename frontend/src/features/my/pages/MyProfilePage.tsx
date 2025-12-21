@@ -2,7 +2,7 @@ import { Card, Descriptions, Button, Form, Input, Spin, Typography, Avatar, Spac
 import { FormModal } from '../../../components/FormModal'
 import { SensitiveField } from '../../../components/SensitiveField'
 import { EmptyText } from '../../../components/common'
-import { UserOutlined, EditOutlined, PhoneOutlined, MailOutlined, IdcardOutlined, BankOutlined, TeamOutlined } from '@ant-design/icons'
+import { UserOutlined, EditOutlined, PhoneOutlined, MailOutlined, TeamOutlined } from '@ant-design/icons'
 import { useMyProfile, useUpdateMyProfile } from '../../../hooks'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
@@ -99,13 +99,6 @@ export function MyProfile() {
             <Descriptions.Item label={<><PhoneOutlined /> 手机</>}>
               {profile.phone ? <SensitiveField value={profile.phone} type="phone" entityId={profile.id} entityType="employee" /> : '-'}
             </Descriptions.Item>
-            <Descriptions.Item label={<><IdcardOutlined /> 身份证</>}>
-              {profile.idCard ? <SensitiveField value={profile.idCard} type="default" entityId={profile.id} entityType="employee" /> : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label={<><BankOutlined /> 银行账户</>}>
-              {profile.bankAccount ? <SensitiveField value={profile.bankAccount} type="default" entityId={profile.id} entityType="employee" /> : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="开户行"><EmptyText value={profile.bankName} /></Descriptions.Item>
             <Descriptions.Item label="职位代码"><EmptyText value={profile.positionCode} /></Descriptions.Item>
             <Descriptions.Item label="入职日期"><EmptyText value={profile.entryDate} /></Descriptions.Item>
             <Descriptions.Item label="合同到期"><EmptyText value={profile.contractEndDate} /></Descriptions.Item>

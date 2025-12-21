@@ -7,7 +7,6 @@ export const pageTitles: Record<string, string> = {
     'my-center': '个人中心',
     'my-leaves': '我的请假',
     'my-reimbursements': '我的报销',
-    'my-borrowings': '我的借支',
     'my-assets': '我的资产',
     'company-policies': '公司制度',
     'my-approvals': '我的审批',
@@ -17,8 +16,6 @@ export const pageTitles: Record<string, string> = {
     'account-transfer': '账户转账',
     'account-transactions': '账户明细',
     'import': '数据导入',
-    'borrowings': '借款管理',
-    'repayments': '还款管理',
     'ar': '应收账款',
     'ap': '应付账款',
     // 站点管理
@@ -47,7 +44,6 @@ export const pageTitles: Record<string, string> = {
     'report-expense-summary': '日常支出汇总',
     'report-expense-detail': '日常支出明细',
     'report-account-balance': '账户余额报表',
-    'report-borrowing': '借款统计报表',
     // 系统设置
     'department': '项目管理',
     'category': '类别管理',
@@ -69,7 +65,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     myCenter.push({ key: 'my-center', label: '个人中心', icon: getMenuIcon('my-center') })
     myCenter.push({ key: 'my-leaves', label: '我的请假', icon: getMenuIcon('my-leaves') })
     myCenter.push({ key: 'my-reimbursements', label: '我的报销', icon: getMenuIcon('my-reimbursements') })
-    myCenter.push({ key: 'my-borrowings', label: '我的借支', icon: getMenuIcon('my-borrowings') })
     myCenter.push({ key: 'my-assets', label: '我的资产', icon: getMenuIcon('my-assets') })
     myCenter.push({ key: 'company-policies', label: '公司制度', icon: getMenuIcon('company-policies') })
     // 有管理权限的用户显示审批菜单
@@ -89,10 +84,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     if (hasPermission(userInfo, 'finance', 'transfer', 'view')) {
         finance.push({ key: 'account-transfer', label: '账户转账', icon: getMenuIcon('account-transfer') })
         finance.push({ key: 'account-transactions', label: '账户明细', icon: getMenuIcon('account-transactions') })
-    }
-    if (hasPermission(userInfo, 'finance', 'borrowing', 'view')) {
-        finance.push({ key: 'borrowings', label: '借款管理', icon: getMenuIcon('borrowings') })
-        finance.push({ key: 'repayments', label: '还款管理', icon: getMenuIcon('repayments') })
     }
     if (hasPermission(userInfo, 'finance', 'ar', 'view')) {
         finance.push({ key: 'ar', label: '应收账款', icon: getMenuIcon('ar') })
@@ -195,7 +186,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
                 { key: 'report-account-balance', label: '账户余额报表', icon: getMenuIcon('report-account-balance') },
                 { key: 'report-expense-summary', label: '日常支出汇总', icon: getMenuIcon('report-expense-summary') },
                 { key: 'report-expense-detail', label: '日常支出明细', icon: getMenuIcon('report-expense-detail') },
-                { key: 'report-borrowing', label: '借款统计报表', icon: getMenuIcon('report-borrowing') },
             ]
         })
 
@@ -251,7 +241,6 @@ export const KEY_TO_PATH: Record<string, string> = {
     'my-center': '/my/center',
     'my-leaves': '/my/leaves',
     'my-reimbursements': '/my/reimbursements',
-    'my-borrowings': '/my/borrowings',
     'my-assets': '/my/assets',
     'company-policies': '/my/policies',
     'my-approvals': '/my/approvals',
@@ -261,8 +250,6 @@ export const KEY_TO_PATH: Record<string, string> = {
     'account-transfer': '/finance/transfer',
     'account-transactions': '/finance/transactions',
     'import': '/finance/import',
-    'borrowings': '/finance/borrowings',
-    'repayments': '/finance/repayments',
     'ar': '/finance/ar',
     'ap': '/finance/ap',
 
@@ -288,7 +275,6 @@ export const KEY_TO_PATH: Record<string, string> = {
     'report-expense-summary': '/reports/expense-summary',
     'report-expense-detail': '/reports/expense-detail',
     'report-account-balance': '/reports/account-balance',
-    'report-borrowing': '/reports/borrowing',
 
     'department': '/system/departments',
     'category': '/system/categories',

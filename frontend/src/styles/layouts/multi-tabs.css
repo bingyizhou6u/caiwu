@@ -142,8 +142,6 @@
         font-size: 13px;
     }
 }
-<<<<<<<< HEAD:frontend/src/components/layout/MultiTabs.css
-
 /* Dark Mode Styles */
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-nav {
     background: var(--color-bg-layout);
@@ -196,5 +194,3 @@
     background: rgba(129, 140, 248, 0.15);
     color: var(--color-text-primary);
 }
-========
->>>>>>>> origin/cursor/front-end-style-analysis-98bb:frontend/src/styles/layouts/multi-tabs.css

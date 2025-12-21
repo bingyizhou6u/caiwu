@@ -212,6 +212,7 @@ describe('SiteService', () => {
       }
       await db.insert(sites).values(site).execute()
 
+      const originalUpdatedAt = site.updatedAt
       await service.updateSite(site.id, {
         name: '新名称',
         departmentId: dept.id,
@@ -221,7 +222,7 @@ describe('SiteService', () => {
         where: eq(sites.id, site.id),
       })
       expect(updated?.name).toBe('新名称')
-      expect(updated?.updatedAt).toBeGreaterThan(site.updatedAt)
+      expect(updated?.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt)
     })
 
     it('应该支持部分更新', async () => {

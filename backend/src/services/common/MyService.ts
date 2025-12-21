@@ -12,7 +12,6 @@ import type { FixedAssetAllocationService } from '../assets/FixedAssetAllocation
 import type { EmployeeService } from '../hr/EmployeeService.js'
 import type { AnnualLeaveService } from '../hr/AnnualLeaveService.js'
 import type { SalaryService } from '../hr/SalaryService.js'
-import type { BorrowingService } from '../finance/BorrowingService.js'
 
 export class MyService {
   constructor(
@@ -26,8 +25,7 @@ export class MyService {
     private fixedAssetAllocationService: FixedAssetAllocationService,
     private employeeService: EmployeeService,
     private annualLeaveService: AnnualLeaveService,
-    private salaryService: SalaryService,
-    private borrowingService: BorrowingService
+    private salaryService: SalaryService
   ) {}
 
   async getMyEmployeeId(userId: string): Promise<string | null> {
@@ -43,7 +41,7 @@ export class MyService {
       throw Errors.NOT_FOUND('未找到员工记录')
     }
 
-    const [empInfo, salary, pending, borrowingStats, annualLeaveStats] = await Promise.all([
+    const [empInfo, salary, pending, annualLeaveStats] = await Promise.all([
       // 员工信息
       this.employeeService.getById(employeeId),
 
@@ -54,9 +52,6 @@ export class MyService {
       this.expenseReimbursementService
         .getReimbursementStats(employeeId)
         .then(stats => stats.find(s => s.status === 'pending') || { count: 0, totalCents: 0 }),
-
-      // 借款余额
-      this.borrowingService.getEmployeeBorrowings(employeeId).then(res => res.stats),
 
       // 年假统计
       (async () => {
@@ -129,7 +124,6 @@ export class MyService {
               remaining: 0,
             },
         pendingReimbursementCents: pending.totalCents || 0,
-        borrowingBalanceCents: borrowingStats.balanceCents,
       },
       recentApplications: recent || [],
     }
@@ -199,25 +193,6 @@ export class MyService {
     const result = await this.expenseReimbursementService.createReimbursement({
       ...data,
       employeeId,
-      createdBy: userId,
-    })
-
-    return { ok: true, id: result.id }
-  }
-
-  async getBorrowings(userId: string) {
-    // FinanceService handles checking permissions if needed, but here we just pass the ID.
-    return await this.borrowingService.getEmployeeBorrowings(userId)
-  }
-
-  async createBorrowing(userId: string, data: any) {
-    const result = await this.borrowingService.createBorrowing({
-      userId,
-      accountId: 'default', // Placeholder
-      amountCents: data.amount_cents,
-      currency: data.currency,
-      borrowDate: new Date().toISOString().split('T')[0],
-      memo: data.memo,
       createdBy: userId,
     })
 

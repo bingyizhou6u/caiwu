@@ -4,7 +4,7 @@
  */
 
 import { Select, SelectProps } from 'antd'
-import { useCurrencies } from '../../hooks'
+import { useCurrencyOptions } from '../../hooks'
 import type { SelectOption } from '../../types/business'
 
 export interface CurrencySelectProps extends Omit<SelectProps, 'options' | 'loading'> {
@@ -29,7 +29,7 @@ export function CurrencySelect({
   formatLabel,
   ...props
 }: CurrencySelectProps) {
-  const { data: currencies = [], isLoading } = useCurrencies()
+  const { data: currencies = [], isLoading } = useCurrencyOptions()
 
   // 确保 currencies 是数组
   const safeCurrencies = Array.isArray(currencies) ? currencies : []
@@ -39,15 +39,15 @@ export function CurrencySelect({
     let label: string
     if (formatLabel) {
       // 从 label 中提取 code 和 name
-      const parts = curr.label.split(' - ')
+      const parts = String(curr.label).split(' - ')
       label = formatLabel({
-        code: parts[0] || curr.value,
-        name: parts[1] || curr.value,
+        code: parts[0] || String(curr.value),
+        name: parts[1] || String(curr.value),
       })
     } else if (codeOnly) {
-      label = curr.value
+      label = String(curr.value)
     } else {
-      label = curr.label
+      label = String(curr.label)
     }
 
     return {

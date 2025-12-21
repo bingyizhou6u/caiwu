@@ -6,7 +6,8 @@ import dayjs from 'dayjs'
 import { api } from '../../../config/api'
 import { isSupportedImageType, uploadImageAsWebP } from '../../../utils/image'
 import { useCreateFlow } from '../../../hooks'
-import { useDepartments, useAccounts, useAllCategories, useSites } from '../../../hooks/useBusinessData'
+import { useDepartmentOptions } from '../../../hooks'
+import { useAccounts, useAllCategories, useSites } from '../../../hooks/useBusinessData'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createFlowSchema } from '../../../validations/flow.schema'
 import { withErrorHandler } from '../../../utils/errorHandler'
@@ -17,7 +18,7 @@ export function FlowCreate() {
   const { form, validateWithZod } = useZodForm(createFlowSchema)
 
   // 数据 Hook
-  const { data: departments = [] } = useDepartments()
+  const { data: departments = [] } = useDepartmentOptions()
   const { data: accounts = [] } = useAccounts()
   const { data: allCategories = [] } = useAllCategories()
   const { data: sites = [] } = useSites()
@@ -45,9 +46,10 @@ export function FlowCreate() {
   // 类别根据类型过滤
   useEffect(() => {
     if (allCategories.length > 0) {
-      if (selectedType === 'income') {
+      // 借入/收回借款视为收入类别，借出/偿还借款视为支出类别
+      if (['income', 'borrowing_in', 'repayment_in'].includes(selectedType)) {
         setCategories(allCategories.filter((c: any) => c.kind === 'income'))
-      } else if (selectedType === 'expense') {
+      } else if (['expense', 'lending_out', 'repayment_out'].includes(selectedType)) {
         setCategories(allCategories.filter((c: any) => c.kind === 'expense'))
       } else {
         setCategories(allCategories)
@@ -145,8 +147,10 @@ export function FlowCreate() {
                   options={[
                     { value: 'income', label: '收入' },
                     { value: 'expense', label: '支出' },
-                    { value: 'transfer', label: '转账' },
-                    { value: 'adjust', label: '调整' },
+                    { value: 'borrowing_in', label: '借入资金' },
+                    { value: 'lending_out', label: '借出资金' },
+                    { value: 'repayment_in', label: '收回借款' },
+                    { value: 'repayment_out', label: '偿还借款' },
                   ]}
                   onChange={(value) => {
                     setSelectedType(value)

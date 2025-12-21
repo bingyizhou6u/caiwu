@@ -65,7 +65,7 @@ export function ResetPassword() {
             if (res.ok && data.ok) {
                 message.success('密码重置成功！正在跳转...')
                 setTimeout(() => {
-                    navigate('/dashboard')
+                    navigate('/my/center')
                 }, 1500)
             } else {
                 const msg = data.error || '重置失败，请重试'

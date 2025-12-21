@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { setupCommonMocks } from './utils/mock-api';
 
 test('employee management - navigate to create employee page', async ({ page }) => {
@@ -9,7 +9,7 @@ test('employee management - navigate to create employee page', async ({ page }) 
     await setupCommonMocks(page);
 
     // Mock permissions check endpoint
-    await page.route('**/api/auth/current', async route => {
+    await page.route('**/api/v2/auth/current', async route => {
         await route.fulfill({
             json: {
                 user: {
@@ -28,19 +28,18 @@ test('employee management - navigate to create employee page', async ({ page }) 
     });
 
     // Additional Master Data Mocks
-    await page.route('**/api/org-departments*', async route => {
+    await page.route('**/api/v2/org-departments*', async route => {
         await route.fulfill({ json: { results: [{ id: 'org1', name: 'Sales Team A', project_id: 'dept1', active: 1 }] } });
     });
-    await page.route('**/api/positions*', async route => {
+    await page.route('**/api/v2/positions*', async route => {
         await route.fulfill({ json: { results: [{ id: 'pos1', name: 'Sales Engineer', code: 'team_engineer', active: 1 }] } });
     });
-    await page.route('**/api/currencies*', async route => {
+    await page.route('**/api/v2/currencies*', async route => {
         await route.fulfill({ json: { results: [{ code: 'CNY', name: 'RMB' }] } });
     });
-    await page.route('**/api/hr/employees/summary*', async route => {
-        await route.fulfill({ json: { total: 0, active: 0, probation: 0, resigned: 0 } });
-    });
-    await page.route('**/api/employees*', async route => {
+    // Removed specific summary mock, relying on catch-all or not needed
+
+    await page.route('**/api/v2/employees*', async route => {
         await route.fulfill({ json: { results: [], total: 0 } });
     });
 
@@ -54,23 +53,22 @@ test('employee management - navigate to create employee page', async ({ page }) 
     // Wait for menu
     await expect(page.locator('.ant-menu')).toBeVisible();
 
-    // 3. Navigate to Create Employee via Menu
-    const hrMenu = page.locator('.ant-menu-submenu-title:has-text("人力资源")');
-    if (await hrMenu.isVisible()) {
-        const ariaExpanded = await hrMenu.getAttribute('aria-expanded');
-        if (ariaExpanded !== 'true') {
-            await hrMenu.click();
-        }
-    }
+    // 3. Navigate to Employee Management
+    await page.goto('http://localhost:5173/hr/employees');
+    await expect(page.locator('h1').filter({ hasText: '人员管理' })).toBeVisible({ timeout: 20000 });
 
-    await page.click('li.ant-menu-item:has-text("新建员工")');
+    // Wait for table to load to ensure page is interactive
+    await expect(page.locator('.ant-table-wrapper')).toBeVisible({ timeout: 20000 });
 
-    // 4. Verify Create Employee Page Loaded
-    await expect(page.locator('h1').filter({ hasText: '新建员工' })).toBeVisible({ timeout: 10000 });
+    // 4. Open Create Modal
+    await page.waitForTimeout(1000); // Small stability wait for button interactivity
+    await page.click('button:has-text("新建员工")');
+    await expect(page.locator('.ant-modal-title').filter({ hasText: '新建员工' })).toBeVisible({ timeout: 10000 });
 
-    // Verify form elements are present
-    await expect(page.locator('input#name')).toBeVisible();
-    await expect(page.locator('button').filter({ hasText: '保存' })).toBeVisible();
+    // Verify form elements are present in modal
+    const modal = page.locator('.ant-modal-content');
+    await expect(modal.locator('input#name')).toBeVisible();
+    await expect(modal.locator('button').filter({ hasText: '保存' })).toBeVisible();
 
     // 5. Fill out the form
     await page.fill('input#name', 'Test Employee');

@@ -31,7 +31,6 @@ export interface MyDashboard {
       remaining: number
     }
     pendingReimbursementCents: number
-    borrowingBalanceCents: number
   }
   recentApplications: Array<{
     id: string
@@ -185,64 +184,6 @@ export function useCreateMyReimbursement() {
 }
 
 /**
- * 我的借款
- */
-export interface MyBorrowing {
-  id: string
-  employeeId: string
-  amountCents: number
-  currency?: string
-  currency_symbol?: string
-  borrow_date?: string
-  memo?: string | null
-  status: string | null
-  accountName?: string
-  repaid_cents?: number
-  approvedBy?: string | null
-  approvedAt?: number | null
-  createdAt: number | null
-  balanceCents?: number
-}
-
-export interface MyBorrowingsResponse {
-  borrowings: MyBorrowing[]
-  stats: {
-    totalBorrowedCents: number
-    totalRepaidCents: number
-    balanceCents: number
-  }
-}
-
-export function useMyBorrowings() {
-  return useApiQuery<MyBorrowingsResponse>(
-    ['my', 'borrowings'],
-    api.my.borrowings,
-    {
-      staleTime: 5 * 60 * 1000,
-    }
-  )
-}
-
-export function useCreateMyBorrowing() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (data: {
-      amountCents: number
-      currency?: string
-      memo?: string
-    }) => {
-      const result = await apiClient.post<any>(api.my.borrowings, data)
-      return result
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my', 'borrowings'] })
-      queryClient.invalidateQueries({ queryKey: ['my', 'dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['borrowings'] })
-    },
-  })
-}
-
-/**
  * 我的资产
  */
 export interface MyAsset {
@@ -283,9 +224,6 @@ export interface MyProfile {
   name: string | null
   email: string
   phone?: string | null
-  idCard?: string | null
-  bankAccount?: string | null
-  bankName?: string | null
   position?: string | null
   positionCode?: string | null
   department?: string | null

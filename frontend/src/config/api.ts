@@ -1,8 +1,9 @@
 // API配置
-// 开发环境：使用本地代理或直接访问本地Worker
+// 开发环境：使用本地Worker (localhost:8787)
+// E2E测试环境：使用 VITE_API_HOST 环境变量指定的后端
 // 生产环境：使用相对路径，通过Cloudflare Pages内部绑定Worker
 const API_HOST = import.meta.env.DEV
-  ? 'https://caiwu-backend.bingyizhou6u.workers.dev'
+  ? (import.meta.env.VITE_API_HOST || 'http://localhost:8787')
   : ''
 
 // API Version Configuration
@@ -71,8 +72,6 @@ export const api = {
     expenseSummary: `${API_BASE}/api/v2/reports/expense-summary`,
     expenseDetail: `${API_BASE}/api/v2/reports/expense-detail`,
     accountBalance: `${API_BASE}/api/v2/reports/account-balance`,
-    borrowingSummary: `${API_BASE}/api/v2/reports/borrowing-summary`,
-    borrowingDetail: (userId: string) => `${API_BASE}/api/v2/reports/borrowing-detail/${userId}`,
     employeeSalary: `${API_BASE}/api/v2/reports/employee-salary`,
     newSiteRevenue: `${API_BASE}/api/v2/reports/new-site-revenue`,
     annualLeave: `${API_BASE}/api/v2/reports/annual-leave`,
@@ -83,9 +82,6 @@ export const api = {
   auditLogsOptions: `${API_BASE}/api/v2/audit-logs/options`,
   auditLogsExport: `${API_BASE}/api/v2/audit-logs/export`,
   init: `${API_BASE}/api/v2/init-if-empty`,
-  borrowings: `${API_BASE}/api/v2/borrowings`,
-  borrowingsBalance: `${API_BASE}/api/v2/borrowings/balance`,
-  repayments: `${API_BASE}/api/v2/repayments`,
   vendors: `${API_BASE}/api/v2/vendors`,
   vendorsById: (id: string) => `${API_BASE}/api/v2/vendors/${id}`,
   employees: `${API_BASE}/api/v2/employees`,
@@ -163,7 +159,6 @@ export const api = {
     dashboard: `${API_BASE}/api/v2/my/dashboard`,
     leaves: `${API_BASE}/api/v2/my/leaves`,
     reimbursements: `${API_BASE}/api/v2/my/reimbursements`,
-    borrowings: `${API_BASE}/api/v2/my/borrowings`,
     allowances: `${API_BASE}/api/v2/my/allowances`,
     assets: `${API_BASE}/api/v2/my/assets`,
     profile: `${API_BASE}/api/v2/my/profile`,
@@ -181,7 +176,5 @@ export const api = {
     leaveReject: (id: string) => `${API_BASE}/api/v2/approvals/leave/${id}/reject`,
     reimbursementApprove: (id: string) => `${API_BASE}/api/v2/approvals/reimbursement/${id}/approve`,
     reimbursementReject: (id: string) => `${API_BASE}/api/v2/approvals/reimbursement/${id}/reject`,
-    borrowingApprove: (id: string) => `${API_BASE}/api/v2/approvals/borrowing/${id}/approve`,
-    borrowingReject: (id: string) => `${API_BASE}/api/v2/approvals/borrowing/${id}/reject`,
   },
 }

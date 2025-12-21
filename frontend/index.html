@@ -2,13 +2,79 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AR公司管理系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    
+    <!-- 基础信息 -->
+    <title>AR公司财务管理系统</title>
+    <meta name="description" content="企业级财务管理系统 - 支持现金流管理、薪资发放、资产管理等功能" />
+    <meta name="author" content="AR Company" />
+    
+    <!-- PWA 配置 -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#3b82f6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e3a8a" media="(prefers-color-scheme: dark)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="AR财务" />
+    
+    <!-- Apple PWA 配置 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AR财务" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    
+    <!-- Windows PWA 配置 -->
+    <meta name="msapplication-TileColor" content="#3b82f6" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    
+    <!-- 图标 -->
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png" />
+    
+    <!-- 预连接优化 -->
+    <link rel="preconnect" href="https://caiwu-backend.bingyizhou6u.workers.dev" crossorigin />
+    <link rel="dns-prefetch" href="https://caiwu-backend.bingyizhou6u.workers.dev" />
+    
+    <!-- 安全策略 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- 颜色方案 -->
+    <meta name="color-scheme" content="light dark" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker 注册 -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async () => {
+          try {
+            const registration = await navigator.serviceWorker.register('/sw.js', {
+              scope: '/',
+              updateViaCache: 'none'
+            });
+            
+            // 检测更新
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // 新版本可用，可以提示用户刷新
+                    window.dispatchEvent(new CustomEvent('sw-update-available'));
+                  }
+                });
+              }
+            });
+            
+            console.log('✅ Service Worker 注册成功');
+          } catch (error) {
+            console.warn('⚠️ Service Worker 注册失败:', error);
+          }
+        });
+      }
+    </script>
   </body>
-  </html>
-
-
+</html>
