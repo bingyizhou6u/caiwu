@@ -3,19 +3,6 @@
 > 最后更新：2025-01-27  
 > 本文档索引帮助快速定位项目相关文档
 
-## 🚀 代码规范优化（最新）
-
-**重要**: 项目正在进行代码规范全面优化，请查看相关文档：
-
-- **[优化计划总览](./OPTIMIZATION_PLAN_SUMMARY.md)** ⭐⭐⭐⭐⭐ - 快速了解优化计划
-- **[文档索引](./OPTIMIZATION_INDEX.md)** - 所有优化相关文档索引
-- **[快速参考](./QUICK_REFERENCE.md)** - 快速查找修复方法
-- **[开发规范](./DEVELOPMENT_STANDARDS.md)** ⭐⭐⭐⭐⭐ - 完整的开发规范
-
-**开始优化**: 查看 [执行计划](./OPTIMIZATION_EXECUTION_PLAN.md) 和 [模块修复清单](./MODULE_FIX_CHECKLIST.md)
-
----
-
 ## 📚 文档结构
 
 ### 核心文档
@@ -31,6 +18,11 @@
 
 ### 开发文档
 
+#### 通用规范
+- **[开发规范](./DEVELOPMENT_STANDARDS.md)** ⭐⭐⭐⭐⭐ - 完整的开发规范
+- [API 版本管理](./API_VERSIONING.md) - API 版本规范
+- [使用指南](./USAGE_GUIDE.md) - 工具使用说明
+
 #### 前端开发
 - [测试指南](../frontend/src/docs/TESTING_GUIDE.md) - Vitest 和 Playwright 测试指南
 - [组件库文档](../frontend/src/docs/COMPONENT_LIBRARY.md) - 通用组件使用说明
@@ -44,9 +36,10 @@
 #### 后端开发
 - [测试迁移指南](../backend/test/V2_MIGRATION_GUIDE.md) - V2 API 测试迁移说明
 
-#### 代码审计
-- [RBAC 合规性审计](./RBAC_AUDIT.md) - 权限系统审计报告
-- [命名规范审计](./NAMING_AUDIT.md) - API 命名规范审计报告
+#### 代码审计 (归档)
+- [RBAC 合规性审计](./archive/audit-reports/RBAC_AUDIT.md) - 权限系统审计报告
+- [命名规范审计](./archive/audit-reports/NAMING_AUDIT.md) - API 命名规范审计报告
+- [代码规范审计](./archive/optimization_2025_12/CODE_STANDARDS_AUDIT_SUMMARY.md) - 代码规范审计报告
 
 ### 项目文档
 
@@ -56,9 +49,9 @@
 ### 归档文档
 
 历史文档已归档至 [archive](./archive/) 目录，包括：
+- [代码优化总结 (2025-12)](./archive/optimization_2025_12/OPTIMIZATION_FINAL_SUMMARY.md)
 - 前端重构相关文档
-- 代码优化计划
-- 业务改进建议
+- 历史代码审计报告
 
 **注意**: 归档文档可能包含过时信息，仅供参考。
 
@@ -69,11 +62,11 @@
 ### 新手入门
 1. 阅读 [部署指南](./DEPLOYMENT.md) 了解项目架构
 2. 查看 [前端 README](../frontend/README.md) 和 [后端 README](../backend/README.md)
-3. 参考 [API 最佳实践](../frontend/docs/API_BEST_PRACTICES.md) 开始开发
+3. 参考 [开发规范](./DEVELOPMENT_STANDARDS.md) 开始开发
 
 ### 开发指南
 - **前端开发**: 查看 `frontend/src/docs/` 目录下的文档
-- **后端开发**: 查看 `backend/README.md` 和 `backend/test/V2_MIGRATION_GUIDE.md`
+- **后端开发**: 查看 `backend/README.md`
 - **测试**: 参考 [测试指南](../frontend/src/docs/TESTING_GUIDE.md)
 
 ### 架构理解
