@@ -1,6 +1,6 @@
 /**
  * 财务报表服务
- * 处理财务相关的报表：AR/AP、费用、账户余额、借款
+ * 处理财务相关的报表：AR/AP、费用、账户余额
  */
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
@@ -12,8 +12,6 @@ import {
   categories,
   departments,
   sites,
-  borrowings,
-  repayments,
   employees,
 } from '../../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
@@ -26,7 +24,7 @@ export class FinancialReportService {
   constructor(
     private db: DrizzleD1Database<typeof schema>,
     private kv: KVNamespace
-  ) {}
+  ) { }
 
   async getArApSummary(kind: 'AR' | 'AP', start: string, end: string, departmentId?: string) {
     const conditions = [
@@ -278,106 +276,6 @@ export class FinancialReportService {
     return result
   }
 
-  async getBorrowingSummary(start?: string, end?: string, userId?: string) {
-    const conditions = []
-    if (start && end) {
-      conditions.push(gte(borrowings.createdAt, new Date(start).getTime()))
-      conditions.push(lte(borrowings.createdAt, new Date(end).getTime()))
-    }
-    if (userId) {
-      conditions.push(eq(borrowings.userId, userId))
-    }
-
-    const rows = await this.db
-      .select({
-        userId: borrowings.userId,
-        userName: employees.name,
-        userEmail: employees.email,
-        borrowedCents: sql<number>`coalesce(sum(${borrowings.amountCents}), 0)`,
-        repaidCents: sql<number>`coalesce(sum(${repayments.amountCents}), 0)`,
-      })
-      .from(borrowings)
-      .leftJoin(employees, eq(employees.id, borrowings.userId))
-      .leftJoin(repayments, eq(repayments.borrowingId, borrowings.id))
-      .where(and(...conditions))
-      .groupBy(borrowings.userId, employees.name, employees.email)
-      .all()
-
-    return {
-      results: rows.map(r => ({
-        userId: r.userId,
-        borrowerName: r.userName,
-        borrowerEmail: r.userEmail,
-        totalBorrowedCents: r.borrowedCents,
-        totalRepaidCents: r.repaidCents,
-        balanceCents: r.borrowedCents - r.repaidCents,
-        currency: 'CNY',
-      })),
-    }
-  }
-
-  async getBorrowingDetail(userId: string, start?: string, end?: string) {
-    const conditions = [eq(borrowings.userId, userId)]
-    if (start && end) {
-      conditions.push(gte(borrowings.createdAt, new Date(start).getTime()))
-      conditions.push(lte(borrowings.createdAt, new Date(end).getTime()))
-    }
-
-    const borrowingRows = await this.db
-      .select({
-        borrowing: borrowings,
-        userName: employees.name,
-      })
-      .from(borrowings)
-      .leftJoin(employees, eq(employees.id, borrowings.userId))
-      .where(and(...conditions))
-      .orderBy(desc(borrowings.createdAt))
-      .all()
-
-    const borrowingIds = borrowingRows.map(b => b.borrowing.id)
-    let repaymentRows: any[] = []
-
-    if (borrowingIds.length > 0) {
-      repaymentRows = await query(
-        this.db,
-        'FinancialReportService.getBorrowingReport.getRepayments',
-        () => this.db
-          .select()
-          .from(repayments)
-          .where(inArray(repayments.borrowingId, borrowingIds))
-          .orderBy(desc(repayments.createdAt))
-          .all(),
-        undefined
-      )
-    }
-
-    const user = await this.db
-      .select({
-        id: employees.id,
-        name: employees.name,
-        email: employees.email,
-      })
-      .from(employees)
-      .where(eq(employees.id, userId))
-      .get()
-
-    if (!user) {
-      return {
-        user: { id: userId, name: 'Unknown' },
-        borrowings: [],
-        repayments: [],
-      }
-    }
-
-    return {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-      borrowings: borrowingRows.map(b => ({ ...b.borrowing, userName: b.userName })),
-      repayments: repaymentRows,
-    }
-  }
+  // Note: getBorrowingSummary and getBorrowingDetail have been removed
+  // Borrowing/lending is now tracked via flows with type = 'borrowing_in' | 'lending_out' | 'repayment_in' | 'repayment_out'
 }
-

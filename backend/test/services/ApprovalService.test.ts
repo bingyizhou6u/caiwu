@@ -14,7 +14,6 @@ import {
   positions,
   employeeLeaves,
   expenseReimbursements,
-  borrowings,
   currencies,
 } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
@@ -128,7 +127,6 @@ describe('ApprovalService', () => {
     // Clean Transactional Tables
     await db.delete(employeeLeaves).execute()
     await db.delete(expenseReimbursements).execute()
-    await db.delete(borrowings).execute()
     await db.delete(employees).execute()
 
     // Seed Users & Employees
@@ -216,25 +214,10 @@ describe('ApprovalService', () => {
         })
         .execute()
 
-      await db
-        .insert(borrowings)
-        .values({
-          id: uuid(),
-          userId: subordinateUserId, // Linked via User
-          accountId: uuid(), // Dummy account
-          amountCents: 5000,
-          currency: 'CNY',
-          borrowDate: '2023-01-01',
-          status: 'pending',
-          createdAt: Date.now(),
-        })
-        .execute()
-
       const result = await service.getPendingApprovals(managerUserId)
 
       expect(result.counts.leaves).toBe(1)
       expect(result.counts.reimbursements).toBe(1)
-      expect(result.counts.borrowings).toBe(1)
       expect(result.leaves[0].employeeName).toBe('Subordinate')
     })
 
@@ -392,48 +375,6 @@ describe('ApprovalService', () => {
         .execute()
 
       await expect(service.approveReimbursement(id, managerUserId)).rejects.toThrow('无权审批')
-    })
-  })
-
-  describe('approveBorrowing', () => {
-    it('should approve borrowing', async () => {
-      const id = uuid()
-      await db
-        .insert(borrowings)
-        .values({
-          id,
-          userId: subordinateUserId,
-          accountId: uuid(),
-          amountCents: 5000,
-          currency: 'CNY',
-          borrowDate: '2023-01-01',
-          status: 'pending',
-          createdAt: Date.now(),
-        })
-        .execute()
-
-      await service.approveBorrowing(id, managerUserId)
-      const updated = await db.select().from(borrowings).where(eq(borrowings.id, id)).get()
-      expect(updated?.status).toBe('approved')
-    })
-
-    it('should throw FORBIDDEN for non-subordinate borrowing', async () => {
-      const id = uuid()
-      await db
-        .insert(borrowings)
-        .values({
-          id,
-          userId: otherUserId, // Dept B user
-          accountId: uuid(),
-          amountCents: 5000,
-          currency: 'CNY',
-          borrowDate: '2023-01-01',
-          status: 'pending',
-          createdAt: Date.now(),
-        })
-        .execute()
-
-      await expect(service.approveBorrowing(id, managerUserId)).rejects.toThrow('无权审批')
     })
   })
 

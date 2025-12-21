@@ -27,7 +27,7 @@ export async function getAuthToken(config: LiveEnvConfig): Promise<string> {
 
     // 构建登录请求
     const loginUrl = `${config.baseUrl}/api/v2/auth/login`;
-    
+
     // 第一步：邮箱+密码登录
     const loginResponse = await fetch(loginUrl, {
         method: 'POST',
@@ -48,7 +48,7 @@ export async function getAuthToken(config: LiveEnvConfig): Promise<string> {
     const loginResponseData = await loginResponse.json();
     // 处理统一响应格式
     const loginData = loginResponseData.success ? loginResponseData.data : loginResponseData;
-    
+
     // 检查是否需要 TOTP
     if (loginData.needTotp) {
         // 生成 TOTP 验证码
@@ -76,7 +76,7 @@ export async function getAuthToken(config: LiveEnvConfig): Promise<string> {
         const totpResponseData = await totpResponse.json();
         // 处理统一响应格式
         const totpData = totpResponseData.success ? totpResponseData.data : totpResponseData;
-        
+
         if (!totpData.token) {
             throw new Error('TOTP 验证后未返回 token');
         }
@@ -85,8 +85,8 @@ export async function getAuthToken(config: LiveEnvConfig): Promise<string> {
         cachedUserInfo = totpData.user;
         // 设置 token 过期时间（默认 24 小时）
         tokenExpiry = Date.now() + (totpData.expiresIn || 86400) * 1000;
-        
-        return cachedToken;
+
+        return cachedToken as string;
     } else {
         // 直接登录成功
         if (!loginData.token) {
@@ -97,8 +97,8 @@ export async function getAuthToken(config: LiveEnvConfig): Promise<string> {
         cachedUserInfo = loginData.user;
         // 设置 token 过期时间（默认 24 小时）
         tokenExpiry = Date.now() + (loginData.expiresIn || 86400) * 1000;
-        
-        return cachedToken;
+
+        return cachedToken as string;
     }
 }
 

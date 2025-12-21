@@ -69,8 +69,7 @@ describe('Approval Routes', () => {
     mockApprovalService.getPendingApprovals.mockResolvedValue({
       leaves: [],
       reimbursements: [],
-      borrowings: [],
-      counts: { leaves: 0, reimbursements: 0, borrowings: 0 },
+      counts: { leaves: 0, reimbursements: 0 },
     })
 
     const res = await app.request('/approvals/pending', {}, env, executionCtx)
@@ -142,28 +141,6 @@ describe('Approval Routes', () => {
     expect(res.status).toBe(200)
     expect(mockApprovalService.approveReimbursement).toHaveBeenCalledWith(
       'reimb-id',
-      'approver-id',
-      'Ok'
-    )
-  })
-
-  it('should approve borrowing with permission', async () => {
-    mockApprovalService.approveBorrowing.mockResolvedValue(undefined)
-
-    const res = await app.request(
-      '/approvals/borrowing/borrow-id/approve',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memo: 'Ok' }),
-      },
-      env,
-      executionCtx
-    )
-
-    expect(res.status).toBe(200)
-    expect(mockApprovalService.approveBorrowing).toHaveBeenCalledWith(
-      'borrow-id',
       'approver-id',
       'Ok'
     )

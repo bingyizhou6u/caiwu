@@ -5,6 +5,7 @@ import type { UploadFile } from 'antd'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../../config/api'
+import { api as apiClient } from '../../../api/http'
 import { isSupportedImageType, uploadImageAsWebP } from '../../../utils/image'
 import { useFlows, useUpdateFlowVoucher } from '../../../hooks'
 import { useTableActions } from '../../../hooks/forms/useTableActions'
@@ -101,7 +102,7 @@ export function Flows() {
     }
 
     try {
-      const response = await api.post(`/api/v2/flows/${flowId}/reverse`, {
+      const response = await apiClient.post<any>(`${api.flows}/${flowId}/reverse`, {
         reversalReason: reversalReason.trim(),
       })
 

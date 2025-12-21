@@ -57,13 +57,7 @@ export class ReportService {
     return this.financialService.getAccountBalance(asOf)
   }
 
-  async getBorrowingSummary(start?: string, end?: string, userId?: string) {
-    return this.financialService.getBorrowingSummary(start, end, userId)
-  }
-
-  async getBorrowingDetail(userId: string, start?: string, end?: string) {
-    return this.financialService.getBorrowingDetail(userId, start, end)
-  }
+  // Note: getBorrowingSummary and getBorrowingDetail removed - borrowing tracked via flows
 
   async getNewSiteRevenue(start: string, end: string, days: number = 30, departmentId?: string) {
     return this.businessService.getNewSiteRevenue(start, end, days, departmentId)

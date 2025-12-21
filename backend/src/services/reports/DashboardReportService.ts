@@ -9,8 +9,6 @@ import {
   cashFlows,
   accounts,
   arApDocs,
-  borrowings,
-  repayments,
   departments,
   categories,
 } from '../../db/schema.js'
@@ -21,7 +19,7 @@ export class DashboardReportService {
   constructor(
     private db: DrizzleD1Database<typeof schema>,
     private kv: KVNamespace
-  ) {}
+  ) { }
 
   async getDashboardStats(departmentId?: string) {
     const cacheKey = `report:dashboard:${new Date().toISOString().slice(0, 10)}:${departmentId || 'all'}`
@@ -102,21 +100,7 @@ export class DashboardReportService {
       .groupBy(arApDocs.kind)
       .all()
 
-    // 借款统计
-    const borrowingStats = await this.db
-      .select({
-        borrower_count: sql<number>`count(distinct ${borrowings.userId})`,
-        total_borrowed_cents: sql<number>`coalesce(sum(${borrowings.amountCents}), 0)`,
-      })
-      .from(borrowings)
-      .get()
-
-    const repaymentStats = await this.db
-      .select({
-        total_repaid_cents: sql<number>`coalesce(sum(${repayments.amountCents}), 0)`,
-      })
-      .from(repayments)
-      .get()
+    // Note: borrowing stats removed - borrowing/lending now tracked via flows
 
     // 最近流水
     const recentConditions = []
@@ -163,13 +147,6 @@ export class DashboardReportService {
         }
         return acc
       }, {}),
-      borrowings: {
-        borrowerCount: borrowingStats?.borrower_count || 0,
-        totalBorrowedCents: borrowingStats?.total_borrowed_cents || 0,
-        totalRepaidCents: repaymentStats?.total_repaid_cents || 0,
-        balanceCents:
-          (borrowingStats?.total_borrowed_cents || 0) - (repaymentStats?.total_repaid_cents || 0),
-      },
       recentFlows: recentFlows.map(r => ({
         ...r.flow,
         accountName: r.accountName,

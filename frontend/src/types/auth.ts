@@ -43,14 +43,4 @@ export interface ResetPasswordPayload {
     password: string
 }
 
-/**
- * 认证状态（已废弃）
- * 当前项目使用 Zustand store (useAppStore) 管理认证状态
- * @deprecated 请使用 useAppStore 替代
- */
-export interface AuthState {
-    user: User | null
-    loggedIn: boolean
-    loading: boolean
-    permissions: Record<string, boolean>
-}
+

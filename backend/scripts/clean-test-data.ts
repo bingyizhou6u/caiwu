@@ -36,8 +36,6 @@ const MODULE_TABLES: Record<string, Array<keyof typeof schema>> = {
   finance: [
     'accountTransactions',
     'cashFlows',
-    'borrowings',
-    'borrowers',
     'arApDocs',
   ],
   hr: [

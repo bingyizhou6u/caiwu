@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  getDataAccessFilter,
+  getDataAccessFilterSQL,
   // canViewEmployee, // Removed as per instruction
   hasPermission,
   Position,
@@ -40,53 +40,12 @@ const createMockContext = (
   } as any
 }
 
+
 describe('RBAC (Role-Based Access Control)', () => {
-  describe('getDataAccessFilter', () => {
-    it('Level 1 (HQ): should return global access', () => {
-      const ctx = createMockContext({ level: 1 } as Position, { id: 'u1' } as unknown as Employee)
-      const filter = getDataAccessFilter(ctx)
-      expect(filter.where).toBe('1=1')
-      expect(filter.binds).toEqual([])
-    })
+  // Note: getDataAccessFilter tests removed - function was deprecated and removed.
+  // Data access filtering is now done via getDataAccessFilterSQL which returns SQL objects
+  // and is tested through integration tests.
 
-    it('Level 2 (Project): should filter by departmentId', () => {
-      const ctx = createMockContext(
-        { level: 2 } as Position,
-        { id: 'u2', departmentId: 'dept-a' } as unknown as Employee
-      )
-      const filter = getDataAccessFilter(ctx, 't')
-      expect(filter.where).toBe('t.departmentId = ?')
-      expect(filter.binds).toEqual(['dept-a'])
-    })
-
-    it('Level 3 (Team Leader): should filter by orgDepartmentId', () => {
-      const ctx = createMockContext(
-        { level: 3, code: 'team_leader' } as Position,
-        { id: 'u3', orgDepartmentId: 'org-1' } as unknown as Employee
-      )
-      const filter = getDataAccessFilter(ctx, 't')
-      expect(filter.where).toBe('t.orgDepartmentId = ?')
-      expect(filter.binds).toEqual(['org-1'])
-    })
-
-    it('Level 3 (Engineer): should filter by own id', () => {
-      const ctx = createMockContext(
-        { level: 3, code: 'team_engineer' } as Position,
-        { id: 'emp-1' } as unknown as Employee
-      )
-      const filter = getDataAccessFilter(ctx, 't')
-      expect(filter.where).toBe('t.id = ?')
-      expect(filter.binds).toEqual(['emp-1'])
-    })
-
-    it('Missing context: should return 1=0', () => {
-      // @ts-ignore
-      const filter = getDataAccessFilter({ get: () => undefined } as any)
-      expect(filter.where).toBe('1=0')
-    })
-  })
-
-  // Removed old canViewEmployee tests as per instruction
 
   describe('RBAC (PermissionService)', () => {
     let service: PermissionService

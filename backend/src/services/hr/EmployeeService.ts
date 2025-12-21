@@ -1,4 +1,4 @@
-import { eq, and, like, or, inArray, desc, sql, isNotNull } from 'drizzle-orm'
+import { eq, and, like, or, inArray, desc, sql, isNotNull, SQL } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { employees, departments, orgDepartments, positions, userDepartments } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
@@ -387,17 +387,24 @@ export class EmployeeService {
       .leftJoin(positions, eq(employees.positionId, positions.id))
   }
 
-  async getAll(filters: {
-    status?: string
-    departmentId?: string
-    orgDepartmentId?: string
-    name?: string
-    email?: string
-    positionId?: string
-    limit?: number
-    offset?: number
-  }) {
+  async getAll(
+    filters: {
+      status?: string
+      departmentId?: string
+      orgDepartmentId?: string
+      name?: string
+      email?: string
+      positionId?: string
+      limit?: number
+      offset?: number
+    },
+    accessFilter?: SQL
+  ) {
     const conditions = []
+
+    if (accessFilter) {
+      conditions.push(accessFilter)
+    }
 
     if (filters.status) {
       conditions.push(eq(employees.status, filters.status))

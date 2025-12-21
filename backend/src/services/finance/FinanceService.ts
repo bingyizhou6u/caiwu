@@ -7,8 +7,6 @@ import {
   categories,
   sites,
   departments,
-  borrowings,
-  repayments,
   siteBills,
   employees,
   currencies,

@@ -65,7 +65,6 @@ export type AppVariables = {
     annualLeave: AnnualLeaveService
     permission: PermissionService
     email: EmailService
-    borrowing: BorrowingService
     siteBill: SiteBillService
     arAp: ArApService
     accountTransfer: AccountTransferService
@@ -111,7 +110,6 @@ import type { AttendanceService } from './services/hr/AttendanceService.js'
 import { AnnualLeaveService } from './services/hr/AnnualLeaveService.js'
 import { PermissionService } from './services/hr/PermissionService.js'
 import { EmailService } from './services/common/EmailService.js'
-import { BorrowingService } from './services/finance/BorrowingService.js'
 import { SiteBillService } from './services/finance/SiteBillService.js'
 import { ArApService } from './services/finance/ArApService.js'
 import { AccountTransferService } from './services/finance/AccountTransferService.js'

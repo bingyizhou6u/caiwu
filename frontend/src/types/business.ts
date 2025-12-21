@@ -10,7 +10,7 @@ export interface Flow {
     id: string
     voucherNo?: string
     bizDate: string
-    type: 'income' | 'expense' | 'transfer' | 'adjust'
+    type: 'income' | 'expense' | 'transfer' | 'adjust' | 'borrowing_in' | 'lending_out' | 'repayment_in' | 'repayment_out'
     accountId: string
     accountName?: string
     categoryId?: string
@@ -102,9 +102,7 @@ export interface ARAP {
     amountCents: number
     currency: string
     status: 'pending' | 'paid' | 'partial_paid' | 'overdue' | 'bad_debt' | 'open'
-    paidAmountCents: number // @deprecated use settledCents
     settledCents: number
     remainingCents: number
-    memo?: string // @deprecated use description
-    description?: string
+    memo?: string
 }

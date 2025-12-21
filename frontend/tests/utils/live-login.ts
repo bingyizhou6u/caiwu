@@ -19,11 +19,11 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
     if (!currentUrl.includes('/login')) {
         // 尝试访问一个需要登录的页面来验证
         try {
-            const response = await page.goto(`${config.baseUrl}/my/center`, { 
+            const response = await page.goto(`${config.baseUrl}/my/center`, {
                 timeout: 10000,
                 waitUntil: 'domcontentloaded'
             });
-            
+
             // 检查响应状态
             if (response && response.status() === 200) {
                 await page.waitForTimeout(2000);
@@ -48,7 +48,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
         timeout: config.navigationTimeout,
         waitUntil: 'domcontentloaded', // 使用 domcontentloaded 避免等待所有资源
     });
-    
+
     // 增加短暂延迟，避免请求过快
     await page.waitForTimeout(1000);
 
@@ -83,16 +83,16 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
             waitUntil: 'domcontentloaded',
         });
         await page.waitForTimeout(2000);
-        
+
         // 重新填写表单
         const emailInputRetry = page.getByPlaceholder('请输入邮箱地址');
         await emailInputRetry.clear();
         await emailInputRetry.fill(config.email);
-        
+
         const passwordInputRetry = page.getByPlaceholder('请输入密码');
         await passwordInputRetry.clear();
         await passwordInputRetry.fill(config.password);
-        
+
         const loginButtonRetry = page.getByRole('button', { name: '登 录' });
         await loginButtonRetry.click();
         await page.waitForTimeout(3000);
@@ -102,7 +102,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
     const errorMessage = page.locator('.ant-message-error, .ant-alert-error');
     const hasError = await errorMessage.isVisible().catch(() => false);
     if (hasError) {
-        const errorText = await errorMessage.textContent().catch(() => '');
+        const errorText = await errorMessage.textContent().catch(() => '') || '';
         // 如果是 Cloudflare 错误，不立即抛出，等待重试
         if (!errorText.includes('Worker exceeded')) {
             throw new Error(`登录失败: ${errorText}`);
@@ -111,7 +111,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
 
     // 检查是否需要 TOTP 验证（等待更长时间，因为可能需要等待 API 响应）
     await page.waitForTimeout(2000);
-    
+
     const totpInput = page.getByPlaceholder('请输入6位验证码');
     const needsTotp = await totpInput.isVisible({ timeout: 8000 }).catch(() => false);
 
@@ -128,7 +128,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
         // 点击验证按钮
         const verifyButton = page.getByRole('button', { name: /验证|验 证/ });
         await verifyButton.click();
-        
+
         // 等待验证完成
         await page.waitForTimeout(5000);
     } else {
@@ -140,32 +140,32 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
     try {
         // 先等待页面响应（给足够时间让登录请求完成）
         await page.waitForTimeout(3000);
-        
+
         // 检查是否已经跳转（可能在等待期间已经跳转）
         const currentUrl = page.url();
         if (!currentUrl.includes('/login')) {
             console.log('登录成功，已跳转到:', currentUrl);
             return;
         }
-        
+
         // 使用 waitForURL 等待跳转
-        await page.waitForURL((url) => !url.pathname.includes('/login'), { 
+        await page.waitForURL((url) => !url.pathname.includes('/login'), {
             timeout: 30000,
             waitUntil: 'domcontentloaded',
         });
-        
+
         console.log('登录成功，已跳转到:', page.url());
     } catch (error: any) {
         // 如果超时，检查当前状态
         try {
             const finalUrl = page.url();
-            
+
             // 如果已经不在登录页，说明登录成功
             if (!finalUrl.includes('/login')) {
                 console.log('登录成功（通过 URL 检查）:', finalUrl);
                 return;
             }
-            
+
             // 检查页面内容，看是否有 Cloudflare 错误
             const pageContent = await page.content().catch(() => '');
             if (pageContent.includes('Worker exceeded resource limits') || pageContent.includes('cf-error-code')) {
@@ -194,14 +194,14 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
                     return;
                 }
             }
-            
+
             // 检查是否有错误消息
             const errorMsg = await page.locator('.ant-message-error, .ant-alert-error').textContent().catch(() => '');
-            
+
             // 检查登录按钮是否还存在
             const loginButton = page.getByRole('button', { name: '登 录' });
             const isLoginButtonVisible = await loginButton.isVisible({ timeout: 2000 }).catch(() => false);
-            
+
             if (!isLoginButtonVisible) {
                 // 登录按钮消失，可能正在跳转，再等待一下
                 await page.waitForTimeout(3000);
@@ -211,7 +211,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
                     return;
                 }
             }
-            
+
             throw new Error(`登录失败，仍在登录页: ${finalUrl}${errorMsg ? ` - ${errorMsg}` : ''}`);
         } catch (checkError: any) {
             // 如果页面已关闭，抛出原始错误
@@ -221,7 +221,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
             throw checkError;
         }
     }
-    
+
     // 最终验证
     const finalUrl = page.url();
     expect(finalUrl).not.toContain('/login');
@@ -273,15 +273,15 @@ export async function liveLogout(page: Page, config: LiveEnvConfig): Promise<voi
 
     // 点击用户下拉菜单
     await userDropdown.click();
-    
+
     // 等待下拉菜单出现
     await page.waitForSelector('.ant-dropdown-menu', { state: 'visible', timeout: 10000 });
-    
+
     // 点击退出登录选项（文本是"退出登录"）
     const logoutOption = page.getByText('退出登录');
     await logoutOption.waitFor({ timeout: 5000 });
     await logoutOption.click();
-    
+
     // 等待返回登录页
     await page.waitForURL(`${config.baseUrl}/login`, { timeout: config.navigationTimeout });
 }
@@ -312,14 +312,14 @@ export async function setAuthToken(page: Page, token: string, config: LiveEnvCon
         timeout: config.navigationTimeout,
         waitUntil: 'domcontentloaded',
     });
-    
+
     // 获取缓存的用户信息或使用提供的用户信息
     const user = userInfo || getCachedUserInfo();
-    
+
     if (!user) {
         throw new Error('用户信息未找到，无法设置 token');
     }
-    
+
     // 设置 token 到 localStorage（模拟 zustand persist 存储）
     await page.evaluate(({ t, u }) => {
         try {
@@ -340,11 +340,11 @@ export async function setAuthToken(page: Page, token: string, config: LiveEnvCon
             throw error;
         }
     }, { t: token, u: user });
-    
+
     // 刷新页面以确保 token 生效
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
-    
+
     console.log('Token 和用户信息已设置到 localStorage 并刷新页面');
 }
 
@@ -362,7 +362,7 @@ export async function ensureLoggedIn(page: Page, config: LiveEnvConfig): Promise
             // 检查页面是否有用户菜单（登录后的标志）
             const userMenu = page.locator('.user-dropdown, .ant-dropdown-trigger').first();
             const hasUserMenu = await userMenu.isVisible({ timeout: 3000 }).catch(() => false);
-            
+
             if (hasUserMenu) {
                 console.log('检测到用户菜单，已登录，跳过登录步骤');
                 await page.waitForTimeout(1000);

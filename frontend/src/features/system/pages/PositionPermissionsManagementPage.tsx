@@ -41,7 +41,6 @@ const PERMISSION_MODULES: Record<string, {
       transfer: { label: '账户转账', actions: ['view', 'create'] },
       ar: { label: '应收管理', actions: ['view', 'create', 'update', 'delete'] },
       ap: { label: '应付管理', actions: ['view', 'create', 'update', 'delete'] },
-      borrowing: { label: '借支管理', actions: ['view', 'create', 'update', 'delete'] },
       salary: { label: '工资发放', actions: ['view', 'create', 'update'] },
       allowance: { label: '补贴发放', actions: ['view', 'create'] },
       site_bill: { label: '站点账单', actions: ['view', 'create', 'update'] },
@@ -94,7 +93,6 @@ const PERMISSION_MODULES: Record<string, {
       reimbursement: { label: '我的报销', actions: ['view', 'create'] },
       salary: { label: '我的工资', actions: ['view'] },
       asset: { label: '我的资产', actions: ['view'] },
-      borrowing: { label: '我的借支', actions: ['view'] },
     }
   },
 }

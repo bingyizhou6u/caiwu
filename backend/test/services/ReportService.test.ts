@@ -10,8 +10,6 @@ import {
   departments,
   sites,
   arApDocs,
-  borrowings,
-  repayments,
   employees,
   employeeLeaves,
 } from '../../src/db/schema.js'
@@ -170,35 +168,7 @@ describe('ReportService', () => {
     expect(res.rows[0].closingCents).toBe(1000)
   })
 
-  it('getBorrowingSummary should return correct summary', async () => {
-    const userId = uuid()
-    const email = 'test@example.com'
-    await db.insert(employees).values({ id: userId, email, name: 'Test User' }).run()
-    await db
-      .insert(employees)
-      .values({ id: uuid(), email: 'test2@example.com', name: 'Test User', status: 'regular' })
-      .run()
-
-    await db
-      .insert(borrowings)
-      .values([
-        {
-          id: uuid(),
-          userId,
-          amountCents: 1000,
-          currency: 'CNY',
-          borrowDate: '2023-01-01',
-          createdAt: Date.now(),
-          accountId: uuid(),
-        },
-      ])
-      .run()
-
-    const res = await service.getBorrowingSummary(undefined, undefined, userId)
-    expect(res.results).toHaveLength(1)
-    expect(res.results[0].totalBorrowedCents).toBe(1000)
-    expect(res.results[0].balanceCents).toBe(1000)
-  })
+  // Note: getBorrowingSummary test removed - borrowing tracked via flows
 
   // Add more tests for other methods as needed
 })

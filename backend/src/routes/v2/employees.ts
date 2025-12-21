@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types.js'
-import { hasPermission, getUserPosition, getUserEmployee, getDataAccessFilter } from '../../utils/permissions.js'
+import { hasPermission, getUserPosition, getUserEmployee, getDataAccessFilterSQL } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
 import {
@@ -58,46 +58,13 @@ employeesRoutes.openapi(
     const employee = c.get('userEmployee')
 
     // 使用统一的权限过滤工具函数
-    // 注意：getDataAccessFilter 返回 SQL where 字符串，列名使用 camelCase（与 schema 一致）
-    const { where, binds } = getDataAccessFilter(c, 'employees', {
+    // 使用 getDataAccessFilterSQL 获取安全的 SQL 对象
+    const accessFilter = getDataAccessFilterSQL(c, 'employees', {
       deptColumn: 'departmentId',
       orgDeptColumn: 'orgDepartmentId',
     })
 
-    // 如果权限过滤返回 '1=0'，表示无权限，返回空结果
-    if (where === '1=0') {
-      return { results: [] }
-    }
-
-    // 如果权限过滤返回 '1=1'，表示总部人员，无限制
-    if (where === '1=1') {
-      // 总部人员可以查看所有数据，不需要额外过滤
-    } else {
-      // 解析权限过滤条件，转换为 filters 对象
-      // where 格式可能是: "employees.departmentId = ?" 或 "employees.orgDepartmentId = ?"
-      if (where.includes('departmentId = ?')) {
-        if (binds.length > 0) {
-          filters.departmentId = binds[0]
-        }
-      } else if (where.includes('orgDepartmentId = ?')) {
-        if (binds.length > 0) {
-          filters.orgDepartmentId = binds[0]
-        } else {
-          // 如果 orgDepartmentId 为空，返回空结果（安全起见）
-          return { results: [] }
-        }
-      } else if (where.includes('id = ?')) {
-        // Level 4/5 用户只能查看自己的数据
-        if (binds.length > 0) {
-          // 这种情况下，我们需要在 service 层处理，或者返回空结果
-          // 因为 getAll 不支持按 id 过滤（这是单个员工查询）
-          // 安全起见，返回空结果
-          return { results: [] }
-        }
-      }
-    }
-
-    const results = await service.getAll(filters)
+    const results = await service.getAll(filters, accessFilter)
     return { results }
   }) as any
 )
@@ -141,12 +108,14 @@ employeesRoutes.openapi(
     const canView = await c.var.services.permission.canViewEmployee(employee, position, id)
 
     if (!canView) {
-      throw Errors.FORBIDDEN('无权查看该员工信息')}
+      throw Errors.FORBIDDEN('无权查看该员工信息')
+    }
 
     const result = await c.var.services.employee.getById(id)
 
     if (!result) {
-      throw Errors.NOT_FOUND('员工')}
+      throw Errors.NOT_FOUND('员工')
+    }
 
     return result
   })
@@ -574,9 +543,11 @@ employeesRoutes.openapi(
       .get()
 
     if (!employee) {
-      throw Errors.NOT_FOUND('员工')}
+      throw Errors.NOT_FOUND('员工')
+    }
     if (!employee.email) {
-      throw Errors.NOT_FOUND('用户账号')}
+      throw Errors.NOT_FOUND('用户账号')
+    }
 
     const emailTarget = employee.personalEmail || employee.email
 
@@ -588,14 +559,14 @@ employeesRoutes.openapi(
       'employee',
       id,
       JSON.stringify({
-      name: employee.name,
-      sentTo: emailTarget,
-      type: 'link',
-    })
-  )
+        name: employee.name,
+        sentTo: emailTarget,
+        type: 'link',
+      })
+    )
 
-  return {
-    success: true,
-    message: `密码重置链接已发送至 ${emailTarget}，请员工查收邮件并在1小时内完成重置`,
-  }
-}) as any)
+    return {
+      success: true,
+      message: `密码重置链接已发送至 ${emailTarget}，请员工查收邮件并在1小时内完成重置`,
+    }
+  }) as any)

@@ -10,13 +10,13 @@ export class NotificationService {
     private db: DrizzleD1Database<typeof schema>,
     private emailService: EmailService,
     private systemConfigService: SystemConfigService
-  ) {}
+  ) { }
 
   /**
    * 发送审批结果通知
    */
   async notifyApprovalResult(
-    type: 'leave' | 'reimbursement' | 'borrowing',
+    type: 'leave' | 'reimbursement',
     id: string,
     status: 'approved' | 'rejected',
     approverId: string
@@ -78,7 +78,7 @@ export class NotificationService {
    * 获取申请详情
    */
   private async getApplication(
-    type: 'leave' | 'reimbursement' | 'borrowing',
+    type: 'leave' | 'reimbursement',
     id: string
   ): Promise<any | null> {
     if (type === 'leave') {
@@ -92,12 +92,6 @@ export class NotificationService {
         .select()
         .from(schema.expenseReimbursements)
         .where(eq(schema.expenseReimbursements.id, id))
-        .get()
-    } else if (type === 'borrowing') {
-      return await this.db
-        .select()
-        .from(schema.borrowings)
-        .where(eq(schema.borrowings.id, id))
         .get()
     }
     return null
@@ -117,11 +111,10 @@ export class NotificationService {
   /**
    * 获取类型标签
    */
-  private getTypeLabel(type: 'leave' | 'reimbursement' | 'borrowing'): string {
-    const labels = {
+  private getTypeLabel(type: 'leave' | 'reimbursement'): string {
+    const labels: Record<'leave' | 'reimbursement', string> = {
       leave: '请假',
       reimbursement: '费用报销',
-      borrowing: '借款',
     }
     return labels[type] || type
   }

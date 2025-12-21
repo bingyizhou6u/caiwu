@@ -205,10 +205,6 @@ export const accountTransactions = sqliteTable(
   })
 )
 
-// ... (skipping other tables to keep context small, wait, I can modify auditLogs in same call if I target them separately or just one replacing block if contiguous? They are not contiguous.) 
-// I will use multi_replace for this tool.
-
-
 
 export const currencies = sqliteTable('currencies', {
   code: text('code').primaryKey(),
@@ -365,30 +361,8 @@ export const arApDocs = sqliteTable('ar_ap_docs', {
   updatedAt: integer('updated_at'),
 })
 
-export const borrowings = sqliteTable('borrowings', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  borrowerId: text('borrower_id'),
-  accountId: text('account_id').notNull(),
-  amountCents: integer('amount_cents').notNull(),
-  currency: text('currency').notNull(),
-  borrowDate: text('borrow_date').notNull(),
-  memo: text('memo'),
-  status: text('status').default('outstanding'), // outstanding, partial, repaid, pending, approved, rejected
-  approvedBy: text('approved_by'),
-  approvedAt: integer('approved_at'),
-  version: integer('version').default(1), // 乐观锁版本号
-  createdAt: integer('created_at'),
-  updatedAt: integer('updated_at'),
-})
-
-export const borrowers = sqliteTable('borrowers', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  userId: text('user_id'),
-  active: integer('active').default(1),
-  createdAt: integer('created_at'),
-})
+// Note: borrowings, borrowers, repayments tables have been removed
+// Borrowing/lending is now tracked via flows with type = 'borrowing_in' | 'lending_out' | 'repayment_in' | 'repayment_out'
 
 export const expenseReimbursements = sqliteTable('expense_reimbursements', {
   id: text('id').primaryKey(),
@@ -423,19 +397,6 @@ export const attendanceRecords = sqliteTable('attendance_records', {
   updatedAt: integer('updated_at'),
 })
 
-export const repayments = sqliteTable('repayments', {
-  id: text('id').primaryKey(),
-  borrowingId: text('borrowing_id').notNull(),
-  accountId: text('account_id').notNull(),
-  amountCents: integer('amount_cents').notNull(),
-  currency: text('currency').notNull(),
-  repayDate: text('repay_date').notNull(),
-  memo: text('memo'),
-  createdBy: text('created_by'),
-  createdAt: integer('created_at'),
-  updatedAt: integer('updated_at'),
-})
-
 export const settlements = sqliteTable('settlements', {
   id: text('id').primaryKey(),
   docId: text('doc_id').notNull(),
@@ -454,21 +415,7 @@ export const accountTransfers = sqliteTable('account_transfers', {
   toCurrency: text('to_currency').notNull(),
   fromAmountCents: integer('from_amount_cents').notNull(),
   toAmountCents: integer('to_amount_cents').notNull(),
-  exchangeRate: real('exchange_rate'), // Updated to real to store float precision
-  // In routes/account-transfers.ts: exchangeRate = body.exchange_rate (number).
-  // SQLite stores numbers as REAL or INTEGER. Drizzle 'integer' maps to INTEGER. 'real' maps to REAL.
-  // If exchange rate is float, we should use 'real' or store as scaled integer.
-  // Let's check schema.sql if it exists.
-  // It's not in the viewed schema.sql snippet.
-  // But wait, I saw schema.sql earlier. Let me check my memory.
-  // I didn't see account_transfers in schema.sql view.
-  // I will use 'real' for exchange_rate if Drizzle supports it, or 'integer' if we scale it.
-  // Drizzle sqlite-core has 'real'.
-  // However, usually we avoid floats. But for exchange rate it might be necessary.
-  // Let's look at existing code: const exchangeRate = body.exchange_rate
-  // It is used as: Math.round(body.from_amount_cents * exchangeRate)
-  // So it is a multiplier.
-  // I'll use `real` for now.
+  exchangeRate: real('exchange_rate'), // 汇率，使用 real 类型存储浮点数
   memo: text('memo'),
   voucherUrl: text('voucher_url'),
   createdBy: text('created_by'),

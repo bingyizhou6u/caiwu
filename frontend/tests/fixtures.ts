@@ -1,9 +1,14 @@
 
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, Fixtures, Page } from '@playwright/test';
 import { addCoverageReport } from 'monocart-reporter';
 
-export const test = base.extend({
-    autoTestFixture: [async ({ page }, use) => {
+// Define fixture type
+type CoverageFixture = {
+    autoTestFixture: string;
+};
+
+export const test = base.extend<CoverageFixture>({
+    autoTestFixture: [async ({ page }: { page: Page }, use: (r: string) => Promise<void>) => {
         // console.log('autoTestFixture setup...');
         // install coverage report
         const isCoverage = process.env.VITE_COVERAGE === 'true';

@@ -18,7 +18,6 @@ import { MasterDataService } from '../../src/services/system/MasterDataService.j
 import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
 import { SalaryPaymentService } from '../../src/services/hr/SalaryPaymentService.js'
 import { ArApService } from '../../src/services/finance/ArApService.js'
-import { BorrowingService } from '../../src/services/finance/BorrowingService.js'
 import { SiteBillService } from '../../src/services/finance/SiteBillService.js'
 import { AccountTransferService } from '../../src/services/finance/AccountTransferService.js'
 
@@ -114,7 +113,6 @@ describe('Finance Core Routes', () => {
     const financeService = new FinanceService(db)
     const salaryPaymentService = new SalaryPaymentService(db)
     const arApService = new ArApService(db, financeService)
-    const borrowingService = new BorrowingService(db)
     const siteBillService = new SiteBillService(db)
     const accountTransferService = new AccountTransferService(db, financeService)
 
@@ -126,7 +124,6 @@ describe('Finance Core Routes', () => {
         finance: financeService,
         salaryPayment: salaryPaymentService,
         arAp: arApService,
-        borrowing: borrowingService,
         siteBill: siteBillService,
         accountTransfer: accountTransferService,
         employee: employeeService,
@@ -348,41 +345,6 @@ describe('Finance Core Routes', () => {
       expect(response.success).toBe(true)
       expect(response.data.id).toBeDefined()
       expect(response.data.docNo).toMatch(/^AR20230103-\d{3}$/)
-    })
-  })
-
-  describe('POST /api/v2/borrowings', () => {
-    it('should create a borrowing', async () => {
-      const res = await app.request(
-        '/api/v2/borrowings',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            userId: userId, // userId is already a UUID from setup
-            accountId: accountId,
-            amount: 500,
-            currency: 'CNY',
-            borrowDate: '2023-01-06',
-            memo: 'Test Borrowing',
-          }),
-        },
-        {
-          DB: env.DB,
-          SESSIONS_KV: env.SESSIONS_KV,
-          AUTH_JWT_SECRET: 'secret',
-          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
-        } as any
-      )
-
-      const response = (await res.json()) as any
-      expect(res.status).toBe(200)
-      // V2 响应格式
-      expect(response.success).toBe(true)
-      expect(response.data.id).toBeDefined()
     })
   })
 
