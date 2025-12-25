@@ -3,6 +3,15 @@ import { api } from '../../config/api'
 import { api as apiClient } from '../../api/http'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Department, SelectOption } from '../../types'
+import type { ListResponse } from '../../types/responses'
+
+// API 响应类型
+type DepartmentListResponse = Department[] | ListResponse<Department>
+
+// 辅助函数
+function extractDepartments(data: DepartmentListResponse): Department[] {
+    return Array.isArray(data) ? data : data?.results || []
+}
 
 /**
  * 部门数据查询Hook
@@ -20,10 +29,7 @@ export function useDepartments() {
         ['departments'],
         api.departments,
         {
-            select: (data: any) => {
-                const rawList = Array.isArray(data) ? data : data?.results || []
-                return rawList
-            },
+            select: (data: DepartmentListResponse) => extractDepartments(data),
             staleTime: 60 * 60 * 1000, // 1小时缓存 - Master Data
         }
     )
@@ -41,9 +47,9 @@ export function useDepartmentOptions(includeHQ = true) {
         ['departments', 'options', includeHQ],
         api.departments,
         {
-            select: (data: any) => {
-                const rawList = Array.isArray(data) ? data : data?.results || []
-                const options = rawList.map((d: any) => ({
+            select: (data: DepartmentListResponse) => {
+                const rawList = extractDepartments(data)
+                const options = rawList.map(d => ({
                     value: d.id,
                     label: d.name
                 }))

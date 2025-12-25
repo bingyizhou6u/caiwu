@@ -4,6 +4,15 @@ import { api as apiClient } from '../../api/http'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CACHE_TIME } from '../../config/cache'
 import type { Currency, SelectOption } from '../../types'
+import type { ListResponse } from '../../types/responses'
+
+// API 响应类型
+type CurrencyListResponse = Currency[] | ListResponse<Currency>
+
+// 辅助函数
+function extractCurrencies(data: CurrencyListResponse): Currency[] {
+    return Array.isArray(data) ? data : data?.results || []
+}
 
 /**
  * 币种数据查询Hook
@@ -21,9 +30,9 @@ export function useCurrencies(activeOnly = false) {
         ['currencies', activeOnly],
         url,
         {
-            select: (data: any) => {
-                const list = Array.isArray(data) ? data : data?.results || []
-                return activeOnly ? list.filter((c: Currency) => c.active === 1) : list
+            select: (data: CurrencyListResponse) => {
+                const list = extractCurrencies(data)
+                return activeOnly ? list.filter(c => c.active === 1) : list
             },
             staleTime: CACHE_TIME.MASTER_DATA,
         }
@@ -42,10 +51,10 @@ export function useCurrencyOptions(activeOnly = true) {
         ['currencies', 'options', activeOnly],
         api.currencies,
         {
-            select: (data: any) => {
-                const list = Array.isArray(data) ? data : data?.results || []
-                const filtered = activeOnly ? list.filter((c: any) => c.active === 1) : list
-                return filtered.map((c: any) => ({
+            select: (data: CurrencyListResponse) => {
+                const list = extractCurrencies(data)
+                const filtered = activeOnly ? list.filter(c => c.active === 1) : list
+                return filtered.map(c => ({
                     value: c.code,
                     label: `${c.code} - ${c.name}`
                 }))
@@ -55,10 +64,22 @@ export function useCurrencyOptions(activeOnly = true) {
     )
 }
 
+// 币种创建/更新数据类型
+interface CreateCurrencyData {
+    code: string
+    name: string
+    active?: number
+}
+
+interface UpdateCurrencyData {
+    name?: string
+    active?: number
+}
+
 export function useCreateCurrency() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: CreateCurrencyData) => {
             await apiClient.post(api.currencies, data)
         },
         onSuccess: () => {
@@ -71,7 +92,7 @@ export function useCreateCurrency() {
 export function useUpdateCurrency() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async ({ code, data }: { code: string, data: any }) => {
+        mutationFn: async ({ code, data }: { code: string, data: UpdateCurrencyData }) => {
             await apiClient.put(api.currenciesByCode(code), data)
         },
         onSuccess: () => {

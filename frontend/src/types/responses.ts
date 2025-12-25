@@ -5,6 +5,17 @@
 
 import type { ID } from './common'
 
+// ============= 通用列表响应 =============
+
+/**
+ * 通用列表响应类型
+ * 适用于所有返回 { results: T[] } 格式的 API
+ */
+export interface ListResponse<T> {
+    results: T[]
+    total?: number
+}
+
 // ============= 报表相关扩展 =============
 
 /**
