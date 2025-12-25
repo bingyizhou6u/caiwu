@@ -27,7 +27,10 @@ export async function setupCommonMocks(page: Page) {
                 permissions: [],
                 position: {
                     functionRole: 'finance',
-                    code: 'finance_manager',
+                    code: 'mock_admin',
+                    dataScope: 'all',
+                    level: 1,
+                    canManageSubordinates: 1,
                     permissions: {
                         finance: {
                             flow: ['view', 'create'],
@@ -105,7 +108,7 @@ export async function setupCommonMocks(page: Page) {
 
     // Positions Mock
     await page.route('**/api/v2/positions*', async route => {
-        await route.fulfill({ json: { results: [{ id: 'pos1', name: 'Sales Engineer', code: 'team_engineer', active: 1 }] } });
+        await route.fulfill({ json: { results: [{ id: 'pos1', name: 'Sales Engineer', code: 'mock_engineer', dataScope: 'self', active: 1 }] } });
     });
 
     // Org Departments Mock
@@ -293,7 +296,7 @@ export async function setupAuthMocks(page: Page, options?: {
 
     await page.route('**/api/v2/auth/login', async route => {
         const body = route.request().postDataJSON();
-        
+
         if (!loginSuccess) {
             await route.fulfill({ status: 401, json: { error: '用户名或密码错误' } });
             return;

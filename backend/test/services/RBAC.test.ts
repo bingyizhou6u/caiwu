@@ -69,7 +69,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 1 (HQ): can view anyone', async () => {
       const actor = { id: 'hq', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 1, code: 'hq_admin', dataScope: 'all' } as any
+      const position = { level: 1, code: 'mock_hq_admin', dataScope: 'all' } as any
       const targetEmployeeId = 'target-id'
 
       const result = await service.canViewEmployee(actor, position, targetEmployeeId)
@@ -78,7 +78,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 2 (Project): can view employee in same project', async () => {
       const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 2, code: 'project_manager', dataScope: 'project' } as any
+      const position = { level: 2, code: 'mock_pm', dataScope: 'project' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee in the same department
@@ -90,7 +90,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 2 (Project): cannot view employee in other project', async () => {
       const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 2, code: 'project_manager', dataScope: 'project' } as any
+      const position = { level: 2, code: 'mock_pm', dataScope: 'project' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee in a different department
@@ -102,7 +102,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 3 (Team Leader): can view employee in same team', async () => {
       const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
-      const position = { level: 3, code: 'team_leader', dataScope: 'group' } as any
+      const position = { level: 3, code: 'mock_tl', dataScope: 'group' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee
@@ -114,7 +114,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 3 (Team Leader): cannot view employee in other team', async () => {
       const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
-      const position = { level: 3, code: 'team_leader', dataScope: 'group' } as any
+      const position = { level: 3, code: 'mock_tl', dataScope: 'group' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee
@@ -126,7 +126,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 3 (Engineer): can only view self', async () => {
       const actor = { id: 'emp-1', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
-      const position = { level: 3, code: 'team_engineer', dataScope: 'self' } as any
+      const position = { level: 3, code: 'mock_engineer', dataScope: 'self' } as any
 
       expect(await service.canViewEmployee(actor, position, 'emp-1')).toBe(true)
       expect(await service.canViewEmployee(actor, position, 'other-emp')).toBe(false)
@@ -134,7 +134,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('should return false if target employee not found', async () => {
       const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 2, code: 'project_manager', dataScope: 'project' } as any
+      const position = { level: 2, code: 'mock_pm', dataScope: 'project' } as any
       const targetEmployeeId = 'non-existent-id'
 
       // Mock DB to return null

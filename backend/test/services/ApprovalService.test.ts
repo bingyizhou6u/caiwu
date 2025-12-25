@@ -83,7 +83,8 @@ describe('ApprovalService', () => {
       .values({
         id: managerPosId,
         level: 3,
-        code: 'team_leader', // Added to satisfy EmployeeService.getSubordinateEmployeeIds
+        code: 'mock_team_leader',
+        dataScope: 'group',
         functionRole: 'manager',
         name: 'Manager',
         canManageSubordinates: 1,
@@ -96,7 +97,8 @@ describe('ApprovalService', () => {
       .insert(positions)
       .values({
         id: engineerPosId,
-        code: 'team_engineer',
+        code: 'mock_engineer',
+        dataScope: 'self',
         name: 'Engineer',
         level: 3,
         functionRole: 'developer',

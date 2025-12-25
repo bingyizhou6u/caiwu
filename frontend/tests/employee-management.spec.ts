@@ -17,7 +17,8 @@ test('employee management - navigate to create employee page', async ({ page }) 
                     permissions: { hr: { employee: ['view', 'create', 'update', 'delete'] } },
                     position: {
                         function_role: 'hr',
-                        code: 'hr_manager',
+                        code: 'mock_hr_admin',
+                        dataScope: 'all',
                         level: 1,
                         can_manage_subordinates: 1,
                         permissions: { hr: { employee: ['view', 'create', 'update', 'delete'] } }
@@ -32,7 +33,7 @@ test('employee management - navigate to create employee page', async ({ page }) 
         await route.fulfill({ json: { results: [{ id: 'org1', name: 'Sales Team A', project_id: 'dept1', active: 1 }] } });
     });
     await page.route('**/api/v2/positions*', async route => {
-        await route.fulfill({ json: { results: [{ id: 'pos1', name: 'Sales Engineer', code: 'team_engineer', active: 1 }] } });
+        await route.fulfill({ json: { results: [{ id: 'pos1', name: 'Sales Engineer', code: 'mock_engineer', dataScope: 'self', active: 1 }] } });
     });
     await page.route('**/api/v2/currencies*', async route => {
         await route.fulfill({ json: { results: [{ code: 'CNY', name: 'RMB' }] } });
