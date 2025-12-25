@@ -24,9 +24,9 @@ export interface LiveEnvConfig {
  */
 export function loadLiveEnvConfig(): LiveEnvConfig {
     return {
-        baseUrl: process.env.LIVE_TEST_URL || 'https://cloudflarets.com',
-        email: process.env.LIVE_TEST_EMAIL || 'bingyizhou6u@gmail.com',
-        password: process.env.LIVE_TEST_PASSWORD || 'Qq1234',
+        baseUrl: process.env.LIVE_TEST_URL || '',
+        email: process.env.LIVE_TEST_EMAIL || '',
+        password: process.env.LIVE_TEST_PASSWORD || '',
         totpSecret: process.env.LIVE_TEST_TOTP_SECRET || '',
         timeout: parseInt(process.env.LIVE_TEST_TIMEOUT || '60000', 10),
         navigationTimeout: parseInt(process.env.LIVE_TEST_NAV_TIMEOUT || '30000', 10),
@@ -60,12 +60,13 @@ export function validateConfig(config: LiveEnvConfig): { valid: boolean; errors:
 
 /**
  * 默认配置（用于开发测试）
+ * 注意：实际凭据必须通过环境变量配置
  */
 export const defaultConfig: LiveEnvConfig = {
-    baseUrl: 'https://cloudflarets.com',
-    email: 'bingyizhou6u@gmail.com',
-    password: 'Qq1234',
-    totpSecret: '', // 需要从数据库获取
+    baseUrl: '',
+    email: '',
+    password: '',
+    totpSecret: '',
     timeout: 60000,
     navigationTimeout: 30000,
 };
