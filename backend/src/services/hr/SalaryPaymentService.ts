@@ -178,7 +178,7 @@ export class SalaryPaymentService {
     return this.get(id)
   }
 
-  async financeApprove(id: string, userId: string) {
+  async financeApprove(id: string, userId: string, expectedVersion?: number | null) {
     // 检查分配状态
     const payment = await this.db
       .select()
@@ -187,6 +187,11 @@ export class SalaryPaymentService {
       .get()
     if (!payment) {
       throw Errors.NOT_FOUND()
+    }
+
+    // 乐观锁版本检查
+    if (expectedVersion !== undefined && expectedVersion !== null) {
+      validateVersion(payment.version, expectedVersion)
     }
 
     // 状态机验证
@@ -213,14 +218,17 @@ export class SalaryPaymentService {
       }
     }
 
-    const beforeData = { status: payment.status }
+    const beforeData = { status: payment.status, version: payment.version }
     const now = Date.now()
+    const newVersion = incrementVersion(payment.version)
+
     await this.db
       .update(salaryPayments)
       .set({
         status: 'pending_payment',
         financeApprovedBy: userId,
         financeApprovedAt: now,
+        version: newVersion,
         updatedAt: now,
       })
       .where(eq(salaryPayments.id, id))

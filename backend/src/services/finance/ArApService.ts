@@ -290,6 +290,28 @@ export class ArApService {
   }
 
   async delete(id: string) {
+    // 获取单据信息
+    const doc = await this.db.select().from(arApDocs).where(eq(arApDocs.id, id)).get()
+    if (!doc) {
+      throw Errors.NOT_FOUND('单据')
+    }
+
+    // 只有 open 状态的单据可以删除
+    if (doc.status !== 'open') {
+      throw Errors.BUSINESS_ERROR('只能删除未结算的单据')
+    }
+
+    // 检查是否存在结算记录
+    const existingSettlements = await this.db
+      .select({ count: sql<number>`count(1)` })
+      .from(settlements)
+      .where(eq(settlements.docId, id))
+      .get()
+
+    if (existingSettlements && existingSettlements.count > 0) {
+      throw Errors.BUSINESS_ERROR('存在结算记录，无法删除')
+    }
+
     await this.db.delete(arApDocs).where(eq(arApDocs.id, id)).execute()
   }
 }
