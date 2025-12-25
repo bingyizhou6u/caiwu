@@ -332,5 +332,141 @@ test.describe('HR Complete', () => {
         // 验证成功
         await pages.employee.waitForMessage('success');
     });
-});
 
+    test('员工转正 - 试用期转正式', async ({ page }) => {
+        let regularizeData: any = null;
+
+        // Mock 员工列表 - 包含试用期员工
+        await page.route('**/api/v2/employees*', async route => {
+            await route.fulfill({
+                json: {
+                    results: [
+                        {
+                            id: 'emp-probation',
+                            name: 'Probation Employee',
+                            email: 'probation@example.com',
+                            status: 'probation',
+                            joinDate: '2024-01-01'
+                        },
+                        {
+                            id: 'emp-regular',
+                            name: 'Regular Employee',
+                            email: 'regular@example.com',
+                            status: 'regular',
+                            joinDate: '2023-01-01',
+                            regularDate: '2023-04-01'
+                        }
+                    ],
+                    total: 2
+                }
+            });
+        });
+
+        // Mock 转正 API
+        await page.route('**/api/v2/employees/emp-probation/regularize', async route => {
+            regularizeData = route.request().postDataJSON();
+            await route.fulfill({
+                json: {
+                    success: true,
+                    data: { id: 'emp-probation' }
+                }
+            });
+        });
+
+        // 登录
+        const pages = createPageObjects(page);
+        await pages.login.login('admin@example.com', 'password');
+        await pages.login.expectLoginSuccess();
+
+        // 导航到员工管理页面
+        await pages.employee.gotoList();
+        await expect(page.locator('h1').filter({ hasText: /人员管理/ })).toBeVisible({ timeout: 10000 });
+
+        // 验证试用期员工显示
+        await expect(page.getByText('Probation Employee')).toBeVisible();
+
+        // 点击转正按钮
+        const probationRow = page.locator('tr', { hasText: 'Probation Employee' });
+        await probationRow.locator('button').filter({ hasText: '转正' }).click();
+
+        // 填写转正日期
+        const modal = page.locator('.ant-modal-content:visible');
+        await expect(modal).toBeVisible();
+
+        // 填写转正日期（如果需要）
+        const dateInput = modal.locator('input[type="text"]').first();
+        if (await dateInput.isVisible()) {
+            await dateInput.fill('2024-04-01');
+        }
+
+        // 确认转正
+        await modal.locator('button.ant-btn-primary').click();
+
+        // 验证成功消息
+        await expect(page.getByText('转正成功').or(page.getByText('成功'))).toBeVisible({ timeout: 5000 });
+    });
+
+    test('员工离职 - 设置离职状态', async ({ page }) => {
+        let leaveData: any = null;
+
+        // Mock 员工列表
+        await page.route('**/api/v2/employees*', async route => {
+            await route.fulfill({
+                json: {
+                    results: [
+                        {
+                            id: 'emp-leaving',
+                            name: 'Leaving Employee',
+                            email: 'leaving@example.com',
+                            status: 'regular',
+                            active: 1
+                        }
+                    ],
+                    total: 1
+                }
+            });
+        });
+
+        // Mock 离职 API
+        await page.route('**/api/v2/employees/emp-leaving/leave', async route => {
+            leaveData = route.request().postDataJSON();
+            await route.fulfill({
+                json: {
+                    success: true,
+                    data: { id: 'emp-leaving' }
+                }
+            });
+        });
+
+        // 登录
+        const pages = createPageObjects(page);
+        await pages.login.login('admin@example.com', 'password');
+        await pages.login.expectLoginSuccess();
+
+        // 导航到员工管理页面
+        await pages.employee.gotoList();
+        await expect(page.getByText('Leaving Employee')).toBeVisible({ timeout: 10000 });
+
+        // 点击离职按钮
+        const row = page.locator('tr', { hasText: 'Leaving Employee' });
+        await row.locator('button').filter({ hasText: '离职' }).click();
+
+        // 填写离职信息
+        const modal = page.locator('.ant-modal-content:visible');
+        await expect(modal).toBeVisible();
+
+        // 填写离职原因（如果有）
+        const reasonInput = modal.locator('textarea').or(modal.locator('input[id="reason"]'));
+        if (await reasonInput.isVisible()) {
+            await reasonInput.fill('个人原因');
+        }
+
+        // 确认离职
+        await modal.locator('button').filter({ hasText: '确定' }).or(
+            modal.locator('button.ant-btn-primary')
+        ).click();
+
+        // 验证成功
+        await expect(page.getByText('离职成功').or(page.getByText('成功'))).toBeVisible({ timeout: 5000 });
+    });
+});

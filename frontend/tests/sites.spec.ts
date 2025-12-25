@@ -154,5 +154,72 @@ test.describe('Sites Management', () => {
         await expect(page.getByText('创建成功')).toBeVisible();
         expect(createdBill).toBeTruthy();
     });
-});
 
+    test('站点删除 - 有流水时阻止删除', async ({ page }) => {
+        // Mock 站点列表
+        await page.route('**/api/v2/sites*', async route => {
+            const method = route.request().method();
+            const url = route.request().url();
+
+            if (method === 'DELETE') {
+                // 模拟有流水记录时的删除失败
+                await route.fulfill({
+                    status: 400,
+                    json: {
+                        success: false,
+                        error: {
+                            code: 'BUS_GENERAL',
+                            message: '无法删除，该站点还有流水记录'
+                        }
+                    }
+                });
+            } else {
+                await route.fulfill({
+                    json: {
+                        results: [
+                            {
+                                id: 'site-with-flows',
+                                name: 'Site With Flows',
+                                departmentId: 'dept1',
+                                departmentName: 'Sales',
+                                active: 1
+                            },
+                            {
+                                id: 'site-empty',
+                                name: 'Empty Site',
+                                departmentId: 'dept1',
+                                departmentName: 'Sales',
+                                active: 1
+                            }
+                        ],
+                        total: 2
+                    }
+                });
+            }
+        });
+
+        // 登录
+        const pages = createPageObjects(page);
+        await pages.login.login('admin@example.com', 'password');
+        await pages.login.expectLoginSuccess();
+
+        // 导航到站点管理
+        await page.goto('http://localhost:5173/sites/list');
+        await expect(page.getByText('Site With Flows')).toBeVisible({ timeout: 10000 });
+
+        // 尝试删除有流水的站点
+        const siteRow = page.locator('tr', { hasText: 'Site With Flows' });
+        await siteRow.locator('button').filter({ hasText: '删除' }).click();
+
+        // 确认删除
+        const confirmModal = page.locator('.ant-modal-confirm-body:visible').or(
+            page.locator('.ant-popconfirm:visible')
+        );
+        if (await confirmModal.isVisible()) {
+            await page.locator('button').filter({ hasText: '确定' }).click();
+        }
+
+        // 验证错误提示
+        await expect(page.getByText('无法删除').or(page.getByText('流水记录'))).toBeVisible({ timeout: 5000 });
+    });
+});

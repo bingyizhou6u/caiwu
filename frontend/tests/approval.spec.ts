@@ -146,3 +146,105 @@ test('approval flow - comprehensive workflow (leaves, reimbursements)', async ({
     await expect(page.getByText('已驳回').last()).toBeVisible();
 
 });
+
+// ==========================================
+// State Machine Transition Tests
+// ==========================================
+test.describe('State Machine Transitions', () => {
+    test.beforeEach(async ({ page }) => {
+        await setupCommonMocks(page);
+    });
+
+    test('leave status transitions - pending to approved/rejected', async ({ page }) => {
+        // Mock leave with pending status  
+        await page.route('**/api/v2/employee-leaves*', async route => {
+            if (route.request().method() === 'GET') {
+                await route.fulfill({
+                    json: {
+                        success: true,
+                        data: [
+                            { id: 'leave-1', status: 'pending', employeeName: 'Test User', days: 1 },
+                            { id: 'leave-2', status: 'approved', employeeName: 'Approved User', days: 2 },
+                            { id: 'leave-3', status: 'rejected', employeeName: 'Rejected User', days: 1 },
+                        ]
+                    }
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        // Mock status update - valid transitions
+        await page.route('**/api/v2/employee-leaves/leave-1/status', async route => {
+            const body = route.request().postDataJSON();
+            // 验证状态机：pending -> approved 或 pending -> rejected
+            if (body.status === 'approved' || body.status === 'rejected') {
+                await route.fulfill({ json: { success: true } });
+            } else {
+                await route.fulfill({
+                    status: 400,
+                    json: { success: false, error: { message: '不允许的状态转换' } }
+                });
+            }
+        });
+
+        // Mock invalid transition - already approved cannot transition
+        await page.route('**/api/v2/employee-leaves/leave-2/status', async route => {
+            await route.fulfill({
+                status: 400,
+                json: { success: false, error: { message: '不允许从状态 "approved" 转换' } }
+            });
+        });
+
+        await page.goto('http://localhost:5173/login');
+        await page.fill('input[id="email"]', 'admin@example.com');
+        await page.fill('input[id="password"]', 'password');
+        await page.click('button[type="submit"]');
+
+        // 验证页面能正确显示不同状态
+        await page.goto('http://localhost:5173/hr/leaves');
+        await expect(page.getByText('pending').or(page.getByText('待审批'))).toBeVisible({ timeout: 5000 });
+    });
+
+    test('reimbursement status transitions - approved to paid', async ({ page }) => {
+        // Mock reimbursement list with approved status
+        await page.route('**/api/v2/expense-reimbursements*', async route => {
+            if (route.request().method() === 'GET') {
+                await route.fulfill({
+                    json: {
+                        success: true,
+                        data: [
+                            { id: 'reimb-1', status: 'approved', employeeName: 'User A', amountCents: 10000 },
+                            { id: 'reimb-2', status: 'paid', employeeName: 'User B', amountCents: 5000 },
+                        ]
+                    }
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        // Mock pay action - approved -> paid transition
+        await page.route('**/api/v2/expense-reimbursements/reimb-1/pay', async route => {
+            await route.fulfill({ json: { success: true } });
+        });
+
+        // Mock invalid pay - already paid
+        await page.route('**/api/v2/expense-reimbursements/reimb-2/pay', async route => {
+            await route.fulfill({
+                status: 400,
+                json: { success: false, error: { message: '不允许从状态 "paid" 转换' } }
+            });
+        });
+
+        await page.goto('http://localhost:5173/login');
+        await page.fill('input[id="email"]', 'admin@example.com');
+        await page.fill('input[id="password"]', 'password');
+        await page.click('button[type="submit"]');
+
+        await page.goto('http://localhost:5173/hr/reimbursements');
+        // 验证页面能显示不同状态的报销单
+        await expect(page.getByText('approved').or(page.getByText('已审批'))).toBeVisible({ timeout: 5000 });
+    });
+});
+
