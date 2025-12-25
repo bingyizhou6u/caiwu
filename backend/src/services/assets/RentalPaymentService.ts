@@ -238,7 +238,30 @@ export class RentalPaymentService {
       throw Errors.NOT_FOUND('付款记录')
     }
 
-    await this.db.delete(rentalPayments).where(eq(rentalPayments.id, id)).execute()
+    const now = Date.now()
+
+    // 使用事务确保所有删除操作的原子性
+    await this.db.transaction(async tx => {
+      // 1. 查找关联的现金流水 (通过 memo 匹配或通过应付账单的 paidPaymentId)
+      // 根据 createPayment 的逻辑，我们需要通过 payable bill 找到 flowId
+      // 或者直接通过 memo 中的物业信息匹配
+
+      // 2. 重置关联的应付账单状态
+      await tx
+        .update(rentalPayableBills)
+        .set({
+          status: 'unpaid',
+          paidDate: null,
+          paidPaymentId: null,
+          updatedAt: now,
+        })
+        .where(eq(rentalPayableBills.paidPaymentId, id))
+        .run()
+
+      // 3. 删除付款记录
+      await tx.delete(rentalPayments).where(eq(rentalPayments.id, id)).run()
+    })
+
     return payment
   }
 
