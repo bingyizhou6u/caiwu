@@ -110,17 +110,9 @@ export class EmployeeService {
     }
 
     // 4. 确定实际 department_id
-    let actualDepartmentId = data.departmentId || orgDept.projectId
+    const actualDepartmentId = data.departmentId || orgDept.projectId
     if (!actualDepartmentId) {
-      // 如果没有 project_id，则查找“总部”部门
-      const hqDept = await this.db
-        .select()
-        .from(departments)
-        .where(eq(departments.name, '总部'))
-        .get()
-      if (hqDept) {
-        actualDepartmentId = hqDept.id
-      }
+      throw Errors.VALIDATION_ERROR('组织部门必须关联项目')
     }
 
     // 5. 获取职位以确定用户角色
@@ -480,22 +472,9 @@ export class EmployeeService {
       }
 
       // 4. 确定部门 (项目)
-      let actualDepartmentId = orgDept.projectId
+      const actualDepartmentId = orgDept.projectId
       if (!actualDepartmentId) {
-        // 如果没有 project_id，假设是总部。查找或创建 '总部' 部门。
-        // 为简单起见，假设 '总部' 部门存在，或者我们能找到名为 '总部' 的部门
-        const hqDept = await query(
-          tx as any,
-          'EmployeeService.migrateFromUser.getHQDepartment',
-          () => tx.select().from(departments).where(eq(departments.name, '总部')).get(),
-          c
-        )
-        if (hqDept) {
-          actualDepartmentId = hqDept.id
-        } else {
-          // 回退或错误？原始代码有查找总部的逻辑。
-          throw new Error('Headquarters department not found')
-        }
+        throw Errors.VALIDATION_ERROR('组织部门必须关联项目')
       }
 
       // 5. 获取职位
