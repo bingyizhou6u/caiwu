@@ -3,7 +3,7 @@
  * 基于 Cloudflare KV 的滑动窗口限流实现
  */
 export class RateLimitService {
-  constructor(private kv: KVNamespace) {}
+  constructor(private kv: KVNamespace) { }
 
   /**
    * 检查是否允许请求
@@ -105,39 +105,39 @@ export class RateLimitService {
 
 // 限流配置常量
 export const RATE_LIMITS = {
-  // 登录：每 IP 每分钟最多 5 次
+  // 登录：每 IP 每分钟最多 20 次
   LOGIN_BY_IP: {
-    limit: 5,
+    limit: 20,
     windowMs: 60 * 1000, // 1 分钟
     keyPrefix: 'login:ip',
   },
-  // 密码重置请求：每 IP 每小时最多 3 次
+  // 密码重置请求：每 IP 每小时最多 5 次
   PASSWORD_RESET_BY_IP: {
-    limit: 3,
+    limit: 5,
     windowMs: 60 * 60 * 1000, // 1 小时
     keyPrefix: 'pwreset:ip',
   },
-  // TOTP 验证：每用户每分钟最多 3 次
+  // TOTP 验证：每用户每分钟最多 10 次
   TOTP_BY_USER: {
-    limit: 3,
+    limit: 10,
     windowMs: 60 * 1000, // 1 分钟
     keyPrefix: 'totp:user',
   },
-  // TOTP 重置请求：每邮箱每小时最多 3 次
+  // TOTP 重置请求：每邮箱每小时最多 5 次
   TOTP_RESET_BY_EMAIL: {
-    limit: 3,
+    limit: 5,
     windowMs: 60 * 60 * 1000, // 1 小时
     keyPrefix: 'totpreset:email',
   },
-  // 通用 API 限流：每用户每分钟最多 100 次请求
+  // 通用 API 限流：每用户每分钟最多 500 次请求
   API_BY_USER: {
-    limit: 100,
+    limit: 500,
     windowMs: 60 * 1000, // 1 分钟
     keyPrefix: 'api:user',
   },
-  // 通用 API 限流：每 IP 每分钟最多 200 次请求
+  // 通用 API 限流：每 IP 每分钟最多 1000 次请求
   API_BY_IP: {
-    limit: 200,
+    limit: 1000,
     windowMs: 60 * 1000, // 1 分钟
     keyPrefix: 'api:ip',
   },
