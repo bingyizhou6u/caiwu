@@ -109,169 +109,80 @@ describe('PositionService', () => {
   })
 
   describe('getAvailablePositions', () => {
-    it('应该返回总部职位的可用职位（level 1）', async () => {
-      // 创建总部department（名称必须为"总部"）
-      const hqDepartmentId = uuid()
-      await db.insert(departments).values({
-        id: hqDepartmentId,
-        name: '总部',
-        active: 1,
-      }).execute()
-
-      const hqDept = {
-        id: uuid(),
-        projectId: hqDepartmentId, // 关联到总部department
-        name: '总部',
-        code: 'HQ',
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      await db.insert(orgDepartments).values(hqDept).execute()
-
-      const hqPosition = {
+    it('应该返回所有活跃职位', async () => {
+      const position1 = {
         id: uuid(),
         code: 'HQ_DIR',
         name: '总部负责人',
+        dataScope: 'all',
         permissions: '{}',
         sortOrder: 1,
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }
-      const projectPosition = {
+      const position2 = {
         id: uuid(),
         code: 'PROJ_MGR',
         name: '项目主管',
+        dataScope: 'project',
         permissions: '{}',
         sortOrder: 1,
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }
-      await db.insert(positions).values([hqPosition, projectPosition]).execute()
-
-      const result = await service.getAvailablePositions(hqDept.id)
-
-      expect(result.results).toHaveLength(1)
-      expect(result.results[0].code).toBe('HQ_DIR')
-      expect(result.department_info.is_hq).toBe(true)
-    })
-
-    it('应该返回项目职位的可用职位（level 2-3）', async () => {
-      const projectId = uuid()
-      const projectDept = {
+      const position3 = {
         id: uuid(),
-        projectId: projectId,
-        name: '项目A',
-        code: 'PROJ_A',
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      // 确保项目部门名称不是'总部'，这样isHQ会是false
-      await db.insert(departments).values({ id: projectId, name: '项目A', active: 1 }).execute()
-      await db.insert(orgDepartments).values(projectDept).execute()
-
-      const hqPosition = {
-        id: uuid(),
-        code: 'HQ_DIR',
-        name: '总部负责人',
+        code: 'INACTIVE_POS',
+        name: '停用职位',
+        dataScope: 'self',
         permissions: '{}',
         sortOrder: 1,
-        active: 1,
+        active: 0,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }
-      const projectPosition = {
-        id: uuid(),
-        code: 'PROJ_MGR',
-        name: '项目主管',
-        permissions: '{}',
-        sortOrder: 1,
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      const teamPosition = {
-        id: uuid(),
-        code: 'TEAM_LEAD',
-        name: '组长',
-        permissions: '{}',
-        sortOrder: 1,
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      await db.insert(positions).values([hqPosition, projectPosition, teamPosition]).execute()
+      await db.insert(positions).values([position1, position2, position3]).execute()
 
-      const result = await service.getAvailablePositions(projectDept.id)
+      const result = await service.getAvailablePositions()
 
-      // 项目部门应该返回level 2和3的职位，不包含level 1的HQ职位
-      expect(result.results.length).toBeGreaterThanOrEqual(2)
-      expect(result.results.map(p => p.code)).toContain('PROJ_MGR')
-      expect(result.results.map(p => p.code)).toContain('TEAM_LEAD')
-      expect(result.results.map(p => p.code)).not.toContain('HQ_DIR')
-      expect(result.department_info.is_hq).toBe(false)
-    })
-
-    it('应该按 allowedPositions 筛选', async () => {
-      const projectId = uuid()
-      const projectDept = {
-        id: uuid(),
-        projectId: projectId,
-        name: '项目A',
-        code: 'PROJ_A',
-        allowedPositions: JSON.stringify(['pos1', 'pos2']),
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      await db.insert(departments).values({ id: projectId, name: '项目A', active: 1 }).execute()
-      await db.insert(orgDepartments).values(projectDept).execute()
-
-      const pos1 = {
-        id: 'pos1',
-        code: 'POS1',
-        name: '职位1',
-        permissions: '{}',
-        sortOrder: 1,
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      const pos2 = {
-        id: 'pos2',
-        code: 'POS2',
-        name: '职位2',
-        permissions: '{}',
-        sortOrder: 1,
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      const pos3 = {
-        id: 'pos3',
-        code: 'POS3',
-        name: '职位3',
-        permissions: '{}',
-        sortOrder: 1,
-        active: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      await db.insert(positions).values([pos1, pos2, pos3]).execute()
-
-      const result = await service.getAvailablePositions(projectDept.id)
-
+      // 只返回活跃职位
       expect(result.results).toHaveLength(2)
-      expect(result.results.map(p => p.id)).toContain('pos1')
-      expect(result.results.map(p => p.id)).toContain('pos2')
-      expect(result.results.map(p => p.id)).not.toContain('pos3')
+      expect(result.results.map(p => p.code)).toContain('HQ_DIR')
+      expect(result.results.map(p => p.code)).toContain('PROJ_MGR')
+      expect(result.results.map(p => p.code)).not.toContain('INACTIVE_POS')
     })
 
-    it('应该抛出错误当部门不存在', async () => {
-      await expect(service.getAvailablePositions('non-existent')).rejects.toThrow()
+    it('应该按 dataScope 分组', async () => {
+      const hqPos = {
+        id: uuid(),
+        code: 'HQ_POS',
+        name: '总部职位',
+        dataScope: 'all',
+        permissions: '{}',
+        sortOrder: 1,
+        active: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      const projectPos = {
+        id: uuid(),
+        code: 'PROJ_POS',
+        name: '项目职位',
+        dataScope: 'project',
+        permissions: '{}',
+        sortOrder: 1,
+        active: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }
+      await db.insert(positions).values([hqPos, projectPos]).execute()
+
+      const result = await service.getAvailablePositions()
+
+      expect(result.grouped['全公司职位']).toHaveLength(1)
+      expect(result.grouped['项目职位']).toHaveLength(1)
     })
   })
 

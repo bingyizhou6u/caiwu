@@ -21,65 +21,17 @@ export class PositionService {
       .all()
   }
 
-  async getAvailablePositions(orgDepartmentId: string) {
-    // 1. 获取组织部门信息
-    const dept = await this.db
-      .select({
-        id: orgDepartments.id,
-        projectId: orgDepartments.projectId,
-        name: orgDepartments.name,
-        code: orgDepartments.code,
-        allowedPositions: orgDepartments.allowedPositions,
-        projectName: departments.name,
-      })
-      .from(orgDepartments)
-      .leftJoin(departments, eq(departments.id, orgDepartments.projectId))
-      .where(
-        and(eq(orgDepartments.id, orgDepartmentId), eq(orgDepartments.active, 1))
-      )
-      .get()
+  async getAvailablePositions(orgDepartmentId?: string) {
+    // 返回所有可用职位，按 dataScope 分组，让调用方根据需要筛选
 
-    if (!dept) {
-      throw Errors.NOT_FOUND('部门')
-    }
-
-    // 通过 projectId 关联的 department 名称判断是否为总部
-    const isHQ = dept.projectName === '总部'
-    const projectIdValue = dept.projectId
-    const projectName = dept.projectName || '未知'
-
-    // 2. 按 dataScope 筛选职位
-    let dataScopeCondition
-    if (isHQ) {
-      dataScopeCondition = eq(positions.dataScope, 'all')
-    } else {
-      dataScopeCondition = or(
-        eq(positions.dataScope, 'project'),
-        eq(positions.dataScope, 'group'),
-        eq(positions.dataScope, 'self')
-      )
-    }
-
-    let positionsList = await this.db
+    const positionsList = await this.db
       .select()
       .from(positions)
-      .where(and(eq(positions.active, 1), dataScopeCondition))
+      .where(eq(positions.active, 1))
       .orderBy(positions.dataScope, positions.sortOrder, positions.name)
       .all()
 
-    // 3. 如果配置了 allowed_positions，则按其筛选
-    if (dept.allowedPositions) {
-      try {
-        const allowedIds = JSON.parse(dept.allowedPositions) as string[]
-        if (Array.isArray(allowedIds) && allowedIds.length > 0) {
-          positionsList = positionsList.filter(p => allowedIds.includes(p.id))
-        }
-      } catch {
-        // 忽略解析错误
-      }
-    }
-
-    // 4. 按 dataScope 分组
+    // 按 dataScope 分组
     const SCOPE_LABELS: Record<string, string> = {
       'all': '全公司职位',
       'project': '项目职位',
@@ -98,13 +50,6 @@ export class PositionService {
     return {
       results: positionsList,
       grouped: groupedPositions,
-      department_info: {
-        project_id: projectIdValue,
-        project_name: projectName,
-        department_id: orgDepartmentId,
-        department_name: dept.name,
-        is_hq: isHQ,
-      },
     }
   }
 
