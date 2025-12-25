@@ -7,6 +7,7 @@ import type { Context } from 'hono'
 import type { Env, AppVariables } from '../types/index.js'
 import { getMonitoringService } from './monitoring.js'
 import { ErrorSeverity } from './monitoring.js'
+import { Logger } from './logger.js'
 
 /**
  * 数据库查询性能追踪器
@@ -51,7 +52,7 @@ export class DBPerformanceTracker {
           duration: String(duration),
         })
 
-        console.warn(`[DB Performance] Slow query detected: ${queryName} took ${duration}ms`, {
+        Logger.warn(`[DB Performance] Slow query detected: ${queryName} took ${duration}ms`, {
           query: queryName,
           duration,
           error: error?.message,

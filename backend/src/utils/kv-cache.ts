@@ -1,3 +1,4 @@
+import { Logger } from './logger.js'
 /**
  * KV 缓存工具
  * 使用 Cloudflare KV 存储热点数据，提供持久化缓存
@@ -44,13 +45,13 @@ export class KVCache {
       const data = cached as { value: T; expiresAt?: number }
       if (data.expiresAt && data.expiresAt < Date.now()) {
         // 异步删除过期数据
-        this.kv.delete(key).catch(() => {})
+        this.kv.delete(key).catch(() => { })
         return null
       }
 
       return data.value
     } catch (error) {
-      console.warn('[KVCache] Get failed:', error)
+      Logger.warn('[KVCache] Get failed:', error)
       return null
     }
   }
@@ -74,7 +75,7 @@ export class KVCache {
         expirationTtl: ttl || this.defaultTTL,
       })
     } catch (error) {
-      console.warn('[KVCache] Set failed:', error)
+      Logger.warn('[KVCache] Set failed:', error)
       // 静默失败，不影响主流程
     }
   }
@@ -87,7 +88,7 @@ export class KVCache {
     try {
       await this.kv.delete(key)
     } catch (error) {
-      console.warn('[KVCache] Delete failed:', error)
+      Logger.warn('[KVCache] Delete failed:', error)
     }
   }
 
@@ -100,11 +101,9 @@ export class KVCache {
     try {
       // KV 不支持直接按前缀删除，需要先列出所有键
       // 这里提供一个占位实现，实际使用时需要维护键列表
-      console.warn(
-        '[KVCache] deleteByPrefix requires key tracking, consider maintaining a key list'
-      )
+      Logger.warn('[KVCache] deleteByPrefix requires key tracking, consider maintaining a key list')
     } catch (error) {
-      console.warn('[KVCache] DeleteByPrefix failed:', error)
+      Logger.warn('[KVCache] DeleteByPrefix failed:', error)
     }
   }
 
@@ -115,7 +114,7 @@ export class KVCache {
    */
   async getMany<T>(keys: string[]): Promise<Map<string, T>> {
     const results = new Map<string, T>()
-    
+
     // 并行获取所有键
     const promises = keys.map(async (key) => {
       const value = await this.get<T>(key)

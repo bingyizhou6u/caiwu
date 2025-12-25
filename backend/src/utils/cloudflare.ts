@@ -1,4 +1,5 @@
 import type { Env } from '../types/index.js'
+import { Logger } from './logger.js'
 
 // Cloudflare 服务类型
 export type CloudflareService = 'ip_lists' | 'email' | 'firewall'
@@ -16,7 +17,7 @@ export function getAuthHeaders(env: Env, service?: CloudflareService): Record<st
   }
 
   // 未找到对应 Token 时返回空对象（调用方会报错）
-  console.warn(`Missing Cloudflare token for service: ${service}`)
+  Logger.warn(`Missing Cloudflare token for service: ${service}`)
   return {}
 }
 
@@ -33,7 +34,7 @@ export function hasCloudflareRuleConfig(env: Env): boolean {
 // 获取或创建 IP List（如果不存在则创建）
 export async function getOrCreateIPList(env: Env): Promise<string | null> {
   if (!hasCloudflareAPIConfig(env)) {
-    console.warn('Cloudflare API credentials or Account ID not configured')
+    Logger.warn('Cloudflare API credentials or Account ID not configured')
     return null
   }
 
@@ -44,7 +45,7 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
 
   const authHeaders = getAuthHeaders(env, 'ip_lists')
   if (!env.CF_ACCOUNT_ID) {
-    console.warn('Cloudflare Account ID not configured')
+    Logger.warn('Cloudflare Account ID not configured')
     return null
   }
 
@@ -76,10 +77,10 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
       const error = (await listResponse
         .json()
         .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
-        errors?: Array<{ message?: string }>
-        message?: string
-      }
-      console.error('Failed to list IP lists:', {
+          errors?: Array<{ message?: string }>
+          message?: string
+        }
+      Logger.error('Failed to list IP lists:', {
         status: listResponse.status,
         statusText: listResponse.statusText,
         error: error.errors || error,
@@ -111,10 +112,10 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
       const error = (await createResponse
         .json()
         .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
-        errors?: Array<{ message?: string }>
-        message?: string
-      }
-      console.error('Failed to create IP list:', {
+          errors?: Array<{ message?: string }>
+          message?: string
+        }
+      Logger.error('Failed to create IP list:', {
         status: createResponse.status,
         statusText: createResponse.statusText,
         error: error.errors || error,
@@ -125,7 +126,7 @@ export async function getOrCreateIPList(env: Env): Promise<string | null> {
     const createData = await createResponse.json<{ result: { id: string } }>()
     return createData.result?.id || null
   } catch (error: any) {
-    console.error('Error getting/creating IP list:', {
+    Logger.error('Error getting/creating IP list:', {
       error: error.message || error,
       stack: error.stack,
     })
@@ -178,14 +179,14 @@ export async function addIPToCloudflareList(
       const error = (await response
         .json()
         .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
-        errors?: Array<{ message?: string; code?: number }>
-        message?: string
-      }
+          errors?: Array<{ message?: string; code?: number }>
+          message?: string
+        }
       const errorMsg =
         error.errors?.[0]?.message ||
         error.message ||
         `HTTP ${response.status}: ${response.statusText}`
-      console.error('Failed to add IP to Cloudflare list:', {
+      Logger.error('Failed to add IP to Cloudflare list:', {
         ip,
         status: response.status,
         statusText: response.statusText,
@@ -233,7 +234,7 @@ export async function addIPToCloudflareList(
     }
 
     if (!itemId) {
-      console.error('Failed to get item ID from Cloudflare API response:', {
+      Logger.error('Failed to get item ID from Cloudflare API response:', {
         ip,
         response: data,
       })
@@ -242,7 +243,7 @@ export async function addIPToCloudflareList(
 
     return { success: true, itemId }
   } catch (error: any) {
-    console.error('Error adding IP to Cloudflare list:', {
+    Logger.error('Error adding IP to Cloudflare list:', {
       ip,
       error: error.message || error,
       stack: error.stack,
@@ -316,14 +317,14 @@ export async function addIPsToCloudflareList(
       const error = (await response
         .json()
         .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
-        errors?: Array<{ message?: string }>
-        message?: string
-      }
+          errors?: Array<{ message?: string }>
+          message?: string
+        }
       const errorMsg =
         error.errors?.[0]?.message ||
         error.message ||
         `HTTP ${response.status}: ${response.statusText}`
-      console.error('Failed to batch add IPs to Cloudflare list:', {
+      Logger.error('Failed to batch add IPs to Cloudflare list:', {
         count: ips.length,
         status: response.status,
         statusText: response.statusText,
@@ -384,7 +385,7 @@ export async function addIPsToCloudflareList(
           : [],
     }
   } catch (error: any) {
-    console.error('Error batch adding IPs to Cloudflare list:', {
+    Logger.error('Error batch adding IPs to Cloudflare list:', {
       count: ips.length,
       error: error.message || error,
       stack: error.stack,
@@ -407,7 +408,7 @@ export async function removeIPsFromCloudflareList(
   itemIds: string[]
 ): Promise<{ success: boolean; successCount: number; failedCount: number }> {
   if (!hasCloudflareAPIConfig(env)) {
-    console.warn('Cloudflare API credentials or Account ID not configured')
+    Logger.warn('Cloudflare API credentials or Account ID not configured')
     return { success: false, successCount: 0, failedCount: itemIds.length }
   }
 
@@ -438,10 +439,10 @@ export async function removeIPsFromCloudflareList(
       const error = (await response
         .json()
         .catch(() => ({ errors: [{ message: 'Unknown error' }] }))) as {
-        errors?: Array<{ message?: string }>
-        message?: string
-      }
-      console.error('Failed to batch remove IPs from Cloudflare list:', {
+          errors?: Array<{ message?: string }>
+          message?: string
+        }
+      Logger.error('Failed to batch remove IPs from Cloudflare list:', {
         count: itemIds.length,
         status: response.status,
         statusText: response.statusText,
@@ -481,7 +482,7 @@ export async function removeIPsFromCloudflareList(
     // 如果无法验证，假设全部成功
     return { success: true, successCount: itemIds.length, failedCount: 0 }
   } catch (error: any) {
-    console.error('Error batch removing IPs from Cloudflare list:', {
+    Logger.error('Error batch removing IPs from Cloudflare list:', {
       count: itemIds.length,
       error: error.message || error,
       stack: error.stack,
@@ -493,7 +494,7 @@ export async function removeIPsFromCloudflareList(
 // 从 IP List 删除 IP
 export async function removeIPFromCloudflareList(env: Env, itemId: string): Promise<boolean> {
   if (!hasCloudflareAPIConfig(env)) {
-    console.warn('Cloudflare API credentials or Account ID not configured')
+    Logger.warn('Cloudflare API credentials or Account ID not configured')
     return false
   }
 
@@ -523,7 +524,7 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ errors: [{ message: 'Unknown error' }] }))
-      console.error('Failed to remove IP from Cloudflare list:', {
+      Logger.error('Failed to remove IP from Cloudflare list:', {
         itemId,
         status: response.status,
         statusText: response.statusText,
@@ -555,7 +556,7 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
         const listData = await verifyResponse.json<{ result: Array<{ id: string }> }>()
         const stillExists = listData.result?.some(item => item.id === itemId)
         if (stillExists) {
-          console.warn('IP still exists after deletion, operation may be in progress')
+          Logger.warn('IP still exists after deletion, operation may be in progress')
           // 即使还在列表中，也认为删除请求已成功（可能是异步操作）
           return true
         }
@@ -564,7 +565,7 @@ export async function removeIPFromCloudflareList(env: Env, itemId: string): Prom
 
     return data.success !== false
   } catch (error) {
-    console.error('Error removing IP from Cloudflare list:', {
+    Logger.error('Error removing IP from Cloudflare list:', {
       itemId,
       error: error instanceof Error ? error.message : error,
     })
@@ -577,7 +578,7 @@ export async function fetchCloudflareIPListItems(
   env: Env
 ): Promise<Array<{ id: string; ip: string; comment?: string }>> {
   if (!hasCloudflareAPIConfig(env)) {
-    console.warn('Cloudflare API credentials or Account ID not configured')
+    Logger.warn('Cloudflare API credentials or Account ID not configured')
     return []
   }
 
@@ -601,7 +602,7 @@ export async function fetchCloudflareIPListItems(
 
     if (!response.ok) {
       const error = await response.json()
-      console.error('Failed to fetch Cloudflare IP list items:', error)
+      Logger.error('Failed to fetch Cloudflare IP list items:', error)
       return []
     }
 
@@ -610,7 +611,7 @@ export async function fetchCloudflareIPListItems(
     }>()
     return data.result || []
   } catch (error) {
-    console.error('Error fetching Cloudflare IP list items:', error)
+    Logger.error('Error fetching Cloudflare IP list items:', error)
     return []
   }
 }
@@ -620,7 +621,7 @@ export async function getOrCreateWhitelistRule(
   env: Env
 ): Promise<{ ruleId: string; rulesetId: string } | null> {
   if (!hasCloudflareRuleConfig(env)) {
-    console.warn('Cloudflare API credentials or Zone ID not configured')
+    Logger.warn('Cloudflare API credentials or Zone ID not configured')
     return null
   }
 
@@ -672,7 +673,7 @@ export async function getOrCreateWhitelistRule(
 
       if (!createRulesetResponse.ok) {
         const error = await createRulesetResponse.json()
-        console.error('Failed to create ruleset:', error)
+        Logger.error('Failed to create ruleset:', error)
         return null
       }
 
@@ -689,7 +690,7 @@ export async function getOrCreateWhitelistRule(
       return null
     }
   } catch (error) {
-    console.error('Error getting/creating ruleset:', error)
+    Logger.error('Error getting/creating ruleset:', error)
     return null
   }
 
@@ -720,7 +721,7 @@ export async function getOrCreateWhitelistRule(
       }
     }
   } catch (error) {
-    console.error('Error listing rules:', error)
+    Logger.error('Error listing rules:', error)
   }
 
   // 3. 创建新规则
@@ -744,7 +745,7 @@ export async function getOrCreateWhitelistRule(
 
     if (!createRuleResponse.ok) {
       const error = await createRuleResponse.json()
-      console.error('Failed to create rule:', error)
+      Logger.error('Failed to create rule:', error)
       return null
     }
 
@@ -756,7 +757,7 @@ export async function getOrCreateWhitelistRule(
       return { ruleId, rulesetId }
     }
   } catch (error) {
-    console.error('Error creating rule:', error)
+    Logger.error('Error creating rule:', error)
   }
 
   return null
@@ -765,7 +766,7 @@ export async function getOrCreateWhitelistRule(
 // 启用/停用自定义规则（不再更新数据库）
 export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<boolean> {
   if (!hasCloudflareRuleConfig(env)) {
-    console.warn('Cloudflare API credentials or Zone ID not configured')
+    Logger.warn('Cloudflare API credentials or Zone ID not configured')
     return false
   }
 
@@ -830,7 +831,7 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
     // 检查规则是否存在
     const targetRule = existingRules.find(rule => rule.id === ruleId)
     if (!targetRule) {
-      console.error(`Rule ${ruleId} not found in ruleset ${rulesetId}`)
+      Logger.error(`Rule ${ruleId} not found in ruleset ${rulesetId}`)
       return false
     }
 
@@ -889,10 +890,10 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('Failed to toggle rule:', error)
-      console.error('Request body:', JSON.stringify({ rules: updatedRules }, null, 2))
-      console.error('Rule ID:', ruleId)
-      console.error('Ruleset ID:', rulesetId)
+      Logger.error('Failed to toggle rule:', error)
+      Logger.error('Request body:', JSON.stringify({ rules: updatedRules }, null, 2))
+      Logger.error('Rule ID:', ruleId)
+      Logger.error('Ruleset ID:', rulesetId)
       return false
     }
 
@@ -902,7 +903,7 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
     // 验证更新是否成功
     const updatedRule = responseData.result?.rules?.find(r => r.id === ruleId)
     if (updatedRule && updatedRule.enabled !== enabled) {
-      console.error(
+      Logger.error('[Cloudflare] Error',
         `Rule status mismatch after update: expected=${enabled}, actual=${updatedRule.enabled}`
       )
       return false
@@ -911,11 +912,11 @@ export async function toggleWhitelistRule(env: Env, enabled: boolean): Promise<b
     // 不再更新数据库
     return true
   } catch (error: any) {
-    console.error('Error toggling rule:', error)
-    console.error('Error message:', error?.message)
-    console.error('Error stack:', error?.stack)
-    console.error('Rule ID:', ruleId)
-    console.error('Ruleset ID:', rulesetId)
+    Logger.error('Error toggling rule:', error)
+    Logger.error('Error message:', error?.message)
+    Logger.error('Error stack:', error?.stack)
+    Logger.error('Rule ID:', ruleId)
+    Logger.error('Ruleset ID:', rulesetId)
     return false
   }
 }
@@ -1055,9 +1056,9 @@ export async function getWhitelistRuleStatus(
       }
     }
   } catch (error: any) {
-    console.error('Error getting whitelist rule status:', error)
-    console.error('Error message:', error?.message)
-    console.error('Error stack:', error?.stack)
+    Logger.error('Error getting whitelist rule status:', error)
+    Logger.error('Error message:', error?.message)
+    Logger.error('Error stack:', error?.stack)
     // 发生错误时返回默认值（不再从数据库读取）
     return { enabled: false }
   }
