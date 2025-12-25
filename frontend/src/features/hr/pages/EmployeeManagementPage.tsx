@@ -309,11 +309,12 @@ export function EmployeeManagement() {
                           <Descriptions.Item label="职位代码">
                             <EmptyText value={record.positionCode} />
                           </Descriptions.Item>
-                          <Descriptions.Item label="职位层级">
-                            {record.positionLevel === 1 ? '总部' :
-                              record.positionLevel === 2 ? '项目' :
-                                record.positionLevel === 3 ? '组' :
-                                  record.positionLevel || '-'}
+                          <Descriptions.Item label="数据范围">
+                            {record.positionDataScope === 'all' ? '全公司' :
+                              record.positionDataScope === 'project' ? '项目级' :
+                                record.positionDataScope === 'group' ? '组级' :
+                                  record.positionDataScope === 'self' ? '仅自己' :
+                                    record.positionDataScope || '-'}
                           </Descriptions.Item>
                         </>
                       )}

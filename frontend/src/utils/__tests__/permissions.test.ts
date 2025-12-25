@@ -67,7 +67,6 @@ describe('permissions', () => {
             expect(result.current.user).toEqual(mockUserInfo)
             expect(result.current.canManageSubordinates).toBe(true)
             expect(result.current.positionCode).toBe('manager')
-            expect(result.current.positionLevel).toBe(2)
         })
 
         it('should check permission correctly', () => {

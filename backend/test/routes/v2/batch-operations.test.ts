@@ -63,7 +63,6 @@ describe('Batch Operations API', () => {
         id: positionId,
         code: 'ADMIN',
         name: 'Admin',
-        level: 1,
         permissions,
       })
       .execute()

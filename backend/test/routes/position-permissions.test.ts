@@ -118,7 +118,7 @@ describe('Position Permissions Routes', () => {
   })
 
   it('should create position', async () => {
-    const mockResult = { id: '1', code: 'DIR', name: 'Director', level: 1 }
+    const mockResult = { id: '1', code: 'DIR', name: 'Director' }
     mockPositionService.createPosition.mockResolvedValue(mockResult)
 
     const res = await app.request('/position-permissions', {
@@ -126,7 +126,6 @@ describe('Position Permissions Routes', () => {
       body: JSON.stringify({
         code: 'DIR',
         name: 'Director',
-        level: 1,
         permissions: {},
       }),
       headers: { 'Content-Type': 'application/json' },
@@ -141,13 +140,12 @@ describe('Position Permissions Routes', () => {
       expect.objectContaining({
         code: 'DIR',
         name: 'Director',
-        level: 1,
       })
     )
   })
 
   it('should update position', async () => {
-    const mockPosition = { id: '1', code: 'DIR', name: 'Director Updated', level: 1 }
+    const mockPosition = { id: '1', code: 'DIR', name: 'Director Updated' }
     mockPositionService.updatePosition.mockResolvedValue({ ok: true })
     mockPositionService.getPositions.mockResolvedValue([mockPosition])
 
@@ -186,7 +184,6 @@ describe('Position Permissions Routes', () => {
       body: JSON.stringify({
         code: 'DIR',
         name: 'Director',
-        level: 1,
       }),
       headers: { 'Content-Type': 'application/json' },
     })

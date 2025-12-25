@@ -83,7 +83,7 @@ export interface Employee {
     position?: Position
     positionCode?: string
     positionName?: string
-    positionLevel?: number  // 职位层级 (1-总部 2-项目 3-组)
+    positionDataScope?: 'all' | 'project' | 'group' | 'self'  // 数据范围
 
     // Salary/allowance data (joined from latest config)
     probationSalaryCents?: AmountCents

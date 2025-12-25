@@ -135,7 +135,6 @@ describe('MasterDataService', () => {
           id: 'pos1',
           code: 'P1',
           name: 'Dev',
-          level: 2,
           active: 1,
         })
         .execute()

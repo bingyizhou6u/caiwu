@@ -11,7 +11,7 @@ export class PermissionService {
    */
   async canViewEmployee(
     actor: { id: string; departmentId: string | null; orgDepartmentId: string | null },
-    actorPosition: { level: number; code: string; dataScope?: string },
+    actorPosition: { code: string; dataScope?: string },
     targetEmployeeId: string
   ): Promise<boolean> {
     const dataScope = actorPosition.dataScope || 'self'
@@ -57,7 +57,7 @@ export class PermissionService {
    */
   async canApproveApplication(
     actor: { id: string; departmentId: string | null; orgDepartmentId: string | null },
-    actorPosition: { level: number; code: string; canManageSubordinates: number; dataScope?: string },
+    actorPosition: { code: string; canManageSubordinates: number; dataScope?: string },
     applicantEmployeeId: string
   ): Promise<boolean> {
     // 必须有管理下属权限

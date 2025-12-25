@@ -18,7 +18,6 @@ const mockUserPosition = {
   id: 'pos-1',
   code: 'hq_admin',
   name: 'HQ Admin',
-  level: 1,
   function_role: 'admin',
   can_manage_subordinates: 1,
   permissions: {
@@ -114,7 +113,6 @@ describe('Employees API', () => {
         id: 'pos-1',
         code: 'hq_admin',
         name: 'HQ Admin',
-        level: 1,
         active: 1,
       })
       .execute()

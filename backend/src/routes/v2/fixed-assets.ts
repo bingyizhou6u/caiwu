@@ -68,9 +68,9 @@ fixedAssetsRoutes.openapi(
     let createdBy = undefined
 
     if (position && employee) {
-      if (position.level === 2) {
+      if (position.dataScope === 'project') {
         departmentId = employee.departmentId || undefined
-      } else if (position.level > 2) {
+      } else if (position.dataScope === 'group' || position.dataScope === 'self') {
         createdBy = employee.id
       }
     }

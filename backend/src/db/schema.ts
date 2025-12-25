@@ -51,7 +51,6 @@ export const positions = sqliteTable('positions', {
   id: text('id').primaryKey(),
   code: text('code').notNull().unique(),
   name: text('name').notNull(),
-  level: integer('level').notNull(),
   canManageSubordinates: integer('can_manage_subordinates').default(0),
   dataScope: text('data_scope').default('self').notNull(), // all, project, group, self
   description: text('description'),

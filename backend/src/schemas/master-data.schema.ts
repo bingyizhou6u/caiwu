@@ -141,7 +141,6 @@ export const positionSchema = z.object({
   id: uuidSchema,
   code: z.string().min(1, '职位代码不能为空'),
   name: z.string().min(1, '职位名称不能为空'),
-  level: z.number().int().min(1).max(3),
   canManageSubordinates: z.number().int().min(0).max(1).nullable().default(0),
   dataScope: z.enum(['all', 'project', 'group', 'self']).default('self'),
   description: z.string().optional().nullable(),

@@ -27,8 +27,8 @@ export type AppVariables = {
     id: string
     code: string
     name: string
-    level: number
     canManageSubordinates: number
+    dataScope?: string
     permissions: Record<string, Record<string, string[]>>
   }
   userEmployee?: {

@@ -11,7 +11,6 @@ interface UserInfo {
   position?: {
     code?: string
     name?: string
-    level?: number
     canManageSubordinates?: number
     dataScope?: 'all' | 'project' | 'group' | 'self'
     permissions?: Record<string, Record<string, string[]>>

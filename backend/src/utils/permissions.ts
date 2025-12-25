@@ -13,7 +13,6 @@ export interface Position {
   id: string
   code: string
   name: string
-  level: number
   canManageSubordinates: number
   dataScope: DataScopeType // 数据访问范围
   permissions: any // JSON权限配置

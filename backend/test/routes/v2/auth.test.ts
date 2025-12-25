@@ -37,7 +37,7 @@ describe('Auth API V2', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
+      .values({ id: positionId, code: 'P01', name: 'Dev' })
       .execute()
     await db
       .insert(employees)
@@ -109,7 +109,7 @@ describe('Auth API V2', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
+      .values({ id: positionId, code: 'P01', name: 'Dev' })
       .execute()
     await db
       .insert(employees)

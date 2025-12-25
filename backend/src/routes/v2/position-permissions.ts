@@ -16,7 +16,6 @@ const positionResponseSchema = z.object({
   id: z.string(),
   code: z.string(),
   name: z.string(),
-  level: z.number(),
   dataScope: z.enum(['all', 'project', 'group', 'self']).optional(),
   permissions: z.any().optional(),
   description: z.string().nullable(),
@@ -139,7 +138,6 @@ positionPermissionsRoutes.openapi(createPositionRoute, createRouteHandler(async 
   const result = await c.var.services.position.createPosition({
     code: body.code,
     name: body.name,
-    level: body.level,
     canManageSubordinates: body.canManageSubordinates ?? body.can_manage_subordinates,
     description: body.description,
     permissions: typeof body.permissions === 'string' ? body.permissions : JSON.stringify(body.permissions ?? {}),
@@ -200,7 +198,6 @@ positionPermissionsRoutes.openapi(updatePositionRoute, createRouteHandler(async 
   const updateData = {
     code: body.code,
     name: body.name,
-    level: body.level,
     canManageSubordinates: body.canManageSubordinates ?? body.can_manage_subordinates,
     dataScope: body.dataScope,
     description: body.description,

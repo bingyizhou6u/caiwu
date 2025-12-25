@@ -11,7 +11,7 @@ vi.mock('../../src/utils/audit.js', () => ({
 // Mock permissions
 vi.mock('../../src/utils/permissions.js', () => ({
   hasPermission: vi.fn(() => true),
-  getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager', level: 1, function_role: 'admin' })),
+  getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager', function_role: 'admin' })),
   getUserEmployee: vi.fn(() => ({ id: 'emp1', name: 'Test User', departmentId: 'dept1' })),
   getUserId: vi.fn(() => 'user1'),
 }))

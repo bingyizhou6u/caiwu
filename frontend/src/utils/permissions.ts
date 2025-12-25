@@ -73,7 +73,6 @@ export function usePermissions() {
     canManageSubordinates,
     // 职位信息 (如需要更细粒度的判断)
     positionCode: user?.position?.code,
-    positionLevel: user?.position?.level,
   }
 }
 

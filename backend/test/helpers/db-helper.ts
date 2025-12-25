@@ -189,7 +189,6 @@ export const createTestEntity = {
       id: uuid(),
       code: `test_pos_${Date.now()}`,
       name: 'Test Position',
-      level: 5,
       active: 1,
       createdAt: now,
       updatedAt: now,

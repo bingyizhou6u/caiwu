@@ -46,7 +46,6 @@ describe('Approval Routes', () => {
       c.set('userPosition', {
         id: 'pos-id',
         code: 'manager',
-        level: 2,
         permissions: {
           hr: { reimbursement: ['approve'] },
           finance: { borrowing: ['approve'] },

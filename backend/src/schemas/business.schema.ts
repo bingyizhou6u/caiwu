@@ -445,7 +445,6 @@ export const generateAllowancePaymentsSchema = z.object({
 export const createPositionSchema = z.object({
   code: z.string().min(1, 'code参数必填'),
   name: z.string().min(1, 'name参数必填'),
-  level: z.number().int('level必须是整数'),
   permissions: z.any(), // permissions可以是任意JSON对象
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
@@ -457,7 +456,6 @@ export const createPositionSchema = z.object({
 export const updatePositionSchema = z.object({
   code: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
-  level: z.number().int().optional(),
   canManageSubordinates: z.number().int().min(0).max(1).optional(),
   dataScope: z.enum(['all', 'project', 'group', 'self']).optional(),
   permissions: z.any().optional(),

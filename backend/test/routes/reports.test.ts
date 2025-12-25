@@ -13,7 +13,7 @@ vi.mock('../../src/middleware.js', async () => {
     ...actual,
     createAuthMiddleware: () => async (c: any, next: any) => {
       c.set('userId', 'user-1')
-      c.set('userPosition', { id: 'p1', level: 1, permissions: { report: { finance: ['view'] } } }) // Mock permissions if needed
+      c.set('userPosition', { id: 'p1', permissions: { report: { finance: ['view'] } } }) // Mock permissions if needed
       await next()
     },
   }

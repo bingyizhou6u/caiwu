@@ -63,7 +63,6 @@ describe('EmployeeService', () => {
         id: positionId,
         code: 'dev',
         name: 'Developer',
-        level: 3,
         active: 1,
       })
       .execute()
@@ -202,7 +201,6 @@ describe('EmployeeService', () => {
         id: positionId,
         code: 'dev',
         name: 'Developer',
-        level: 3,
         active: 1,
       })
       .execute()

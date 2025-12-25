@@ -48,19 +48,23 @@ export class PositionService {
     const projectIdValue = dept.projectId
     const projectName = dept.projectName || '未知'
 
-    // 2. 按级别筛选职位
-    let levelCondition
+    // 2. 按 dataScope 筛选职位
+    let dataScopeCondition
     if (isHQ) {
-      levelCondition = eq(positions.level, 1)
+      dataScopeCondition = eq(positions.dataScope, 'all')
     } else {
-      levelCondition = or(eq(positions.level, 2), eq(positions.level, 3))
+      dataScopeCondition = or(
+        eq(positions.dataScope, 'project'),
+        eq(positions.dataScope, 'group'),
+        eq(positions.dataScope, 'self')
+      )
     }
 
     let positionsList = await this.db
       .select()
       .from(positions)
-      .where(and(eq(positions.active, 1), levelCondition))
-      .orderBy(positions.level, positions.sortOrder, positions.name)
+      .where(and(eq(positions.active, 1), dataScopeCondition))
+      .orderBy(positions.dataScope, positions.sortOrder, positions.name)
       .all()
 
     // 3. 如果配置了 allowed_positions，则按其筛选
@@ -75,15 +79,16 @@ export class PositionService {
       }
     }
 
-    // 4. 按级别分组
-    const LEVEL_LABELS: Record<number, string> = {
-      1: '总部职位',
-      2: '项目职位',
-      3: '组级职位',
+    // 4. 按 dataScope 分组
+    const SCOPE_LABELS: Record<string, string> = {
+      'all': '全公司职位',
+      'project': '项目职位',
+      'group': '组级职位',
+      'self': '个人职位',
     }
     const groupedPositions: Record<string, typeof positionsList> = {}
     for (const pos of positionsList) {
-      const groupKey = LEVEL_LABELS[pos.level] || `其他(level=${pos.level})`
+      const groupKey = SCOPE_LABELS[pos.dataScope] || `其他(dataScope=${pos.dataScope})`
       if (!groupedPositions[groupKey]) {
         groupedPositions[groupKey] = []
       }
@@ -106,7 +111,6 @@ export class PositionService {
   async createPosition(data: {
     code: string
     name: string
-    level: number
     canManageSubordinates?: number
     dataScope?: string
     description?: string
@@ -129,7 +133,6 @@ export class PositionService {
         id,
         code: data.code,
         name: data.name,
-        level: data.level,
         canManageSubordinates: data.canManageSubordinates ?? 0,
         dataScope: (data.dataScope as any) || 'self',
         description: data.description,

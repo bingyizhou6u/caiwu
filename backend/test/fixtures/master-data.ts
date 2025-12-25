@@ -193,7 +193,6 @@ export function getPositionsFixtures() {
       id: FIXTURE_IDS.POS_CEO,
       code: 'ceo',
       name: '总经理',
-      level: 1,
       canManageSubordinates: 1,
       description: '公司最高管理者',
       permissions: JSON.stringify({
@@ -209,7 +208,6 @@ export function getPositionsFixtures() {
       id: FIXTURE_IDS.POS_CFO,
       code: 'cfo',
       name: '财务总监',
-      level: 2,
       canManageSubordinates: 1,
       description: '财务负责人',
       permissions: JSON.stringify({
@@ -224,7 +222,6 @@ export function getPositionsFixtures() {
       id: FIXTURE_IDS.POS_HR_MANAGER,
       code: 'hr_manager',
       name: '人事经理',
-      level: 3,
       canManageSubordinates: 1,
       description: '人力资源管理',
       permissions: JSON.stringify({
@@ -239,7 +236,6 @@ export function getPositionsFixtures() {
       id: FIXTURE_IDS.POS_FINANCE_MANAGER,
       code: 'finance_manager',
       name: '财务经理',
-      level: 3,
       canManageSubordinates: 1,
       description: '财务管理',
       permissions: JSON.stringify({
@@ -254,7 +250,6 @@ export function getPositionsFixtures() {
       id: FIXTURE_IDS.POS_ACCOUNTANT,
       code: 'accountant',
       name: '会计',
-      level: 4,
       canManageSubordinates: 0,
       description: '财务会计',
       permissions: JSON.stringify({
@@ -269,7 +264,6 @@ export function getPositionsFixtures() {
       id: FIXTURE_IDS.POS_ENGINEER,
       code: 'engineer',
       name: '工程师',
-      level: 4,
       canManageSubordinates: 0,
       description: '技术开发',
       permissions: JSON.stringify({

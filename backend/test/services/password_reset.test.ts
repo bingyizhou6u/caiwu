@@ -83,7 +83,6 @@ describe('Password Reset Flow', () => {
         id: posId,
         name: 'Test Pos',
         code: 'test_pos',
-        level: 3,
         createdAt: Date.now(),
       })
       .run()

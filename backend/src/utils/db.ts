@@ -52,7 +52,6 @@ export async function getSessionWithUserAndPosition(
     id: string
     code: string
     name: string
-    level: number
     canManageSubordinates: number
     dataScope: string
     permissions: any
@@ -83,7 +82,6 @@ export async function getSessionWithUserAndPosition(
       positionId: positions.id,
       positionCode: positions.code,
       positionName: positions.name,
-      positionLevel: positions.level,
       positionCanManageSubordinates: positions.canManageSubordinates,
       positionDataScope: positions.dataScope,
       positionPermissions: positions.permissions,
@@ -107,7 +105,6 @@ export async function getSessionWithUserAndPosition(
       id: result.positionId,
       code: result.positionCode!,
       name: result.positionName!,
-      level: result.positionLevel!,
       canManageSubordinates: result.positionCanManageSubordinates!,
       dataScope: result.positionDataScope || 'self',
       permissions: JSON.parse(result.positionPermissions || '{}'),
@@ -159,7 +156,6 @@ export async function getUserFullContext(
     id: string
     code: string
     name: string
-    level: number
     canManageSubordinates: number
     dataScope: string
     permissions: any
@@ -184,7 +180,6 @@ export async function getUserFullContext(
       positionId: positions.id,
       positionCode: positions.code,
       positionName: positions.name,
-      positionLevel: positions.level,
       positionCanManageSubordinates: positions.canManageSubordinates,
       positionDataScope: positions.dataScope,
       positionPermissions: positions.permissions,
@@ -207,7 +202,6 @@ export async function getUserFullContext(
       id: result.positionId,
       code: result.positionCode!,
       name: result.positionName!,
-      level: result.positionLevel!,
       canManageSubordinates: result.positionCanManageSubordinates!,
       dataScope: result.positionDataScope || 'self',
       permissions: JSON.parse(result.positionPermissions || '{}'),

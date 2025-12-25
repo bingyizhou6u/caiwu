@@ -83,7 +83,6 @@ describe('Employees API Integration', () => {
       })
       c.set('userPosition', {
         id: 'pos-admin',
-        level: 1,
       })
       c.set('db', db)
       await next()
@@ -111,7 +110,6 @@ describe('Employees API Integration', () => {
         id: positionId,
         name: 'Dev',
         code: 'DEV',
-        level: 3,
         active: 1,
       })
       .execute()
@@ -162,7 +160,6 @@ describe('Employees API Integration', () => {
         id: positionId,
         name: 'Dev',
         code: 'DEV',
-        level: 3,
         active: 1,
       })
       .execute()
@@ -207,7 +204,6 @@ describe('Employees API Integration', () => {
         id: positionId,
         name: 'Dev',
         code: 'DEV',
-        level: 3,
         active: 1,
       })
       .execute()
@@ -252,7 +248,6 @@ describe('Employees API Integration', () => {
         id: positionId,
         name: 'Dev',
         code: 'DEV',
-        level: 3,
         active: 1,
       })
       .execute()

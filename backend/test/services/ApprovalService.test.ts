@@ -82,7 +82,6 @@ describe('ApprovalService', () => {
       .insert(positions)
       .values({
         id: managerPosId,
-        level: 3,
         code: 'mock_team_leader',
         dataScope: 'group',
         name: 'Manager',
@@ -99,7 +98,6 @@ describe('ApprovalService', () => {
         code: 'mock_engineer',
         dataScope: 'self',
         name: 'Engineer',
-        level: 3,
         canManageSubordinates: 0,
         active: 1,
       })

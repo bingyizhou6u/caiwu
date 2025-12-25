@@ -57,7 +57,6 @@ describe('MasterData Routes', () => {
         id: 'pos1',
         code: 'ADMIN',
         name: 'Admin',
-        level: 1,
         function_role: 'admin',
         can_manage_subordinates: 1,
         permissions: {
