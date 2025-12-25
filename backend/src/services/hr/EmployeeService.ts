@@ -52,7 +52,6 @@ export class EmployeeService {
     email: string
     personalEmail: string
     user_account_created: boolean
-    user_role?: string
     email_sent: boolean
     email_routing_created: boolean
     password?: string
@@ -248,7 +247,6 @@ export class EmployeeService {
         email: companyEmail,
         personalEmail: data.personalEmail,
         user_account_created: userAccountCreated,
-        user_role: 'employee',
         email_sent: false, // 不再自动发送，需手动触发
         email_routing_created: emailRoutingCreated,
         password: undefined,

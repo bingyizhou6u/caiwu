@@ -111,7 +111,6 @@ export const CreateEmployeeResponseSchema = z.object({
   email: z.string().optional().openapi({ description: '系统生成的公司邮箱 @cloudflarets.com' }),
   personalEmail: z.string().optional().openapi({ description: '员工真实邮箱' }),
   userAccountCreated: z.boolean().optional(),
-  userRole: z.string().optional(),
   emailSent: z.boolean().optional(),
   emailRoutingCreated: z.boolean().optional(),
 })

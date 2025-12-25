@@ -203,7 +203,6 @@ employeesRoutes.openapi(
       email: result.email,
       personalEmail: result.personalEmail,
       userAccountCreated: result.user_account_created,
-      userRole: result.user_role,
       emailSent: result.email_sent,
       emailRoutingCreated: result.email_routing_created,
     }
