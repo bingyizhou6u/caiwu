@@ -24,12 +24,8 @@ export function createVersionMiddleware() {
       version = 'v3'
     } else if (path.startsWith('/api/v2')) {
       version = 'v2'
-    } else if (path.startsWith('/api/v1')) {
-      version = 'v1'
-    } else if (path.startsWith('/api/')) {
-      // /api/* 默认使用 v2
-      version = 'v2'
     }
+    // /api/* 默认使用 v2
 
     // 设置版本到 context
     c.set('apiVersion', version)

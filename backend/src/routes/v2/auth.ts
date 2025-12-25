@@ -27,12 +27,6 @@ import { createRouteHandler } from '../../utils/route-helpers.js'
 
 const authRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
-// 辅助函数：清除旧版 cookie
-function clearLegacyCookie(c: Context) {
-  deleteCookie(c, AUTH_COOKIE_NAME, { path: '/' })
-  deleteCookie(c, 'sid', { path: '/' })
-}
-
 // 辅助函数：提取 token
 function extractAuthToken(c: Context) {
   const altHeader = c.req.header(ALT_AUTH_HEADER)
@@ -103,7 +97,6 @@ async function handleLogin(c: Context<{ Bindings: Env; Variables: AppVariables }
     Logger.info('Login result', { status: result.status }, c)
 
     if (result.status === 'success' && result.session && result.position) {
-      clearLegacyCookie(c)
       const payload = await buildAuthSuccessPayload(c, result)
 
       // 异步邮件通知
@@ -218,7 +211,6 @@ authRoutes.openapi(logoutRoute, createRouteHandler(async c => {
     }
   }
 
-  clearLegacyCookie(c)
   return {}
 }))
 
@@ -444,7 +436,6 @@ authRoutes.openapi(activateAccountRoute, async c => {
   )
 
   if (result.status === 'success' && result.session && result.position) {
-    clearLegacyCookie(c)
     const payload = await buildAuthSuccessPayload(c, result)
     return jsonResponse(c, apiSuccess(payload))
   }
@@ -529,7 +520,6 @@ authRoutes.openapi(resetPasswordRoute, async c => {
   const result = await authService.resetPassword(body.token, body.password, deviceInfo)
 
   if (result.status === 'success' && result.session && result.position) {
-    clearLegacyCookie(c)
     const payload = await buildAuthSuccessPayload(c, result)
     return jsonResponse(c, apiSuccess(payload))
   }
