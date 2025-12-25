@@ -17,27 +17,15 @@ export const createCashFlowSchema = z
       errorMap: () => ({ message: 'type必须为有效的记账类型' }),
     }),
     amountCents: z.number().int().positive('amountCents必须大于0'),
-    voucherUrls: z.array(z.string().url('凭证URL格式不正确')).optional(),
-    voucherUrl: z.string().url().optional(), // 向后兼容
+    voucherUrls: z.array(z.string().url('凭证URL格式不正确')).min(1, 'voucherUrls参数必填（凭证上传是必填的）'),
     voucherNo: z.string().optional(),
     method: z.string().optional(),
     siteId: uuidSchema.optional(),
     departmentId: uuidSchema.optional(),
-    // ownerScope 已弃用，保留仅为向后兼容。建议直接使用 departmentId
-    ownerScope: z.enum(['hq', 'department']).optional(),
     counterparty: z.string().optional(),
     memo: z.string().optional(),
     createdBy: uuidSchema.optional(),
   })
-  .refine(
-    data => {
-      // 如果提供了voucherUrls，使用它；否则检查voucherUrl
-      if (data.voucherUrls && data.voucherUrls.length > 0) { return true }
-      if (data.voucherUrl) { return true }
-      return false
-    },
-    { message: 'voucherUrls参数必填（凭证上传是必填的）' }
-  )
 
 /**
  * 创建员工Schema

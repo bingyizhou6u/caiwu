@@ -34,7 +34,6 @@ const cashFlowResponseSchema = z.object({
   counterparty: z.string().nullable(),
   memo: z.string().nullable(),
   voucherUrls: z.array(z.string()),
-  voucherUrl: z.string().nullable(), // Backward compatibility
   createdBy: z.string().nullable(),
   createdAt: z.number().nullable(),
   accountName: z.string().nullable(),
@@ -352,12 +351,6 @@ flowsRoutes.openapi(
         .bind(body.siteId)
         .first() as Promise<{ departmentId: string } | null>)
       if (r?.departmentId) { departmentId = r.departmentId }
-    }
-
-    // 如果没有 departmentId 且传入了 ownerScope，记录警告
-    // ownerScope 已弃用，不再支持
-    if (!departmentId && body.ownerScope) {
-      // ownerScope is deprecated, ignore it
     }
 
     // departmentId 现在是可选的，财务流水可以不关联部门
