@@ -63,15 +63,10 @@ export function usePermissions() {
     return user.position.canManageSubordinates === 1
   }
 
-  // 检查是否是总部人员 (优先使用 dataScope，兼容 level)
+  // 检查是否是总部人员 (基于 dataScope)
   const isHQ = () => {
-    if (!user?.position) return false
-    // 优先使用 dataScope
-    if (user.position.dataScope) {
-      return user.position.dataScope === 'all'
-    }
-    // 兼容旧逻辑
-    return user.position.level === 1
+    if (!user?.position?.dataScope) return false
+    return user.position.dataScope === 'all'
   }
 
   // 检查是否是财务人员
