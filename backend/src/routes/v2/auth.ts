@@ -36,7 +36,7 @@ function clearLegacyCookie(c: Context) {
 // 辅助函数：提取 token
 function extractAuthToken(c: Context) {
   const altHeader = c.req.header(ALT_AUTH_HEADER)
-  if (altHeader) {return altHeader}
+  if (altHeader) { return altHeader }
   return extractBearerToken(c.req.header('Authorization')) || getCookie(c, AUTH_COOKIE_NAME)
 }
 
@@ -72,6 +72,7 @@ async function buildAuthSuccessPayload(
         level: result.position.level,
         functionRole: result.position.functionRole,
         canManageSubordinates: result.position.canManageSubordinates,
+        dataScope: result.position.dataScope || 'self',
         permissions: result.position.permissions || {},
       },
     },
@@ -82,10 +83,10 @@ async function buildAuthSuccessPayload(
 async function handleLogin(c: Context<{ Bindings: Env; Variables: AppVariables }>) {
   try {
     Logger.info('Login attempt started', { path: c.req.path }, c)
-    
+
     const body = (await c.req.json()) as { email: string; password: string; totp?: string }
     Logger.info('Login body parsed', { email: body.email }, c)
-    
+
     const authService = c.var.services.auth
     if (!authService) {
       Logger.error('AuthService not found in context', {}, c)
@@ -248,7 +249,7 @@ const meRoute = createRoute({
 
 async function handleGetMe(c: Context<{ Bindings: Env; Variables: AppVariables }>) {
   const token = extractAuthToken(c)
-  if (!token) {return jsonResponse(c, apiSuccess({ user: null }))}
+  if (!token) { return jsonResponse(c, apiSuccess({ user: null })) }
 
   let payload
   try {
@@ -260,14 +261,14 @@ async function handleGetMe(c: Context<{ Bindings: Env; Variables: AppVariables }
 
   const authService = c.var.services.auth
   const session = await authService.getSession(payload.sid)
-  if (!session) {return jsonResponse(c, apiSuccess({ user: null }))}
+  if (!session) { return jsonResponse(c, apiSuccess({ user: null })) }
 
   const employeeService = c.var.services.employee
   const user = await employeeService.getUserById(payload.sub)
-  if (!user || user.active === 0) {return jsonResponse(c, apiSuccess({ user: null }))}
+  if (!user || user.active === 0) { return jsonResponse(c, apiSuccess({ user: null })) }
 
   const position = await employeeService.getUserPosition(user.id)
-  if (!position) {return jsonResponse(c, apiSuccess({ user: null }))}
+  if (!position) { return jsonResponse(c, apiSuccess({ user: null })) }
 
   const name = user.name || (user.personalEmail || user.email || '').split('@')[0]
 
@@ -286,6 +287,7 @@ async function handleGetMe(c: Context<{ Bindings: Env; Variables: AppVariables }
           level: position.level,
           functionRole: position.functionRole,
           canManageSubordinates: position.canManageSubordinates,
+          dataScope: position.dataScope || 'self',
           permissions: position.permissions || {},
         },
       },

@@ -45,7 +45,7 @@ export function hasPermission(
 /**
  * React Hook - 返回权限检查函数
  * 使用方式:
- * const { hasPermission, user, canManageSubordinates } = usePermissions()
+ * const { hasPermission, user, canManageSubordinates, dataScope } = usePermissions()
  * if (hasPermission('finance', 'flow', 'create')) { ... }
  */
 export function usePermissions() {
@@ -63,9 +63,14 @@ export function usePermissions() {
     return user.position.canManageSubordinates === 1
   }
 
-  // 检查是否是总部人员
+  // 检查是否是总部人员 (优先使用 dataScope，兼容 level)
   const isHQ = () => {
     if (!user?.position) return false
+    // 优先使用 dataScope
+    if (user.position.dataScope) {
+      return user.position.dataScope === 'all'
+    }
+    // 兼容旧逻辑
     return user.position.level === 1
   }
 
@@ -83,6 +88,8 @@ export function usePermissions() {
 
   // 获取职能角色
   const functionRole = user?.position?.functionRole || null
+  // 获取数据范围
+  const dataScope = user?.position?.dataScope || 'self'
 
   return {
     user,
@@ -90,6 +97,7 @@ export function usePermissions() {
     canManageSubordinates: user?.position?.canManageSubordinates === 1,
     positionCode: user?.position?.code,
     positionLevel: user?.position?.level,
+    dataScope,
     functionRole,
     isManager,
     isHQ,
