@@ -107,13 +107,6 @@ export const orgDepartments = sqliteTable('org_departments', {
   updatedAt: integer('updated_at'),
 })
 
-export const userDepartments = sqliteTable('user_departments', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  departmentId: text('department_id').notNull(),
-  createdAt: integer('created_at').notNull(),
-})
-
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),

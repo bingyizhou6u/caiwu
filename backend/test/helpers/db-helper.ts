@@ -77,7 +77,6 @@ export async function truncateAllTables(db: DbType): Promise<void> {
     // 会话相关
     'trustedDevices',
     'sessions',
-    'userDepartments',
 
     // 员工
     'employees',

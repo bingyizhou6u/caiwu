@@ -7,7 +7,6 @@ import {
   departments,
   orgDepartments,
   positions,
-  userDepartments,
 } from '../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -85,7 +84,6 @@ describe('Employees API', () => {
     await db.delete(orgDepartments).execute()
     await db.delete(departments).execute()
     await db.delete(positions).execute()
-    await db.delete(userDepartments).execute()
 
     // Seed initial data for the logged-in user
     await db

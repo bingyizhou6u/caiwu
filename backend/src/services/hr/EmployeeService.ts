@@ -1,6 +1,6 @@
 import { eq, and, like, or, inArray, desc, sql, isNotNull, SQL } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { employees, departments, orgDepartments, positions, userDepartments } from '../../db/schema.js'
+import { employees, departments, orgDepartments, positions } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
@@ -223,20 +223,6 @@ export class EmployeeService {
       userCreated = true // 标记已设置认证字段
       newUserId = newEmployeeId // 使用员工 ID 作为用户 ID
 
-      // 添加到 user_departments
-      if (actualDepartmentId) {
-        await this.db
-          .insert(userDepartments)
-          .values({
-            id: uuid(),
-            userId: newEmployeeId,
-            departmentId: actualDepartmentId,
-            createdAt: now,
-          })
-          .run()
-        userDepartmentCreated = true
-      }
-
       const userAccountCreated = true
 
       // 注意：不再自动发送激活邮件
@@ -256,10 +242,6 @@ export class EmployeeService {
       Logger.error('[Employee Create] Error occurred, rolling back', { error })
 
       try {
-        if (userDepartmentCreated && newUserId) {
-          await this.db.delete(userDepartments).where(eq(userDepartments.userId, newUserId)).run()
-          Logger.info('[Employee Create] Rolled back user_departments')
-        }
         // userCreated 标志现在指的是设置了认证字段，而不是单独的记录
         // 没有单独的 users 表需要回滚 - 删除 employee 记录会一并处理认证字段
         if (employeeCreated) {
@@ -549,30 +531,6 @@ export class EmployeeService {
         .where(eq(employees.id, userId))
         .run()
 
-      // 同步 user_departments
-      const existingUd = await tx
-        .select()
-        .from(userDepartments)
-        .where(
-          and(
-            eq(userDepartments.userId, userId),
-            eq(userDepartments.departmentId, actualDepartmentId)
-          )
-        )
-        .get()
-
-      if (!existingUd) {
-        await tx
-          .insert(userDepartments)
-          .values({
-            id: uuid(),
-            userId: userId,
-            departmentId: actualDepartmentId,
-            createdAt: now,
-          })
-          .run()
-      }
-
       return { id: userId }
     })
   }
@@ -636,33 +594,6 @@ export class EmployeeService {
     }
 
     await this.db.update(employees).set(updateData).where(eq(employees.id, id)).run()
-
-    if (data.departmentId) {
-      const deptId = data.departmentId
-      const existingUd = await query(
-        this.db,
-        'EmployeeService.update.checkUserDepartment',
-        () => this.db
-          .select()
-          .from(userDepartments)
-          .where(
-            and(eq(userDepartments.userId, id), eq(userDepartments.departmentId, deptId))
-          )
-          .get(),
-        c
-      )
-      if (!existingUd) {
-        await this.db
-          .insert(userDepartments)
-          .values({
-            id: uuid(),
-            userId: id,
-            departmentId: data.departmentId,
-            createdAt: Date.now(),
-          })
-          .run()
-      }
-    }
 
     return { id }
   }
@@ -965,24 +896,11 @@ export class EmployeeService {
   }
 
   /**
-   * 获取用户部门 ID 列表
-   */
-  async getUserDepartmentIds(userId: string): Promise<string[]> {
-    const { userDepartments } = await import('../../db/schema.js')
-    const userDepts = await this.db
-      .select({ departmentId: userDepartments.departmentId })
-      .from(userDepartments)
-      .where(eq(userDepartments.userId, userId))
-      .all()
-
-    return userDepts.map(r => r.departmentId)
-  }
-
-  /**
-   * 获取用户主部门 ID
+   * 获取用户部门 ID
+   * (简化版 - 使用 employees.departmentId)
    */
   async getUserDepartmentId(userId: string): Promise<string | null> {
-    const ids = await this.getUserDepartmentIds(userId)
-    return ids.length > 0 ? ids[0] : null
+    const employee = await this.getUserById(userId)
+    return employee?.departmentId || null
   }
 }
