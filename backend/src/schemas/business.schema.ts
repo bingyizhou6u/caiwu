@@ -32,8 +32,8 @@ export const createCashFlowSchema = z
   .refine(
     data => {
       // 如果提供了voucherUrls，使用它；否则检查voucherUrl
-      if (data.voucherUrls && data.voucherUrls.length > 0) {return true}
-      if (data.voucherUrl) {return true}
+      if (data.voucherUrls && data.voucherUrls.length > 0) { return true }
+      if (data.voucherUrl) { return true }
       return false
     },
     { message: 'voucherUrls参数必填（凭证上传是必填的）' }
@@ -464,6 +464,8 @@ export const updatePositionSchema = z.object({
   functionRole: z
     .enum(['director', 'hr', 'finance', 'admin', 'developer', 'support', 'member'])
     .optional(),
+  canManageSubordinates: z.number().int().min(0).max(1).optional(),
+  dataScope: z.enum(['all', 'project', 'group', 'self']).optional(),
   permissions: z.any().optional(),
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
@@ -671,40 +673,40 @@ export const updateEmployeeSchema = z.object({
   // Salary/allowance data now managed via employee_salaries and employee_allowances tables
   active: z.number().int().min(0).max(1).optional(),
   phone: z.preprocess(val => {
-    if (val === '' || val === undefined || val === null) {return null}
+    if (val === '' || val === undefined || val === null) { return null }
     // 如果只有区号（如 '+971'），也视为空
-    if (typeof val === 'string' && val.length <= 5) {return null}
+    if (typeof val === 'string' && val.length <= 5) { return null }
     return val
   }, z.string().nullable().optional()),
   email: z.preprocess(val => {
-    if (val === '' || val === undefined || val === null) {return null}
+    if (val === '' || val === undefined || val === null) { return null }
     return val
   }, z.string().email('邮箱格式不正确').nullable().optional()),
   usdtAddress: z.preprocess(val => {
-    if (val === '' || val === undefined || val === null) {return null}
+    if (val === '' || val === undefined || val === null) { return null }
     return val
   }, z.string().nullable().optional()),
   emergencyContact: z.preprocess(val => {
-    if (val === '' || val === undefined || val === null) {return null}
+    if (val === '' || val === undefined || val === null) { return null }
     return val
   }, z.string().nullable().optional()),
   emergencyPhone: z.preprocess(val => {
-    if (val === '' || val === undefined || val === null) {return null}
+    if (val === '' || val === undefined || val === null) { return null }
     // 如果只有区号（如 '+971'），也视为空
-    if (typeof val === 'string' && val.length <= 5) {return null}
+    if (typeof val === 'string' && val.length <= 5) { return null }
     return val
   }, z.string().nullable().optional()),
   address: z.preprocess(val => {
-    if (val === '' || val === undefined || val === null) {return null}
+    if (val === '' || val === undefined || val === null) { return null }
     return val
   }, z.string().nullable().optional()),
   memo: z.preprocess(val => {
-    if (val === '' || val === undefined || val === null) {return null}
+    if (val === '' || val === undefined || val === null) { return null }
     return val
   }, z.string().nullable().optional()),
   birthday: z.preprocess(
     val => {
-      if (val === '' || val === undefined || val === null) {return null}
+      if (val === '' || val === undefined || val === null) { return null }
       return val
     },
     z.union([dateSchema, z.null()]).optional()

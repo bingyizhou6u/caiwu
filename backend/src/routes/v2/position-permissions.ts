@@ -18,6 +18,7 @@ const positionResponseSchema = z.object({
   name: z.string(),
   level: z.number(),
   functionRole: z.string(),
+  dataScope: z.enum(['all', 'project', 'group', 'self']).optional(),
   permissions: z.any().optional(),
   description: z.string().nullable(),
   sortOrder: z.number().nullable(),
