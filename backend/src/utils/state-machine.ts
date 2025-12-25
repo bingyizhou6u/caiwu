@@ -68,11 +68,12 @@ export const borrowingStateMachine = new StateMachine({
 
 /**
  * 报销状态机
- * 状态流转: pending → approved → rejected
+ * 状态流转: pending → approved/rejected; approved → paid
  */
 export const reimbursementStateMachine = new StateMachine({
   pending: ['approved', 'rejected'],
-  approved: [], // 终态
+  approved: ['paid'], // 审批通过后可以支付
+  paid: [], // 终态
   rejected: [], // 终态
 })
 

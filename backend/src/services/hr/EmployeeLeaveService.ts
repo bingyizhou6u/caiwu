@@ -3,9 +3,11 @@ import { eq, and, desc, sql } from 'drizzle-orm'
 import { employeeLeaves, employees } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
 import { nanoid } from 'nanoid'
+import { Errors } from '../../utils/errors.js'
+import { leaveStateMachine } from '../../utils/state-machine.js'
 
 export class EmployeeLeaveService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listLeaves(params: { employeeId?: string; status?: string; year?: string }) {
     let query = this.db
@@ -31,11 +33,11 @@ export class EmployeeLeaveService {
       .$dynamic()
 
     const filters = []
-    if (params.employeeId) {filters.push(eq(employeeLeaves.employeeId, params.employeeId))}
-    if (params.status) {filters.push(eq(employeeLeaves.status, params.status))}
+    if (params.employeeId) { filters.push(eq(employeeLeaves.employeeId, params.employeeId)) }
+    if (params.status) { filters.push(eq(employeeLeaves.status, params.status)) }
     if (params.year) {
       // 使用SQLite的strftime函数提取年份（保留原生SQL，因为Drizzle ORM没有直接的日期提取函数）
-      filters.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year}`)
+      filters.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year} `)
     }
 
     if (filters.length > 0) {
@@ -59,11 +61,11 @@ export class EmployeeLeaveService {
     // The original logic in MyService did a left join for approvedByName.
 
     const conditions = []
-    if (params.employeeId) {conditions.push(eq(employeeLeaves.employeeId, params.employeeId))}
-    if (params.status) {conditions.push(eq(employeeLeaves.status, params.status))}
+    if (params.employeeId) { conditions.push(eq(employeeLeaves.employeeId, params.employeeId)) }
+    if (params.status) { conditions.push(eq(employeeLeaves.status, params.status)) }
     if (params.year) {
       // 使用SQLite的strftime函数提取年份（保留原生SQL，因为Drizzle ORM没有直接的日期提取函数）
-      conditions.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year}`)
+      conditions.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year} `)
     }
 
     return await this.db
@@ -90,7 +92,7 @@ export class EmployeeLeaveService {
           eq(employeeLeaves.employeeId, employeeId),
           eq(employeeLeaves.status, 'approved'),
           // 使用SQLite的strftime函数提取年份（保留原生SQL，因为Drizzle ORM没有直接的日期提取函数）
-          sql`strftime('%Y', ${employeeLeaves.startDate}) = ${year}`
+          sql`strftime('%Y', ${employeeLeaves.startDate}) = ${year} `
         )
       )
       .groupBy(employeeLeaves.leaveType)
@@ -158,7 +160,27 @@ export class EmployeeLeaveService {
       memo?: string
     }
   ) {
-    const updateData: any = {
+    // 获取当前请假记录
+    const leave = await this.db
+      .select()
+      .from(employeeLeaves)
+      .where(eq(employeeLeaves.id, id))
+      .get()
+
+    if (!leave) {
+      throw Errors.NOT_FOUND('请假记录')
+    }
+
+    // 状态机验证
+    leaveStateMachine.validateTransition(leave.status || 'pending', status)
+
+    const updateData: {
+      status: string
+      updatedAt: number
+      approvedBy?: string
+      approvedAt?: number
+      memo?: string
+    } = {
       status,
       updatedAt: Date.now(),
     }

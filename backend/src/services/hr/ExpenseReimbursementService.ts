@@ -4,9 +4,10 @@ import { expenseReimbursements, employees } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
 import { nanoid } from 'nanoid'
 import { Errors } from '../../utils/errors.js'
+import { reimbursementStateMachine } from '../../utils/state-machine.js'
 
 export class ExpenseReimbursementService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listReimbursements(params: { employeeId?: string; status?: string }) {
     let query = this.db
@@ -33,8 +34,8 @@ export class ExpenseReimbursementService {
       .$dynamic()
 
     const filters = []
-    if (params.employeeId) {filters.push(eq(expenseReimbursements.employeeId, params.employeeId))}
-    if (params.status) {filters.push(eq(expenseReimbursements.status, params.status))}
+    if (params.employeeId) { filters.push(eq(expenseReimbursements.employeeId, params.employeeId)) }
+    if (params.status) { filters.push(eq(expenseReimbursements.status, params.status)) }
 
     if (filters.length > 0) {
       query = query.where(and(...filters))
@@ -45,8 +46,8 @@ export class ExpenseReimbursementService {
 
   async getReimbursementsWithApprover(params: { employeeId?: string; status?: string }) {
     const conditions = []
-    if (params.employeeId) {conditions.push(eq(expenseReimbursements.employeeId, params.employeeId))}
-    if (params.status) {conditions.push(eq(expenseReimbursements.status, params.status))}
+    if (params.employeeId) { conditions.push(eq(expenseReimbursements.employeeId, params.employeeId)) }
+    if (params.status) { conditions.push(eq(expenseReimbursements.status, params.status)) }
 
     return await this.db
       .select({
@@ -116,7 +117,27 @@ export class ExpenseReimbursementService {
       memo?: string
     }
   ) {
-    const updateData: any = {
+    // 获取当前报销记录
+    const reimbursement = await this.db
+      .select()
+      .from(expenseReimbursements)
+      .where(eq(expenseReimbursements.id, id))
+      .get()
+
+    if (!reimbursement) {
+      throw Errors.NOT_FOUND('报销单')
+    }
+
+    // 状态机验证
+    reimbursementStateMachine.validateTransition(reimbursement.status || 'pending', status)
+
+    const updateData: {
+      status: string
+      updatedAt: number
+      approvedBy?: string
+      approvedAt?: number
+      memo?: string
+    } = {
       status,
       updatedAt: Date.now(),
     }
@@ -151,9 +172,8 @@ export class ExpenseReimbursementService {
       throw Errors.NOT_FOUND('报销单')
     }
 
-    if (reimbursement.status !== 'approved') {
-      throw Errors.BUSINESS_ERROR('报销单未审批通过或已支付')
-    }
+    // 状态机验证 - 只有 approved 状态可以转换到 paid
+    reimbursementStateMachine.validateTransition(reimbursement.status || 'pending', 'paid')
 
     await this.db
       .update(expenseReimbursements)
