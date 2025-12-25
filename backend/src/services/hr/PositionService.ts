@@ -107,7 +107,6 @@ export class PositionService {
     code: string
     name: string
     level: number
-    functionRole: string
     canManageSubordinates?: number
     dataScope?: string
     description?: string
@@ -131,7 +130,6 @@ export class PositionService {
         code: data.code,
         name: data.name,
         level: data.level,
-        functionRole: data.functionRole,
         canManageSubordinates: data.canManageSubordinates ?? 0,
         dataScope: (data.dataScope as any) || 'self',
         description: data.description,
@@ -152,7 +150,6 @@ export class PositionService {
       code?: string
       name?: string
       level?: number
-      functionRole?: string
       canManageSubordinates?: number
       dataScope?: string
       description?: string
@@ -182,7 +179,6 @@ export class PositionService {
     if (data.code !== undefined) updates.code = data.code
     if (data.name !== undefined) updates.name = data.name
     if (data.level !== undefined) updates.level = data.level
-    if (data.functionRole !== undefined) updates.functionRole = data.functionRole
     if (data.canManageSubordinates !== undefined)
       updates.canManageSubordinates = data.canManageSubordinates
     if (data.dataScope !== undefined) updates.dataScope = data.dataScope

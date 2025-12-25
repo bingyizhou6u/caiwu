@@ -115,7 +115,6 @@ describe('Employees API', () => {
         code: 'hq_admin',
         name: 'HQ Admin',
         level: 1,
-        functionRole: 'admin',
         active: 1,
       })
       .execute()

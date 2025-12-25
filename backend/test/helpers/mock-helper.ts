@@ -148,7 +148,6 @@ export const createMockMiddleware = {
         code: 'test_admin',
         name: 'Test Admin',
         level: 1,
-        functionRole: 'admin',
         permissions: {
           hr: { employee: ['view', 'create', 'update', 'delete'] },
           finance: { flow: ['view', 'create', 'update', 'delete'] },

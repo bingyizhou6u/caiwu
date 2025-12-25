@@ -64,7 +64,6 @@ describe('Batch Operations API', () => {
         code: 'ADMIN',
         name: 'Admin',
         level: 1,
-        functionRole: 'manager',
         permissions,
       })
       .execute()

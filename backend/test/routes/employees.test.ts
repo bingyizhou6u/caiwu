@@ -112,7 +112,6 @@ describe('Employees API Integration', () => {
         name: 'Dev',
         code: 'DEV',
         level: 3,
-        functionRole: 'tech',
         active: 1,
       })
       .execute()
@@ -164,7 +163,6 @@ describe('Employees API Integration', () => {
         name: 'Dev',
         code: 'DEV',
         level: 3,
-        functionRole: 'tech',
         active: 1,
       })
       .execute()
@@ -210,7 +208,6 @@ describe('Employees API Integration', () => {
         name: 'Dev',
         code: 'DEV',
         level: 3,
-        functionRole: 'tech',
         active: 1,
       })
       .execute()
@@ -256,7 +253,6 @@ describe('Employees API Integration', () => {
         name: 'Dev',
         code: 'DEV',
         level: 3,
-        functionRole: 'tech',
         active: 1,
       })
       .execute()

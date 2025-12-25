@@ -85,7 +85,6 @@ describe('ApprovalService', () => {
         level: 3,
         code: 'mock_team_leader',
         dataScope: 'group',
-        functionRole: 'manager',
         name: 'Manager',
         canManageSubordinates: 1,
         active: 1,
@@ -101,7 +100,6 @@ describe('ApprovalService', () => {
         dataScope: 'self',
         name: 'Engineer',
         level: 3,
-        functionRole: 'developer',
         canManageSubordinates: 0,
         active: 1,
       })

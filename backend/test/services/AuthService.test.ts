@@ -67,7 +67,7 @@ describe('AuthService', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1, functionRole: 'developer' })
+      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
       .execute()
     await db
       .insert(employees)
@@ -95,7 +95,7 @@ describe('AuthService', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1, functionRole: 'developer' })
+      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
       .execute()
     await db
       .insert(employees)
@@ -130,7 +130,7 @@ describe('AuthService', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1, functionRole: 'developer' })
+      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
       .execute()
     await db
       .insert(employees)
@@ -159,7 +159,7 @@ describe('AuthService', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1, functionRole: 'developer' })
+      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
       .execute()
     await db
       .insert(employees)
@@ -186,7 +186,7 @@ describe('AuthService', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1, functionRole: 'developer' })
+      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
       .execute()
     await db
       .insert(employees)
@@ -216,7 +216,7 @@ describe('AuthService', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1, functionRole: 'developer' })
+      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
       .execute()
     await db
       .insert(employees)
@@ -243,7 +243,7 @@ describe('AuthService', () => {
 
     await db
       .insert(positions)
-      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1, functionRole: 'developer' })
+      .values({ id: positionId, code: 'P01', name: 'Dev', level: 1 })
       .execute()
 
     await db

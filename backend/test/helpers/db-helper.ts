@@ -190,7 +190,6 @@ export const createTestEntity = {
       code: `test_pos_${Date.now()}`,
       name: 'Test Position',
       level: 5,
-      functionRole: 'other',
       active: 1,
       createdAt: now,
       updatedAt: now,

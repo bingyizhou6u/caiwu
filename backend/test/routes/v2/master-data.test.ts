@@ -49,7 +49,6 @@ describe('MasterData API V2', () => {
         code: 'ADMIN',
         name: 'Admin',
         level: 1,
-        functionRole: 'manager',
         permissions,
       })
       .execute()

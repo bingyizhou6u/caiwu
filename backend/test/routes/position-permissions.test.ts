@@ -118,7 +118,7 @@ describe('Position Permissions Routes', () => {
   })
 
   it('should create position', async () => {
-    const mockResult = { id: '1', code: 'DIR', name: 'Director', level: 1, functionRole: 'director' }
+    const mockResult = { id: '1', code: 'DIR', name: 'Director', level: 1 }
     mockPositionService.createPosition.mockResolvedValue(mockResult)
 
     const res = await app.request('/position-permissions', {
@@ -127,7 +127,6 @@ describe('Position Permissions Routes', () => {
         code: 'DIR',
         name: 'Director',
         level: 1,
-        functionRole: 'director',
         permissions: {},
       }),
       headers: { 'Content-Type': 'application/json' },
@@ -143,7 +142,6 @@ describe('Position Permissions Routes', () => {
         code: 'DIR',
         name: 'Director',
         level: 1,
-        functionRole: 'director',
       })
     )
   })
@@ -189,7 +187,6 @@ describe('Position Permissions Routes', () => {
         code: 'DIR',
         name: 'Director',
         level: 1,
-        functionRole: 'director',
       }),
       headers: { 'Content-Type': 'application/json' },
     })
