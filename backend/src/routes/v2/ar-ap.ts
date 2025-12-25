@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { sql } from 'drizzle-orm'
 import type { Env, AppVariables } from '../../types.js'
 import { hasPermission, getUserPosition, getDataAccessFilterSQL } from '../../utils/permissions.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import {
@@ -184,7 +185,7 @@ const createArApDocRoute = createRoute({
 })
 
 arApRoutes.openapi(createArApDocRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, 'finance', 'ar', 'create')) {
+  if (!hasPermission(c, PermissionModule.FINANCE, 'ar', PermissionAction.CREATE)) {
     throw Errors.FORBIDDEN()
   }
   const body = c.req.valid('json') as any
@@ -284,7 +285,7 @@ const createSettlementRoute = createRoute({
 arApRoutes.openapi(
   createSettlementRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'ar', 'create')) {
+    if (!hasPermission(c, PermissionModule.FINANCE, 'ar', PermissionAction.CREATE)) {
       throw Errors.FORBIDDEN()
     }
     const body = c.req.valid('json')
@@ -395,7 +396,7 @@ const confirmArApDocRoute = createRoute({
 })
 
 arApRoutes.openapi(confirmArApDocRoute, async c => {
-  if (!hasPermission(c, 'finance', 'ar', 'create')) {
+  if (!hasPermission(c, PermissionModule.FINANCE, 'ar', PermissionAction.CREATE)) {
       throw Errors.FORBIDDEN()
     }
   const body = c.req.valid('json')

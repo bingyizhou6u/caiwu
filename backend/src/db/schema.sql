@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS positions (
   level INTEGER NOT NULL, -- 1-总部 2-项目 3-组
   function_role TEXT NOT NULL, -- director/hr/finance/admin/developer
   can_manage_subordinates INTEGER DEFAULT 0,
+  data_scope TEXT DEFAULT 'self' NOT NULL, -- all, project, group, self
   description TEXT,
   permissions TEXT, -- JSON string
   sort_order INTEGER DEFAULT 0,

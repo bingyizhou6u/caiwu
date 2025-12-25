@@ -33,6 +33,7 @@ export interface Position {
     level: number
     functionRole?: string
     canManageSubordinates?: 0 | 1
+    dataScope?: 'all' | 'project' | 'group' | 'self'
     permissions?: PermissionConfig
     createdAt?: Timestamp
     updatedAt?: Timestamp

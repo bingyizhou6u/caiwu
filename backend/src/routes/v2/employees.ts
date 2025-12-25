@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types.js'
-import { hasPermission, getUserPosition, getUserEmployee, getDataAccessFilterSQL } from '../../utils/permissions.js'
+import { hasPermission, getUserPosition, getUserEmployee, getDataAccessFilterSQL, canViewEmployee } from '../../utils/permissions.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
 import {
@@ -153,7 +154,7 @@ const createEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   createEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'create')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.CREATE)) {
       throw Errors.FORBIDDEN()
     }
 
@@ -238,7 +239,7 @@ const resendActivationEmailRoute = createRoute({
 employeesRoutes.openapi(
   resendActivationEmailRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'update')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
@@ -284,7 +285,7 @@ const resetTotpRoute = createRoute({
 employeesRoutes.openapi(
   resetTotpRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'update')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
@@ -331,7 +332,7 @@ const updateEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   updateEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'update')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
 
@@ -397,7 +398,7 @@ const regularizeEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   regularizeEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'update')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
@@ -440,7 +441,7 @@ const leaveEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   leaveEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'update')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
@@ -483,7 +484,7 @@ const rejoinEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   rejoinEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'update')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
@@ -523,7 +524,7 @@ const resetEmployeePasswordRoute = createRoute({
 employeesRoutes.openapi(
   resetEmployeePasswordRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'employee', 'update')) {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
 

@@ -7,6 +7,7 @@ import {
   getUserEmployee,
   getDataAccessFilterSQL,
 } from '../../utils/permissions.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { createCashFlowSchema } from '../../schemas/business.schema.js'
@@ -214,7 +215,7 @@ const uploadVoucherRoute = createRoute({
 flowsRoutes.openapi(
   uploadVoucherRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'flow', 'create')) {
+    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.CREATE)) {
       throw Errors.FORBIDDEN()
     }
 
@@ -337,7 +338,7 @@ const createCashFlowRoute = createRoute({
 flowsRoutes.openapi(
   createCashFlowRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'flow', 'create')) {
+    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.CREATE)) {
       throw Errors.FORBIDDEN()
     }
     const body = c.req.valid('json')
@@ -441,7 +442,7 @@ const updateVoucherRoute = createRoute({
 flowsRoutes.openapi(
   updateVoucherRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'flow', 'update')) {
+    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
     const { id } = c.req.valid('param')
@@ -513,7 +514,7 @@ flowsRoutes.openapi(
   reverseFlowRoute,
   createRouteHandler(async (c: any) => {
     // 权限检查 - 仅财务主管和会计可冲正
-    if (!hasPermission(c, 'finance', 'flow', 'reverse')) {
+    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.REVERSE)) {
       throw Errors.FORBIDDEN('无权进行流水冲正操作')
     }
 

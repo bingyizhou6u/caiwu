@@ -69,7 +69,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 1 (HQ): can view anyone', async () => {
       const actor = { id: 'hq', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 1, code: 'hq_admin' } as { level: number; code: string } // Loose type for test
+      const position = { level: 1, code: 'hq_admin', dataScope: 'all' } as any
       const targetEmployeeId = 'target-id'
 
       const result = await service.canViewEmployee(actor, position, targetEmployeeId)
@@ -78,7 +78,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 2 (Project): can view employee in same project', async () => {
       const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 2, code: 'project_manager' } as { level: number; code: string }
+      const position = { level: 2, code: 'project_manager', dataScope: 'project' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee in the same department
@@ -90,7 +90,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 2 (Project): cannot view employee in other project', async () => {
       const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 2, code: 'project_manager' } as { level: number; code: string }
+      const position = { level: 2, code: 'project_manager', dataScope: 'project' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee in a different department
@@ -102,7 +102,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 3 (Team Leader): can view employee in same team', async () => {
       const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
-      const position = { level: 3, code: 'team_leader' } as { level: number; code: string }
+      const position = { level: 3, code: 'team_leader', dataScope: 'group' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee
@@ -114,7 +114,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 3 (Team Leader): cannot view employee in other team', async () => {
       const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
-      const position = { level: 3, code: 'team_leader' } as { level: number; code: string }
+      const position = { level: 3, code: 'team_leader', dataScope: 'group' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee
@@ -126,7 +126,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 3 (Engineer): can only view self', async () => {
       const actor = { id: 'emp-1', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
-      const position = { level: 3, code: 'team_engineer' } as { level: number; code: string }
+      const position = { level: 3, code: 'team_engineer', dataScope: 'self' } as any
 
       expect(await service.canViewEmployee(actor, position, 'emp-1')).toBe(true)
       expect(await service.canViewEmployee(actor, position, 'other-emp')).toBe(false)
@@ -134,7 +134,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('should return false if target employee not found', async () => {
       const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
-      const position = { level: 2, code: 'project_manager' } as { level: number; code: string }
+      const position = { level: 2, code: 'project_manager', dataScope: 'project' } as any
       const targetEmployeeId = 'non-existent-id'
 
       // Mock DB to return null
@@ -157,7 +157,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('should allow if module allowed and permission exists', () => {
       const ctx = createMockContext(
-        { level: 2, permissions } as Position,
+        { level: 2, permissions, dataScope: 'project' } as any,
         { id: 'u1' } as unknown as Employee,
         ['finance.*', 'hr.*'] // Department allows finance and hr
       )
@@ -167,7 +167,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('should deny if module NOT allowed by department', () => {
       const ctx = createMockContext(
-        { level: 2, permissions } as Position,
+        { level: 2, permissions, dataScope: 'project' } as any,
         { id: 'u1' } as unknown as Employee,
         ['hr.*'] // Department ONLY allows hr
       )
@@ -178,7 +178,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('should deny if permission does not exist in position', () => {
       const ctx = createMockContext(
-        { level: 2, permissions } as Position,
+        { level: 2, permissions, dataScope: 'project' } as any,
         { id: 'u1' } as unknown as Employee,
         ['*']
       )
@@ -188,7 +188,7 @@ describe('RBAC (Role-Based Access Control)', () => {
 
     it('Level 1 (HQ) should bypass department module restrictions', () => {
       const ctx = createMockContext(
-        { level: 1, permissions } as Position, // HQ Level 1
+        { level: 1, permissions, dataScope: 'all' } as any, // HQ Level 1
         { id: 'u1' } as unknown as Employee,
         ['hr.*'] // Even if context says restricted modules (unlikely for HQ but testing logic)
       )

@@ -4,23 +4,25 @@ import * as schema from '../../db/schema.js'
 import { employees, positions } from '../../db/schema.js'
 
 export class PermissionService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   /**
    * 检查是否可以查看指定员工的数据
    */
   async canViewEmployee(
     actor: { id: string; departmentId: string | null; orgDepartmentId: string | null },
-    actorPosition: { level: number; code: string },
+    actorPosition: { level: number; code: string; dataScope?: string },
     targetEmployeeId: string
   ): Promise<boolean> {
-    // 总部人员可以查看所有人
-    if (actorPosition.level === 1) {
+    const dataScope = actorPosition.dataScope || 'self'
+
+    // 1. DataScope.ALL
+    if (dataScope === 'all') {
       return true
     }
 
-    // 工程师只能查看自己
-    if (actorPosition.code === 'team_engineer') {
+    // 2. DataScope.SELF
+    if (dataScope === 'self') {
       return targetEmployeeId === actor.id
     }
 
@@ -35,17 +37,15 @@ export class PermissionService {
       .where(eq(employees.id, targetEmployeeId))
       .get()
 
-    if (!target) {return false}
+    if (!target) { return false }
 
-    // 项目级别：可以查看本项目所有人
-    if (actorPosition.level === 2) {
-      // 比较 departmentId
+    // 3. DataScope.PROJECT
+    if (dataScope === 'project') {
       return target.departmentId === actor.departmentId
     }
 
-    // 组长可以查看本组所有人
-    if (actorPosition.code === 'team_leader') {
-      // 比较 orgDepartmentId
+    // 4. DataScope.GROUP
+    if (dataScope === 'group') {
       return target.orgDepartmentId === actor.orgDepartmentId
     }
 
@@ -57,14 +57,16 @@ export class PermissionService {
    */
   async canApproveApplication(
     actor: { id: string; departmentId: string | null; orgDepartmentId: string | null },
-    actorPosition: { level: number; code: string; canManageSubordinates: number },
+    actorPosition: { level: number; code: string; canManageSubordinates: number; dataScope?: string },
     applicantEmployeeId: string
   ): Promise<boolean> {
     // 必须有管理下属权限
-    if (actorPosition.canManageSubordinates !== 1) {return false}
+    if (actorPosition.canManageSubordinates !== 1) { return false }
 
-    // 总部主管可以审批所有人
-    if (actorPosition.code === 'hq_manager') {
+    const dataScope = actorPosition.dataScope || 'self'
+
+    // 1. DataScope.ALL (总部管理)
+    if (dataScope === 'all') {
       return true
     }
 
@@ -80,28 +82,16 @@ export class PermissionService {
       .where(eq(employees.id, applicantEmployeeId))
       .get()
 
-    if (!applicant) {return false}
+    if (!applicant) { return false }
 
-    // 项目主管可以审批本项目所有人
-    if (actorPosition.code === 'project_manager') {
+    // 2. DataScope.PROJECT
+    if (dataScope === 'project') {
       return applicant.departmentId === actor.departmentId
     }
 
-    // 组长只能审批本组工程师
-    if (actorPosition.code === 'team_leader') {
-      // 必须是同一个组
-      if (applicant.orgDepartmentId !== actor.orgDepartmentId) {return false}
-
-      // 必须是工程师
-      if (!applicant.positionId) {return false}
-
-      const applicantPosition = await this.db
-        .select({ code: positions.code })
-        .from(positions)
-        .where(eq(positions.id, applicant.positionId))
-        .get()
-
-      return applicantPosition ? applicantPosition.code === 'team_engineer' : false
+    // 3. DataScope.GROUP
+    if (dataScope === 'group') {
+      return applicant.orgDepartmentId === actor.orgDepartmentId
     }
 
     return false
@@ -122,9 +112,9 @@ export class PermissionService {
       .where(eq(employees.id, actorId))
       .get()
 
-    if (!actor) {return false}
+    if (!actor) { return false }
 
-    if (!actor.positionId) {return false}
+    if (!actor.positionId) { return false }
 
     const position = await this.db
       .select()
@@ -132,7 +122,7 @@ export class PermissionService {
       .where(eq(positions.id, actor.positionId))
       .get()
 
-    if (!position) {return false}
+    if (!position) { return false }
 
     return this.canApproveApplication(
       actor,

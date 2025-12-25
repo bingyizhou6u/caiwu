@@ -2,7 +2,8 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { hasPermission, canApproveApplication } from '../../utils/permissions.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
@@ -281,7 +282,7 @@ approvalsRoutes.openapi(
       throw Errors.UNAUTHORIZED()
     }
 
-    if (!hasPermission(c, 'hr', 'reimbursement', 'approve')) {
+    if (!hasPermission(c, PermissionModule.HR, 'reimbursement', PermissionAction.APPROVE)) {
       throw Errors.FORBIDDEN('没有审批报销的权限')
     }
 
@@ -333,7 +334,7 @@ approvalsRoutes.openapi(
       throw Errors.UNAUTHORIZED()
     }
 
-    if (!hasPermission(c, 'hr', 'reimbursement', 'approve')) {
+    if (!hasPermission(c, PermissionModule.HR, 'reimbursement', PermissionAction.APPROVE)) {
       throw Errors.FORBIDDEN('没有审批报销的权限')
     }
 

@@ -21,6 +21,13 @@ test.describe('Authentication', () => {
                             name: 'Admin',
                             email: 'admin@example.com',
                             role: 'admin',
+                            position: {
+                                id: 'pos_admin',
+                                code: 'hq_admin',
+                                name: 'HQ Admin',
+                                dataScope: 'all',
+                                level: 1
+                            },
                             permissions: []
                         }
                     }

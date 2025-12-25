@@ -49,6 +49,7 @@ test.describe('Permissions and Configuration', () => {
                             id: 'pos1',
                             code: 'engineer',
                             name: 'Engineer',
+                            dataScope: 'self',
                             level: 5
                         }
                     ],

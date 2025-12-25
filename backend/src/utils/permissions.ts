@@ -1,10 +1,11 @@
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../types.js'
 import { sql, SQL } from 'drizzle-orm'
+import { DataScope, DataScopeType, PermissionModuleType, PermissionActionType } from '../constants/permissions.js'
 
 /**
  * 职位权限系统工具函数
- * 基于新的6职位模型（总部主管、总部专员、项目主管、项目专员、组长、工程师）
+ * 已重构为基于 data_scope 的能力判断，解耦了具体的职位代码
  */
 
 // 职位信息接口
@@ -12,8 +13,9 @@ export interface Position {
   id: string
   code: string
   name: string
-  level: number // 1-总部 2-项目 3-组
+  level: number
   canManageSubordinates: number
+  dataScope: DataScopeType // 数据访问范围
   permissions: any // JSON权限配置
 }
 
@@ -22,36 +24,28 @@ export interface Employee {
   id: string
   email: string
   name: string
-  position_id: string
+  positionId: string
   departmentId: string | null // 项目ID
   orgDepartmentId: string | null // 组ID
 }
 
 // 从Context获取用户职位信息（由中间件预加载）
-export function getUserPosition(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>
-): Position | undefined {
+export function getUserPosition(c: Context<{ Bindings: Env, Variables: AppVariables }>): Position | undefined {
   return c.get('userPosition') as Position | undefined
 }
 
 // 从Context获取用户员工信息（由中间件预加载）
-export function getUserEmployee(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>
-): Employee | undefined {
+export function getUserEmployee(c: Context<{ Bindings: Env, Variables: AppVariables }>): Employee | undefined {
   return c.get('userEmployee') as Employee | undefined
 }
 
 // 从Context获取用户ID
-export function getUserId(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>
-): string | undefined {
+export function getUserId(c: Context<{ Bindings: Env, Variables: AppVariables }>): string | undefined {
   return c.get('userId') as string | undefined
 }
 
 // 从Context获取部门允许的模块列表
-export function getDepartmentModules(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>
-): string[] {
+export function getDepartmentModules(c: Context<{ Bindings: Env, Variables: AppVariables }>): string[] {
   return (c.get('departmentModules') as string[] | undefined) || ['*']
 }
 
@@ -61,14 +55,11 @@ export function getDepartmentModules(
  * @param module 模块名（如 hr、finance、asset）
  * @returns 是否有访问权限
  */
-export function hasDepartmentModuleAccess(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>,
-  module: string
-): boolean {
+export function hasDepartmentModuleAccess(c: Context<{ Bindings: Env, Variables: AppVariables }>, module: string): boolean {
   const position = getUserPosition(c)
 
-  // 总部人员（level=1）不受部门模块限制
-  if (position && position.level === 1) {
+  // dataScope='all' (通常是总部) 不受部门模块限制
+  if (position && position.dataScope === DataScope.ALL) {
     return true
   }
 
@@ -93,30 +84,30 @@ export function hasDepartmentModuleAccess(
  * 检查是否有指定模块的权限
  * 权限计算：部门允许的模块 ∩ 职位定义的操作权限
  * @param c Hono Context
- * @param module 模块名：finance/hr/asset/report/system/self
- * @param subModule 子模块名：如finance.flow, hr.leave
- * @param action 操作：view/create/update/delete/approve/reject/export
+ * @param module 模块名
+ * @param subModule 子模块名
+ * @param action 操作
  */
 export function hasPermission(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>,
+  c: Context<{ Bindings: Env, Variables: AppVariables }>,
   module: string,
   subModule: string,
   action: string
 ): boolean {
   const position = getUserPosition(c)
-  if (!position || !position.permissions) { return false }
+  if (!position || !position.permissions) return false
 
-  // 1. 先检查部门是否允许访问该模块（总部人员跳过此检查）
+  // 1. 先检查部门是否允许访问该模块
   if (!hasDepartmentModuleAccess(c, module)) {
     return false
   }
 
   // 2. 再检查职位是否有该操作权限
   const modulePerms = position.permissions[module]
-  if (!modulePerms) { return false }
+  if (!modulePerms) return false
 
   const subModulePerms = modulePerms[subModule]
-  if (!subModulePerms) { return false }
+  if (!subModulePerms) return false
 
   if (Array.isArray(subModulePerms)) {
     return subModulePerms.includes(action)
@@ -128,57 +119,116 @@ export function hasPermission(
 /**
  * 检查是否可以管理下属（审批权限）
  */
-export function canManageSubordinates(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>
-): boolean {
+export function canManageSubordinates(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
   const position = getUserPosition(c)
   return position ? position.canManageSubordinates === 1 : false
 }
 
+
 /**
- * 检查是否是总部人员（level=1）
+ * 检查是否为普通团队成员 (Scope = SELF)
  */
-export function isHeadquartersStaff(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>
-): boolean {
+export function isTeamMember(c: Context<{ Bindings: Env, Variables: AppVariables }>): boolean {
   const position = getUserPosition(c)
-  return position ? position.level === 1 : false
+  return position ? position.dataScope === DataScope.SELF : false
 }
 
 /**
- * 检查是否是项目人员（level=2）
+ * 检查是否可以查看指定员工的数据
+ * 基于 dataScope 判断
+ * @param c Context
+ * @param targetEmployeeId 目标员工ID
+ * @param options 配置项
  */
-export function isProjectStaff(c: Context<{ Bindings: Env; Variables: AppVariables }>): boolean {
+export async function canViewEmployee(
+  c: Context<{ Bindings: Env, Variables: AppVariables }>,
+  targetEmployeeId: string
+): Promise<boolean> {
   const position = getUserPosition(c)
-  return position ? position.level === 2 : false
+  const employee = getUserEmployee(c)
+  if (!position || !employee) return false
+
+  // Scope: ALL
+  if (position.dataScope === DataScope.ALL) {
+    return true
+  }
+
+  // Scope: PROJECT (Same Department)
+  if (position.dataScope === DataScope.PROJECT) {
+    const target = await c.env.DB.prepare(
+      'SELECT department_id FROM employees WHERE id = ?'
+    ).bind(targetEmployeeId).first<{ department_id: string }>()
+
+    return target ? target.department_id === employee.departmentId : false
+  }
+
+  // Scope: GROUP (Same Org Department)
+  if (position.dataScope === DataScope.GROUP) {
+    const target = await c.env.DB.prepare(
+      'SELECT org_department_id FROM employees WHERE id = ?'
+    ).bind(targetEmployeeId).first<{ org_department_id: string }>()
+
+    return target ? target.org_department_id === employee.orgDepartmentId : false
+  }
+
+  // Scope: SELF
+  if (position.dataScope === DataScope.SELF) {
+    return targetEmployeeId === employee.id
+  }
+
+  return false
 }
 
 /**
- * 检查是否是组成员（level=3）
+ * 检查是否可以审批指定员工的申请（请假/报销）
+ * 基于 dataScope 和 canManageSubordinates 判断
+ * @param c Context
+ * @param applicantEmployeeId 申请人员工ID
  */
-export function isTeamMember(c: Context<{ Bindings: Env; Variables: AppVariables }>): boolean {
+export async function canApproveApplication(
+  c: Context<{ Bindings: Env, Variables: AppVariables }>,
+  applicantEmployeeId: string
+): Promise<boolean> {
   const position = getUserPosition(c)
-  return position ? position.level === 3 : false
-}
+  const employee = getUserEmployee(c)
+  if (!position || !employee) return false
 
-/**
- * 检查是否有指定职位
- */
-export function hasPositionCode(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>,
-  codes: string[]
-): boolean {
-  const position = getUserPosition(c)
-  return position ? codes.includes(position.code) : false
+  // 必须有管理下属权限
+  if (position.canManageSubordinates !== 1) return false
+
+  // Scope: ALL
+  if (position.dataScope === DataScope.ALL) {
+    return true
+  }
+
+  // Scope: PROJECT
+  if (position.dataScope === DataScope.PROJECT) {
+    const applicant = await c.env.DB.prepare(
+      'SELECT department_id FROM employees WHERE id = ?'
+    ).bind(applicantEmployeeId).first<{ department_id: string }>()
+
+    return applicant ? applicant.department_id === employee.departmentId : false
+  }
+
+  // Scope: GROUP
+  if (position.dataScope === DataScope.GROUP) {
+    const applicant = await c.env.DB.prepare(
+      'SELECT org_department_id FROM employees WHERE id = ?'
+    ).bind(applicantEmployeeId).first<{ org_department_id: string }>()
+
+    return applicant ? applicant.org_department_id === employee.orgDepartmentId : false
+  }
+
+  return false
 }
 
 /**
  * 获取用户完整权限配置
  * 直接返回职位的权限配置
  */
-export function getUserPermissions(c: Context<{ Bindings: Env; Variables: AppVariables }>): any {
+export function getUserPermissions(c: Context<{ Bindings: Env, Variables: AppVariables }>): any {
   const position = getUserPosition(c)
-  if (!position || !position.permissions) { return {} }
+  if (!position || !position.permissions) return {}
   return position.permissions
 }
 
@@ -188,26 +238,24 @@ export function getUserPermissions(c: Context<{ Bindings: Env; Variables: AppVar
 
 /**
  * 获取数据访问范围过滤条件（返回 Drizzle SQL 对象，推荐使用）
- * 根据用户职位层级返回SQL过滤条件
+ * 根据用户职位 dataScope 返回SQL过滤条件
  * @param c Context
  * @param tableAlias 表别名（如 e）
  * @param options 配置项
  * @returns Drizzle SQL 对象
  */
 export function getDataAccessFilterSQL(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>,
+  c: Context<{ Bindings: Env, Variables: AppVariables }>,
   tableAlias: string = '',
   options: {
     deptColumn?: string // 部门字段，默认 'departmentId'
     orgDeptColumn?: string // 组织/组字段，默认 'orgDepartmentId'
-    ownerColumn?: string // 所有者字段，默认 'id' (用于工程师查看自己)
-    skipOrgDept?: boolean // 是否跳过组级别过滤 (如果不分层级)
+    ownerColumn?: string // 所有者字段，默认 'id'
+    skipOrgDept?: boolean // 是否跳过组织部门检查（用于没有 orgDept 字段的表）
   } = {}
 ): SQL {
   const position = getUserPosition(c)
   const employee = getUserEmployee(c)
-  const deptId = employee?.departmentId
-  const orgDeptId = employee?.orgDepartmentId
 
   if (!position || !employee) {
     return sql`1=0`
@@ -228,47 +276,33 @@ export function getDataAccessFilterSQL(
   // 构建表别名前缀（如果提供，也需要验证）
   const aliasPrefix = tableAlias ? `${validateColumnName(tableAlias)}.` : ''
 
-  // 总部人员（level=1）：可以访问所有数据
-  if (position.level === 1) {
-    return sql`1=1`
-  }
+  switch (position.dataScope) {
+    case DataScope.ALL:
+      return sql`1=1`
 
-  // 项目人员（level=2）：只能访问本项目数据
-  if (position.level === 2) {
-    if (!deptId) {
-      return sql`1=0`
-    }
-    // 使用 sql.raw() 插入列名（列名已通过白名单验证）
-    // 使用 sql.raw() 插入列名（列名已通过白名单验证）
-    return sql`${sql.raw(`${aliasPrefix}${deptCol}`)} = ${deptId}`
-  }
+    case DataScope.PROJECT:
+      if (!employee.departmentId) return sql`1=0`
+      return sql`${sql.raw(`${aliasPrefix}${deptCol}`)} = ${employee.departmentId}`
 
-  // 组长（team_leader）：只能访问本组数据
-  if (position.code === 'team_leader') {
-    if (options.skipOrgDept) {
-      // 如果表没有组字段，回退到查看自己创建的
+    case DataScope.GROUP:
+      if (options.skipOrgDept) {
+        // 如果表没有 orgDept 字段，且用户范围是 GROUP，则降级为 SELF
+        return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
+      }
+      if (!employee.orgDepartmentId) return sql`1=0`
+      return sql`${sql.raw(`${aliasPrefix}${orgDeptCol}`)} = ${employee.orgDepartmentId}`
+
+    case DataScope.SELF:
+    default:
       return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
-    }
-
-    if (!orgDeptId) {
-      return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
-    }
-
-    if (!orgDeptId) {
-      return sql`1=0`
-    }
-    return sql`${sql.raw(`${aliasPrefix}${orgDeptCol}`)} = ${orgDeptId}`
   }
-
-  // 工程师（team_engineer）或其他：只能访问自己的数据
-  return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
 }
 
 /**
  * 获取当前用户ID
  */
 export function getCurrentUserId(
-  c: Context<{ Bindings: Env; Variables: AppVariables }>
+  c: Context<{ Bindings: Env, Variables: AppVariables }>
 ): string | undefined {
   return getUserId(c)
 }

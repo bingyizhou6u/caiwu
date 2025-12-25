@@ -787,8 +787,15 @@ export class EmployeeService {
       .get()
     if (!position || !position.canManageSubordinates) { return [] }
 
-    // Level 1: 总部 (查看所有员工)
-    if (position.level === 1) {
+    const DataScope = {
+      ALL: 'all',
+      PROJECT: 'project',
+      GROUP: 'group',
+      SELF: 'self',
+    }
+
+    // 1. DataScope.ALL: View all employees
+    if (position.dataScope === DataScope.ALL) {
       const all = await this.db
         .select({ id: employees.id })
         .from(employees)
@@ -797,8 +804,8 @@ export class EmployeeService {
       return all.map(e => e.id)
     }
 
-    // Level 2: 项目主管 (查看同一部门的员工)
-    if (position.level === 2 && employee?.departmentId) {
+    // 2. DataScope.PROJECT: View project employees
+    if (position.dataScope === DataScope.PROJECT && employee?.departmentId) {
       const deptEmployees = await this.db
         .select({ id: employees.id })
         .from(employees)
@@ -807,8 +814,8 @@ export class EmployeeService {
       return deptEmployees.map(e => e.id)
     }
 
-    // 组长 (查看同一组织部门的员工)
-    if (position.code === 'team_leader' && employee?.orgDepartmentId) {
+    // 3. DataScope.GROUP: View group employees
+    if (position.dataScope === DataScope.GROUP && employee?.orgDepartmentId) {
       const teamEmployees = await this.db
         .select({ id: employees.id })
         .from(employees)
@@ -817,6 +824,11 @@ export class EmployeeService {
         )
         .execute()
       return teamEmployees.map(e => e.id)
+    }
+
+    // 4. DataScope.SELF: View self (though usually not called for "subordinates")
+    if (position.dataScope === DataScope.SELF) {
+      return []
     }
 
     return []
@@ -880,6 +892,7 @@ export class EmployeeService {
           level: positions.level,
           functionRole: positions.functionRole,
           canManageSubordinates: positions.canManageSubordinates,
+          dataScope: positions.dataScope,
           permissions: positions.permissions,
         })
         .from(positions)
@@ -904,6 +917,7 @@ export class EmployeeService {
       level: result.level,
       functionRole: result.functionRole,
       canManageSubordinates: result.canManageSubordinates,
+      dataScope: result.dataScope || 'self',
       permissions,
     }
   }

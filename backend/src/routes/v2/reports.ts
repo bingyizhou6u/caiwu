@@ -9,6 +9,7 @@ import {
 } from '../../schemas/common.schema.js'
 import type { Env, AppVariables } from '../../types.js'
 import { hasPermission, getUserPosition } from '../../utils/permissions.js'
+import { PermissionModule, PermissionAction, DataScope } from '../../constants/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
@@ -27,12 +28,12 @@ function validateScope(
     return '00000000-0000-0000-0000-000000000000'
   }
 
-  // 1级：总部 - 无限制
-  if (position.level === 1) {
+  // 总部 - 无限制
+  if (position.dataScope === DataScope.ALL) {
     return requestedDepartmentId
   }
 
-  // 2级及以上：项目/团队 - 必须限制在本部门
+  // 其他 - 必须限制在本部门
   const userDepartmentId = employee?.departmentId
   if (!userDepartmentId) {
     return '00000000-0000-0000-0000-000000000000'
@@ -94,7 +95,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view') && !getUserPosition(c)) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
       throw Errors.FORBIDDEN()
     }
     const { departmentId } = c.req.valid('query')
@@ -134,7 +135,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, departmentIds } = c.req.valid('query')
@@ -209,7 +210,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, departmentId } = c.req.valid('query')
@@ -254,7 +255,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, departmentId } = c.req.valid('query')
@@ -298,7 +299,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, departmentId } = c.req.valid('query')
@@ -338,7 +339,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, departmentId } = c.req.valid('query')
@@ -377,7 +378,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, departmentId } = c.req.valid('query')
@@ -417,7 +418,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, departmentId } = c.req.valid('query')
@@ -458,7 +459,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, category_id, departmentId } = c.req.valid('query')
@@ -497,7 +498,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { asOf } = c.req.valid('query')
@@ -537,7 +538,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, days, departmentId } = c.req.valid('query')
@@ -578,7 +579,7 @@ app.openapi(
   }),
   createRouteHandler(async (c: any) => {
     // 允许有 report.salary.view 权限或 report.finance.view 权限的用户访问
-    if (!hasPermission(c, 'report', 'salary', 'view') && !hasPermission(c, 'report', 'finance', 'view') && !getUserPosition(c)) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
       throw Errors.FORBIDDEN()
     }
     const { year, month, departmentId } = c.req.valid('query')
@@ -618,7 +619,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'hr', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'hr', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { departmentId, orgDepartmentId } = c.req.valid('query')
@@ -629,7 +630,7 @@ app.openapi(
     const position = getUserPosition(c)
     const employee = c.get('userEmployee')
 
-    if (position && position.level === 3) {
+    if (position && position.dataScope === DataScope.GROUP) {
       if (employee?.orgDepartmentId) {
         if (validOrgDeptId && validOrgDeptId !== employee.orgDepartmentId) {
           throw Errors.FORBIDDEN('Cannot access other groups')
@@ -671,7 +672,7 @@ app.openapi(
   }),
   async c => {
     // 允许有 report.salary.view 权限或 report.finance.view 权限的用户访问
-    if (!hasPermission(c, 'report', 'salary', 'view') && !hasPermission(c, 'report', 'finance', 'view') && !getUserPosition(c)) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
       throw Errors.FORBIDDEN()
     }
     const { year, month, departmentId } = c.req.valid('query')
@@ -732,7 +733,7 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'report', 'finance', 'view') && !hasPermission(c, 'report', 'hr', 'view')) {
+    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'hr', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { entityType, entityId, limit } = c.req.valid('query')

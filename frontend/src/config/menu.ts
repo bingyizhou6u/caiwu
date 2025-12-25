@@ -116,7 +116,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     // 3. 人力资源
     const employees: MenuProps['items'] = []
     // 组员只能看到自己的请假报销
-    if (userInfo?.position?.code === 'team_engineer') {
+    if (userInfo?.position?.dataScope === 'self') {
         employees.push({ key: 'employee-leave', label: '我的请假', icon: getMenuIcon('employee-leave') })
         employees.push({ key: 'expense-reimbursement', label: '我的报销', icon: getMenuIcon('expense-reimbursement') })
     } else {
@@ -222,8 +222,8 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     if (hasPermission(userInfo, 'system', 'department', 'view')) {
         system.push({ key: 'department', label: '项目管理', icon: getMenuIcon('department') })
     }
-    // 系统管理：只有总部主管可见
-    if (userInfo?.position?.code === 'hq_manager') {
+    // 系统管理：只有总部主管 (DataScope='all') 可见
+    if (userInfo?.position?.dataScope === 'all') {
         system.push({ key: 'position-permissions', label: '权限管理', icon: getMenuIcon('position-permissions') })
         system.push({ key: 'email-notification', label: '邮件提醒设置', icon: getMenuIcon('email-notification') })
         system.push({ key: 'ip-whitelist', label: 'IP白名单', icon: getMenuIcon('ip-whitelist') })

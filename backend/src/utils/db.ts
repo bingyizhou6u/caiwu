@@ -32,8 +32,8 @@ export async function createSession(db: DrizzleD1Database<typeof schema>, user_i
 export async function getSession(db: DrizzleD1Database<typeof schema>, id: string) {
   const s = await db.select().from(sessions).where(eq(sessions.id, id)).get()
 
-  if (!s) {return null}
-  if (s.expiresAt && s.expiresAt < Date.now()) {return null}
+  if (!s) { return null }
+  if (s.expiresAt && s.expiresAt < Date.now()) { return null }
   return s
 }
 
@@ -54,6 +54,7 @@ export async function getSessionWithUserAndPosition(
     name: string
     level: number
     canManageSubordinates: number
+    dataScope: string
     permissions: any
   } | null
   employee: {
@@ -84,6 +85,7 @@ export async function getSessionWithUserAndPosition(
       positionName: positions.name,
       positionLevel: positions.level,
       positionCanManageSubordinates: positions.canManageSubordinates,
+      positionDataScope: positions.dataScope,
       positionPermissions: positions.permissions,
       // org department
       departmentAllowedModules: orgDepartments.allowedModules,
@@ -98,25 +100,26 @@ export async function getSessionWithUserAndPosition(
     .where(and(eq(sessions.id, sessionId), gt(sessions.expiresAt, now), eq(employees.active, 1)))
     .get()
 
-  if (!result || !result.expiresAt) {return null}
+  if (!result || !result.expiresAt) { return null }
 
   const position = result.positionId
     ? {
-        id: result.positionId,
-        code: result.positionCode!,
-        name: result.positionName!,
-        level: result.positionLevel!,
-        canManageSubordinates: result.positionCanManageSubordinates!,
-        permissions: JSON.parse(result.positionPermissions || '{}'),
-      }
+      id: result.positionId,
+      code: result.positionCode!,
+      name: result.positionName!,
+      level: result.positionLevel!,
+      canManageSubordinates: result.positionCanManageSubordinates!,
+      dataScope: result.positionDataScope || 'self',
+      permissions: JSON.parse(result.positionPermissions || '{}'),
+    }
     : null
 
   const employee = result.employeeId
     ? {
-        id: result.employeeId,
-        orgDepartmentId: result.orgDepartmentId,
-        departmentId: result.employeeDepartmentId,
-      }
+      id: result.employeeId,
+      orgDepartmentId: result.orgDepartmentId,
+      departmentId: result.employeeDepartmentId,
+    }
     : null
 
   // 解析部门允许的模块
@@ -158,6 +161,7 @@ export async function getUserFullContext(
     name: string
     level: number
     canManageSubordinates: number
+    dataScope: string
     permissions: any
   } | null
   employee: {
@@ -182,6 +186,7 @@ export async function getUserFullContext(
       positionName: positions.name,
       positionLevel: positions.level,
       positionCanManageSubordinates: positions.canManageSubordinates,
+      positionDataScope: positions.dataScope,
       positionPermissions: positions.permissions,
       // org department
       departmentAllowedModules: orgDepartments.allowedModules,
@@ -195,25 +200,26 @@ export async function getUserFullContext(
     .where(and(eq(employees.id, userId), eq(employees.active, 1)))
     .get()
 
-  if (!result) {return null}
+  if (!result) { return null }
 
   const position = result.positionId
     ? {
-        id: result.positionId,
-        code: result.positionCode!,
-        name: result.positionName!,
-        level: result.positionLevel!,
-        canManageSubordinates: result.positionCanManageSubordinates!,
-        permissions: JSON.parse(result.positionPermissions || '{}'),
-      }
+      id: result.positionId,
+      code: result.positionCode!,
+      name: result.positionName!,
+      level: result.positionLevel!,
+      canManageSubordinates: result.positionCanManageSubordinates!,
+      dataScope: result.positionDataScope || 'self',
+      permissions: JSON.parse(result.positionPermissions || '{}'),
+    }
     : null
 
   const employee = result.employeeId
     ? {
-        id: result.employeeId,
-        orgDepartmentId: result.orgDepartmentId,
-        departmentId: result.employeeDepartmentId,
-      }
+      id: result.employeeId,
+      orgDepartmentId: result.orgDepartmentId,
+      departmentId: result.employeeDepartmentId,
+    }
     : null
 
   let departmentModules: string[] = ['*']

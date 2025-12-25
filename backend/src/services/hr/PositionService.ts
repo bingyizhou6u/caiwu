@@ -10,7 +10,7 @@ import { Errors } from '../../utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
 export class PositionService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async getPositions() {
     return this.db
@@ -109,6 +109,7 @@ export class PositionService {
     level: number
     functionRole: string
     canManageSubordinates?: number
+    dataScope?: string
     description?: string
     permissions?: string
     sortOrder?: number
@@ -132,6 +133,7 @@ export class PositionService {
         level: data.level,
         functionRole: data.functionRole,
         canManageSubordinates: data.canManageSubordinates ?? 0,
+        dataScope: (data.dataScope as any) || 'self',
         description: data.description,
         permissions: data.permissions || '{}',
         sortOrder: data.sortOrder ?? 0,
@@ -152,6 +154,7 @@ export class PositionService {
       level?: number
       functionRole?: string
       canManageSubordinates?: number
+      dataScope?: string
       description?: string
       permissions?: string
       sortOrder?: number
@@ -182,6 +185,7 @@ export class PositionService {
     if (data.functionRole !== undefined) updates.functionRole = data.functionRole
     if (data.canManageSubordinates !== undefined)
       updates.canManageSubordinates = data.canManageSubordinates
+    if (data.dataScope !== undefined) updates.dataScope = data.dataScope
     if (data.description !== undefined) updates.description = data.description
     if (data.permissions !== undefined) updates.permissions = data.permissions
     if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder

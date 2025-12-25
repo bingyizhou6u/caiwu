@@ -15,6 +15,13 @@
       "when": 1766318460710,
       "tag": "0001_wooden_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1766666862793,
+      "tag": "0002_moaning_vermin",
+      "breakpoints": true
     }
   ]
 }
