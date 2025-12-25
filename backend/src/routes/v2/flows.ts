@@ -354,29 +354,13 @@ flowsRoutes.openapi(
       if (r?.departmentId) { departmentId = r.departmentId }
     }
 
-    // 如果没有 departmentId 且传入了 ownerScope，根据 ownerScope 查找总部部门
-    // 注意：ownerScope 已弃用，保留仅为向后兼容
+    // 如果没有 departmentId 且传入了 ownerScope，记录警告
+    // ownerScope 已弃用，不再支持
     if (!departmentId && body.ownerScope) {
-      if (body.ownerScope === 'hq') {
-        // 查询名为"总部"的部门
-        const hqDept = await (c.env.DB.prepare('select id from departments where name=?')
-          .bind('总部')
-          .first() as Promise<{ id: string } | null>)
-        if (hqDept) {
-          departmentId = hqDept.id
-        }
-      } else if (body.ownerScope === 'department') {
-        throw Errors.VALIDATION_ERROR('department所有者需要提供departmentId或siteId')
-      }
+      // ownerScope is deprecated, ignore it
     }
 
-    // 如果仍然没有 departmentId，默认查找总部部门（向后兼容）
-    if (!departmentId) {
-      const hqDept = await (c.env.DB.prepare('select id from departments where name=?')
-        .bind('总部')
-        .first() as Promise<{ id: string } | null>)
-      if (hqDept) departmentId = hqDept.id
-    }
+    // departmentId 现在是可选的，财务流水可以不关联部门
 
     const result = await c.var.services.finance.createCashFlow({
       accountId: body.accountId,

@@ -917,18 +917,23 @@ export class EmployeeService {
   }
 
   /**
-   * 检查用户是否为总部用户
+   * 检查用户是否有全公司数据访问权限
+   * 通过职位的 dataScope === 'all' 判断
    */
   async isHQUser(userId: string): Promise<boolean> {
-    const { userDepartments, departments } = await import('../../db/schema.js')
-    const result = await this.db
-      .select({ isHq: departments.name })
-      .from(userDepartments)
-      .innerJoin(departments, eq(departments.id, userDepartments.departmentId))
-      .where(and(eq(userDepartments.userId, userId), eq(departments.name, '总部')))
+    const { positions } = await import('../../db/schema.js')
+    const employee = await this.db.query.employees.findFirst({
+      where: and(eq(employees.id, userId), eq(employees.active, 1)),
+    })
+    if (!employee?.positionId) { return false }
+
+    const position = await this.db
+      .select({ dataScope: positions.dataScope })
+      .from(positions)
+      .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
       .get()
 
-    return !!result
+    return position?.dataScope === 'all'
   }
 
   /**

@@ -11,7 +11,7 @@ import { alias } from 'drizzle-orm/sqlite-core'
 import { Errors } from '../../utils/errors.js'
 
 export class OrgDepartmentService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async getOrgDepartments(projectId?: string) {
     // 使用别名表处理自连接
@@ -22,24 +22,25 @@ export class OrgDepartmentService {
 
     const conditions = [eq(od.active, 1)]
     if (projectId) {
-      // 直接使用 projectId 查询，总部现在也是普通的 department
+      // 直接使用 projectId 查询
       conditions.push(eq(od.projectId, projectId))
-      
-      // 如果查询结果为空，检查是否为总部部门，如果是则自动创建默认组织部门
+
+      // 如果查询结果为空，检查是否为总部部门（hqId 为 null 表示该 department 本身就是总部）
       const projectDept = await this.db
-        .select({ name: departments.name })
+        .select({ hqId: departments.hqId })
         .from(departments)
         .where(eq(departments.id, projectId))
         .get()
-      
-      if (projectDept?.name === '总部') {
+
+      // 如果 hqId 为 null，说明这是一个总部级别的 department
+      if (projectDept && projectDept.hqId === null) {
         // 检查是否已有组织部门
         const existingCount = await this.db
           .select({ count: sql<number>`count(*)` })
           .from(od)
           .where(and(eq(od.projectId, projectId), eq(od.active, 1)))
           .get()
-        
+
         // 如果没有组织部门，自动创建
         if (!existingCount || existingCount.count === 0) {
           const { DepartmentService } = await import('./DepartmentService.js')
