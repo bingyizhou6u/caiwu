@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Card, Tag, Space, Collapse, Button, Checkbox, Form, message, Switch, Popconfirm } from 'antd'
+import { Card, Tag, Space, Collapse, Button, Checkbox, Form, message, Switch, Popconfirm, Select, Divider } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { DataTable, PageToolbar, StatusTag } from '../../../components/common'
@@ -7,7 +7,7 @@ import type { DataTableColumn } from '../../../components/common/DataTable'
 // ActionColumn removed - using DataTable's built-in onEdit instead
 import { FormModal } from '../../../components/FormModal'
 import { COMMON_STATUS } from '../../../utils/status'
-import { usePositions, useUpdatePosition, useFormModal } from '../../../hooks'
+import { usePositions, useUpdatePosition, useFormModal, usePermissionConfig } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { api } from '../../../config/api'
@@ -17,87 +17,7 @@ import { PageContainer } from '../../../components/PageContainer'
 
 const { Panel } = Collapse
 
-// 操作标签映射
-const ACTION_LABELS: Record<string, string> = {
-  view: '查看',
-  create: '创建',
-  update: '编辑',
-  delete: '删除',
-  export: '导出',
-  approve: '审批',
-  allocate: '分配',
-  view_sensitive: '敏感信息',
-}
-
-// 权限模块配置 - 与数据库中的权限结构保持一致
-const PERMISSION_MODULES: Record<string, {
-  label: string
-  subModules: Record<string, { label: string; actions: string[] }>
-}> = {
-  finance: {
-    label: '财务模块',
-    subModules: {
-      flow: { label: '资金流水', actions: ['view', 'create', 'update', 'delete', 'export'] },
-      transfer: { label: '账户转账', actions: ['view', 'create'] },
-      ar: { label: '应收管理', actions: ['view', 'create', 'update', 'delete'] },
-      ap: { label: '应付管理', actions: ['view', 'create', 'update', 'delete'] },
-      salary: { label: '工资发放', actions: ['view', 'create', 'update'] },
-      allowance: { label: '补贴发放', actions: ['view', 'create'] },
-      site_bill: { label: '站点账单', actions: ['view', 'create', 'update'] },
-    }
-  },
-  hr: {
-    label: '人事模块',
-    subModules: {
-      employee: { label: '员工管理', actions: ['view', 'create', 'update', 'delete', 'view_sensitive'] },
-      salary: { label: '薪资查看', actions: ['view', 'create'] },
-      leave: { label: '请假管理', actions: ['view', 'create', 'update', 'delete', 'approve'] },
-      reimbursement: { label: '报销管理', actions: ['view', 'create', 'update', 'delete', 'approve'] },
-    }
-  },
-  asset: {
-    label: '资产模块',
-    subModules: {
-      fixed: { label: '固定资产', actions: ['view', 'create', 'update', 'delete', 'allocate'] },
-      rental: { label: '租赁管理', actions: ['view', 'create', 'update', 'delete'] },
-    }
-  },
-  site: {
-    label: '站点模块',
-    subModules: {
-      info: { label: '站点信息', actions: ['view', 'create', 'update', 'delete'] },
-      bill: { label: '费用账单', actions: ['view', 'create', 'update', 'delete'] },
-    }
-  },
-  report: {
-    label: '报表模块',
-    subModules: {
-      view: { label: '报表查看', actions: ['view'] },
-      export: { label: '报表导出', actions: ['export'] },
-    }
-  },
-  system: {
-    label: '系统模块',
-    subModules: {
-      user: { label: '用户管理', actions: ['view', 'create', 'update', 'delete'] },
-      position: { label: '职位管理', actions: ['view', 'create', 'update', 'delete'] },
-      department: { label: '项目管理', actions: ['view', 'create', 'update', 'delete'] },
-      audit: { label: '审计日志', actions: ['view'] },
-      config: { label: '系统配置', actions: ['view', 'update'] },
-    }
-  },
-  self: {
-    label: '个人模块',
-    subModules: {
-      leave: { label: '我的请假', actions: ['view', 'create'] },
-      reimbursement: { label: '我的报销', actions: ['view', 'create'] },
-      salary: { label: '我的工资', actions: ['view'] },
-      asset: { label: '我的资产', actions: ['view'] },
-    }
-  },
-}
-
-// 层级选项
+// 层级选项 (保留用于显示，但主要使用 dataScope)
 const LEVEL_LABELS: Record<number, string> = {
   1: '总部',
   2: '项目',
@@ -105,11 +25,17 @@ const LEVEL_LABELS: Record<number, string> = {
 }
 
 // 权限摘要显示
-function PermissionSummary({ permissions }: { permissions: string | Record<string, unknown> | null | undefined }) {
+function PermissionSummary({
+  permissions,
+  modules
+}: {
+  permissions: string | Record<string, unknown> | null | undefined
+  modules: Record<string, { label: string; subModules: Record<string, { label: string; actions: string[] }> }>
+}) {
   const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
 
   const moduleCounts: string[] = []
-  Object.entries(PERMISSION_MODULES).forEach(([moduleKey, moduleConfig]) => {
+  Object.entries(modules).forEach(([moduleKey, moduleConfig]) => {
     const modulePerms = perms[moduleKey]
     if (modulePerms && Object.keys(modulePerms).length > 0) {
       const subCount = Object.keys(modulePerms).length
@@ -132,7 +58,15 @@ function PermissionSummary({ permissions }: { permissions: string | Record<strin
 }
 
 // 权限详情展示
-function PermissionDetail({ permissions }: { permissions: string | Record<string, unknown> | null | undefined }) {
+function PermissionDetail({
+  permissions,
+  modules,
+  actionLabels,
+}: {
+  permissions: string | Record<string, unknown> | null | undefined
+  modules: Record<string, { label: string; subModules: Record<string, { label: string; actions: string[] }> }>
+  actionLabels: Record<string, string>
+}) {
   const perms = typeof permissions === 'string' ? JSON.parse(permissions || '{}') : permissions || {}
 
   if (Object.keys(perms).length === 0) {
@@ -141,7 +75,7 @@ function PermissionDetail({ permissions }: { permissions: string | Record<string
 
   return (
     <Collapse size="small" ghost>
-      {Object.entries(PERMISSION_MODULES).map(([moduleKey, moduleConfig]) => {
+      {Object.entries(modules).map(([moduleKey, moduleConfig]) => {
         const modulePerms = perms[moduleKey]
         if (!modulePerms || Object.keys(modulePerms).length === 0) return null
 
@@ -159,7 +93,7 @@ function PermissionDetail({ permissions }: { permissions: string | Record<string
                   <div key={subKey} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Tag color="blue">{subConfig?.label || subKey}</Tag>
                     <span style={{ color: '#666' }}>
-                      {actionList.map(a => ACTION_LABELS[a] || a).join('、')}
+                      {actionList.map(a => actionLabels[a] || a).join('、')}
                     </span>
                   </div>
                 )
@@ -175,10 +109,14 @@ function PermissionDetail({ permissions }: { permissions: string | Record<string
 // 权限编辑表单 - 使用内部 state 管理
 function PermissionEditForm({
   initialPermissions,
-  onChange
+  onChange,
+  modules,
+  actionLabels,
 }: {
   initialPermissions: Record<string, Record<string, string[]>>
   onChange: (perms: Record<string, Record<string, string[]>>) => void
+  modules: Record<string, { label: string; subModules: Record<string, { label: string; actions: string[] }> }>
+  actionLabels: Record<string, string>
 }) {
   const [permissions, setPermissions] = useState<Record<string, Record<string, string[]>>>({})
 
@@ -221,7 +159,7 @@ function PermissionEditForm({
   }
 
   const toggleSubModule = (module: string, subModule: string, checked: boolean) => {
-    const actions = PERMISSION_MODULES[module].subModules[subModule].actions
+    const actions = modules[module]?.subModules[subModule]?.actions || []
     setPermissions(prev => {
       const newPerms = JSON.parse(JSON.stringify(prev))
       if (!newPerms[module]) newPerms[module] = {}
@@ -241,19 +179,19 @@ function PermissionEditForm({
   }
 
   const isSubModuleAllChecked = (module: string, subModule: string) => {
-    const actions = PERMISSION_MODULES[module].subModules[subModule].actions
+    const actions = modules[module]?.subModules[subModule]?.actions || []
     return actions.every(action => isChecked(module, subModule, action))
   }
 
   const isSubModulePartialChecked = (module: string, subModule: string) => {
-    const actions = PERMISSION_MODULES[module].subModules[subModule].actions
+    const actions = modules[module]?.subModules[subModule]?.actions || []
     const checkedCount = actions.filter(action => isChecked(module, subModule, action)).length
     return checkedCount > 0 && checkedCount < actions.length
   }
 
   return (
     <Collapse size="small" defaultActiveKey={['finance', 'hr', 'asset', 'site', 'report', 'system', 'self']}>
-      {Object.entries(PERMISSION_MODULES).map(([moduleKey, moduleConfig]) => (
+      {Object.entries(modules).map(([moduleKey, moduleConfig]) => (
         <Panel header={moduleConfig.label} key={moduleKey}>
           <div style={{ display: 'grid', gap: 8 }}>
             {Object.entries(moduleConfig.subModules).map(([subKey, subConfig]) => (
@@ -272,7 +210,7 @@ function PermissionEditForm({
                       checked={isChecked(moduleKey, subKey, action)}
                       onChange={(e) => toggleAction(moduleKey, subKey, action, e.target.checked)}
                     >
-                      {ACTION_LABELS[action] || action}
+                      {actionLabels[action] || action}
                     </Checkbox>
                   ))}
                 </Space>
@@ -293,6 +231,9 @@ export function PositionPermissionsManagement() {
   const { hasPermission } = usePermissions()
   const canEdit = hasPermission('system', 'position', 'update')
 
+  // 从后端加载权限配置
+  const { modules: PERMISSION_MODULES, actionLabels: ACTION_LABELS, dataScopes, dataScopeLabels } = usePermissionConfig()
+
   // 切换启用状态
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const handleToggleActive = useMemo(() => withErrorHandler(
@@ -311,6 +252,9 @@ export function PositionPermissionsManagement() {
 
   // 编辑权限状态
   const [editingPermissions, setEditingPermissions] = useState<Record<string, Record<string, string[]>>>({})
+  // 编辑 DataScope 状态
+  type DataScopeValue = 'all' | 'project' | 'group' | 'self'
+  const [editingDataScope, setEditingDataScope] = useState<DataScopeValue>('self')
 
   // 编辑时初始化
   useEffect(() => {
@@ -319,20 +263,27 @@ export function PositionPermissionsManagement() {
         ? JSON.parse(modal.data.permissions || '{}')
         : modal.data.permissions || {}
       setEditingPermissions(perms)
+      setEditingDataScope(((modal.data as any).dataScope || 'self') as DataScopeValue)
     }
   }, [modal.isEdit, modal.data])
 
   const handleSubmit = useMemo(() => withErrorHandler(
     async () => {
       if (!modal.data) return
-      await updatePosition({ id: modal.data.id, data: { permissions: editingPermissions } })
+      await updatePosition({
+        id: modal.data.id,
+        data: {
+          permissions: editingPermissions,
+          dataScope: editingDataScope,
+        }
+      })
       modal.close()
     },
     {
       successMessage: '权限保存成功',
       errorMessage: '保存失败'
     }
-  ), [modal, editingPermissions, updatePosition])
+  ), [modal, editingPermissions, editingDataScope, updatePosition])
 
   const columns: DataTableColumn<Position>[] = [
     { title: '职位代码', dataIndex: 'code', width: 140 },
@@ -344,6 +295,20 @@ export function PositionPermissionsManagement() {
       render: (v: number) => <Tag>{LEVEL_LABELS[v] || v}</Tag>
     },
     {
+      title: '数据范围',
+      dataIndex: 'dataScope',
+      width: 140,
+      render: (v: string) => {
+        const scopeColors: Record<string, string> = {
+          all: 'red',
+          project: 'orange',
+          group: 'blue',
+          self: 'green',
+        }
+        return <Tag color={scopeColors[v] || 'default'}>{dataScopeLabels[v] || v || '未设置'}</Tag>
+      }
+    },
+    {
       title: '管理下属',
       dataIndex: 'canManageSubordinates',
       width: 90,
@@ -353,7 +318,7 @@ export function PositionPermissionsManagement() {
       title: '权限配置',
       dataIndex: 'permissions',
       width: 280,
-      render: (v: string | Record<string, unknown> | null | undefined) => <PermissionSummary permissions={v} />
+      render: (v: string | Record<string, unknown> | null | undefined) => <PermissionSummary permissions={v} modules={PERMISSION_MODULES} />
     },
     { title: '描述', dataIndex: 'description', ellipsis: true },
     {
@@ -418,7 +383,11 @@ export function PositionPermissionsManagement() {
               expandedRowRender: (record) => (
                 <div style={{ padding: '12px 0' }}>
                   <h4 style={{ marginBottom: 12 }}>权限详情</h4>
-                  <PermissionDetail permissions={record.permissions} />
+                  <PermissionDetail
+                    permissions={record.permissions}
+                    modules={PERMISSION_MODULES}
+                    actionLabels={ACTION_LABELS}
+                  />
                 </div>
               ),
               rowExpandable: (record) => {
@@ -440,12 +409,28 @@ export function PositionPermissionsManagement() {
         onCancel={() => {
           modal.close()
           setEditingPermissions({})
+          setEditingDataScope('self')
         }}
         width={900}
       >
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontWeight: 500, marginRight: 12 }}>数据访问范围：</label>
+          <Select
+            value={editingDataScope}
+            onChange={(v) => setEditingDataScope(v as DataScopeValue)}
+            style={{ width: 240 }}
+            options={dataScopes}
+          />
+          <span style={{ marginLeft: 12, color: '#888', fontSize: 12 }}>
+            决定该职位可以查看哪些业务数据
+          </span>
+        </div>
+        <Divider style={{ margin: '12px 0' }} />
         <PermissionEditForm
           initialPermissions={editingPermissions}
           onChange={setEditingPermissions}
+          modules={PERMISSION_MODULES}
+          actionLabels={ACTION_LABELS}
         />
       </FormModal>
     </PageContainer>

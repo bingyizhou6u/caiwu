@@ -48,6 +48,7 @@ import { myRoutes as myRoutesV2 } from './routes/v2/my.js'
 import { approvalsRoutes as approvalsRoutesV2 } from './routes/v2/approvals.js'
 import { employeesLeavesRoutes as employeesLeavesRoutesV2 } from './routes/v2/employee-leaves.js'
 import { expenseReimbursementsRoutes as expenseReimbursementsRoutesV2 } from './routes/v2/expense-reimbursements.js'
+import permissionConfigRoutesV2 from './routes/v2/permission-config.js'
 
 // App initialization
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
@@ -347,6 +348,7 @@ v2.route('/', auditRoutesV2)
 v2.route('/', ipWhitelistRoutesV2)
 v2.route('/', systemConfigRoutesV2)
 v2.route('/', positionPermissionsRoutesV2)
+v2.route('/permission-config', permissionConfigRoutesV2)
 
 // Mount versions to app
 // Default: /api/* -> v2

@@ -30,6 +30,7 @@ export { useAPSummary, useAPDetail, useARSummary, useARDetail, useExpenseDetail,
 export { useMyPendingApprovals, useMyApprovalHistory, useApproveLeave as useApproveLeaveMy, useRejectLeave, useApproveReimbursement, useRejectReimbursement } from './business/useMyApprovals'
 export { useFixedAssets, useFixedAsset, useCreateFixedAsset, useUpdateFixedAsset, useDeleteFixedAsset, useBatchDeleteFixedAsset, useTransferFixedAsset, useDepreciateFixedAsset, useAllocateFixedAsset, useReturnFixedAsset, useFixedAssetPurchase, useFixedAssetSale, useFixedAssetAllocations } from './business/useFixedAssets'
 export { useHealth, useLogin, useRequestTotpReset, useVerifyTotpResetToken, useConfirmTotpReset } from './business/useAuth'
+export { usePermissionConfig } from './usePermissionConfig'
 
 // Form Hooks
 export { useFormModal, useMultipleModals } from './forms/useFormModal'

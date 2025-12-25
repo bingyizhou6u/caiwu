@@ -52,8 +52,8 @@ const getAllPositionsRoute = createRoute({
 
 positionPermissionsRoutes.openapi(getAllPositionsRoute, createRouteHandler(async c => {
   if (!hasPermission(c, 'system', 'position', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
   const results = await c.var.services.position.getPositions()
   return { results }
 }))
@@ -86,15 +86,17 @@ const getPositionRoute = createRoute({
 
 positionPermissionsRoutes.openapi(getPositionRoute, createRouteHandler(async (c: any) => {
   if (!hasPermission(c, 'system', 'position', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
   const id = c.req.param('id')
   if (!id) {
-      throw Errors.VALIDATION_ERROR('Position ID is required')}
+    throw Errors.VALIDATION_ERROR('Position ID is required')
+  }
   const positions = await c.var.services.position.getPositions()
   const position = positions.find((p: any) => p.id === id)
   if (!position) {
-      throw Errors.NOT_FOUND('职位')}
+    throw Errors.NOT_FOUND('职位')
+  }
   return position
 }) as any)
 
@@ -133,7 +135,7 @@ positionPermissionsRoutes.openapi(createPositionRoute, createRouteHandler(async 
     throw Errors.FORBIDDEN()
   }
   const body = c.req.valid('json')
-  
+
   const result = await c.var.services.position.createPosition({
     code: body.code,
     name: body.name,
@@ -192,19 +194,55 @@ positionPermissionsRoutes.openapi(updatePositionRoute, createRouteHandler(async 
   }
   const body = c.req.valid('json')
 
-  await c.var.services.position.updatePosition(id, {
+  // 获取更新前的职位信息用于审计
+  const allPositions = await c.var.services.position.getPositions()
+  const oldPosition = allPositions.find((p: any) => p.id === id)
+
+  const updateData = {
     code: body.code,
     name: body.name,
     level: body.level,
     functionRole: body.functionRole ?? body.function_role,
     canManageSubordinates: body.canManageSubordinates ?? body.can_manage_subordinates,
+    dataScope: body.dataScope,
     description: body.description,
     permissions: typeof body.permissions === 'string' ? body.permissions : JSON.stringify(body.permissions),
     sortOrder: body.sortOrder ?? body.sort_order,
     active: body.active,
-  })
+  }
 
-  logAuditAction(c, 'update', 'position', id, JSON.stringify({ code: body.code, name: body.name }))
+  await c.var.services.position.updatePosition(id, updateData)
+
+  // 构建审计日志详情
+  const auditDetails: any = {
+    code: body.code || oldPosition?.code,
+    name: body.name || oldPosition?.name,
+  }
+
+  // 记录 dataScope 变更
+  if (body.dataScope !== undefined && oldPosition?.dataScope !== body.dataScope) {
+    auditDetails.dataScopeChange = {
+      before: oldPosition?.dataScope || 'self',
+      after: body.dataScope,
+    }
+  }
+
+  // 记录 permissions 变更（简化记录，只记录是否有变更）
+  if (body.permissions !== undefined) {
+    const oldPerms = typeof oldPosition?.permissions === 'string'
+      ? oldPosition.permissions
+      : JSON.stringify(oldPosition?.permissions || {})
+    const newPerms = typeof body.permissions === 'string'
+      ? body.permissions
+      : JSON.stringify(body.permissions || {})
+
+    if (oldPerms !== newPerms) {
+      auditDetails.permissionsChanged = true
+    }
+  }
+
+  logAuditAction(c, 'update', 'position', id, JSON.stringify(auditDetails))
+
   const updated = await c.var.services.position.getPositions()
   const position = updated.find((p: any) => p.id === id)
   return position || { id }

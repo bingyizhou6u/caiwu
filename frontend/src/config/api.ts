@@ -130,6 +130,7 @@ export const api = {
   myPermissions: `${API_BASE}/api/v2/my-permissions`,
   positionPermissions: `${API_BASE}/api/v2/position-permissions`,
   positionPermissionsById: (id: string) => `${API_BASE}/api/v2/position-permissions/${id}`,
+  permissionConfig: `${API_BASE}/api/v2/permission-config`,
   fixedAssets: `${API_BASE}/api/v2/fixed-assets`,
   fixedAssetsBatch: `${API_BASE}/api/v2/fixed-assets/batch`,
   fixedAssetsById: (id: string) => `${API_BASE}/api/v2/fixed-assets/${id}`,
