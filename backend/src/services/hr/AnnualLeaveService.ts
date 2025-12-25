@@ -7,6 +7,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { like, eq, and, gte, lte } from 'drizzle-orm'
 import { systemConfig, employeeLeaves } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 
 export interface AnnualLeaveConfig {
   cycleMonths: number // 周期月数: 6 或 12
@@ -40,7 +41,7 @@ export interface LeaveSettlement {
 }
 
 export class AnnualLeaveService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   // 获取年假配置
   async getAnnualLeaveConfig(): Promise<AnnualLeaveConfig> {
@@ -133,7 +134,7 @@ export class AnnualLeaveService {
     targetDate?: string
   ): Promise<AnnualLeaveStats> {
     const config = await this.getAnnualLeaveConfig()
-    const today = targetDate || new Date().toISOString().split('T')[0]
+    const today = targetDate || getBusinessDate()
     const cycle = this.calculateCycleInfo(joinDate, today, config.cycleMonths)
 
     // 第一周期无年假

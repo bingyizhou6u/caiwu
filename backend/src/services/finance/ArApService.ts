@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
 import { FinanceService } from './FinanceService.js'
 import { query, getByIds } from '../../utils/query-helpers.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
 
@@ -104,7 +105,7 @@ export class ArApService {
     docNo?: string
   }) {
     const id = uuid()
-    const issueDate = data.issueDate ?? new Date().toISOString().split('T')[0]
+    const issueDate = data.issueDate ?? getBusinessDate()
     const docNo = data.docNo ?? (await this.getNextDocNo(data.kind, issueDate))
 
     await this.db
@@ -173,7 +174,7 @@ export class ArApService {
         docId: data.docId,
         flowId: data.flowId,
         settleAmountCents: data.amountCents,
-        settleDate: data.settleDate ?? new Date().toISOString().split('T')[0],
+        settleDate: data.settleDate ?? getBusinessDate(),
         createdAt: Date.now(),
       })
       .execute()

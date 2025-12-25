@@ -360,6 +360,7 @@ app.doc('/api/doc', {
   info: {
     version: '2.0.0',
     title: 'Caiwu API',
+    description: 'AR公司财务管理系统 API - 所有时间基于迪拜时间 (UTC+4)',
   },
 })
 

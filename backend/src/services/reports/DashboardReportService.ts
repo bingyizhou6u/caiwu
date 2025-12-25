@@ -14,6 +14,7 @@ import {
 } from '../../db/schema.js'
 import { sql, eq, and, gte, lte, desc } from 'drizzle-orm'
 import { Logger } from '../../utils/logger.js'
+import { getBusinessDate, getBusinessMonthStart, getBusinessTimezoneDisplay } from '../../utils/timezone.js'
 
 export class DashboardReportService {
   constructor(
@@ -22,7 +23,12 @@ export class DashboardReportService {
   ) { }
 
   async getDashboardStats(departmentId?: string) {
-    const cacheKey = `report:dashboard:${new Date().toISOString().slice(0, 10)}:${departmentId || 'all'}`
+    // 使用业务时区 (UTC+4 迪拜时间) 计算日期
+    const today = getBusinessDate()
+    const thisMonthStart = getBusinessMonthStart()
+    const thisMonthEnd = today
+
+    const cacheKey = `report:dashboard:${today}:${departmentId || 'all'}`
 
     // Try Cache
     try {
@@ -33,12 +39,6 @@ export class DashboardReportService {
     } catch (e) {
       Logger.warn('Cache read failed', { error: e })
     }
-
-    const today = new Date().toISOString().slice(0, 10)
-    const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-      .toISOString()
-      .slice(0, 10)
-    const thisMonthEnd = today
 
     // 今日统计
     const todayConditions = [eq(cashFlows.bizDate, today)]

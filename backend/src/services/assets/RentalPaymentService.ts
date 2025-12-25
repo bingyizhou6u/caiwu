@@ -16,6 +16,7 @@ import { eq, and, desc, sql, isNotNull, gte, lte, asc } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
 import { FinanceService } from '../finance/FinanceService.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 
 export class RentalPaymentService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
@@ -244,7 +245,7 @@ export class RentalPaymentService {
   async generatePayableBills(userId?: string) {
     const now = Date.now()
     const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
+    const todayStr = getBusinessDate()
 
     const properties = await this.db
       .select()
@@ -387,7 +388,7 @@ export class RentalPaymentService {
       .update(rentalPayableBills)
       .set({
         status: 'paid',
-        paidDate: new Date().toISOString().split('T')[0],
+        paidDate: getBusinessDate(),
         updatedAt: Date.now(),
       })
       .where(eq(rentalPayableBills.id, id))

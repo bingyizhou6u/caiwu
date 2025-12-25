@@ -13,15 +13,16 @@ import {
 import { eq, and, desc, sql, isNotNull } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 
 export class RentalPropertyService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listProperties(query: { propertyType?: string; status?: string; departmentId?: string }) {
     const conditions = []
-    if (query.propertyType) {conditions.push(eq(rentalProperties.propertyType, query.propertyType))}
-    if (query.status) {conditions.push(eq(rentalProperties.status, query.status))}
-    if (query.departmentId) {conditions.push(eq(rentalProperties.departmentId, query.departmentId))}
+    if (query.propertyType) { conditions.push(eq(rentalProperties.propertyType, query.propertyType)) }
+    if (query.status) { conditions.push(eq(rentalProperties.status, query.status)) }
+    if (query.departmentId) { conditions.push(eq(rentalProperties.departmentId, query.departmentId)) }
 
     return await this.db
       .select({
@@ -191,7 +192,7 @@ export class RentalPropertyService {
           id: changeId,
           propertyId: id,
           changeType: 'modify',
-          changeDate: new Date().toISOString().split('T')[0],
+          changeDate: getBusinessDate(),
           fromLeaseStart: existing.leaseStartDate,
           toLeaseStart:
             data.leaseStartDate !== undefined ? data.leaseStartDate : existing.leaseStartDate,

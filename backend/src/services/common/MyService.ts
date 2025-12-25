@@ -2,6 +2,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 import type { EmployeeLeaveService } from '../hr/EmployeeLeaveService.js'
 import type { ExpenseReimbursementService } from '../hr/ExpenseReimbursementService.js'
 import type { AttendanceService } from '../hr/AttendanceService.js'
@@ -26,7 +27,7 @@ export class MyService {
     private employeeService: EmployeeService,
     private annualLeaveService: AnnualLeaveService,
     private salaryService: SalaryService
-  ) {}
+  ) { }
 
   async getMyEmployeeId(userId: string): Promise<string | null> {
     // userId is assumed to be authorized and equivalent to employeeId in new architecture.
@@ -56,7 +57,7 @@ export class MyService {
       // 年假统计
       (async () => {
         const emp = await this.employeeService.getById(employeeId)
-        if (!emp || !emp.joinDate) {return null}
+        if (!emp || !emp.joinDate) { return null }
         try {
           return await this.annualLeaveService.getAnnualLeaveStats(employeeId, emp.joinDate)
         } catch (e) {
@@ -104,25 +105,25 @@ export class MyService {
         salary: salary || [],
         annualLeave: annualLeaveStats
           ? {
-              cycleMonths: annualLeaveStats.config.cycleMonths,
-              cycleNumber: annualLeaveStats.cycle.cycleNumber,
-              cycleStart: annualLeaveStats.cycle.cycleStart,
-              cycleEnd: annualLeaveStats.cycle.cycleEnd,
-              isFirstCycle: annualLeaveStats.cycle.isFirstCycle,
-              total: annualLeaveStats.entitledDays,
-              used: annualLeaveStats.usedDays,
-              remaining: annualLeaveStats.remainingDays,
-            }
+            cycleMonths: annualLeaveStats.config.cycleMonths,
+            cycleNumber: annualLeaveStats.cycle.cycleNumber,
+            cycleStart: annualLeaveStats.cycle.cycleStart,
+            cycleEnd: annualLeaveStats.cycle.cycleEnd,
+            isFirstCycle: annualLeaveStats.cycle.isFirstCycle,
+            total: annualLeaveStats.entitledDays,
+            used: annualLeaveStats.usedDays,
+            remaining: annualLeaveStats.remainingDays,
+          }
           : {
-              cycleMonths: 6,
-              cycleNumber: 1,
-              cycleStart: null,
-              cycleEnd: null,
-              isFirstCycle: true,
-              total: 0,
-              used: 0,
-              remaining: 0,
-            },
+            cycleMonths: 6,
+            cycleNumber: 1,
+            cycleStart: null,
+            cycleEnd: null,
+            isFirstCycle: true,
+            total: 0,
+            used: 0,
+            remaining: 0,
+          },
         pendingReimbursementCents: pending.totalCents || 0,
       },
       recentApplications: recent || [],
@@ -240,7 +241,7 @@ export class MyService {
     // userId should be employeeId in new architecture
     const employeeId = userId
     const profile = await this.employeeService.getById(employeeId)
-    if (!profile) {return null}
+    if (!profile) { return null }
 
     return {
       id: profile.id,
@@ -275,22 +276,22 @@ export class MyService {
       throw Errors.NOT_FOUND('未找到员工记录')
     }
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = getBusinessDate()
     const record = await this.attendanceService.getTodayRecord(employeeId)
 
     return {
       today,
       record: record
         ? {
-            id: record.id,
-            date: record.date,
-            clockInTime: record.clockInTime,
-            clockOutTime: record.clockOutTime,
-            clockInLocation: record.clockInLocation,
-            clockOutLocation: record.clockOutLocation,
-            status: record.status,
-            memo: record.memo,
-          }
+          id: record.id,
+          date: record.date,
+          clockInTime: record.clockInTime,
+          clockOutTime: record.clockOutTime,
+          clockInLocation: record.clockInLocation,
+          clockOutLocation: record.clockOutLocation,
+          status: record.status,
+          memo: record.memo,
+        }
         : null,
     }
   }

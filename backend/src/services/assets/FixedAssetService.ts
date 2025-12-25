@@ -19,6 +19,7 @@ import { Errors } from '../../utils/errors.js'
 import { FinanceService } from '../finance/FinanceService.js'
 import { QueryBuilder } from '../../utils/query-builder.js'
 import { query } from '../../utils/query-helpers.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
 
@@ -306,7 +307,7 @@ export class FixedAssetService {
           id: changeId,
           assetId: id,
           changeType: 'status_change',
-          changeDate: new Date().toISOString().split('T')[0],
+          changeDate: getBusinessDate(),
           fromDeptId: existing.departmentId,
           toDeptId: data.departmentId !== undefined ? data.departmentId : existing.departmentId,
           fromSiteId: existing.siteId,
@@ -413,7 +414,7 @@ export class FixedAssetService {
     const transactionId = uuid()
     const changeId = uuid()
     const now = Date.now()
-    const purchaseDate = data.purchaseDate || new Date().toISOString().split('T')[0]
+    const purchaseDate = data.purchaseDate || getBusinessDate()
     const day = purchaseDate.replace(/-/g, '')
 
     // 生成凭证号

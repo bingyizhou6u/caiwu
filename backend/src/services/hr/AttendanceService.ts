@@ -3,12 +3,13 @@ import { eq, and, desc, sql } from 'drizzle-orm'
 import { attendanceRecords } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
 import { uuid } from '../../utils/db.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 
 export class AttendanceService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async getTodayRecord(employeeId: string) {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getBusinessDate()
 
     return await this.db
       .select()
@@ -36,7 +37,7 @@ export class AttendanceService {
   }
 
   async clockIn(employeeId: string) {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getBusinessDate()
     const now = Date.now()
 
     const existing = await this.getTodayRecord(employeeId)
@@ -73,7 +74,7 @@ export class AttendanceService {
   }
 
   async clockOut(employeeId: string) {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getBusinessDate()
     const now = Date.now()
 
     const existing = await this.getTodayRecord(employeeId)

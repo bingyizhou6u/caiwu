@@ -15,6 +15,7 @@ import { uuid } from '../../utils/db.js'
 import { Errors, createError } from '../../utils/errors.js'
 import { ErrorCodes } from '../../constants/errorCodes.js'
 import { query } from '../../utils/query-helpers.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../../types.js'
 
@@ -313,7 +314,7 @@ export class FinanceService {
       // 4. 生成红冲记录
       const reversalId = uuid()
       const now = Date.now()
-      const reversalDate = new Date().toISOString().split('T')[0]
+      const reversalDate = getBusinessDate()
       const reversalVoucherNo = await this.getNextVoucherNo(reversalDate, tx)
 
       // 红冲记录：收入变支出，支出变收入（金额相同）
