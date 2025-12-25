@@ -8,8 +8,7 @@ const mockUserInfo = {
     name: 'Test User',
     position: {
         code: 'manager',
-        level: 2,
-        functionRole: 'finance',
+        dataScope: 'project',
         canManageSubordinates: 1,
         permissions: {
             finance: {

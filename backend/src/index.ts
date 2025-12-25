@@ -242,10 +242,10 @@ app.post('/api/v2/init-if-empty', async c => {
     await c.env.DB.prepare(
       `
       INSERT OR IGNORE INTO positions (
-        id, code, name, level, function_role, can_manage_subordinates, 
+        id, code, name, data_scope, can_manage_subordinates, 
         description, permissions, sort_order, active, created_at, updated_at
       ) VALUES (
-        'pos-hq-director', 'hq_director', '总部负责人', 1, 'director', 1,
+        'pos-hq-director', 'hq_director', '总部负责人', 'all', 1,
         '总部负责人', '{}', 1, 1, ?, ?
       )
     `

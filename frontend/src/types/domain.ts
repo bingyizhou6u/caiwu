@@ -113,7 +113,6 @@ export interface Employee {
 
     // 用户账号信息
     userId?: ID
-    userRole?: string
     userActive?: number
     userLastLoginAt?: Timestamp
     isActivated?: boolean
