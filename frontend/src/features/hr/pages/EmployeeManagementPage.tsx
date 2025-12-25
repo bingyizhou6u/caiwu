@@ -26,10 +26,9 @@ export function EmployeeManagement() {
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null)
 
   // 权限
-  const { hasPermission, isManager: _isManager } = usePermissions()
-  const isManager = _isManager()
+  const { hasPermission, canManageSubordinates } = usePermissions()
   const canEdit = hasPermission('hr', 'employee', 'update')
-  const canDelete = isManager // 仅管理员可删除
+  const canDelete = canManageSubordinates // 仅管理员可删除
 
   // Hooks
   const queryClient = useQueryClient()
@@ -192,14 +191,14 @@ export function EmployeeManagement() {
             编辑
           </Button>
         )}
-        {isManager && accountMenuItems.length > 0 && (
+        {canManageSubordinates && accountMenuItems.length > 0 && (
           <Dropdown menu={{ items: accountMenuItems }} trigger={['click']}>
             <Button size="small" icon={<SettingOutlined />}>账号</Button>
           </Dropdown>
         )}
       </Space>
     )
-  }, [canEdit, isManager, handleToggleActive, modal, handleResendActivation, handleResetTotp])
+  }, [canEdit, canManageSubordinates, handleToggleActive, modal, handleResendActivation, handleResetTotp])
   return (
     <PageContainer
       title="人员管理"

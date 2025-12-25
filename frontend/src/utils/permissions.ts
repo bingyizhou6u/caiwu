@@ -44,9 +44,13 @@ export function hasPermission(
 
 /**
  * React Hook - 返回权限检查函数
- * 使用方式:
- * const { hasPermission, user, canManageSubordinates, dataScope } = usePermissions()
+ * 
+ * 推荐使用方式 (值判断):
+ * const { hasPermission, dataScope, functionRole, canManageSubordinates } = usePermissions()
  * if (hasPermission('finance', 'flow', 'create')) { ... }
+ * if (dataScope === 'all') { // 总部权限 }
+ * if (functionRole === 'finance') { // 财务人员 }
+ * if (canManageSubordinates) { // 有管理下属权限 }
  */
 export function usePermissions() {
   const { userInfo: user } = useAppStore()
@@ -57,43 +61,27 @@ export function usePermissions() {
     action?: string
   ) => hasPermission(user, module, subModule, action)
 
-  // 检查是否是管理者(有管理下属权限)
-  const isManager = () => {
-    if (!user?.position) return false
-    return user.position.canManageSubordinates === 1
-  }
-
-  // 检查是否是总部人员 (基于 dataScope)
-  const isHQ = () => {
-    if (!user?.position?.dataScope) return false
-    return user.position.dataScope === 'all'
-  }
-
-  // 检查是否是财务人员
-  const isFinance = () => {
-    if (!user?.position) return false
-    return user.position.functionRole === 'finance'
-  }
-
-  // 检查是否是HR人员
-  const isHR = () => {
-    if (!user?.position) return false
-    return user.position.functionRole === 'hr'
-  }
-
-  // 获取职能角色
-  const functionRole = user?.position?.functionRole || null
-  // 获取数据范围
+  // 核心属性值
   const dataScope = user?.position?.dataScope || 'self'
+  const functionRole = user?.position?.functionRole || null
+  const canManageSubordinates = user?.position?.canManageSubordinates === 1
+
+  // 辅助判断函数 (推荐直接使用上面的值判断)
+  const isManager = () => canManageSubordinates
+  const isHQ = () => dataScope === 'all'
+  const isFinance = () => functionRole === 'finance'
+  const isHR = () => functionRole === 'hr'
 
   return {
     user,
     hasPermission: checkPermission,
-    canManageSubordinates: user?.position?.canManageSubordinates === 1,
-    positionCode: user?.position?.code,
-    positionLevel: user?.position?.level,
+    // 核心属性 (推荐直接使用)
     dataScope,
     functionRole,
+    canManageSubordinates,
+    positionCode: user?.position?.code,
+    positionLevel: user?.position?.level,
+    // 辅助函数 (兼容旧代码)
     isManager,
     isHQ,
     isFinance,
