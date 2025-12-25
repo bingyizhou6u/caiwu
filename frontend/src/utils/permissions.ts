@@ -45,7 +45,7 @@ export function hasPermission(
 /**
  * React Hook - 返回权限检查函数
  * 
- * 推荐使用方式 (值判断):
+ * 使用方式:
  * const { hasPermission, dataScope, functionRole, canManageSubordinates } = usePermissions()
  * if (hasPermission('finance', 'flow', 'create')) { ... }
  * if (dataScope === 'all') { // 总部权限 }
@@ -66,25 +66,18 @@ export function usePermissions() {
   const functionRole = user?.position?.functionRole || null
   const canManageSubordinates = user?.position?.canManageSubordinates === 1
 
-  // 辅助判断函数 (推荐直接使用上面的值判断)
-  const isManager = () => canManageSubordinates
-  const isHQ = () => dataScope === 'all'
-  const isFinance = () => functionRole === 'finance'
-  const isHR = () => functionRole === 'hr'
-
   return {
     user,
     hasPermission: checkPermission,
-    // 核心属性 (推荐直接使用)
+    // 数据范围: 'all' | 'project' | 'group' | 'self'
     dataScope,
+    // 职能角色: 'director' | 'hr' | 'finance' | 'admin' | 'developer' | 'support' | 'member'
     functionRole,
+    // 是否有管理下属权限
     canManageSubordinates,
+    // 职位信息 (如需要更细粒度的判断)
     positionCode: user?.position?.code,
     positionLevel: user?.position?.level,
-    // 辅助函数 (兼容旧代码)
-    isManager,
-    isHQ,
-    isFinance,
-    isHR,
   }
 }
+
