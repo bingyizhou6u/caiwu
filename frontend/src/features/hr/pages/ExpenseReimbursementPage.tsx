@@ -50,10 +50,9 @@ export function ExpenseReimbursement() {
   const [editVoucherFile, setEditVoucherFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const { hasPermission, canManageSubordinates, isManager: _isManager } = usePermissions()
+  const { hasPermission, canManageSubordinates } = usePermissions()
   const canEdit = hasPermission('hr', 'reimbursement', 'view')
   const canApprove = hasPermission('hr', 'reimbursement', 'approve') || canManageSubordinates
-  const isManager = _isManager()
 
   const {
     isOpen: createOpen,
@@ -386,7 +385,7 @@ export function ExpenseReimbursement() {
               标记已支付
             </Button>
           )}
-          {isManager && (
+          {canManageSubordinates && (
             <Popconfirm
               title="确定要删除这条报销记录吗？"
               onConfirm={() => handleDelete(record.id)}
@@ -487,7 +486,7 @@ export function ExpenseReimbursement() {
                   标记已支付
                 </Button>
               )}
-              {isManager && (
+              {canManageSubordinates && (
                 <Popconfirm
                   title="确定要删除这条报销记录吗？"
                   onConfirm={() => handleDelete(record.id)}

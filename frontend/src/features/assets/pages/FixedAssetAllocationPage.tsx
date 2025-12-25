@@ -31,8 +31,8 @@ export function FixedAssetAllocation() {
   const [returnForm] = Form.useForm()
   const [searchParams, setSearchParams] = useState<{ employeeId?: string; returned?: string }>({})
 
-  const { hasPermission, isFinance: checkIsFinance, isHR } = usePermissions()
-  const canManageAssets = checkIsFinance() || isHR()
+  const { hasPermission, functionRole } = usePermissions()
+  const canManageAssets = functionRole === 'finance' || functionRole === 'hr'
 
   // Business data hooks
   const { data: employeesData = [] } = useEmployees()
@@ -243,7 +243,7 @@ export function FixedAssetAllocation() {
             <Button
               size="small"
               onClick={() => handleReturn(r)}
-              disabled={!!r.returnDate || !checkIsFinance()}
+              disabled={!!r.returnDate || functionRole !== 'finance'}
             >
               归还
             </Button>

@@ -22,8 +22,7 @@ export function SiteManagement() {
   const modal = useFormModal<Site>()
   const { form, validateWithZod } = useZodForm(siteSchema)
 
-  const { hasPermission, isManager: _isManager } = usePermissions()
-  const isManager = _isManager()
+  const { hasPermission, canManageSubordinates } = usePermissions()
   const canManageSites = hasPermission('site', 'site', 'create')
 
   const handleSubmit = useMemo(() => withErrorHandler(
@@ -157,7 +156,7 @@ export function SiteManagement() {
                   />
                 </>
               )}
-              {isManager && (
+              {canManageSubordinates && (
                 <Popconfirm
                   title={`确定要删除站点"${r.name}"吗？`}
                   description="删除后该站点将被永久删除，此操作不可恢复。"

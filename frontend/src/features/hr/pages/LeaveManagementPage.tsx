@@ -60,10 +60,9 @@ export function LeaveManagement() {
   const { form: editForm, validateWithZod: validateEdit } = useZodForm(leaveSchema)
   const { form: approveForm, validateWithZod: validateApprove } = useZodForm(approveLeaveSchema)
 
-  const { hasPermission, canManageSubordinates, isManager: _isManager } = usePermissions()
+  const { hasPermission, canManageSubordinates } = usePermissions()
   const canEdit = hasPermission('hr', 'leave', 'view')
   const canApprove = hasPermission('hr', 'leave', 'approve') || canManageSubordinates
-  const isManager = _isManager()
 
   // 使用React Query hook获取员工数据
   const { data: employeesData = [] } = useEmployees(true)
@@ -284,7 +283,7 @@ export function LeaveManagement() {
               审批
             </Button>
           )}
-          {isManager && (
+          {canManageSubordinates && (
             <Popconfirm
               title="确定要删除这条请假记录吗？"
               onConfirm={() => handleDelete(record.id)}
@@ -430,7 +429,7 @@ export function LeaveManagement() {
                   审批
                 </Button>
               )}
-              {isManager && (
+              {canManageSubordinates && (
                 <Popconfirm
                   title="确定要删除这条请假记录吗？"
                   onConfirm={() => handleDelete(record.id)}

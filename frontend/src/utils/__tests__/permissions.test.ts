@@ -78,9 +78,15 @@ describe('permissions', () => {
             expect(result.current.hasPermission('finance', 'flow', 'delete')).toBe(false)
         })
 
-        it('should check roles correctly', () => {
+        it('should check roles correctly via values', () => {
             const { result } = renderHook(() => usePermissions())
 
+            // 值判断方式（推荐）
+            expect(result.current.canManageSubordinates).toBe(true)
+            expect(result.current.functionRole).toBe('finance')
+            expect(result.current.dataScope).toBe('self') // 默认值
+
+            // 辅助函数仍然可用（兼容旧代码）
             expect(result.current.isManager()).toBe(true)
             expect(result.current.isFinance()).toBe(true)
             expect(result.current.isHR()).toBe(false)

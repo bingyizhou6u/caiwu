@@ -20,14 +20,14 @@ export function VendorManagement() {
   const { mutateAsync: updateVendor } = useUpdateVendor()
   const { mutateAsync: deleteVendor } = useDeleteVendor()
   const { mutateAsync: batchDeleteVendor } = useBatchDeleteVendor()
-  
+
   const modal = useFormModal<Vendor>()
   const { form, validateWithZod } = useZodForm(vendorSchema)
   const [searchParams, setSearchParams] = useState<{ search?: string; activeOnly?: string }>({})
 
-  const { hasPermission, isManager } = usePermissions()
+  const { hasPermission, canManageSubordinates } = usePermissions()
   const canEdit = hasPermission('system', 'vendor', 'create')
-  const canDelete = isManager()
+  const canDelete = canManageSubordinates
 
   const tableActions = useTableActions<Vendor>()
   const { selectedRowKeys, rowSelection } = tableActions
@@ -165,7 +165,7 @@ export function VendorManagement() {
           rowKey="id"
           rowSelection={canDelete ? rowSelection : undefined}
           onEdit={canEdit ? handleEdit : undefined}
-          onDelete={isManager() ? (record) => handleDelete(record.id) : undefined}
+          onDelete={canManageSubordinates ? (record) => handleDelete(record.id) : undefined}
           tableProps={{ className: 'table-striped' }}
         />
 

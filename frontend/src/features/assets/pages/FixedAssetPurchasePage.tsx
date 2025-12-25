@@ -51,8 +51,8 @@ export function FixedAssetPurchase() {
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
 
-  const { hasPermission, isFinance: checkIsFinance } = usePermissions()
-  const isFinance = checkIsFinance()
+  const { hasPermission, functionRole } = usePermissions()
+  const isFinance = functionRole === 'finance'
 
   // Business data hooks
   const { data: currencies = [] } = useCurrencyOptions()
@@ -191,9 +191,9 @@ export function FixedAssetPurchase() {
           <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
             <CurrencySelect placeholder="选择币种" />
           </Form.Item>
-          <Form.Item 
-            name="accountId" 
-            label="支出账户" 
+          <Form.Item
+            name="accountId"
+            label="支出账户"
             rules={[{ required: true }]}
             dependencies={['currency']}
           >

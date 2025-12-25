@@ -69,10 +69,9 @@ const DEPRECIATION_METHOD_OPTIONS = [
 
 export function FixedAssetsManagement() {
   // 权限
-  const { hasPermission, isManager: _isManager } = usePermissions()
-  const isManager = _isManager()
+  const { hasPermission, canManageSubordinates } = usePermissions()
   const canManageAssets = hasPermission('asset', 'fixed', 'create')
-  const canDelete = isManager
+  const canDelete = canManageSubordinates
 
   // Hooks
   const { data: departments = [] } = useDepartmentOptions()
@@ -340,7 +339,7 @@ export function FixedAssetsManagement() {
                       <Button size="small" onClick={() => modals.open('depreciation', r)}>折旧</Button>
                     </>
                   )}
-                  {isManager && (
+                  {canManageSubordinates && (
                     <Popconfirm
                       title={`确定要删除资产"${r.name}"吗？`}
                       description="删除后该资产将被永久删除，如果有折旧记录，将无法删除。"
