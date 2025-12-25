@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
 
 export class SiteService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async getSites() {
     const [sitesList, departmentsList] = await Promise.all([
@@ -67,9 +67,9 @@ export class SiteService {
     }
 
     const updates: any = { updatedAt: Date.now() }
-    if (data.name !== undefined) {updates.name = data.name}
-    if (data.departmentId !== undefined) {updates.departmentId = data.departmentId}
-    if (data.active !== undefined) {updates.active = data.active}
+    if (data.name !== undefined) { updates.name = data.name }
+    if (data.departmentId !== undefined) { updates.departmentId = data.departmentId }
+    if (data.active !== undefined) { updates.active = data.active }
 
     await this.db.update(sites).set(updates).where(eq(sites.id, id)).execute()
     return { ok: true }
@@ -79,6 +79,12 @@ export class SiteService {
     const site = await this.db.query.sites.findFirst({ where: eq(sites.id, id) })
     if (!site) {
       throw Errors.NOT_FOUND('站点')
+    }
+
+    // 检查是否有关联的流水记录
+    const flowCount = await this.db.$count(schema.cashFlows, eq(schema.cashFlows.siteId, id))
+    if (flowCount > 0) {
+      throw Errors.BUSINESS_ERROR('无法删除，该站点还有流水记录')
     }
 
     await this.db.delete(sites).where(eq(sites.id, id)).execute()

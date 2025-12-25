@@ -170,45 +170,51 @@ export class RentalPropertyService {
     }
 
     const now = Date.now()
-    await this.db
-      .update(rentalProperties)
-      .set({ ...data, updatedAt: now })
-      .where(eq(rentalProperties.id, id))
-      .execute()
 
-    // 如果关键字段更新则记录变更
-    if (
+    // 检查是否需要记录变更日志
+    const needsChangeLog =
       data.status !== undefined ||
       data.monthlyRentCents !== undefined ||
       data.yearlyRentCents !== undefined ||
       data.rentType !== undefined ||
       data.leaseStartDate !== undefined ||
       data.leaseEndDate !== undefined
-    ) {
-      const changeId = uuid()
-      await this.db
-        .insert(rentalChanges)
-        .values({
-          id: changeId,
-          propertyId: id,
-          changeType: 'modify',
-          changeDate: getBusinessDate(),
-          fromLeaseStart: existing.leaseStartDate,
-          toLeaseStart:
-            data.leaseStartDate !== undefined ? data.leaseStartDate : existing.leaseStartDate,
-          fromLeaseEnd: existing.leaseEndDate,
-          toLeaseEnd: data.leaseEndDate !== undefined ? data.leaseEndDate : existing.leaseEndDate,
-          fromMonthlyRentCents: existing.monthlyRentCents,
-          toMonthlyRentCents:
-            data.monthlyRentCents !== undefined ? data.monthlyRentCents : existing.monthlyRentCents,
-          fromStatus: existing.status,
-          toStatus: data.status !== undefined ? data.status : existing.status,
-          memo: data.memo,
-          createdBy: data.createdBy,
-          createdAt: now,
-        })
-        .execute()
-    }
+
+    // 使用事务确保更新和变更日志的原子性
+    await this.db.transaction(async tx => {
+      await tx
+        .update(rentalProperties)
+        .set({ ...data, updatedAt: now })
+        .where(eq(rentalProperties.id, id))
+        .run()
+
+      // 如果关键字段更新则记录变更
+      if (needsChangeLog) {
+        const changeId = uuid()
+        await tx
+          .insert(rentalChanges)
+          .values({
+            id: changeId,
+            propertyId: id,
+            changeType: 'modify',
+            changeDate: getBusinessDate(),
+            fromLeaseStart: existing.leaseStartDate,
+            toLeaseStart:
+              data.leaseStartDate !== undefined ? data.leaseStartDate : existing.leaseStartDate,
+            fromLeaseEnd: existing.leaseEndDate,
+            toLeaseEnd: data.leaseEndDate !== undefined ? data.leaseEndDate : existing.leaseEndDate,
+            fromMonthlyRentCents: existing.monthlyRentCents,
+            toMonthlyRentCents:
+              data.monthlyRentCents !== undefined ? data.monthlyRentCents : existing.monthlyRentCents,
+            fromStatus: existing.status,
+            toStatus: data.status !== undefined ? data.status : existing.status,
+            memo: data.memo,
+            createdBy: data.createdBy,
+            createdAt: now,
+          })
+          .run()
+      }
+    })
   }
 
   async deleteProperty(id: string) {
