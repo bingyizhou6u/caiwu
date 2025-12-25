@@ -44,8 +44,13 @@
 ### 2. Permissions / 权限体系 (5 Layers)
 1. **IP Whitelist**: Cloudflare WAF / Worker
 2. **Auth**: JWT + TOTP (2FA)
-3. **RBAC**: Role-based / 基于角色
-4. **DataScope**: Scope-based / 数据范围 (HQ/Project/Team/Personal)
+3. **RBAC**: Role-based / 基于角色 (`hasPermission()`)
+4. **DataScope**: **Scope-based Data Isolation / 基于范围的数据隔离** (Dec 2025 Refactored)
+   - `ALL`: Full system access / 全系统访问
+   - `PROJECT`: Department-level / 部门级别 (`departmentId`)
+   - `GROUP`: Team-level / 团队级别 (`orgDepartmentId`)
+   - `SELF`: Owner-only / 仅限本人 (`employeeId`)
+   - **⚠️ NO hardcoded codes**: Never use `position.code === 'xxx'` / 禁止硬编码职位代码
 5. **Approval**: Workflow / 审批流
 
 ### 3. Standards / 规范

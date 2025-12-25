@@ -211,7 +211,47 @@ throw Errors.VALIDATION_ERROR('验证失败', { details })
 
 ---
 
-### 5. API 版本规范
+### 6. 权限与数据隔离规范 (Dec 2025)
+
+#### 必须使用 DataScope 进行数据隔离
+
+**规则**: 所有涉及数据可见性的业务逻辑，必须使用 `dataScope` 字段判断，**禁止使用硬编码的职位代码**。
+
+**模板**:
+```typescript
+import { getDataAccessFilterSQL, getUserPosition } from '../utils/permissions.js'
+
+// ✅ 正确：使用 DataScope 判断
+const position = getUserPosition(c)
+if (position?.dataScope === 'all') {
+  // 全局访问
+} else if (position?.dataScope === 'project') {
+  // 部门级别访问
+} else if (position?.dataScope === 'group') {
+  // 团队级别访问
+} else {
+  // 默认: 仅个人数据
+}
+
+// ✅ 正确：使用 SQL 过滤器
+const accessFilter = getDataAccessFilterSQL(c, 'table_name', {
+  ownerColumn: 'created_by',
+  deptColumn: 'department_id',
+})
+const results = await db.select().from(table).where(accessFilter).all()
+
+// ❌ 禁止：硬编码职位代码
+if (position?.code === 'team_leader') { ... }  // 永远不要这样做
+if (position?.code === 'hq_manager') { ... }   // 永远不要这样做
+```
+
+**可用的数据范围**:
+| DataScope | 描述 | 过滤字段 |
+|-----------|------|----------|
+| `all` | 全系统访问 | 无过滤 |
+| `project` | 部门级别 | `departmentId` |
+| `group` | 团队级别 | `orgDepartmentId` |
+| `self` | 仅个人 | `employeeId` |
 
 #### 必须使用版本检测中间件
 
@@ -237,6 +277,7 @@ throw Errors.VALIDATION_ERROR('验证失败', { details })
 - [ ] 服务是否放在正确的业务域目录？
 - [ ] 是否使用了统一的错误处理？
 - [ ] 是否更新了依赖注入？
+- [ ] **数据权限是否使用 `dataScope` 判断，而非硬编码职位代码？**
 
 ### 新增服务时
 
@@ -296,18 +337,32 @@ services/NewService.ts
 services/hr/NewService.ts
 ```
 
+### 4. 禁止硬编码职位代码 (Dec 2025)
+
+```typescript
+// ❌ 禁止：使用硬编码的职位代码
+if (position.code === 'team_leader') { ... }
+if (position.code === 'hq_manager') { ... }
+if (position.code === 'project_manager') { ... }
+
+// ✅ 必须：使用 DataScope 判断
+if (position.dataScope === 'group') { ... }
+if (position.dataScope === 'all') { ... }
+if (position.dataScope === 'project') { ... }
+```
+
 ---
 
 ## 📚 参考文档
 
 - [使用指南](./USAGE_GUIDE.md) - 工具使用说明
-- [服务层组织](./backend/src/services/SERVICE_ORGANIZATION.md) - 服务组织说明
 - [API 版本管理](./API_VERSIONING.md) - API 版本规范
 
 ---
 
 ## 🔄 更新记录
 
+- 2025-12-25: 添加权限与数据隔离规范 (DataScope)
 - 2025-01-27: 初始版本，建立开发规范
 
 ---
