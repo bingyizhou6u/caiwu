@@ -4,7 +4,7 @@ import { systemConfig } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
 import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class SystemConfigService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

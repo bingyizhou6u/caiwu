@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'

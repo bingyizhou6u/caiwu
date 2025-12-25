@@ -9,7 +9,7 @@ import { EmailRoutingService } from '../common/EmailRoutingService.js'
 import { EmailService } from '../common/EmailService.js'
 import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class EmployeeService {
   constructor(

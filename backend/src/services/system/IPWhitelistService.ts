@@ -1,4 +1,4 @@
-import type { Env } from '../../types.js'
+import type { Env } from '../../types/index.js'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'
 import {

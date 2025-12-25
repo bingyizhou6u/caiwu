@@ -4,7 +4,7 @@
  */
 import { Context, MiddlewareHandler } from 'hono'
 import { RATE_LIMITS } from '../services/common/RateLimitService.js'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 import { Logger } from '../utils/logger.js'
 
 // 获取客户端 IP

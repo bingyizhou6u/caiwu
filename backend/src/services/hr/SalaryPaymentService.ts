@@ -20,7 +20,7 @@ import type { OperationHistoryService } from '../system/OperationHistoryService.
 import { QueryBuilder } from '../../utils/query-builder.js'
 import { query as dbQuery } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class SalaryPaymentService {
   constructor(

@@ -43,7 +43,7 @@ import { NotificationService } from '../services/common/NotificationService.js'
 import { MyService } from '../services/common/MyService.js'
 import { EmailService } from '../services/common/EmailService.js'
 import { RateLimitService } from '../services/common/RateLimitService.js'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 
 export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>, next: Next) => {
   try {

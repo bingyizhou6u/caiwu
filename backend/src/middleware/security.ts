@@ -3,7 +3,7 @@
  * 设置各种安全相关的 HTTP 响应头，提升应用安全性
  */
 import { Context, Next, MiddlewareHandler } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 
 /**
  * 安全响应头中间件

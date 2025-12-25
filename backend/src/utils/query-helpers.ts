@@ -13,7 +13,7 @@ import * as schema from '../db/schema.js'
 import { DBPerformanceTracker } from './db-performance.js'
 import { BatchQuery } from './batch-query.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 
 /**
  * 查询辅助类

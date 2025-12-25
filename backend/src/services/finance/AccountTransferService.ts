@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid'
 import { FinanceService } from './FinanceService.js'
 import { getByIds } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class AccountTransferService {
   constructor(

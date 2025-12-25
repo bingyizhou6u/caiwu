@@ -4,7 +4,7 @@
  */
 
 import { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 import { apiSuccess, jsonResponse, PaginationMeta } from './response.js'
 
 type RouteContext = Context<{ Bindings: Env; Variables: AppVariables }>

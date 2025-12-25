@@ -17,7 +17,7 @@ import { ErrorCodes } from '../../constants/errorCodes.js'
 import { query } from '../../utils/query-helpers.js'
 import { getBusinessDate } from '../../utils/timezone.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class FinanceService {
   constructor(private db: DrizzleD1Database<any>) { }

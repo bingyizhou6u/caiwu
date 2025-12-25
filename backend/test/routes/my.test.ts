@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { myRoutes } from '../../src/routes/v2/my.js'
 import { AppError } from '../../src/utils/errors.js'
 import { ErrorCodes } from '../../src/constants/errorCodes.js'
-import type { Env, AppVariables } from '../../src/types.js'
+import type { Env, AppVariables } from '../../src/types/index.js'
 
 // Mock audit
 vi.mock('../../src/utils/audit.js', () => ({

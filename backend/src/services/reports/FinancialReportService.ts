@@ -18,7 +18,7 @@ import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
 import { Logger } from '../../utils/logger.js'
 import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class FinancialReportService {
   constructor(

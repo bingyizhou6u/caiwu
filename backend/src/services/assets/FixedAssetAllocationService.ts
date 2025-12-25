@@ -18,7 +18,7 @@ import { Errors } from '../../utils/errors.js'
 import { QueryBuilder } from '../../utils/query-builder.js'
 import { query, getByIds } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class FixedAssetAllocationService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }

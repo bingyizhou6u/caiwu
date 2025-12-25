@@ -4,7 +4,7 @@
  */
 
 import { MiddlewareHandler } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 import { getMonitoringService } from '../utils/monitoring.js'
 
 /**

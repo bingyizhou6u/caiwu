@@ -1,5 +1,5 @@
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 import { sql, SQL } from 'drizzle-orm'
 import { DataScope, DataScopeType, PermissionModuleType, PermissionActionType } from '../constants/permissions.js'
 

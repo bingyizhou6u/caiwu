@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import {
     PERMISSION_MODULES,
     ACTION_LABELS,

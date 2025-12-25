@@ -18,7 +18,7 @@ import { query } from '../../utils/query-helpers.js'
 import { BatchQuery } from '../../utils/batch-query.js'
 import { DBPerformanceTracker } from '../../utils/db-performance.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class SalaryPaymentGenerationService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }

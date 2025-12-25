@@ -7,7 +7,7 @@ import {
   salaryReportQuerySchema,
   idParamSchema,
 } from '../../schemas/common.schema.js'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import { hasPermission, getUserPosition } from '../../utils/permissions.js'
 import { PermissionModule, PermissionAction, DataScope } from '../../constants/permissions.js'
 import { Errors } from '../../utils/errors.js'

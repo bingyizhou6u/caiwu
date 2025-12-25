@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import { getUserPosition, hasPermission } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'

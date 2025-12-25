@@ -18,7 +18,7 @@ import {
 import { QueryBuilder } from '../../utils/query-builder.js'
 import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 interface ApprovalRecord {
   id: string

@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { sql } from 'drizzle-orm'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import { hasPermission, getUserPosition, getDataAccessFilterSQL } from '../../utils/permissions.js'
 import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'

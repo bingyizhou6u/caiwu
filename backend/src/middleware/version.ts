@@ -4,7 +4,7 @@
  */
 
 import { Context, Next } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 
 /**
  * API 版本检测中间件

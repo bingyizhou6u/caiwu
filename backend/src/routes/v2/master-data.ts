@@ -1,5 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import { headquartersRoutes } from './master-data/headquarters.js'
 import { departmentsRoutes } from './master-data/departments.js'
 import { accountsRoutes } from './master-data/accounts.js'

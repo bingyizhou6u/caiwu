@@ -12,7 +12,7 @@ import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
 import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class FixedAssetDepreciationService {
   constructor(private db: DrizzleD1Database<typeof schema>) {}

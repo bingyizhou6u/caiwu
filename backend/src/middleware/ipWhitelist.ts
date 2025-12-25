@@ -1,5 +1,5 @@
 import { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 import { IPWhitelistService } from '../services/system/IPWhitelistService.js'
 import { Logger } from '../utils/logger.js'
 

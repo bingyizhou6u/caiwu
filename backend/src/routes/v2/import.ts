@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import { hasPermission } from '../../utils/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { csvImportQuerySchema } from '../../schemas/common.schema.js'

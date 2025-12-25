@@ -1,5 +1,5 @@
 import { createMiddleware } from 'hono/factory'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 import { hasPermission } from '../utils/permissions.js'
 import { Errors } from '../utils/errors.js'
 

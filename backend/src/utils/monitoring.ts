@@ -4,7 +4,7 @@
  */
 
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../types.js'
+import type { Env, AppVariables } from '../types/index.js'
 import { AppError } from './errors.js'
 import { ErrorCodes } from '../constants/errorCodes.js'
 

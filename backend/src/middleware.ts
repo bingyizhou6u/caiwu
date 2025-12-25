@@ -1,6 +1,6 @@
 import { Context } from 'hono'
 import { getCookie } from 'hono/cookie'
-import type { Env, AppVariables } from './types.js'
+import type { Env, AppVariables } from './types/index.js'
 import { getSessionWithUserAndPosition } from './utils/db.js'
 import {
   verifyAuthToken,

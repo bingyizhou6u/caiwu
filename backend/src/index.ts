@@ -4,7 +4,7 @@ import { swaggerUI } from '@hono/swagger-ui'
 import { cors } from 'hono/cors'
 
 // Type imports
-import type { Env, AppVariables } from './types.js'
+import type { Env, AppVariables } from './types/index.js'
 
 // Middleware imports
 import { createAuthMiddleware } from './middleware.js'

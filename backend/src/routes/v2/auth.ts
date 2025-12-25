@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { deleteCookie, getCookie } from 'hono/cookie'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 import { loginSchema } from '../../schemas/business.schema.js'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'

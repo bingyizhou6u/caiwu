@@ -1,4 +1,4 @@
-import type { Env } from '../types.js'
+import type { Env } from '../types/index.js'
 
 // Cloudflare 服务类型
 export type CloudflareService = 'ip_lists' | 'email' | 'firewall'

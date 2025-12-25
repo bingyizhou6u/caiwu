@@ -6,7 +6,7 @@ import { createDb } from '../../src/utils/db.js'
 import { MasterDataService } from '../../src/services/system/MasterDataService.js'
 import { masterDataRoutes } from '../../src/routes/v2/master-data.js'
 import * as schema from '../../src/db/schema.js'
-import { AppVariables, Env } from '../../src/types.js'
+import { AppVariables, Env } from '../../src/types/index.js'
 import schemaSql from '../../src/db/schema.sql?raw'
 
 describe('MasterData Routes', () => {

@@ -21,7 +21,7 @@ import { QueryBuilder } from '../../utils/query-builder.js'
 import { query } from '../../utils/query-helpers.js'
 import { getBusinessDate } from '../../utils/timezone.js'
 import type { Context } from 'hono'
-import type { Env, AppVariables } from '../../types.js'
+import type { Env, AppVariables } from '../../types/index.js'
 
 export class FixedAssetService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
