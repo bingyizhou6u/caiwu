@@ -23,7 +23,7 @@ import type { SalaryPayment } from '../../../hooks/business/useSalaryPayments'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function SalaryPayments() {
-  const { hasPermission, functionRole } = usePermissions()
+  const { hasPermission } = usePermissions()
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [month, setMonth] = useState<number | undefined>(new Date().getMonth() + 1)
   const [status, setStatus] = useState<string | undefined>(undefined)
@@ -41,7 +41,7 @@ export function SalaryPayments() {
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [submitting, setSubmitting] = useState(false)
 
-  const _isFinance = functionRole === 'finance'
+  const _isFinance = hasPermission('hr', 'salary', 'approve')
 
   const {
     isOpen: generateOpen,

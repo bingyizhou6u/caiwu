@@ -68,7 +68,6 @@ describe('permissions', () => {
             expect(result.current.canManageSubordinates).toBe(true)
             expect(result.current.positionCode).toBe('manager')
             expect(result.current.positionLevel).toBe(2)
-            expect(result.current.functionRole).toBe('finance')
         })
 
         it('should check permission correctly', () => {
@@ -83,7 +82,6 @@ describe('permissions', () => {
 
             // 值判断方式
             expect(result.current.canManageSubordinates).toBe(true)
-            expect(result.current.functionRole).toBe('finance')
             expect(result.current.dataScope).toBe('self') // 默认值
         })
     })

@@ -51,8 +51,8 @@ export function FixedAssetPurchase() {
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const [fileList, setFileList] = useState<UploadFile[]>([])
 
-  const { hasPermission, functionRole } = usePermissions()
-  const isFinance = functionRole === 'finance'
+  const { hasPermission } = usePermissions()
+  const isFinance = hasPermission('asset', 'fixed', 'create')
 
   // Business data hooks
   const { data: currencies = [] } = useCurrencyOptions()

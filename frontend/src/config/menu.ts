@@ -91,8 +91,8 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     if (hasPermission(userInfo, 'finance', 'ap', 'view')) {
         finance.push({ key: 'ap', label: '应付账款', icon: getMenuIcon('ap') })
     }
-    // 数据导入需要财务或负责人权限
-    if (hasPermission(userInfo, 'finance') && (userInfo.position?.functionRole === 'finance' || userInfo.position?.functionRole === 'director')) {
+    // 数据导入需要财务数据导入权限
+    if (hasPermission(userInfo, 'finance', 'import', 'create')) {
         finance.push({ key: 'import', label: '数据导入', icon: getMenuIcon('import') })
     }
     // 财务基础数据管理 - 整合为财务设置菜单
