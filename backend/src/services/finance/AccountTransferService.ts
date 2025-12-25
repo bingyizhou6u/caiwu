@@ -63,69 +63,79 @@ export class AccountTransferService {
     const now = Date.now()
     const voucherUrlJson = JSON.stringify(data.voucherUrls ?? [])
 
-    // 1. 创建转账记录
-    await this.db
-      .insert(accountTransfers)
-      .values({
-        id,
-        transferDate: data.transferDate,
-        fromAccountId: data.fromAccountId,
-        toAccountId: data.toAccountId,
-        fromCurrency: (await this.financeService.getAccountCurrency(data.fromAccountId)) || 'CNY',
-        toCurrency: (await this.financeService.getAccountCurrency(data.toAccountId)) || 'CNY',
-        fromAmountCents: data.fromAmountCents,
-        toAmountCents: data.toAmountCents,
-        exchangeRate: data.exchangeRate,
-        memo: data.memo,
-        voucherUrl: voucherUrlJson,
-        createdBy: data.createdBy,
-        createdAt: now,
-      })
-      .execute()
+    // 获取账户币种（在事务外执行只读查询）
+    const fromCurrency = (await this.financeService.getAccountCurrency(data.fromAccountId)) || 'CNY'
+    const toCurrency = (await this.financeService.getAccountCurrency(data.toAccountId)) || 'CNY'
 
-    // 2. 创建转出账户交易 (Out) - Needs access to getAccountBalanceBefore
+    // 获取账户余额（在事务外执行只读查询）
     const fromBalanceBefore = await this.financeService.getAccountBalanceBefore(
       data.fromAccountId,
       data.transferDate,
       now
     )
-    const fromBalanceAfter = fromBalanceBefore - data.fromAmountCents
-    await this.db
-      .insert(accountTransactions)
-      .values({
-        id: uuid(),
-        accountId: data.fromAccountId,
-        flowId: id, // 关联到转账 ID
-        transactionDate: data.transferDate,
-        transactionType: 'transfer_out',
-        amountCents: -data.fromAmountCents,
-        balanceBeforeCents: fromBalanceBefore,
-        balanceAfterCents: fromBalanceAfter,
-        createdAt: now,
-      })
-      .execute()
-
-    // 3. 创建转入账户交易 (In)
     const toBalanceBefore = await this.financeService.getAccountBalanceBefore(
       data.toAccountId,
       data.transferDate,
       now
     )
+
+    const fromBalanceAfter = fromBalanceBefore - data.fromAmountCents
     const toBalanceAfter = toBalanceBefore + data.toAmountCents
-    await this.db
-      .insert(accountTransactions)
-      .values({
-        id: uuid(),
-        accountId: data.toAccountId,
-        flowId: id, // 关联到转账 ID
-        transactionDate: data.transferDate,
-        transactionType: 'transfer_in',
-        amountCents: data.toAmountCents,
-        balanceBeforeCents: toBalanceBefore,
-        balanceAfterCents: toBalanceAfter,
-        createdAt: now,
-      })
-      .execute()
+
+    // 使用事务确保所有插入操作的原子性
+    await this.db.transaction(async tx => {
+      // 1. 创建转账记录
+      await tx
+        .insert(accountTransfers)
+        .values({
+          id,
+          transferDate: data.transferDate,
+          fromAccountId: data.fromAccountId,
+          toAccountId: data.toAccountId,
+          fromCurrency,
+          toCurrency,
+          fromAmountCents: data.fromAmountCents,
+          toAmountCents: data.toAmountCents,
+          exchangeRate: data.exchangeRate,
+          memo: data.memo,
+          voucherUrl: voucherUrlJson,
+          createdBy: data.createdBy,
+          createdAt: now,
+        })
+        .run()
+
+      // 2. 创建转出账户交易 (Out)
+      await tx
+        .insert(accountTransactions)
+        .values({
+          id: uuid(),
+          accountId: data.fromAccountId,
+          flowId: id, // 关联到转账 ID
+          transactionDate: data.transferDate,
+          transactionType: 'transfer_out',
+          amountCents: -data.fromAmountCents,
+          balanceBeforeCents: fromBalanceBefore,
+          balanceAfterCents: fromBalanceAfter,
+          createdAt: now,
+        })
+        .run()
+
+      // 3. 创建转入账户交易 (In)
+      await tx
+        .insert(accountTransactions)
+        .values({
+          id: uuid(),
+          accountId: data.toAccountId,
+          flowId: id, // 关联到转账 ID
+          transactionDate: data.transferDate,
+          transactionType: 'transfer_in',
+          amountCents: data.toAmountCents,
+          balanceBeforeCents: toBalanceBefore,
+          balanceAfterCents: toBalanceAfter,
+          createdAt: now,
+        })
+        .run()
+    })
 
     return { id }
   }
