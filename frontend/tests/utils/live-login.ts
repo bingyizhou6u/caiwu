@@ -69,8 +69,18 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
     const loginButton = page.getByRole('button', { name: '登 录' });
     await loginButton.click();
 
-    // 等待页面响应（等待可能的错误消息、TOTP 输入框或跳转）
-    await page.waitForTimeout(5000);
+    // 等待页面响应 - 检查登录按钮是否消失或TOTP卡片是否出现
+    console.log('等待登录响应...');
+    try {
+        // 等待登录按钮消失或页面跳转
+        await Promise.race([
+            page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 }),
+            page.locator('.ant-card-head-title:has-text("二步验证")').waitFor({ timeout: 15000 }),
+        ]);
+    } catch {
+        // 继续检查页面状态
+    }
+    await page.waitForTimeout(2000);
 
     // 检查是否有 Cloudflare 错误页面
     const pageContent = await page.content().catch(() => '');
@@ -109,11 +119,16 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
         }
     }
 
-    // 检查是否需要 TOTP 验证（等待更长时间，因为可能需要等待 API 响应）
-    await page.waitForTimeout(2000);
-
+    // 检查是否需要 TOTP 验证
+    // 检测方式：查找 "二步验证" 卡片标题或 TOTP 输入框
+    const totpCard = page.locator('.ant-card-head-title:has-text("二步验证")');
     const totpInput = page.getByPlaceholder('请输入6位验证码');
-    const needsTotp = await totpInput.isVisible({ timeout: 8000 }).catch(() => false);
+
+    const hasTotpCard = await totpCard.isVisible({ timeout: 3000 }).catch(() => false);
+    const hasTotpInput = await totpInput.isVisible({ timeout: 3000 }).catch(() => false);
+    const needsTotp = hasTotpCard || hasTotpInput;
+
+    console.log(`TOTP 检测: 卡片=${hasTotpCard}, 输入框=${hasTotpInput}`);
 
     if (needsTotp) {
         console.log('需要 TOTP 验证');
