@@ -10,33 +10,18 @@ export class EmployeeLeaveService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listLeaves(params: { employeeId?: string; status?: string; year?: string }) {
+    // D1 兼容性修复：使用顺序查询代替 LEFT JOIN
+
+    // 1. 查询请假记录
     let query = this.db
-      .select({
-        id: employeeLeaves.id,
-        employeeId: employeeLeaves.employeeId,
-        employeeName: employees.name,
-        leaveType: employeeLeaves.leaveType,
-        startDate: employeeLeaves.startDate,
-        endDate: employeeLeaves.endDate,
-        days: employeeLeaves.days,
-        status: employeeLeaves.status,
-        reason: employeeLeaves.reason,
-        memo: employeeLeaves.memo,
-        approvedBy: employeeLeaves.approvedBy,
-        approvedByName: employees.name, // Approval name join might conflict with employeeName join, needs alias
-        approvedAt: employeeLeaves.approvedAt,
-        createdAt: employeeLeaves.createdAt,
-        updatedAt: employeeLeaves.updatedAt,
-      })
+      .select()
       .from(employeeLeaves)
-      .leftJoin(employees, eq(employeeLeaves.employeeId, employees.id))
       .$dynamic()
 
     const filters = []
     if (params.employeeId) { filters.push(eq(employeeLeaves.employeeId, params.employeeId)) }
     if (params.status) { filters.push(eq(employeeLeaves.status, params.status)) }
     if (params.year) {
-      // 使用SQLite的strftime函数提取年份（保留原生SQL，因为Drizzle ORM没有直接的日期提取函数）
       filters.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year} `)
     }
 
@@ -44,40 +29,85 @@ export class EmployeeLeaveService {
       query = query.where(and(...filters))
     }
 
-    const results = await query.orderBy(desc(employeeLeaves.createdAt))
+    const leaves = await query.orderBy(desc(employeeLeaves.createdAt))
 
-    // Fix for approvedByName (requires a separate join or processed after if avoiding alias complexity in simple strings)
-    // For simplicity, let's just fetch the approvers if needed or trust the left join if we alias.
-    // Drizzle allows aliasing. Let's use alias for approver.
+    if (leaves.length === 0) {
+      return []
+    }
 
-    return results
+    // 2. 批量获取员工名称
+    const employeeIds = [...new Set(leaves.map(l => l.employeeId).filter(Boolean))]
+    const employeeMap = new Map<string, string>()
+
+    if (employeeIds.length > 0) {
+      const emps = await this.db
+        .select({ id: employees.id, name: employees.name })
+        .from(employees)
+        .where(sql`${employees.id} IN (${sql.join(employeeIds.map(id => sql`${id}`), sql`, `)})`)
+        .execute()
+      emps.forEach(e => employeeMap.set(e.id, e.name || ''))
+    }
+
+    // 3. 组装结果
+    return leaves.map(l => ({
+      id: l.id,
+      employeeId: l.employeeId,
+      employeeName: l.employeeId ? employeeMap.get(l.employeeId) || null : null,
+      leaveType: l.leaveType,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      days: l.days,
+      status: l.status,
+      reason: l.reason,
+      memo: l.memo,
+      approvedBy: l.approvedBy,
+      approvedByName: null, // 需要单独查询审批人
+      approvedAt: l.approvedAt,
+      createdAt: l.createdAt,
+      updatedAt: l.updatedAt,
+    }))
   }
 
   async getLeavesWithApprover(params: { employeeId?: string; status?: string; year?: string }) {
-    // Need to alias employees table for approver
-    // Drizzle doesn't support easy aliasing in the query builder style used here without defining it upfront.
-    // Let's stick to the current pattern but do a second lookup or just return IDs for now if alias is hard.
-    // Actually, we can fetch approver names separately or just leave it for now.
-    // The original logic in MyService did a left join for approvedByName.
+    // D1 兼容性修复：使用顺序查询代替 LEFT JOIN
 
+    // 1. 查询请假记录
     const conditions = []
     if (params.employeeId) { conditions.push(eq(employeeLeaves.employeeId, params.employeeId)) }
     if (params.status) { conditions.push(eq(employeeLeaves.status, params.status)) }
     if (params.year) {
-      // 使用SQLite的strftime函数提取年份（保留原生SQL，因为Drizzle ORM没有直接的日期提取函数）
       conditions.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year} `)
     }
 
-    return await this.db
-      .select({
-        leave: employeeLeaves,
-        approvedByName: employees.name,
-      })
+    const leaves = await this.db
+      .select()
       .from(employeeLeaves)
-      .leftJoin(employees, eq(employees.id, employeeLeaves.approvedBy))
-      .where(and(...conditions))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(employeeLeaves.createdAt))
       .execute()
+
+    if (leaves.length === 0) {
+      return []
+    }
+
+    // 2. 批量获取审批人名称
+    const approverIds = [...new Set(leaves.map(l => l.approvedBy).filter(Boolean) as string[])]
+    const approverMap = new Map<string, string>()
+
+    if (approverIds.length > 0) {
+      const approvers = await this.db
+        .select({ id: employees.id, name: employees.name })
+        .from(employees)
+        .where(sql`${employees.id} IN (${sql.join(approverIds.map(id => sql`${id}`), sql`, `)})`)
+        .execute()
+      approvers.forEach(a => approverMap.set(a.id, a.name || ''))
+    }
+
+    // 3. 组装结果
+    return leaves.map(l => ({
+      leave: l,
+      approvedByName: l.approvedBy ? approverMap.get(l.approvedBy) || null : null,
+    }))
   }
 
   async getLeaveStats(employeeId: string, year: string) {

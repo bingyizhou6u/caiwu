@@ -42,6 +42,7 @@ export async function getSession(db: DrizzleD1Database<typeof schema>, id: strin
 // 获取用户的职位信息（从员工记录获取）
 
 // 优化版本：一次性获取session、user、position、employee和部门模块信息
+// D1 兼容性修复：使用顺序查询代替复杂 JOIN
 export async function getSessionWithUserAndPosition(
   d1: D1Database,
   sessionId: string
@@ -66,81 +67,80 @@ export async function getSessionWithUserAndPosition(
   const db = drizzle(d1, { schema })
   const now = Date.now()
 
-  const result = await db
-    .select({
-      // session
-      sessionId: sessions.id,
-      employeeId: sessions.employeeId,
-      expiresAt: sessions.expiresAt,
-      // employee (merged with user)
-      employeeEmail: employees.personalEmail,
-      employeeName: employees.name,
-      orgDepartmentId: employees.orgDepartmentId,
-      employeeDepartmentId: employees.departmentId,
-      // position
-      positionId: positions.id,
-      positionCode: positions.code,
-      positionName: positions.name,
-      positionCanManageSubordinates: positions.canManageSubordinates,
-      positionDataScope: positions.dataScope,
-      positionPermissions: positions.permissions,
-      // org department
-      departmentAllowedModules: orgDepartments.allowedModules,
-    })
+  // 1. 查询 session
+  const session = await db
+    .select()
     .from(sessions)
-    .innerJoin(employees, eq(employees.id, sessions.employeeId))
-    .leftJoin(positions, and(eq(positions.id, employees.positionId), eq(positions.active, 1)))
-    .leftJoin(
-      orgDepartments,
-      and(eq(orgDepartments.id, employees.orgDepartmentId), eq(orgDepartments.active, 1))
-    )
-    .where(and(eq(sessions.id, sessionId), gt(sessions.expiresAt, now), eq(employees.active, 1)))
+    .where(and(eq(sessions.id, sessionId), gt(sessions.expiresAt, now)))
     .get()
 
-  if (!result || !result.expiresAt) { return null }
+  if (!session || !session.expiresAt) { return null }
 
-  const position = result.positionId
-    ? {
-      id: result.positionId,
-      code: result.positionCode!,
-      name: result.positionName!,
-      canManageSubordinates: result.positionCanManageSubordinates!,
-      dataScope: result.positionDataScope || 'self',
-      permissions: JSON.parse(result.positionPermissions || '{}'),
+  // 2. 查询 employee
+  const employee = await db
+    .select()
+    .from(employees)
+    .where(and(eq(employees.id, session.employeeId), eq(employees.active, 1)))
+    .get()
+
+  if (!employee) { return null }
+
+  // 3. 查询 position
+  let position = null
+  if (employee.positionId) {
+    const pos = await db
+      .select()
+      .from(positions)
+      .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
+      .get()
+
+    if (pos) {
+      position = {
+        id: pos.id,
+        code: pos.code,
+        name: pos.name,
+        canManageSubordinates: pos.canManageSubordinates ?? 0,
+        dataScope: pos.dataScope || 'self',
+        permissions: JSON.parse(pos.permissions || '{}'),
+      }
     }
-    : null
+  }
 
-  const employee = result.employeeId
-    ? {
-      id: result.employeeId,
-      orgDepartmentId: result.orgDepartmentId,
-      departmentId: result.employeeDepartmentId,
-    }
-    : null
+  // 4. 查询 org department modules
+  let departmentModules: string[] = ['*']
+  if (employee.orgDepartmentId) {
+    const dept = await db
+      .select()
+      .from(orgDepartments)
+      .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
+      .get()
 
-  // 解析部门允许的模块
-  let departmentModules: string[] = ['*'] // 默认允许所有模块
-  if (result.departmentAllowedModules) {
-    try {
-      departmentModules = JSON.parse(result.departmentAllowedModules)
-    } catch {
-      departmentModules = ['*']
+    if (dept && dept.allowedModules) {
+      try {
+        departmentModules = JSON.parse(dept.allowedModules)
+      } catch {
+        departmentModules = ['*']
+      }
     }
   }
 
   return {
     session: {
-      id: result.sessionId,
-      employeeId: result.employeeId,
-      expires_at: result.expiresAt,
+      id: session.id,
+      employeeId: session.employeeId,
+      expires_at: session.expiresAt,
     },
     user: {
-      id: result.employeeId!,
-      email: result.employeeEmail || '',
-      name: result.employeeName || (result.employeeEmail || '').split('@')[0],
+      id: employee.id,
+      email: employee.personalEmail || '',
+      name: employee.name || (employee.personalEmail || '').split('@')[0],
     },
     position,
-    employee,
+    employee: {
+      id: employee.id,
+      orgDepartmentId: employee.orgDepartmentId,
+      departmentId: employee.departmentId,
+    },
     departmentModules,
   }
 }

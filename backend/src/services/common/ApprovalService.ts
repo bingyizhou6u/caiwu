@@ -49,14 +49,12 @@ export class ApprovalService {
       }
     }
 
-    // 待审批请假 - 使用QueryBuilder优化关联查询
-    const pendingLeavesQuery = QueryBuilder.buildEmployeeJoinQuery(
-      this.db,
-      schema.employeeLeaves,
-      schema.employeeLeaves.employeeId,
-      { leave: schema.employeeLeaves }
-    )
-    const pendingLeaves = await pendingLeavesQuery
+    // 使用顺序查询模式代替复杂 JOIN (D1 兼容性修复)
+
+    // 1. 查询待审批请假
+    const pendingLeaves = await this.db
+      .select()
+      .from(schema.employeeLeaves)
       .where(
         and(
           eq(schema.employeeLeaves.status, 'pending'),
@@ -66,21 +64,10 @@ export class ApprovalService {
       .orderBy(desc(schema.employeeLeaves.createdAt))
       .execute()
 
-    // 待审批报销 - 使用QueryBuilder优化员工关联查询
-    const pendingReimbursementsQuery = QueryBuilder.buildEmployeeJoinQuery(
-      this.db,
-      schema.expenseReimbursements,
-      schema.expenseReimbursements.employeeId,
-      {
-        reimbursement: schema.expenseReimbursements,
-        currencySymbol: schema.currencies.symbol,
-      }
-    )
-    const pendingReimbursements = await pendingReimbursementsQuery
-      .leftJoin(
-        schema.currencies,
-        eq(schema.currencies.code, schema.expenseReimbursements.currencyId)
-      )
+    // 2. 查询待审批报销
+    const pendingReimbursements = await this.db
+      .select()
+      .from(schema.expenseReimbursements)
       .where(
         and(
           eq(schema.expenseReimbursements.status, 'pending'),
@@ -90,20 +77,100 @@ export class ApprovalService {
       .orderBy(desc(schema.expenseReimbursements.createdAt))
       .execute()
 
+    // 3. 收集所有员工ID和货币ID
+    const allEmployeeIds = new Set<string>()
+    const allCurrencyIds = new Set<string>()
+
+    pendingLeaves.forEach(l => {
+      if (l.employeeId) allEmployeeIds.add(l.employeeId)
+    })
+    pendingReimbursements.forEach(r => {
+      if (r.employeeId) allEmployeeIds.add(r.employeeId)
+      if (r.currencyId) allCurrencyIds.add(r.currencyId)
+    })
+
+    // 4. 批量查询员工信息（包含部门）
+    const employeeMap = new Map<string, { name: string | null; departmentId: string | null; orgDepartmentId: string | null }>()
+    if (allEmployeeIds.size > 0) {
+      const employees = await this.db
+        .select({
+          id: schema.employees.id,
+          name: schema.employees.name,
+          departmentId: schema.employees.departmentId,
+          orgDepartmentId: schema.employees.orgDepartmentId,
+        })
+        .from(schema.employees)
+        .where(inArray(schema.employees.id, Array.from(allEmployeeIds)))
+        .execute()
+
+      employees.forEach(e => employeeMap.set(e.id, { name: e.name, departmentId: e.departmentId, orgDepartmentId: e.orgDepartmentId }))
+    }
+
+    // 5. 批量查询部门信息
+    const allDeptIds = new Set<string>()
+    const allOrgDeptIds = new Set<string>()
+    employeeMap.forEach(e => {
+      if (e.departmentId) allDeptIds.add(e.departmentId)
+      if (e.orgDepartmentId) allOrgDeptIds.add(e.orgDepartmentId)
+    })
+
+    const deptMap = new Map<string, string>()
+    const orgDeptMap = new Map<string, string>()
+
+    if (allDeptIds.size > 0) {
+      const depts = await this.db
+        .select({ id: schema.departments.id, name: schema.departments.name })
+        .from(schema.departments)
+        .where(inArray(schema.departments.id, Array.from(allDeptIds)))
+        .execute()
+      depts.forEach(d => deptMap.set(d.id, d.name || ''))
+    }
+
+    if (allOrgDeptIds.size > 0) {
+      const orgDepts = await this.db
+        .select({ id: schema.orgDepartments.id, name: schema.orgDepartments.name })
+        .from(schema.orgDepartments)
+        .where(inArray(schema.orgDepartments.id, Array.from(allOrgDeptIds)))
+        .execute()
+      orgDepts.forEach(d => orgDeptMap.set(d.id, d.name || ''))
+    }
+
+    // 6. 批量查询货币信息
+    const currencyMap = new Map<string, string>()
+    if (allCurrencyIds.size > 0) {
+      const currencies = await this.db
+        .select({ code: schema.currencies.code, symbol: schema.currencies.symbol })
+        .from(schema.currencies)
+        .where(inArray(schema.currencies.code, Array.from(allCurrencyIds)))
+        .execute()
+      currencies.forEach(c => currencyMap.set(c.code, c.symbol || ''))
+    }
+
+    // 7. 组装结果
+    const leavesWithInfo = pendingLeaves.map(l => {
+      const emp = l.employeeId ? employeeMap.get(l.employeeId) : null
+      return {
+        ...l,
+        employeeName: emp?.name || null,
+        departmentName: emp?.departmentId ? deptMap.get(emp.departmentId) || null : null,
+        orgDepartmentName: emp?.orgDepartmentId ? orgDeptMap.get(emp.orgDepartmentId) || null : null,
+      }
+    })
+
+    const reimbursementsWithInfo = pendingReimbursements.map(r => {
+      const emp = r.employeeId ? employeeMap.get(r.employeeId) : null
+      return {
+        ...r,
+        employeeName: emp?.name || null,
+        departmentName: emp?.departmentId ? deptMap.get(emp.departmentId) || null : null,
+        orgDepartmentName: emp?.orgDepartmentId ? orgDeptMap.get(emp.orgDepartmentId) || null : null,
+        currencySymbol: r.currencyId ? currencyMap.get(r.currencyId) || null : null,
+      }
+    })
+
     return {
-      leaves: pendingLeaves.map(r => ({
-        ...r.leave,
-        employeeName: r.employeeName,
-        departmentName: r.departmentName,
-        orgDepartmentName: r.orgDepartmentName,
-      })),
-      reimbursements: pendingReimbursements.map(r => ({
-        ...r.reimbursement,
-        employeeName: r.employeeName,
-        departmentName: r.departmentName,
-        orgDepartmentName: r.orgDepartmentName,
-        currencySymbol: r.currencySymbol,
-      })),
+      leaves: leavesWithInfo,
+      reimbursements: reimbursementsWithInfo,
       counts: {
         leaves: pendingLeaves.length,
         reimbursements: pendingReimbursements.length,

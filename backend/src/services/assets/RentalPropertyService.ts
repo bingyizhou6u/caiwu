@@ -19,44 +19,94 @@ export class RentalPropertyService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listProperties(query: { propertyType?: string; status?: string; departmentId?: string }) {
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
     const conditions = []
     if (query.propertyType) { conditions.push(eq(rentalProperties.propertyType, query.propertyType)) }
     if (query.status) { conditions.push(eq(rentalProperties.status, query.status)) }
     if (query.departmentId) { conditions.push(eq(rentalProperties.departmentId, query.departmentId)) }
 
-    return await this.db
-      .select({
-        property: rentalProperties,
-        departmentName: schema.departments.name,
-        paymentAccountName: schema.accounts.name,
-        currencyName: schema.currencies.name,
-        createdByName: schema.employees.name,
-        allocationsCount: sql<number>`(SELECT count(*) FROM ${dormitoryAllocations} WHERE ${dormitoryAllocations.propertyId} = ${rentalProperties.id} AND ${dormitoryAllocations.returnDate} IS NULL)`,
-      })
+    // 1. 查询物业列表
+    const properties = await this.db
+      .select()
       .from(rentalProperties)
-      .leftJoin(schema.departments, eq(schema.departments.id, rentalProperties.departmentId))
-      .leftJoin(schema.accounts, eq(schema.accounts.id, rentalProperties.paymentAccountId))
-      .leftJoin(schema.currencies, eq(schema.currencies.code, rentalProperties.currency))
-      .leftJoin(schema.employees, eq(schema.employees.id, rentalProperties.createdBy))
-      .where(and(...conditions))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(rentalProperties.createdAt))
       .execute()
+
+    if (properties.length === 0) return []
+
+    // 2. 收集关联 ID
+    const deptIds = [...new Set(properties.map(p => p.departmentId).filter(Boolean) as string[])]
+    const accountIds = [...new Set(properties.map(p => p.paymentAccountId).filter(Boolean) as string[])]
+    const currencyCodes = [...new Set(properties.map(p => p.currency).filter(Boolean) as string[])]
+    const creatorIds = [...new Set(properties.map(p => p.createdBy).filter(Boolean) as string[])]
+    const propertyIds = properties.map(p => p.id)
+
+    // 3. 批量查询关联数据
+    const departments: { id: string; name: string | null }[] = []
+    for (const id of deptIds) {
+      const d = await this.db.select({ id: schema.departments.id, name: schema.departments.name })
+        .from(schema.departments).where(eq(schema.departments.id, id)).get()
+      if (d) departments.push(d)
+    }
+
+    const accounts: { id: string; name: string | null }[] = []
+    for (const id of accountIds) {
+      const a = await this.db.select({ id: schema.accounts.id, name: schema.accounts.name })
+        .from(schema.accounts).where(eq(schema.accounts.id, id)).get()
+      if (a) accounts.push(a)
+    }
+
+    const currencies: { code: string; name: string | null }[] = []
+    for (const code of currencyCodes) {
+      const c = await this.db.select({ code: schema.currencies.code, name: schema.currencies.name })
+        .from(schema.currencies).where(eq(schema.currencies.code, code)).get()
+      if (c) currencies.push(c)
+    }
+
+    const creators: { id: string; name: string | null }[] = []
+    for (const id of creatorIds) {
+      const e = await this.db.select({ id: schema.employees.id, name: schema.employees.name })
+        .from(schema.employees).where(eq(schema.employees.id, id)).get()
+      if (e) creators.push(e)
+    }
+
+    // 4. 查询分配数量
+    const allocCounts: { propertyId: string; count: number }[] = []
+    for (const pid of propertyIds) {
+      const result = await this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(dormitoryAllocations)
+        .where(and(eq(dormitoryAllocations.propertyId, pid), sql`${dormitoryAllocations.returnDate} IS NULL`))
+        .get()
+      allocCounts.push({ propertyId: pid, count: result?.count || 0 })
+    }
+
+    // 5. 构建 Map
+    const deptMap = new Map(departments.map(d => [d.id, d.name]))
+    const accountMap = new Map(accounts.map(a => [a.id, a.name]))
+    const currencyMap = new Map(currencies.map(c => [c.code, c.name]))
+    const creatorMap = new Map(creators.map(e => [e.id, e.name]))
+    const allocMap = new Map(allocCounts.map(a => [a.propertyId, a.count]))
+
+    // 6. 组装结果
+    return properties.map(p => ({
+      property: p,
+      departmentName: p.departmentId ? deptMap.get(p.departmentId) || null : null,
+      paymentAccountName: p.paymentAccountId ? accountMap.get(p.paymentAccountId) || null : null,
+      currencyName: p.currency ? currencyMap.get(p.currency) || null : null,
+      createdByName: p.createdBy ? creatorMap.get(p.createdBy) || null : null,
+      allocationsCount: allocMap.get(p.id) || 0,
+    }))
   }
 
   async getProperty(id: string) {
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+
+    // 1. 查询物业
     const property = await this.db
-      .select({
-        property: rentalProperties,
-        departmentName: schema.departments.name,
-        paymentAccountName: schema.accounts.name,
-        currencyName: schema.currencies.name,
-        createdByName: schema.employees.name,
-      })
+      .select()
       .from(rentalProperties)
-      .leftJoin(schema.departments, eq(schema.departments.id, rentalProperties.departmentId))
-      .leftJoin(schema.accounts, eq(schema.accounts.id, rentalProperties.paymentAccountId))
-      .leftJoin(schema.currencies, eq(schema.currencies.code, rentalProperties.currency))
-      .leftJoin(schema.employees, eq(schema.employees.id, rentalProperties.createdBy))
       .where(eq(rentalProperties.id, id))
       .get()
 
@@ -64,8 +114,24 @@ export class RentalPropertyService {
       throw Errors.NOT_FOUND('物业')
     }
 
-    // 并行获取相关数据
-    const [changes] = await Promise.all([
+    // 2. 查询关联数据
+    const [department, account, currency, creator, changes] = await Promise.all([
+      property.departmentId
+        ? this.db.select({ name: schema.departments.name }).from(schema.departments)
+          .where(eq(schema.departments.id, property.departmentId)).get()
+        : Promise.resolve(null),
+      property.paymentAccountId
+        ? this.db.select({ name: schema.accounts.name }).from(schema.accounts)
+          .where(eq(schema.accounts.id, property.paymentAccountId)).get()
+        : Promise.resolve(null),
+      property.currency
+        ? this.db.select({ name: schema.currencies.name }).from(schema.currencies)
+          .where(eq(schema.currencies.code, property.currency)).get()
+        : Promise.resolve(null),
+      property.createdBy
+        ? this.db.select({ name: schema.employees.name }).from(schema.employees)
+          .where(eq(schema.employees.id, property.createdBy)).get()
+        : Promise.resolve(null),
       this.db
         .select()
         .from(rentalChanges)
@@ -75,11 +141,11 @@ export class RentalPropertyService {
     ])
 
     return {
-      ...property.property,
-      departmentName: property.departmentName,
-      paymentAccountName: property.paymentAccountName,
-      currencyName: property.currencyName,
-      createdByName: property.createdByName,
+      ...property,
+      departmentName: department?.name || null,
+      paymentAccountName: account?.name || null,
+      currencyName: currency?.name || null,
+      createdByName: creator?.name || null,
       changes,
     }
   }

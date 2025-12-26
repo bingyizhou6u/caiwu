@@ -22,33 +22,80 @@ export class RentalPaymentService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listPayments(query: { propertyId?: string; year?: number; month?: number }) {
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
     const conditions = []
     if (query.propertyId) { conditions.push(eq(rentalPayments.propertyId, query.propertyId)) }
     if (query.year) { conditions.push(eq(rentalPayments.year, query.year)) }
     if (query.month) { conditions.push(eq(rentalPayments.month, query.month)) }
 
-    return await this.db
-      .select({
-        payment: rentalPayments,
-        propertyCode: rentalProperties.propertyCode,
-        propertyName: rentalProperties.name,
-        propertyType: rentalProperties.propertyType,
-        accountName: schema.accounts.name,
-        categoryName: schema.categories.name,
-        createdByName: schema.employees.name,
-      })
+    // 1. 查询付款记录
+    const payments = await this.db
+      .select()
       .from(rentalPayments)
-      .leftJoin(rentalProperties, eq(rentalProperties.id, rentalPayments.propertyId))
-      .leftJoin(schema.accounts, eq(schema.accounts.id, rentalPayments.accountId))
-      .leftJoin(schema.categories, eq(schema.categories.id, rentalPayments.categoryId))
-      .leftJoin(schema.employees, eq(schema.employees.id, rentalPayments.createdBy))
-      .where(and(...conditions))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(
         desc(rentalPayments.year),
         desc(rentalPayments.month),
         desc(rentalPayments.createdAt)
       )
       .execute()
+
+    if (payments.length === 0) return []
+
+    // 2. 收集关联 ID
+    const propertyIds = [...new Set(payments.map(p => p.propertyId).filter(Boolean) as string[])]
+    const accountIds = [...new Set(payments.map(p => p.accountId).filter(Boolean) as string[])]
+    const categoryIds = [...new Set(payments.map(p => p.categoryId).filter(Boolean) as string[])]
+    const creatorIds = [...new Set(payments.map(p => p.createdBy).filter(Boolean) as string[])]
+
+    // 3. 批量查询关联数据
+    const properties: { id: string; propertyCode: string | null; name: string | null; propertyType: string | null }[] = []
+    for (const id of propertyIds) {
+      const p = await this.db.select({ id: rentalProperties.id, propertyCode: rentalProperties.propertyCode, name: rentalProperties.name, propertyType: rentalProperties.propertyType })
+        .from(rentalProperties).where(eq(rentalProperties.id, id)).get()
+      if (p) properties.push(p)
+    }
+
+    const accounts: { id: string; name: string | null }[] = []
+    for (const id of accountIds) {
+      const a = await this.db.select({ id: schema.accounts.id, name: schema.accounts.name })
+        .from(schema.accounts).where(eq(schema.accounts.id, id)).get()
+      if (a) accounts.push(a)
+    }
+
+    const categories: { id: string; name: string | null }[] = []
+    for (const id of categoryIds) {
+      const c = await this.db.select({ id: schema.categories.id, name: schema.categories.name })
+        .from(schema.categories).where(eq(schema.categories.id, id)).get()
+      if (c) categories.push(c)
+    }
+
+    const creators: { id: string; name: string | null }[] = []
+    for (const id of creatorIds) {
+      const e = await this.db.select({ id: schema.employees.id, name: schema.employees.name })
+        .from(schema.employees).where(eq(schema.employees.id, id)).get()
+      if (e) creators.push(e)
+    }
+
+    // 4. 构建 Map
+    const propertyMap = new Map(properties.map(p => [p.id, p]))
+    const accountMap = new Map(accounts.map(a => [a.id, a.name]))
+    const categoryMap = new Map(categories.map(c => [c.id, c.name]))
+    const creatorMap = new Map(creators.map(e => [e.id, e.name]))
+
+    // 5. 组装结果
+    return payments.map(p => {
+      const property = p.propertyId ? propertyMap.get(p.propertyId) : null
+      return {
+        payment: p,
+        propertyCode: property?.propertyCode || null,
+        propertyName: property?.name || null,
+        propertyType: property?.propertyType || null,
+        accountName: p.accountId ? accountMap.get(p.accountId) || null : null,
+        categoryName: p.categoryId ? categoryMap.get(p.categoryId) || null : null,
+        createdByName: p.createdBy ? creatorMap.get(p.createdBy) || null : null,
+      }
+    })
   }
 
   async createPayment(data: {

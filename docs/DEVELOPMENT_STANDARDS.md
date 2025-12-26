@@ -1,7 +1,7 @@
 # 开发规范与标准
 
-**文档版本**: 1.0  
-**最后更新**: 2025-01-27  
+**文档版本**: 1.1  
+**最后更新**: 2025-12-26  
 **开发阶段**: 开发中（不考虑向后兼容）
 
 ---
@@ -115,6 +115,73 @@ const result = await DBPerformanceTracker.track(
   c // Context（如果有）
 )
 ```
+
+#### 禁止在 D1 中使用复杂 JOIN 查询 (Dec 2025)
+
+**规则**: Cloudflare D1 对复杂 JOIN 查询支持不稳定，生产环境会随机返回 500 错误。**必须使用顺序查询模式**代替复杂 JOIN。
+
+**禁止**:
+- 超过 1 个 JOIN 的查询
+- INNER JOIN + LEFT JOIN 组合
+- 多表 JOIN 查询
+
+**模板**:
+```typescript
+// ❌ 禁止：复杂 JOIN 查询（D1 不稳定）
+const result = await db
+  .select({ ... })
+  .from(tableA)
+  .innerJoin(tableB, eq(tableB.id, tableA.bId))
+  .leftJoin(tableC, eq(tableC.id, tableB.cId))
+  .where(...)
+  .get()
+
+// ✅ 正确：顺序查询模式
+// 1. 查询主表
+const itemA = await db.select().from(tableA).where(...).get()
+if (!itemA) return null
+
+// 2. 查询关联表
+const itemB = itemA.bId 
+  ? await db.select().from(tableB).where(eq(tableB.id, itemA.bId)).get()
+  : null
+
+// 3. 组装结果
+return { ...itemA, b: itemB }
+```
+
+**批量查询优化**:
+```typescript
+// 1. 查询主记录
+const items = await db.select().from(tableA).where(...).execute()
+
+// 2. 收集关联 ID
+const relatedIds = [...new Set(items.map(i => i.relatedId).filter(Boolean))]
+
+// 3. 批量查询关联数据
+const relatedMap = new Map<string, RelatedType>()
+if (relatedIds.length > 0) {
+  const related = await db
+    .select()
+    .from(tableB)
+    .where(sql`${tableB.id} IN (${sql.join(relatedIds.map(id => sql`${id}`), sql`, `)})`)
+    .execute()
+  related.forEach(r => relatedMap.set(r.id, r))
+}
+
+// 4. 组装结果
+return items.map(i => ({
+  ...i,
+  relatedName: i.relatedId ? relatedMap.get(i.relatedId)?.name : null
+}))
+```
+
+**已修复的服务**（可作为参考）:
+- `db.ts` - `getSessionWithUserAndPosition()`
+- `ApprovalService.ts` - `getPendingApprovals()`
+- `EmployeeLeaveService.ts` - `listLeaves()`, `getLeavesWithApprover()`
+- `ExpenseReimbursementService.ts` - `listReimbursements()`, `getReimbursementsWithApprover()`
+- `EmployeeService.ts` - `getById()`
 
 ---
 
@@ -362,6 +429,7 @@ if (position.dataScope === 'project') { ... }
 
 ## 🔄 更新记录
 
+- 2025-12-26: 添加 D1 顺序查询规范（禁止复杂 JOIN）
 - 2025-12-25: 添加权限与数据隔离规范 (DataScope)
 - 2025-01-27: 初始版本，建立开发规范
 

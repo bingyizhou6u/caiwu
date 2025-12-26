@@ -10,27 +10,12 @@ export class ExpenseReimbursementService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async listReimbursements(params: { employeeId?: string; status?: string }) {
+    // D1 兼容性修复：使用顺序查询代替 LEFT JOIN
+
+    // 1. 查询报销记录
     let query = this.db
-      .select({
-        id: expenseReimbursements.id,
-        employeeId: expenseReimbursements.employeeId,
-        employeeName: employees.name,
-        expenseType: expenseReimbursements.expenseType,
-        amountCents: expenseReimbursements.amountCents,
-        currencyId: expenseReimbursements.currencyId,
-        expenseDate: expenseReimbursements.expenseDate,
-        description: expenseReimbursements.description,
-        voucherUrl: expenseReimbursements.voucherUrl,
-        status: expenseReimbursements.status,
-        approvedBy: expenseReimbursements.approvedBy,
-        approvedAt: expenseReimbursements.approvedAt,
-        memo: expenseReimbursements.memo,
-        createdBy: expenseReimbursements.createdBy,
-        createdAt: expenseReimbursements.createdAt,
-        updatedAt: expenseReimbursements.updatedAt,
-      })
+      .select()
       .from(expenseReimbursements)
-      .leftJoin(employees, eq(expenseReimbursements.employeeId, employees.id))
       .$dynamic()
 
     const filters = []
@@ -41,24 +26,83 @@ export class ExpenseReimbursementService {
       query = query.where(and(...filters))
     }
 
-    return await query.orderBy(desc(expenseReimbursements.createdAt))
+    const reimbursements = await query.orderBy(desc(expenseReimbursements.createdAt))
+
+    if (reimbursements.length === 0) {
+      return []
+    }
+
+    // 2. 批量获取员工名称
+    const employeeIds = [...new Set(reimbursements.map(r => r.employeeId).filter(Boolean))]
+    const employeeMap = new Map<string, string>()
+
+    if (employeeIds.length > 0) {
+      const emps = await this.db
+        .select({ id: employees.id, name: employees.name })
+        .from(employees)
+        .where(sql`${employees.id} IN (${sql.join(employeeIds.map(id => sql`${id}`), sql`, `)})`)
+        .execute()
+      emps.forEach(e => employeeMap.set(e.id, e.name || ''))
+    }
+
+    // 3. 组装结果
+    return reimbursements.map(r => ({
+      id: r.id,
+      employeeId: r.employeeId,
+      employeeName: r.employeeId ? employeeMap.get(r.employeeId) || null : null,
+      expenseType: r.expenseType,
+      amountCents: r.amountCents,
+      currencyId: r.currencyId,
+      expenseDate: r.expenseDate,
+      description: r.description,
+      voucherUrl: r.voucherUrl,
+      status: r.status,
+      approvedBy: r.approvedBy,
+      approvedAt: r.approvedAt,
+      memo: r.memo,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }))
   }
 
   async getReimbursementsWithApprover(params: { employeeId?: string; status?: string }) {
+    // D1 兼容性修复：使用顺序查询代替 LEFT JOIN
+
+    // 1. 查询报销记录
     const conditions = []
     if (params.employeeId) { conditions.push(eq(expenseReimbursements.employeeId, params.employeeId)) }
     if (params.status) { conditions.push(eq(expenseReimbursements.status, params.status)) }
 
-    return await this.db
-      .select({
-        reimbursement: expenseReimbursements,
-        approvedByName: employees.name,
-      })
+    const reimbursements = await this.db
+      .select()
       .from(expenseReimbursements)
-      .leftJoin(employees, eq(employees.id, expenseReimbursements.approvedBy))
-      .where(and(...conditions))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(expenseReimbursements.createdAt))
       .execute()
+
+    if (reimbursements.length === 0) {
+      return []
+    }
+
+    // 2. 批量获取审批人名称
+    const approverIds = [...new Set(reimbursements.map(r => r.approvedBy).filter(Boolean) as string[])]
+    const approverMap = new Map<string, string>()
+
+    if (approverIds.length > 0) {
+      const approvers = await this.db
+        .select({ id: employees.id, name: employees.name })
+        .from(employees)
+        .where(sql`${employees.id} IN (${sql.join(approverIds.map(id => sql`${id}`), sql`, `)})`)
+        .execute()
+      approvers.forEach(a => approverMap.set(a.id, a.name || ''))
+    }
+
+    // 3. 组装结果
+    return reimbursements.map(r => ({
+      reimbursement: r,
+      approvedByName: r.approvedBy ? approverMap.get(r.approvedBy) || null : null,
+    }))
   }
 
   async getReimbursementStats(employeeId: string) {
