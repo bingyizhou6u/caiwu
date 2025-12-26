@@ -27,10 +27,15 @@ export const PUBLIC_PATHS = new Set([
   '/api/v2/auth/mobile/reset-totp/verify',
   '/api/auth/mobile/reset-totp/confirm',
   '/api/v2/auth/mobile/reset-totp/confirm',
+  // TOTP 重绑定路由
+  '/api/auth/totp-reset/generate-rebind',
+  '/api/v2/auth/totp-reset/generate-rebind',
+  '/api/auth/totp-reset/confirm-rebind',
+  '/api/v2/auth/totp-reset/confirm-rebind',
 ])
 
 export function isPublicPath(path: string): boolean {
-  if (PUBLIC_PATHS.has(path)) {return true}
+  if (PUBLIC_PATHS.has(path)) { return true }
   // 可以添加其他逻辑，例如前缀匹配
   // if (path.startsWith('/api/public/')) return true
   return false
