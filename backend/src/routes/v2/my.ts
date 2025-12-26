@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
-import { createRouteHandler } from '../../utils/route-helpers.js'
+import { createRouteHandler, createProtectedHandler } from '../../utils/route-helpers.js'
 
 export const myRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
@@ -223,12 +223,8 @@ const getDashboardRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getDashboardRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  return await c.var.services.my.getDashboardData(userId)
+myRoutes.openapi(getDashboardRoute, createProtectedHandler(async (c, employeeId) => {
+  return await c.var.services.my.getDashboardData(employeeId)
 }))
 
 // 请假
@@ -261,14 +257,10 @@ const getLeavesRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getLeavesRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
+myRoutes.openapi(getLeavesRoute, createProtectedHandler(async (c, employeeId) => {
   const status = c.req.query('status')
   const year = c.req.query('year') || new Date().getFullYear().toString()
-  return await c.var.services.my.getLeaves(userId, year, status)
+  return await c.var.services.my.getLeaves(employeeId, year, status)
 }))
 
 const createLeaveRoute = createRoute({
@@ -303,17 +295,13 @@ const createLeaveRoute = createRoute({
   },
 })
 
-myRoutes.openapi(createLeaveRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
+myRoutes.openapi(createLeaveRoute, createProtectedHandler(async (c, employeeId) => {
   const raw = await c.req.json()
   const body = {
     ...raw,
     leave_type: (raw as any).leave_type ?? (raw as any).leaveType,
   }
-  const result = await c.var.services.my.createLeave(userId, body).catch(() => undefined)
+  const result = await c.var.services.my.createLeave(employeeId, body).catch(() => undefined)
   if (result?.id) {
     logAuditAction(c, 'create', 'employee_leave', result.id, JSON.stringify(body))
   }
@@ -349,13 +337,9 @@ const getReimbursementsRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getReimbursementsRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
+myRoutes.openapi(getReimbursementsRoute, createProtectedHandler(async (c, employeeId) => {
   const status = c.req.query('status')
-  return await c.var.services.my.getReimbursements(userId, status)
+  return await c.var.services.my.getReimbursements(employeeId, status)
 }))
 
 const createReimbursementRoute = createRoute({
@@ -390,13 +374,9 @@ const createReimbursementRoute = createRoute({
   },
 })
 
-myRoutes.openapi(createReimbursementRoute, createRouteHandler(async (c: any) => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
+myRoutes.openapi(createReimbursementRoute, createProtectedHandler(async (c, employeeId) => {
   const body = c.req.valid('json') as any
-  const result = await c.var.services.my.createReimbursement(userId, body)
+  const result = await c.var.services.my.createReimbursement(employeeId, body)
   logAuditAction(c, 'create', 'expense_reimbursement', result.id, JSON.stringify(body))
   return result
 }))
@@ -430,13 +410,9 @@ const getAllowancesRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getAllowancesRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
+myRoutes.openapi(getAllowancesRoute, createProtectedHandler(async (c, employeeId) => {
   const year = c.req.query('year') || new Date().getFullYear().toString()
-  return await c.var.services.my.getAllowances(userId, year)
+  return await c.var.services.my.getAllowances(employeeId, year)
 }))
 
 // 资产
@@ -463,12 +439,8 @@ const getAssetsRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getAssetsRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  return await c.var.services.my.getAssets(userId)
+myRoutes.openapi(getAssetsRoute, createProtectedHandler(async (c, employeeId) => {
+  return await c.var.services.my.getAssets(employeeId)
 }))
 
 // 个人资料
@@ -492,12 +464,8 @@ const getProfileRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getProfileRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  return await c.var.services.my.getProfile(userId)
+myRoutes.openapi(getProfileRoute, createProtectedHandler(async (c, employeeId) => {
+  return await c.var.services.my.getProfile(employeeId)
 }))
 
 const updateProfileRoute = createRoute({
@@ -532,14 +500,10 @@ const updateProfileRoute = createRoute({
   },
 })
 
-myRoutes.openapi(updateProfileRoute, createRouteHandler(async (c: any) => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
+myRoutes.openapi(updateProfileRoute, createProtectedHandler(async (c, employeeId) => {
   const body = c.req.valid('json') as any
-  const result = await c.var.services.my.updateProfile(userId, body)
-  logAuditAction(c, 'update', 'my_profile', userId, JSON.stringify(body))
+  const result = await c.var.services.my.updateProfile(employeeId, body)
+  logAuditAction(c, 'update', 'my_profile', employeeId, JSON.stringify(body))
   return result
 }))
 
@@ -564,12 +528,8 @@ const getAttendanceTodayRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getAttendanceTodayRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  return await c.var.services.my.getAttendanceToday(userId)
+myRoutes.openapi(getAttendanceTodayRoute, createProtectedHandler(async (c, employeeId) => {
+  return await c.var.services.my.getAttendanceToday(employeeId)
 }))
 
 const getAttendanceListRoute = createRoute({
@@ -600,14 +560,10 @@ const getAttendanceListRoute = createRoute({
   },
 })
 
-myRoutes.openapi(getAttendanceListRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
+myRoutes.openapi(getAttendanceListRoute, createProtectedHandler(async (c, employeeId) => {
   const year = c.req.query('year') || new Date().getFullYear().toString()
   const month = c.req.query('month') || (new Date().getMonth() + 1).toString().padStart(2, '0')
-  return await c.var.services.my.getAttendanceList(userId, year, month)
+  return await c.var.services.my.getAttendanceList(employeeId, year, month)
 }))
 
 // 打卡上班
@@ -653,12 +609,8 @@ const clockInRoute = createRoute({
   },
 })
 
-myRoutes.openapi(clockInRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  const result = await c.var.services.my.clockIn(userId)
+myRoutes.openapi(clockInRoute, createProtectedHandler(async (c, employeeId) => {
+  const result = await c.var.services.my.clockIn(employeeId)
 
   if (result.error) {
     throw Errors.BUSINESS_ERROR(result.error)
@@ -668,7 +620,7 @@ myRoutes.openapi(clockInRoute, createRouteHandler(async c => {
     c,
     'create',
     'attendance_clock_in',
-    userId,
+    employeeId,
     JSON.stringify({ time: result.clockInTime })
   )
 
@@ -722,12 +674,8 @@ const clockOutRoute = createRoute({
   },
 })
 
-myRoutes.openapi(clockOutRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-      throw Errors.UNAUTHORIZED()
-    }
-  const result = await c.var.services.my.clockOut(userId)
+myRoutes.openapi(clockOutRoute, createProtectedHandler(async (c, employeeId) => {
+  const result = await c.var.services.my.clockOut(employeeId)
 
   if (result.error) {
     throw Errors.BUSINESS_ERROR(result.error)
@@ -737,7 +685,7 @@ myRoutes.openapi(clockOutRoute, createRouteHandler(async c => {
     c,
     'update',
     'attendance_clock_out',
-    userId,
+    employeeId,
     JSON.stringify({ time: result.clockOutTime })
   )
 

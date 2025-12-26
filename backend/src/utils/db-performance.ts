@@ -58,7 +58,7 @@ export class DBPerformanceTracker {
           error: error?.message,
           context: c ? {
             requestId: c.get('requestId'),
-            userId: c.get('userId'),
+            employeeId: c.get('employeeId'),
             path: c.req.path,
           } : undefined,
         })
@@ -68,7 +68,7 @@ export class DBPerformanceTracker {
       if (!success && error) {
         monitoring.recordError(error, {
           requestId: c?.get('requestId'),
-          userId: c?.get('userId'),
+          employeeId: c?.get('employeeId'),
           path: c?.req.path,
         }, ErrorSeverity.MEDIUM)
       }

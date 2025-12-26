@@ -203,7 +203,7 @@ siteBillsRoutes.openapi(
         status: body.status,
         paymentDate: body.paymentDate,
         memo: body.memo,
-        createdBy: c.get('userId'),
+        createdBy: c.get('employeeId'),
       })
 
       logAuditAction(

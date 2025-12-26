@@ -12,7 +12,7 @@ export function createDb(d1: D1Database) {
 
 // getUserByEmail now queries employees table by personalEmail
 
-export async function createSession(db: DrizzleD1Database<typeof schema>, user_id: string) {
+export async function createSession(db: DrizzleD1Database<typeof schema>, employeeId: string) {
   const id = uuid()
   const expires = Date.now() + 1000 * 60 * 60 * 24 * 7
 
@@ -20,7 +20,7 @@ export async function createSession(db: DrizzleD1Database<typeof schema>, user_i
     .insert(sessions)
     .values({
       id,
-      userId: user_id,
+      employeeId,
       expiresAt: expires,
       createdAt: Date.now(),
     })
@@ -46,7 +46,7 @@ export async function getSessionWithUserAndPosition(
   d1: D1Database,
   sessionId: string
 ): Promise<{
-  session: { id: string; user_id: string; expires_at: number } | null
+  session: { id: string; employeeId: string; expires_at: number } | null
   user: { id: string; email: string; name: string } | null
   position: {
     id: string
@@ -70,12 +70,11 @@ export async function getSessionWithUserAndPosition(
     .select({
       // session
       sessionId: sessions.id,
-      userId: sessions.userId,
+      employeeId: sessions.employeeId,
       expiresAt: sessions.expiresAt,
       // employee (merged with user)
       employeeEmail: employees.personalEmail,
       employeeName: employees.name,
-      employeeId: employees.id,
       orgDepartmentId: employees.orgDepartmentId,
       employeeDepartmentId: employees.departmentId,
       // position
@@ -89,7 +88,7 @@ export async function getSessionWithUserAndPosition(
       departmentAllowedModules: orgDepartments.allowedModules,
     })
     .from(sessions)
-    .innerJoin(employees, eq(employees.id, sessions.userId))
+    .innerJoin(employees, eq(employees.id, sessions.employeeId))
     .leftJoin(positions, and(eq(positions.id, employees.positionId), eq(positions.active, 1)))
     .leftJoin(
       orgDepartments,
@@ -132,7 +131,7 @@ export async function getSessionWithUserAndPosition(
   return {
     session: {
       id: result.sessionId,
-      user_id: result.userId,
+      employeeId: result.employeeId,
       expires_at: result.expiresAt,
     },
     user: {
@@ -167,72 +166,65 @@ export async function getUserFullContext(
   } | null
   departmentModules: string[]
 } | null> {
-  const result = await db
-    .select({
-      // employee (merged user)
-      userId: employees.id,
-      userEmail: employees.personalEmail,
-      employeeName: employees.name,
-      // employee 和 user 是同一个表，id 相同，不需要重复选择
-      orgDepartmentId: employees.orgDepartmentId,
-      employeeDepartmentId: employees.departmentId,
-      // position
-      positionId: positions.id,
-      positionCode: positions.code,
-      positionName: positions.name,
-      positionCanManageSubordinates: positions.canManageSubordinates,
-      positionDataScope: positions.dataScope,
-      positionPermissions: positions.permissions,
-      // org department
-      departmentAllowedModules: orgDepartments.allowedModules,
-    })
+  const employee = await db
+    .select()
     .from(employees)
-    .leftJoin(positions, and(eq(positions.id, employees.positionId), eq(positions.active, 1)))
-    .leftJoin(
-      orgDepartments,
-      and(eq(orgDepartments.id, employees.orgDepartmentId), eq(orgDepartments.active, 1))
-    )
     .where(and(eq(employees.id, userId), eq(employees.active, 1)))
     .get()
 
-  if (!result) { return null }
+  if (!employee) return null
 
-  const position = result.positionId
-    ? {
-      id: result.positionId,
-      code: result.positionCode!,
-      name: result.positionName!,
-      canManageSubordinates: result.positionCanManageSubordinates!,
-      dataScope: result.positionDataScope || 'self',
-      permissions: JSON.parse(result.positionPermissions || '{}'),
+  // 1. 获取 Position
+  let position = null
+  if (employee.positionId) {
+    const pos = await db
+      .select()
+      .from(positions)
+      .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
+      .get()
+
+    if (pos) {
+      position = {
+        id: pos.id,
+        code: pos.code,
+        name: pos.name,
+        canManageSubordinates: pos.canManageSubordinates ?? 0,
+        dataScope: pos.dataScope,
+        permissions: JSON.parse(pos.permissions || '{}'),
+      }
     }
-    : null
+  }
 
-  const employee = result.userId
-    ? {
-      id: result.userId,
-      orgDepartmentId: result.orgDepartmentId,
-      departmentId: result.employeeDepartmentId,
-    }
-    : null
-
+  // 2. 获取 Department Modules
   let departmentModules: string[] = ['*']
-  if (result.departmentAllowedModules) {
-    try {
-      departmentModules = JSON.parse(result.departmentAllowedModules)
-    } catch {
-      departmentModules = ['*']
+  if (employee.orgDepartmentId) {
+    const dept = await db
+      .select()
+      .from(orgDepartments)
+      .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
+      .get()
+
+    if (dept && dept.allowedModules) {
+      try {
+        departmentModules = JSON.parse(dept.allowedModules)
+      } catch {
+        departmentModules = ['*']
+      }
     }
   }
 
   return {
     user: {
-      id: result.userId,
-      email: result.userEmail || '',
-      name: result.employeeName || (result.userEmail || '').split('@')[0],
+      id: employee.id,
+      email: employee.personalEmail || '',
+      name: employee.name || (employee.personalEmail || '').split('@')[0],
     },
     position,
-    employee,
+    employee: {
+      id: employee.id,
+      orgDepartmentId: employee.orgDepartmentId,
+      departmentId: employee.departmentId,
+    },
     departmentModules,
   }
 }

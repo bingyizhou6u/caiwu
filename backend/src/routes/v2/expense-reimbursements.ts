@@ -126,7 +126,7 @@ expenseReimbursementsRoutes.openapi(
       throw Errors.FORBIDDEN()
     }
     const body = c.req.valid('json')
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
 
     const newReimbursement = await c.var.services.expenseReimbursement.createReimbursement({
       ...body,
@@ -178,7 +178,7 @@ expenseReimbursementsRoutes.openapi(
     }
     const { id } = c.req.valid('param')
     const { status, memo } = c.req.valid('json')
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
 
     await c.var.services.expenseReimbursement.updateStatus(id, status, {
       approvedBy: userId || undefined,

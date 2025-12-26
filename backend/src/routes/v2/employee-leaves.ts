@@ -163,7 +163,7 @@ employeesLeavesRoutes.openapi(
     }
     const { id } = c.req.valid('param')
     const { status, memo } = c.req.valid('json') as { status: string; memo?: string }
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
 
     await c.var.services.employeeLeave.updateLeaveStatus(id, status, {
       approvedBy: userId || undefined,

@@ -40,7 +40,7 @@ export function getUserEmployee(c: Context<{ Bindings: Env, Variables: AppVariab
 
 // 从Context获取用户ID
 export function getUserId(c: Context<{ Bindings: Env, Variables: AppVariables }>): string | undefined {
-  return c.get('userId') as string | undefined
+  return c.get('employeeId') as string | undefined
 }
 
 // 从Context获取部门允许的模块列表

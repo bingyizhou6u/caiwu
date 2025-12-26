@@ -164,7 +164,7 @@ rentalRoutes.openapi(
       monthlyRentCents: raw.monthlyRentCents ?? raw.monthly_rent_cents,
       memo: raw.memo,
     }
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     try {
@@ -340,7 +340,7 @@ rentalRoutes.openapi(
       memo: raw.memo,
       contractFileUrl: raw.contractFileUrl ?? raw.contract_file_url,
     }
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     try {
@@ -427,7 +427,7 @@ rentalRoutes.openapi(
       memo: raw.memo,
       contractFileUrl: raw.contractFileUrl ?? raw.contract_file_url,
     }
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     await service.updateProperty(id, {
@@ -567,7 +567,7 @@ rentalRoutes.openapi(
   createPaymentRoute,
   createRouteHandler(async (c: any) => {
     const body = await c.req.json()
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     try {
@@ -742,7 +742,7 @@ rentalRoutes.openapi(
     if (!hasPermission(c, 'asset', 'rental', 'create')) {
       throw Errors.FORBIDDEN()
     }
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     const result = await service.generatePayableBills(userId)

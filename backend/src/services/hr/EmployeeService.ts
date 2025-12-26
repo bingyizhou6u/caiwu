@@ -408,14 +408,65 @@ export class EmployeeService {
   }
 
   async getById(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
-    return await query(
+    // D1/Drizzle Bug workaround: Avoid complex joins by fetching related data sequentially
+    const employee = await query(
       this.db,
-      'EmployeeService.getById',
-      () => this.buildEmployeeQuery()
-        .where(eq(employees.id, id))
-        .get(),
+      'EmployeeService.getById.base',
+      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
       c
     )
+
+    if (!employee) return undefined
+
+    // Fetch related data
+    const [department, orgDepartment, position] = await Promise.all([
+      employee.departmentId
+        ? this.db.select().from(departments).where(eq(departments.id, employee.departmentId)).get()
+        : Promise.resolve(null),
+      employee.orgDepartmentId
+        ? this.db.select().from(orgDepartments).where(eq(orgDepartments.id, employee.orgDepartmentId)).get()
+        : Promise.resolve(null),
+      employee.positionId
+        ? this.db.select().from(positions).where(eq(positions.id, employee.positionId)).get()
+        : Promise.resolve(null)
+    ])
+
+    return {
+      id: employee.id,
+      name: employee.name,
+      email: employee.email,
+      personalEmail: employee.personalEmail,
+      departmentId: employee.departmentId,
+      departmentName: department?.name || null,
+      orgDepartmentId: employee.orgDepartmentId,
+      orgDepartmentName: orgDepartment?.name || null,
+      orgDepartmentCode: orgDepartment?.code || null,
+      positionId: employee.positionId,
+      positionName: position?.name || null,
+      positionDataScope: position?.dataScope || null,
+      positionCode: position?.code || null,
+      joinDate: employee.joinDate,
+      status: employee.status,
+      active: employee.active,
+      phone: employee.phone,
+      regularDate: employee.regularDate,
+      birthday: employee.birthday,
+      usdtAddress: employee.usdtAddress,
+      emergencyContact: employee.emergencyContact,
+      emergencyPhone: employee.emergencyPhone,
+      address: employee.address,
+      memo: employee.memo,
+      workSchedule: employee.workSchedule,
+      annualLeaveCycleMonths: employee.annualLeaveCycleMonths,
+      annualLeaveDays: employee.annualLeaveDays,
+      createdAt: employee.createdAt,
+      updatedAt: employee.updatedAt,
+      userId: employee.id,
+      userActive: employee.active,
+      userLastLoginAt: employee.lastLoginAt,
+      isActivated: (employee.passwordHash && employee.passwordHash !== '') ? true : false,
+      totpEnabled: (employee.totpSecret && employee.totpSecret !== '') ? true : false,
+    }
   }
 
   async migrateFromUser(

@@ -211,7 +211,7 @@ const createAuditLogRoute = createRoute({
 })
 
 auditRoutes.openapi(createAuditLogRoute, createRouteHandler(async (c: any) => {
-  if (!c.get('userId')) {
+  if (!c.get('employeeId')) {
       throw Errors.UNAUTHORIZED()
     }
 

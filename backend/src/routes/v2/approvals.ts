@@ -85,7 +85,7 @@ const getPendingApprovalsRoute = createRoute({
 approvalsRoutes.openapi(
   getPendingApprovalsRoute,
   createRouteHandler(async c => {
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     if (!userId) {
       throw Errors.UNAUTHORIZED()
     }
@@ -130,7 +130,7 @@ const getApprovalHistoryRoute = createRoute({
 approvalsRoutes.openapi(
   getApprovalHistoryRoute,
   createRouteHandler(async c => {
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     if (!userId) {
       throw Errors.UNAUTHORIZED()
     }
@@ -175,7 +175,7 @@ const approveLeaveRoute = createRoute({
 approvalsRoutes.openapi(
   approveLeaveRoute,
   createRouteHandler(async (c: any) => {
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     if (!userId) {
       throw Errors.UNAUTHORIZED()
     }
@@ -223,7 +223,7 @@ const rejectLeaveRoute = createRoute({
 approvalsRoutes.openapi(
   rejectLeaveRoute,
   createRouteHandler(async (c: any) => {
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     if (!userId) {
       throw Errors.UNAUTHORIZED()
     }
@@ -277,7 +277,7 @@ const approveReimbursementRoute = createRoute({
 approvalsRoutes.openapi(
   approveReimbursementRoute,
   createRouteHandler(async (c: any) => {
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     if (!userId) {
       throw Errors.UNAUTHORIZED()
     }
@@ -329,7 +329,7 @@ const rejectReimbursementRoute = createRoute({
 approvalsRoutes.openapi(
   rejectReimbursementRoute,
   createRouteHandler(async (c: any) => {
-    const userId = c.get('userId')
+    const userId = c.get('employeeId')
     if (!userId) {
       throw Errors.UNAUTHORIZED()
     }

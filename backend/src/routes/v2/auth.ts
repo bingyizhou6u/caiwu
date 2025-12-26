@@ -23,7 +23,7 @@ import {
 } from '../../middleware/rateLimit.js'
 import { RATE_LIMITS } from '../../services/common/RateLimitService.js'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'
-import { createRouteHandler } from '../../utils/route-helpers.js'
+import { createRouteHandler, createProtectedHandler } from '../../utils/route-helpers.js'
 
 const authRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
@@ -548,14 +548,9 @@ const requestMyResetLinkRoute = createRoute({
   },
 })
 
-authRoutes.openapi(requestMyResetLinkRoute, createRouteHandler(async c => {
-  const userId = c.get('userId')
-  if (!userId) {
-    throw Errors.UNAUTHORIZED('请先登录')
-  }
-
+authRoutes.openapi(requestMyResetLinkRoute, createProtectedHandler(async (c, employeeId) => {
   const employeeService = c.var.services.employee
-  const user = await employeeService.getUserById(userId)
+  const user = await employeeService.getUserById(employeeId)
   if (!user?.personalEmail && !user?.email) {
     throw Errors.UNAUTHORIZED('用户信息不完整')
   }

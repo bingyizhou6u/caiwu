@@ -9,13 +9,17 @@ import { Logger } from '../../utils/logger.js'
 const DEVICE_TRUST_TTL = 90 * 24 * 60 * 60 * 1000
 
 export class TrustedDeviceService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   /**
    * 生成设备指纹 - 使用 SHA-256 哈希算法
+   * 只使用浏览器和操作系统的稳定部分，移除 IP 以避免频繁变动
    */
-  async generateDeviceFingerprint(userId: string, ip: string, userAgent: string): Promise<string> {
-    const raw = `${userId}:${ip}:${userAgent}`
+  async generateDeviceFingerprint(employeeId: string, userAgent: string): Promise<string> {
+    // 提取稳定的 UserAgent 部分
+    const browser = this.parseBrowserFamily(userAgent)
+    const os = this.parseOS(userAgent)
+    const raw = `${employeeId}:${browser}:${os}`
 
     // 使用 Web Crypto API 计算 SHA-256
     const encoder = new TextEncoder()
@@ -30,6 +34,31 @@ export class TrustedDeviceService {
   }
 
   /**
+   * 解析浏览器类型
+   */
+  private parseBrowserFamily(userAgent: string): string {
+    if (!userAgent) return 'Other'
+    if (userAgent.includes('Edg/')) return 'Edge'  // Edge 必须在 Chrome 之前检测
+    if (userAgent.includes('Chrome')) return 'Chrome'
+    if (userAgent.includes('Firefox')) return 'Firefox'
+    if (userAgent.includes('Safari')) return 'Safari'
+    return 'Other'
+  }
+
+  /**
+   * 解析操作系统类型
+   */
+  private parseOS(userAgent: string): string {
+    if (!userAgent) return 'Other'
+    if (userAgent.includes('iPhone') || userAgent.includes('iPad')) return 'iOS'
+    if (userAgent.includes('Mac OS')) return 'macOS'
+    if (userAgent.includes('Windows')) return 'Windows'
+    if (userAgent.includes('Android')) return 'Android'
+    if (userAgent.includes('Linux')) return 'Linux'
+    return 'Other'
+  }
+
+  /**
    * 检查是否是信任设备（包含过期检查）
    */
   async isTrustedDevice(userId: string, fingerprint: string): Promise<boolean> {
@@ -37,11 +66,11 @@ export class TrustedDeviceService {
       .select()
       .from(trustedDevices)
       .where(
-        and(eq(trustedDevices.userId, userId), eq(trustedDevices.deviceFingerprint, fingerprint))
+        and(eq(trustedDevices.employeeId, userId), eq(trustedDevices.deviceFingerprint, fingerprint))
       )
       .get()
 
-    if (!device) {return false}
+    if (!device) { return false }
 
     // 检查设备是否过期（90天）
     const now = Date.now()
@@ -66,7 +95,7 @@ export class TrustedDeviceService {
    * 添加信任设备
    */
   async addTrustedDevice(
-    userId: string,
+    employeeId: string,
     fingerprint: string,
     deviceInfo: { ip?: string; userAgent?: string }
   ): Promise<void> {
@@ -80,7 +109,7 @@ export class TrustedDeviceService {
         .insert(trustedDevices)
         .values({
           id: uuid(),
-          userId,
+          employeeId,
           deviceFingerprint: fingerprint,
           deviceName,
           ipAddress: deviceInfo.ip || null,
@@ -103,20 +132,20 @@ export class TrustedDeviceService {
    * 解析 User-Agent 生成可读的设备名称
    */
   private parseDeviceName(userAgent?: string): string {
-    if (!userAgent) {return '未知设备'}
+    if (!userAgent) { return '未知设备' }
 
     // 简单解析
-    if (userAgent.includes('iPhone')) {return 'iPhone'}
-    if (userAgent.includes('iPad')) {return 'iPad'}
-    if (userAgent.includes('Android')) {return 'Android 设备'}
-    if (userAgent.includes('Mac OS')) {return 'Mac'}
-    if (userAgent.includes('Windows')) {return 'Windows PC'}
-    if (userAgent.includes('Linux')) {return 'Linux'}
+    if (userAgent.includes('iPhone')) { return 'iPhone' }
+    if (userAgent.includes('iPad')) { return 'iPad' }
+    if (userAgent.includes('Android')) { return 'Android 设备' }
+    if (userAgent.includes('Mac OS')) { return 'Mac' }
+    if (userAgent.includes('Windows')) { return 'Windows PC' }
+    if (userAgent.includes('Linux')) { return 'Linux' }
 
     // 尝试提取浏览器
-    if (userAgent.includes('Chrome')) {return 'Chrome 浏览器'}
-    if (userAgent.includes('Firefox')) {return 'Firefox 浏览器'}
-    if (userAgent.includes('Safari')) {return 'Safari 浏览器'}
+    if (userAgent.includes('Chrome')) { return 'Chrome 浏览器' }
+    if (userAgent.includes('Firefox')) { return 'Firefox 浏览器' }
+    if (userAgent.includes('Safari')) { return 'Safari 浏览器' }
 
     return '未知设备'
   }
@@ -124,11 +153,11 @@ export class TrustedDeviceService {
   /**
    * 获取用户的所有信任设备
    */
-  async getUserDevices(userId: string) {
+  async getUserDevices(employeeId: string) {
     return await this.db
       .select()
       .from(trustedDevices)
-      .where(eq(trustedDevices.userId, userId))
+      .where(eq(trustedDevices.employeeId, employeeId))
       .all()
   }
 
@@ -138,7 +167,7 @@ export class TrustedDeviceService {
   async removeTrustedDevice(id: string, userId: string): Promise<boolean> {
     const result = await this.db
       .delete(trustedDevices)
-      .where(and(eq(trustedDevices.id, id), eq(trustedDevices.userId, userId)))
+      .where(and(eq(trustedDevices.id, id), eq(trustedDevices.employeeId, userId)))
       .run()
 
     return (result as any).rowsAffected > 0 || (result as any).changes > 0
@@ -148,7 +177,7 @@ export class TrustedDeviceService {
    * 移除用户的所有信任设备
    */
   async removeAllDevices(userId: string): Promise<void> {
-    await this.db.delete(trustedDevices).where(eq(trustedDevices.userId, userId)).run()
+    await this.db.delete(trustedDevices).where(eq(trustedDevices.employeeId, userId)).run()
   }
 
   /**

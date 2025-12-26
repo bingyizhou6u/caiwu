@@ -368,7 +368,7 @@ flowsRoutes.openapi(
       departmentId: departmentId,
       counterparty: body.counterparty,
       memo: body.memo,
-      createdBy: c.get('userId'),
+      createdBy: c.get('employeeId'),
     })
 
     logAuditAction(
@@ -500,7 +500,7 @@ flowsRoutes.openapi(
 
     const result = await c.var.services.finance.reverseFlow(id, {
       reversalReason,
-      createdBy: c.get('userId'),
+      createdBy: c.get('employeeId'),
     })
 
     // 审计日志 - 记录敏感操作

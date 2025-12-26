@@ -17,8 +17,8 @@ function getIPInfo(c: any): { ip: string | null; ipLocation: string | null } {
     let ipLocation: string | null = null
     if (country || city) {
       const parts: string[] = []
-      if (city) {parts.push(city)}
-      if (country) {parts.push(country)}
+      if (city) { parts.push(city) }
+      if (country) { parts.push(country) }
       ipLocation = parts.join(', ')
     }
 
@@ -37,13 +37,13 @@ export function logAuditAction(
   entityId?: string,
   detail?: string
 ) {
-  const userId = c.get('userId') as string | undefined
+  const employeeId = c.get('employeeId') as string | undefined
   const auditService = c.get('services')?.audit
 
   // 获取IP和IP归属地信息
   const { ip, ipLocation } = getIPInfo(c)
 
-  if (!userId) {
+  if (!employeeId) {
     // 如果userId不存在，尝试从session中获取
     // 注意：AuditService 需要 actorId。如果 session 也拿不到，就无法记录（或者记录为 system?）
     const sid = getCookie(c, 'sid')
@@ -52,13 +52,13 @@ export function logAuditAction(
         .then(s => {
           if (s) {
             auditService
-              .log(s.userId, action, entity, entityId, detail, ip, ipLocation)
+              .log(s.employeeId, action, entity, entityId, detail, ip, ipLocation)
               .catch((err: any) => {
                 Logger.error('Audit log error', { error: err })
               })
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     }
     return
   }
@@ -70,9 +70,9 @@ export function logAuditAction(
 
   // 使用await确保日志记录完成，但使用catch避免阻塞主流程
   const promise = auditService
-    .log(userId, action, entity, entityId, detail, ip, ipLocation)
+    .log(employeeId, action, entity, entityId, detail, ip, ipLocation)
     .catch((err: any) => {
-      Logger.error('Audit log error', { error: err, action, entity, entityId, userId })
+      Logger.error('Audit log error', { error: err, action, entity, entityId, employeeId })
     })
   try {
     const ctx = (c as any).executionCtx

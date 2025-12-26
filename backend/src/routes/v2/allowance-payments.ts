@@ -192,7 +192,7 @@ allowancePaymentsRoutes.openapi(
       voucherUrl: raw.voucherUrl,
       memo: raw.memo,
     }
-    const userId = c.get('userId') as string
+    const userId = c.get('employeeId') as string
 
     try {
       const result = await c.var.services.allowancePayment.generate(
@@ -273,7 +273,7 @@ allowancePaymentsRoutes.openapi(
       voucherUrl: raw.voucherUrl,
       memo: raw.memo,
     }
-    const userId = c.get('userId') as string
+    const userId = c.get('employeeId') as string
 
     try {
       const result = await c.var.services.allowancePayment.create({

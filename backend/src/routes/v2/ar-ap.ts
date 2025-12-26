@@ -408,7 +408,7 @@ arApRoutes.openapi(confirmArApDocRoute, async c => {
     categoryId: body.categoryId,
     method: body.method,
     voucherUrl: body.voucherUrl,
-    createdBy: c.get('userId'),
+    createdBy: c.get('employeeId'),
     memo: body.memo,
   })
 

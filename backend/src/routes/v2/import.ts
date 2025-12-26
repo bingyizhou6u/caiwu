@@ -73,7 +73,7 @@ importRoutes.openapi(importCsvRoute, createRouteHandler(async (c: any) => {
 
   const { kind } = c.req.valid('query') as { kind: string }
   const csvContent = await c.req.text()
-  const userId = c.get('userId') as string
+  const userId = c.get('employeeId') as string
 
   if (kind === 'flows') {
     return await c.var.services.import.importFlows(csvContent, userId)

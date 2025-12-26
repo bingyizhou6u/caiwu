@@ -41,6 +41,13 @@ export class AuthService {
     context?: any,
     deviceInfo?: { ip?: string; userAgent?: string }
   ) {
+    // 账号锁定检查
+    const lockoutKey = `lockout:email:${email}`
+    const lockoutData = await this.kv.get(lockoutKey)
+    if (lockoutData) {
+      throw Errors.FORBIDDEN('账号已被锁定，请15分钟后再试')
+    }
+
     const user = await this.employeeService.getUserByEmail(email)
     if (!user) {
       throw Errors.UNAUTHORIZED('用户名或密码错误')
@@ -75,8 +82,20 @@ export class AuthService {
 
     const ok = await bcrypt.compare(password, user.passwordHash!)
     if (!ok) {
+      // 记录登录失败次数
+      const failKey = `login_fail:${email}`
+      const failCount = await this.incrementLoginFailCount(failKey)
+      if (failCount >= 5) {
+        // 连续失败5次，锁定账号15分钟
+        await this.kv.put(lockoutKey, '1', { expirationTtl: 900 })
+        await this.kv.delete(failKey) // 清除失败计数
+        throw Errors.FORBIDDEN('连续登录失败5次，账号已被锁定15分钟')
+      }
       throw Errors.UNAUTHORIZED('用户名或密码错误')
     }
+
+    // 密码正确，清除失败计数
+    await this.kv.delete(`login_fail:${email}`)
 
     // 检查 2FA 配置
     const twoFaConfig = await this.systemConfigService.get('2fa_enabled')
@@ -91,10 +110,9 @@ export class AuthService {
 
     // Check TOTP - 只有新设备才需要验证
     if (is2FaEnabled && user.totpSecret) {
-      // 生成设备指纹 (SHA-256)
+      // 生成设备指纹 (SHA-256) - 只使用浏览器和操作系统，不使用IP
       const deviceFingerprint = await this.trustedDeviceService.generateDeviceFingerprint(
         user.id,
-        deviceInfo?.ip || 'unknown',
         deviceInfo?.userAgent || 'unknown'
       )
 
@@ -105,6 +123,9 @@ export class AuthService {
         // 新设备需要验证 TOTP
         if (!totp) { return { status: 'need_totp', message: '新设备首次登录，请输入Google验证码' } }
         if (!verifyTotp(totp, user.totpSecret)) { throw Errors.UNAUTHORIZED('Google验证码错误') }
+
+        // TOTP 重放保护：检查该验证码是否已被使用
+        await this.checkTotpReplay(user.id, totp)
 
         // TOTP 验证成功，添加到信任设备
         await this.trustedDeviceService.addTrustedDevice(user.id, deviceFingerprint, {
@@ -150,7 +171,7 @@ export class AuthService {
     }
   }
 
-  async createSession(userId: string, deviceInfo?: { ip?: string; userAgent?: string }) {
+  async createSession(employeeId: string, deviceInfo?: { ip?: string; userAgent?: string }) {
     const id = uuid()
     const now = Date.now()
     const expires = now + 1000 * 60 * 60 * 24 * 7 // 7天过期
@@ -159,14 +180,14 @@ export class AuthService {
     const oldSessions = await this.db
       .select({ id: sessions.id })
       .from(sessions)
-      .where(eq(sessions.userId, userId))
+      .where(eq(sessions.employeeId, employeeId))
       .all()
 
     if (oldSessions.length > 0) {
       for (const s of oldSessions) {
         await this.kv.delete(`session:${s.id}`)
       }
-      await this.db.delete(sessions).where(eq(sessions.userId, userId)).run()
+      await this.db.delete(sessions).where(eq(sessions.employeeId, employeeId)).run()
     }
 
     // 1. 写入 D1 (作为持久化备份和审计)
@@ -174,7 +195,7 @@ export class AuthService {
       .insert(sessions)
       .values({
         id,
-        userId,
+        employeeId,
         expiresAt: expires,
         ipAddress: deviceInfo?.ip || null,
         userAgent: deviceInfo?.userAgent || null,
@@ -185,10 +206,10 @@ export class AuthService {
 
     // 2. 写入 KV (作为高性能缓存)
     // 获取完整的上下文信息
-    const fullContext = await getUserFullContext(this.db, userId)
+    const fullContext = await getUserFullContext(this.db, employeeId)
     if (fullContext) {
       const sessionData = {
-        session: { id, user_id: userId, expires_at: expires },
+        session: { id, employeeId: employeeId, expires_at: expires },
         ...fullContext,
       }
       // KV TTL 单位是秒
@@ -220,7 +241,7 @@ export class AuthService {
 
     return {
       id: s.id,
-      user_id: s.userId,
+      employeeId: s.employeeId,
       expires_at: s.expiresAt,
     }
   }
@@ -489,25 +510,25 @@ export class AuthService {
   }
 
   async verifyTotpResetToken(token: string) {
-    const userId = await this.kv.get(`totp_reset:${token}`)
-    if (!userId) {
+    const employeeId = await this.kv.get(`totp_reset:${token}`)
+    if (!employeeId) {
       throw Errors.BUSINESS_ERROR('重置链接无效或已过期')
     }
     return { valid: true }
   }
 
   async resetTotpByToken(token: string) {
-    const userId = await this.kv.get(`totp_reset:${token}`)
-    if (!userId) {
+    const employeeId = await this.kv.get(`totp_reset:${token}`)
+    if (!employeeId) {
       throw Errors.BUSINESS_ERROR('重置链接无效或已过期')
     }
 
-    await this.db.update(employees).set({ totpSecret: null }).where(eq(employees.id, userId)).run()
+    await this.db.update(employees).set({ totpSecret: null }).where(eq(employees.id, employeeId)).run()
 
     // 删除 Token
     await this.kv.delete(`totp_reset:${token}`)
 
-    await this.auditService.log(userId, 'reset_totp_by_token', 'user', userId)
+    await this.auditService.log(employeeId, 'reset_totp_by_token', 'user', employeeId)
     return { success: true }
   }
 
@@ -516,15 +537,15 @@ export class AuthService {
    * 不删除 token，等用户确认绑定后再删除
    */
   async generateTotpForRebind(token: string) {
-    const userId = await this.kv.get(`totp_reset:${token}`)
-    if (!userId) {
+    const employeeId = await this.kv.get(`totp_reset:${token}`)
+    if (!employeeId) {
       throw Errors.BUSINESS_ERROR('重置链接无效或已过期')
     }
 
     const user = await this.db
       .select({ email: employees.email })
       .from(employees)
-      .where(eq(employees.id, userId))
+      .where(eq(employees.id, employeeId))
       .get()
 
     if (!user || !user.email) {
@@ -540,8 +561,8 @@ export class AuthService {
    * 验证用户输入的验证码后保存新 secret
    */
   async confirmTotpRebind(token: string, newSecret: string, totpCode: string) {
-    const userId = await this.kv.get(`totp_reset:${token}`)
-    if (!userId) {
+    const employeeId = await this.kv.get(`totp_reset:${token}`)
+    if (!employeeId) {
       throw Errors.BUSINESS_ERROR('重置链接无效或已过期')
     }
 
@@ -552,13 +573,39 @@ export class AuthService {
     await this.db
       .update(employees)
       .set({ totpSecret: newSecret })
-      .where(eq(employees.id, userId))
+      .where(eq(employees.id, employeeId))
       .run()
 
     // 删除 Token
     await this.kv.delete(`totp_reset:${token}`)
 
-    await this.auditService.log(userId, 'rebind_totp', 'user', userId)
+    await this.auditService.log(employeeId, 'rebind_totp', 'user', employeeId)
     return { success: true }
   }
+
+  /**
+   * 增加登录失败计数
+   * @returns 当前失败次数
+   */
+  private async incrementLoginFailCount(key: string): Promise<number> {
+    const data = await this.kv.get<{ count: number }>(key, 'json')
+    const count = (data?.count || 0) + 1
+    // 15分钟窗口
+    await this.kv.put(key, JSON.stringify({ count }), { expirationTtl: 900 })
+    return count
+  }
+
+  /**
+   * TOTP 重放保护：检查验证码是否已被使用
+   * 同一验证码在60秒内不可重复使用
+   */
+  private async checkTotpReplay(userId: string, totpCode: string): Promise<void> {
+    const key = `totp_used:${userId}:${totpCode}`
+    if (await this.kv.get(key)) {
+      throw Errors.UNAUTHORIZED('验证码已使用，请等待新验证码')
+    }
+    // 60秒TTL，覆盖TOTP的30秒窗口
+    await this.kv.put(key, '1', { expirationTtl: 60 })
+  }
 }
+

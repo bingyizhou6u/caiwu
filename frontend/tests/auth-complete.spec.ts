@@ -184,3 +184,80 @@ test.describe('Authentication Complete', () => {
     });
 });
 
+
+test.describe('Security Enhancements', () => {
+    test.beforeEach(async ({ page }) => {
+        await setupCommonMocks(page);
+    });
+
+    test('账号锁定 - 连续5次失败后锁定', async ({ page }) => {
+        let failCount = 0;
+        
+        await page.route('**/api/v2/auth/login', async route => {
+            failCount++;
+            if (failCount >= 5) {
+                await route.fulfill({
+                    status: 403,
+                    json: { success: false, error: '连续登录失败5次，账号已被锁定15分钟' }
+                });
+            } else {
+                await route.fulfill({
+                    status: 401,
+                    json: { success: false, error: '用户名或密码错误' }
+                });
+            }
+        });
+
+        await page.goto('http://localhost:5173/login');
+
+        for (let i = 0; i < 5; i++) {
+            await page.fill('input[id="email"]', 'test@example.com');
+            await page.fill('input[id="password"]', 'wrong');
+            await page.click('button[type="submit"]');
+            await page.waitForTimeout(300);
+        }
+
+        await expect(page.locator('.ant-message-error').last()).toContainText('锁定');
+    });
+
+    test('TOTP重放保护测试', async ({ page }) => {
+        let totpUsed = false;
+
+        await page.route('**/api/v2/auth/login', async route => {
+            const body = JSON.parse(route.request().postData() || '{}');
+
+            if (body.totp) {
+                if (totpUsed) {
+                    await route.fulfill({
+                        status: 401,
+                        json: { success: false, error: '验证码已使用，请等待新验证码' }
+                    });
+                } else {
+                    totpUsed = true;
+                    await route.fulfill({
+                        json: {
+                            success: true,
+                            data: { token: 'mock-token', user: { id: '1', name: 'Admin', email: 'admin@example.com' } }
+                        }
+                    });
+                }
+                return;
+            }
+
+            await route.fulfill({
+                json: { success: true, data: { needTotp: true } }
+            });
+        });
+
+        await page.goto('http://localhost:5173/login');
+        await page.fill('input[id="email"]', 'admin@example.com');
+        await page.fill('input[id="password"]', 'password');
+        await page.click('button[type="submit"]');
+
+        await expect(page.getByLabel('Google验证码')).toBeVisible();
+        await page.fill('input[id="totp"]', '123456');
+        await page.click('button[type="submit"]');
+
+        await expect(page).toHaveURL(/.*\/my\/center/);
+    });
+});

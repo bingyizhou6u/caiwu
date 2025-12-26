@@ -169,7 +169,7 @@ systemConfigRoutes.openapi(
       throw Errors.VALIDATION_ERROR('Config key is required')}
     const body = c.req.valid('json') as { value: any; description?: string | null }
 
-    const userId = c.get('userId') as string | undefined
+    const userId = c.get('employeeId') as string | undefined
 
     const service = c.var.services.systemConfig
 

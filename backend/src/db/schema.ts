@@ -109,7 +109,7 @@ export const orgDepartments = sqliteTable('org_departments', {
 
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull(),
+  employeeId: text('user_id').notNull(),
   expiresAt: integer('expires_at').notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
@@ -119,7 +119,7 @@ export const sessions = sqliteTable('sessions', {
 
 export const trustedDevices = sqliteTable('trusted_devices', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull(),
+  employeeId: text('user_id').notNull(),
   deviceFingerprint: text('device_fingerprint').notNull(),
   deviceName: text('device_name'),
   ipAddress: text('ip_address'),

@@ -141,4 +141,10 @@ export const RATE_LIMITS = {
     windowMs: 60 * 1000, // 1 分钟
     keyPrefix: 'api:ip',
   },
+  // 账号锁定：连续失败5次锁定15分钟
+  LOGIN_LOCKOUT_BY_EMAIL: {
+    limit: 5,
+    windowMs: 15 * 60 * 1000, // 15 分钟
+    keyPrefix: 'lockout:email',
+  },
 } as const

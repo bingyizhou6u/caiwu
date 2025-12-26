@@ -21,7 +21,7 @@ export type Env = {
 export type AppVariables = {
   requestId: string
   apiVersion?: string // API 版本（v1/v2/v3）
-  userId?: string
+  employeeId?: string
   sessionId?: string
   userPosition?: {
     id: string

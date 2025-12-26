@@ -39,7 +39,7 @@ describe('My Routes', () => {
 
     // Mock middleware
     app.use('*', async (c, next) => {
-      c.set('userId', 'user123')
+      c.set('employeeId', 'user123')
       c.set('services', { my: mockMyService } as any)
       await next()
     })

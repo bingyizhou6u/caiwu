@@ -19,7 +19,7 @@ export function createAuthMiddleware() {
     c: Context<{ Bindings: Env; Variables: AppVariables }>,
     next: () => Promise<void>
   ) => {
-    if (isPublicPath(c.req.path)) {return next()}
+    if (isPublicPath(c.req.path)) { return next() }
 
     const token = getAuthToken(c)
     if (!token) {
@@ -61,39 +61,44 @@ export function createAuthMiddleware() {
       return c.json({ error: 'unauthorized' }, 401)
     }
 
-    c.set('userId', sessionData.session.user_id)
+    c.set('employeeId', sessionData.session.employeeId)
     c.set('sessionId', payload.sid)
 
-    // 滑动窗口续期：活跃用户自动延长 7 天有效期
+    // 滑动窗口续期：仅在过期时间临近时刷新 (剩余不到24小时)
     const now = Date.now()
-    const newExpiresAt = now + 1000 * 60 * 60 * 24 * 7 // 7天后过期
+    const REFRESH_THRESHOLD = 24 * 60 * 60 * 1000 // 24小时
+    const timeRemaining = (sessionData.session.expires_at || 0) - now
 
-    // 异步更新会话过期时间和最后活跃时间（不阻塞请求）
-    c.executionCtx.waitUntil(
-      (async () => {
-        // 1. 更新 D1 数据库
-        await c.env.DB.prepare(
-          'UPDATE sessions SET expires_at = ?, last_active_at = ? WHERE id = ?'
-        )
-          .bind(newExpiresAt, now, payload.sid)
-          .run()
-          .catch(() => {}) // 忽略更新失败
+    if (timeRemaining < REFRESH_THRESHOLD) {
+      const newExpiresAt = now + 1000 * 60 * 60 * 24 * 7 // 7天后过期
 
-        // 2. 更新 KV 缓存的 TTL
-        const updatedSessionData = {
-          ...sessionData,
-          session: {
-            ...sessionData.session,
-            expires_at: newExpiresAt,
-          },
-        }
-        await c.env.SESSIONS_KV.put(
-          `session:${payload.sid}`,
-          JSON.stringify(updatedSessionData),
-          { expirationTtl: 60 * 60 * 24 * 7 } // 7天 TTL
-        ).catch(() => {}) // 忽略更新失败
-      })()
-    )
+      // 异步更新会话过期时间和最后活跃时间（不阻塞请求）
+      c.executionCtx.waitUntil(
+        (async () => {
+          // 1. 更新 D1 数据库
+          await c.env.DB.prepare(
+            'UPDATE sessions SET expires_at = ?, last_active_at = ? WHERE id = ?'
+          )
+            .bind(newExpiresAt, now, payload.sid)
+            .run()
+            .catch(() => { }) // 忽略更新失败
+
+          // 2. 更新 KV 缓存的 TTL
+          const updatedSessionData = {
+            ...sessionData,
+            session: {
+              ...sessionData.session,
+              expires_at: newExpiresAt,
+            },
+          }
+          await c.env.SESSIONS_KV.put(
+            `session:${payload.sid}`,
+            JSON.stringify(updatedSessionData),
+            { expirationTtl: 60 * 60 * 24 * 7 } // 7天 TTL
+          ).catch(() => { }) // 忽略更新失败
+        })()
+      )
+    }
 
     if (!sessionData.position) {
       return c.json({ error: 'employee record not found, please contact administrator' }, 403)
@@ -112,8 +117,8 @@ export function createAuthMiddleware() {
 
 function getAuthToken(c: Context<{ Bindings: Env; Variables: AppVariables }>) {
   const altHeader = c.req.header(ALT_AUTH_HEADER)
-  if (altHeader) {return altHeader}
+  if (altHeader) { return altHeader }
   const bearer = extractBearerToken(c.req.header('Authorization'))
-  if (bearer) {return bearer}
+  if (bearer) { return bearer }
   return getCookie(c, AUTH_COOKIE_NAME)
 }

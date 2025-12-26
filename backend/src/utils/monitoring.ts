@@ -27,9 +27,9 @@ export interface ErrorContext {
    */
   requestId?: string
   /**
-   * 用户 ID
+   * 员工 ID
    */
-  userId?: string
+  employeeId?: string
   /**
    * 请求路径
    */
@@ -286,7 +286,7 @@ export class MonitoringService {
   extractContext(c: Context<{ Bindings: Env; Variables: AppVariables }>): ErrorContext {
     return {
       requestId: c.get('requestId'),
-      userId: c.get('userId'),
+      employeeId: c.get('employeeId'),
       path: c.req.path,
       method: c.req.method,
       ip: c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || undefined,
