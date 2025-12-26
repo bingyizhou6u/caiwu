@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, Row, Col, Statistic, Button, Descriptions, Tag, message, Spin, Space, Timeline, Alert, Modal, Tabs, Progress } from 'antd'
 import { ClockCircleOutlined, LoginOutlined, LogoutOutlined, UserOutlined, CalendarOutlined, WalletOutlined, FileTextOutlined, DollarOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
-import { useMyDashboard, useMyProfile } from '../../../hooks'
-// TODO: 考勤功能暂未实现
-// import { useAttendanceToday, useClockIn, useClockOut } from '../../../hooks'
+import { useMyDashboard, useMyProfile, useAttendanceToday, useClockIn, useClockOut } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { StatusTag, EmptyText } from '../../../components/common'
 import { LEAVE_STATUS, REIMBURSEMENT_STATUS, COMMON_STATUS, EMPLOYEE_STATUS, getStatusConfig } from '../../../utils/status'
@@ -69,24 +67,28 @@ export function MyCenter() {
   // Hooks
   const { data: dashboard, isLoading: dashboardLoading } = useMyDashboard()
   const { data: profile, isLoading: profileLoading } = useMyProfile()
-  // TODO: 考勤功能暂未实现
-  // const { data: attendanceToday, isLoading: attendanceLoading } = useAttendanceToday()
-  // const { mutateAsync: clockIn, isPending: clockingIn } = useClockIn()
-  // const { mutateAsync: clockOut, isPending: clockingOut } = useClockOut()
-  const attendanceToday: { today: string; record: AttendanceRecord | null; workSchedule: WorkSchedule | null } | null = null
-  const attendanceLoading = false
-  const clockingIn = false
-  const clockingOut = false
+  const { data: attendanceToday, isLoading: attendanceLoading } = useAttendanceToday()
+  const { mutateAsync: clockIn, isPending: clockingIn } = useClockIn()
+  const { mutateAsync: clockOut, isPending: clockingOut } = useClockOut()
 
   const loading = dashboardLoading || profileLoading || attendanceLoading
 
-  // TODO: 考勤功能暂未实现
-  const handleClockIn = () => {
-    message.warning('考勤功能暂未实现')
+  const handleClockIn = async () => {
+    try {
+      await clockIn()
+      message.success('签到成功')
+    } catch (e: any) {
+      message.error(e?.message || '签到失败')
+    }
   }
 
-  const handleClockOut = () => {
-    message.warning('考勤功能暂未实现')
+  const handleClockOut = async () => {
+    try {
+      await clockOut()
+      message.success('签退成功')
+    } catch (e: any) {
+      message.error(e?.message || '签退失败')
+    }
   }
 
   const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })

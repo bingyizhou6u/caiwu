@@ -18,6 +18,7 @@ import { query } from '../../utils/query-helpers.js'
 import { getBusinessDate } from '../../utils/timezone.js'
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../../types/index.js'
+import type { D1Result } from '../../types/workers.js'
 
 export class FinanceService {
   constructor(private db: DrizzleD1Database<any>) { }
@@ -204,8 +205,7 @@ export class FinanceService {
     ])
 
     // Check update result (first operation in batch)
-    const updateResult = result[0]
-    // @ts-ignore - D1 result handling
+    const updateResult = result[0] as D1Result
     if (updateResult.meta.changes === 0) {
       throw createError(
         409, // Conflict
@@ -339,9 +339,8 @@ export class FinanceService {
         .update(accounts)
         .set({ version: (account.version || 0) + 1 })
         .where(and(eq(accounts.id, originalFlow.accountId), eq(accounts.version, account.version || 0)))
-        .run()
+        .run() as unknown as D1Result
 
-      // @ts-ignore - D1 result handling
       if (updateResult.meta.changes === 0) {
         throw createError(
           409,

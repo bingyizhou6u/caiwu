@@ -17,7 +17,6 @@ export class QueryCache {
   async get<T>(key: string): Promise<T | null> {
     try {
       // 使用 Cloudflare Cache API
-      // @ts-ignore - caches.default 在 Cloudflare Workers 运行时可用
       const cache = typeof caches !== 'undefined' ? caches.default : null
       if (!cache) { return null }
 
@@ -44,7 +43,6 @@ export class QueryCache {
    */
   async set<T>(key: string, data: T, ttl: number = 300): Promise<void> {
     try {
-      // @ts-ignore - caches.default 在 Cloudflare Workers 运行时可用
       const cache = typeof caches !== 'undefined' ? caches.default : null
       if (!cache) { return }
 
@@ -73,7 +71,6 @@ export class QueryCache {
    */
   async delete(key: string): Promise<void> {
     try {
-      // @ts-ignore - caches.default 在 Cloudflare Workers 运行时可用
       const cache = typeof caches !== 'undefined' ? caches.default : null
       if (!cache) { return }
 

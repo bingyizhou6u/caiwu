@@ -249,7 +249,7 @@ export class AuthService {
   async logout(sessionId: string) {
     const session = await this.getSession(sessionId)
     if (session) {
-      await this.auditService.log(session.user_id, 'logout', 'user', session.user_id)
+      await this.auditService.log(session.employeeId, 'logout', 'employee', session.employeeId)
     }
     await this.kv.delete(`session:${sessionId}`)
     await this.db.delete(sessions).where(eq(sessions.id, sessionId)).run()

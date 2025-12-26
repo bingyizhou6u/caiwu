@@ -1,6 +1,0 @@
-export { MyDashboard } from './MyDashboardPage'
-export { MyLeaves } from './MyLeavesPage'
-export { MyReimbursements } from './MyReimbursementsPage'
-export { MyAssets } from './MyAssetsPage'
-export { MyProfile } from './MyProfilePage'
-export { MyApprovals } from './MyApprovalsPage'

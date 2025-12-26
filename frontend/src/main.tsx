@@ -36,12 +36,12 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 // App 组件 - 响应主题变化
 function App() {
   const themeMode = useAppStore((state) => state.themeMode)
-  
+
   // 同步主题到 document，便于 CSS 变量使用
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', themeMode)
   }, [themeMode])
-  
+
   return (
     <ConfigProvider
       locale={zhCN}
@@ -64,14 +64,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>
 )
-
-// 注册 Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('SW registered: ', registration);
-    }).catch(registrationError => {
-      console.log('SW registration failed: ', registrationError);
-    });
-  });
-}

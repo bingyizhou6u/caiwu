@@ -175,6 +175,3 @@ export const darkTheme: ThemeConfig = {
 export const getTheme = (mode: 'light' | 'dark'): ThemeConfig => {
     return mode === 'dark' ? darkTheme : lightTheme
 }
-
-// 保持向后兼容
-export const theme = lightTheme

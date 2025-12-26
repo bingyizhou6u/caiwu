@@ -14,6 +14,32 @@ import { getAuthToken, getCachedToken, getCachedUserInfo } from './token-manager
  * @param config - 线上环境配置
  */
 export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void> {
+    // 先检查是否有缓存的 token，如果没有则尝试通过 API 获取
+    let cachedToken = getCachedToken();
+    let cachedUser = getCachedUserInfo();
+
+    if (!cachedToken || !cachedUser) {
+        // 尝试通过 API 获取 token
+        try {
+            console.log('没有缓存 token，通过 API 获取...');
+            cachedToken = await getAuthToken(config);
+            cachedUser = getCachedUserInfo();
+        } catch (error: any) {
+            console.log('API 获取 token 失败，将使用 UI 登录:', error.message);
+        }
+    }
+
+    if (cachedToken && cachedUser) {
+        console.log('使用缓存的 token 设置认证状态');
+        await setAuthToken(page, cachedToken, config, cachedUser);
+        // 验证登录成功
+        const currentUrl = page.url();
+        if (!currentUrl.includes('/login')) {
+            console.log('Token 设置成功，已登录');
+            return;
+        }
+    }
+
     // 检查是否已经登录
     const currentUrl = page.url();
     if (!currentUrl.includes('/login')) {
@@ -66,7 +92,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
     await passwordInput.fill(config.password);
 
     // 点击登录按钮并等待 API 响应
-    const loginButton = page.getByRole('button', { name: '登 录' });
+    const loginButton = page.getByRole('button', { name: '登录', exact: true });
 
     // 等待登录 API 响应
     console.log('点击登录按钮并等待 API 响应...');
@@ -123,7 +149,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
         await passwordInputRetry.clear();
         await passwordInputRetry.fill(config.password);
 
-        const loginButtonRetry = page.getByRole('button', { name: '登 录' });
+        const loginButtonRetry = page.getByRole('button', { name: '登录', exact: true });
         await loginButtonRetry.click();
         await page.waitForTimeout(3000);
     }
@@ -161,7 +187,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
         await totpInput.fill(totpCode);
 
         // 点击验证按钮
-        const verifyButton = page.getByRole('button', { name: /验证|验 证/ });
+        const verifyButton = page.getByRole('button', { name: '验证登录' });
         await verifyButton.click();
 
         // 等待验证完成
@@ -219,7 +245,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
                 const passwordInputRetry = page.getByPlaceholder('请输入密码');
                 await passwordInputRetry.clear();
                 await passwordInputRetry.fill(config.password);
-                const loginButtonRetry = page.getByRole('button', { name: '登 录' });
+                const loginButtonRetry = page.getByRole('button', { name: '登录', exact: true });
                 await loginButtonRetry.click();
                 await page.waitForTimeout(5000);
                 // 再次检查 URL
@@ -234,7 +260,7 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
             const errorMsg = await page.locator('.ant-message-error, .ant-alert-error').textContent().catch(() => '');
 
             // 检查登录按钮是否还存在
-            const loginButton = page.getByRole('button', { name: '登 录' });
+            const loginButton = page.getByRole('button', { name: '登录', exact: true });
             const isLoginButtonVisible = await loginButton.isVisible({ timeout: 2000 }).catch(() => false);
 
             if (!isLoginButtonVisible) {

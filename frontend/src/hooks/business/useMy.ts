@@ -265,3 +265,64 @@ export function useUpdateMyProfile() {
   })
 }
 
+/**
+ * 考勤相关
+ */
+export interface AttendanceRecord {
+  id: string
+  employeeId: string
+  date: string
+  clockInTime: number | null
+  clockOutTime: number | null
+  status: string | null
+  memo: string | null
+}
+
+export interface AttendanceTodayResponse {
+  today: string
+  record: AttendanceRecord | null
+  workSchedule: {
+    days: number[]
+    start: string
+    end: string
+  } | null
+}
+
+export function useAttendanceToday() {
+  return useApiQuery<AttendanceTodayResponse>(
+    ['my', 'attendance', 'today'],
+    api.my.attendance.today,
+    {
+      staleTime: 30 * 1000, // 30秒缓存
+      refetchInterval: 60 * 1000, // 每分钟刷新
+    }
+  )
+}
+
+export function useClockIn() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const result = await apiClient.post<any>(api.my.attendance.clockIn)
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my', 'attendance'] })
+    },
+  })
+}
+
+export function useClockOut() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const result = await apiClient.post<any>(api.my.attendance.clockOut)
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my', 'attendance'] })
+    },
+  })
+}
+
+

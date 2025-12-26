@@ -119,10 +119,8 @@ export function recordMemoryUsage(): void {
   // 在 Cloudflare Workers 环境中，内存信息可能不可用
   // 这里提供一个占位实现
   try {
-    // @ts-ignore - performance.memory 在 Node.js 中可用，但在 Workers 中可能不可用
     if (typeof performance !== 'undefined' && performance.memory) {
       const monitoring = getMonitoringService()
-      // @ts-ignore
       const memory = performance.memory
 
       monitoring.recordMetric('memory.heap.used', memory.usedJSHeapSize, 'bytes')

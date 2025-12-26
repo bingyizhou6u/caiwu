@@ -13,6 +13,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  /* Global setup for authentication */
+  globalSetup: process.env.LIVE_TEST_URL ? './tests/global-setup.ts' : undefined,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -41,6 +43,9 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+
+    /* Use saved authentication state for live tests */
+    storageState: process.env.LIVE_TEST_URL ? './tests/.auth/storage-state.json' : undefined,
   },
 
   /* Configure projects for major browsers */
@@ -88,8 +93,8 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       // 线上测试时使用远程后端
-      VITE_API_HOST: process.env.LIVE_TEST_URL 
-        ? `${process.env.LIVE_TEST_URL.replace(/\/$/, '')}` 
+      VITE_API_HOST: process.env.LIVE_TEST_URL
+        ? `${process.env.LIVE_TEST_URL.replace(/\/$/, '')}`
         : 'http://localhost:8787',
     },
   },

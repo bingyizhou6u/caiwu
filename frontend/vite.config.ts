@@ -58,7 +58,7 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'antd': ['antd'],
           'antd-icons': ['@ant-design/icons'],
-          'libs': ['@tanstack/react-query', 'dayjs', 'zustand', 'qrcode.react'],
+          'libs': ['@tanstack/react-query', 'dayjs', 'zustand'],
         },
       },
     },
