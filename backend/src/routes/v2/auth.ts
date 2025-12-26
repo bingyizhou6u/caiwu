@@ -683,4 +683,88 @@ authRoutes.openapi(confirmTotpResetRoute, createRouteHandler(async (c: any) => {
   return await authService.resetTotpByToken(body.token)
 }) as any)
 
+// ==================== TOTP 重绑定路由 ====================
+
+// 生成重绑定的 TOTP QR 码
+const generateTotpForRebindRoute = createRoute({
+  tags: ['auth'],
+  method: 'post',
+  path: '/auth/totp-reset/generate-rebind',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            token: z.string(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              secret: z.string(),
+              qrCode: z.string(),
+              email: z.string(),
+            }),
+          }),
+        },
+      },
+      description: 'TOTP QR code for rebinding',
+    },
+  },
+})
+
+authRoutes.openapi(generateTotpForRebindRoute, createRouteHandler(async (c: any) => {
+  const body = c.req.valid('json') as { token: string }
+  const authService = c.var.services.auth
+  return await authService.generateTotpForRebind(body.token)
+}) as any)
+
+// 确认重绑定 TOTP
+const confirmTotpRebindRoute = createRoute({
+  tags: ['auth'],
+  method: 'post',
+  path: '/auth/totp-reset/confirm-rebind',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            token: z.string(),
+            secret: z.string(),
+            totpCode: z.string().length(6),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              success: z.boolean(),
+            }),
+          }),
+        },
+      },
+      description: 'TOTP rebind result',
+    },
+  },
+})
+
+authRoutes.openapi(confirmTotpRebindRoute, createRouteHandler(async (c: any) => {
+  const body = c.req.valid('json') as { token: string; secret: string; totpCode: string }
+  const authService = c.var.services.auth
+  return await authService.confirmTotpRebind(body.token, body.secret, body.totpCode)
+}) as any)
+
 export { authRoutes }

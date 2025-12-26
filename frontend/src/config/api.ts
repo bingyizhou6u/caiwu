@@ -26,6 +26,8 @@ export const api = {
     requestTotpReset: `${API_BASE}/api/v2/auth/mobile/request-totp-reset`,
     verifyTotpResetToken: `${API_BASE}/api/v2/auth/mobile/reset-totp/verify`,
     confirmTotpReset: `${API_BASE}/api/v2/auth/mobile/reset-totp/confirm`,
+    generateTotpRebind: `${API_BASE}/api/v2/auth/totp-reset/generate-rebind`,
+    confirmTotpRebind: `${API_BASE}/api/v2/auth/totp-reset/confirm-rebind`,
   },
   me: `${API_BASE}/api/v2/auth/me`,
   hq: `${API_BASE}/api/v2/hq`,

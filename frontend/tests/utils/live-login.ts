@@ -65,14 +65,34 @@ export async function liveLogin(page: Page, config: LiveEnvConfig): Promise<void
     await passwordInput.clear();
     await passwordInput.fill(config.password);
 
-    // 点击登录按钮
+    // 点击登录按钮并等待 API 响应
     const loginButton = page.getByRole('button', { name: '登 录' });
-    await loginButton.click();
 
-    // 等待页面响应 - 检查登录按钮是否消失或TOTP卡片是否出现
-    console.log('等待登录响应...');
+    // 等待登录 API 响应
+    console.log('点击登录按钮并等待 API 响应...');
+    const [response] = await Promise.all([
+        page.waitForResponse(resp =>
+            resp.url().includes('/api/v2/auth/login') && resp.request().method() === 'POST',
+            { timeout: 30000 }
+        ).catch(() => null),
+        loginButton.click(),
+    ]);
+
+    if (response) {
+        const status = response.status();
+        console.log(`登录 API 响应状态: ${status}`);
+        if (status >= 500) {
+            console.log('登录 API 返回服务器错误，等待 5 秒后重试');
+            await page.waitForTimeout(5000);
+            // 重新点击登录按钮
+            await loginButton.click();
+            await page.waitForTimeout(3000);
+        }
+    }
+
+    // 等待页面状态变化
+    console.log('等待页面响应...');
     try {
-        // 等待登录按钮消失或页面跳转
         await Promise.race([
             page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 }),
             page.locator('.ant-card-head-title:has-text("二步验证")').waitFor({ timeout: 15000 }),

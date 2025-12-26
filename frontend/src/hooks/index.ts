@@ -29,7 +29,7 @@ export { useMyDashboard, useMyLeaves, useCreateMyLeave, useMyReimbursements, use
 export { useAPSummary, useAPDetail, useARSummary, useARDetail, useExpenseDetail, useExpenseSummary, useAnnualLeave, useAccountBalance, useDepartmentCash, useEmployeeSalary, useSiteGrowth } from './business/useReports'
 export { useMyPendingApprovals, useMyApprovalHistory, useApproveLeave as useApproveLeaveMy, useRejectLeave, useApproveReimbursement, useRejectReimbursement } from './business/useMyApprovals'
 export { useFixedAssets, useFixedAsset, useCreateFixedAsset, useUpdateFixedAsset, useDeleteFixedAsset, useBatchDeleteFixedAsset, useTransferFixedAsset, useDepreciateFixedAsset, useAllocateFixedAsset, useReturnFixedAsset, useFixedAssetPurchase, useFixedAssetSale, useFixedAssetAllocations } from './business/useFixedAssets'
-export { useHealth, useLogin, useRequestTotpReset, useVerifyTotpResetToken, useConfirmTotpReset } from './business/useAuth'
+export { useHealth, useLogin, useRequestTotpReset, useVerifyTotpResetToken, useConfirmTotpReset, useGenerateTotpRebind, useConfirmTotpRebind } from './business/useAuth'
 export { usePermissionConfig } from './usePermissionConfig'
 
 // Form Hooks

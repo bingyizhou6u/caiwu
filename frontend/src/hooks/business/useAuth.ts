@@ -66,3 +66,28 @@ export function useConfirmTotpReset() {
     })
 }
 
+/**
+ * 生成TOTP重绑定QR码Hook
+ */
+export function useGenerateTotpRebind() {
+    return useMutation({
+        mutationFn: async (token: string) => {
+            const result = await apiClient.post<{ secret: string; qrCode: string; email: string }>(
+                api.auth.generateTotpRebind,
+                { token }
+            )
+            return result
+        },
+    })
+}
+
+/**
+ * 确认TOTP重绑定Hook
+ */
+export function useConfirmTotpRebind() {
+    return useMutation({
+        mutationFn: async (payload: { token: string; secret: string; totpCode: string }) => {
+            await apiClient.post(api.auth.confirmTotpRebind, payload)
+        },
+    })
+}

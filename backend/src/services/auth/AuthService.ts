@@ -510,4 +510,55 @@ export class AuthService {
     await this.auditService.log(userId, 'reset_totp_by_token', 'user', userId)
     return { success: true }
   }
+
+  /**
+   * 生成用于重绑定的 TOTP（重置流程第一步）
+   * 不删除 token，等用户确认绑定后再删除
+   */
+  async generateTotpForRebind(token: string) {
+    const userId = await this.kv.get(`totp_reset:${token}`)
+    if (!userId) {
+      throw Errors.BUSINESS_ERROR('重置链接无效或已过期')
+    }
+
+    const user = await this.db
+      .select({ email: employees.email })
+      .from(employees)
+      .where(eq(employees.id, userId))
+      .get()
+
+    if (!user || !user.email) {
+      throw Errors.NOT_FOUND('用户不存在')
+    }
+
+    const { secret, qrCode } = this.generateTotpForActivation(user.email)
+    return { secret, qrCode, email: user.email }
+  }
+
+  /**
+   * 确认重绑定 TOTP（重置流程第二步）
+   * 验证用户输入的验证码后保存新 secret
+   */
+  async confirmTotpRebind(token: string, newSecret: string, totpCode: string) {
+    const userId = await this.kv.get(`totp_reset:${token}`)
+    if (!userId) {
+      throw Errors.BUSINESS_ERROR('重置链接无效或已过期')
+    }
+
+    if (!verifyTotp(totpCode, newSecret)) {
+      throw Errors.UNAUTHORIZED('验证码错误')
+    }
+
+    await this.db
+      .update(employees)
+      .set({ totpSecret: newSecret })
+      .where(eq(employees.id, userId))
+      .run()
+
+    // 删除 Token
+    await this.kv.delete(`totp_reset:${token}`)
+
+    await this.auditService.log(userId, 'rebind_totp', 'user', userId)
+    return { success: true }
+  }
 }

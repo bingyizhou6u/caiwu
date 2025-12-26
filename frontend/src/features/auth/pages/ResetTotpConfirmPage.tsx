@@ -1,28 +1,30 @@
 import { useState, useEffect } from 'react'
-import { Layout, Card, Button, Result, Spin, message } from 'antd'
+import { Layout, Card, Button, Result, Spin, message, Form, Input, Space } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ThunderboltFilled } from '@ant-design/icons'
-import { useVerifyTotpResetToken, useConfirmTotpReset } from '../../../hooks'
+import { ThunderboltFilled, QrcodeOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { useVerifyTotpResetToken, useGenerateTotpRebind, useConfirmTotpRebind } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import '../../../styles/features/auth/login.css'
 
 const { Header, Content } = Layout
+
+type Step = 'verifying' | 'invalid' | 'confirm' | 'rebind' | 'success'
 
 export function ResetTotpConfirm() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const token = searchParams.get('token')
 
-    const [verifying, setVerifying] = useState(true)
-    const [valid, setValid] = useState(false)
-    const [success, setSuccess] = useState(false)
+    const [step, setStep] = useState<Step>('verifying')
+    const [totpData, setTotpData] = useState<{ secret: string; qrCode: string; email: string } | null>(null)
 
     const { mutateAsync: verifyToken } = useVerifyTotpResetToken()
-    const { mutateAsync: confirmReset, isPending: confirming } = useConfirmTotpReset()
+    const { mutateAsync: generateRebind, isPending: generating } = useGenerateTotpRebind()
+    const { mutateAsync: confirmRebind, isPending: confirming } = useConfirmTotpRebind()
 
     useEffect(() => {
         if (!token) {
-            setVerifying(false)
+            setStep('invalid')
             return
         }
         handleVerifyToken()
@@ -32,32 +34,173 @@ export function ResetTotpConfirm() {
         async () => {
             if (!token) return
             await verifyToken(token)
-            setValid(true)
+            setStep('confirm')
         },
         {
             showSuccess: false,
-            showError: false, // 静默处理错误，使用 Result 组件显示
+            showError: false,
             onError: () => {
-                setValid(false)
+                setStep('invalid')
             },
-            onFinally: () => {
-                setVerifying(false)
-            }
         }
     )
 
     const handleConfirm = withErrorHandler(
         async () => {
             if (!token) return
-            await confirmReset(token)
-            setSuccess(true)
-            message.success('2FA 已重置，请使用密码登录')
+            const data = await generateRebind(token)
+            setTotpData(data)
+            setStep('rebind')
         },
         {
-            showSuccess: false, // 手动显示成功消息
-            errorMessage: '重置失败，请联系管理员'
+            showSuccess: false,
+            errorMessage: '生成验证码失败，请重试'
         }
     )
+
+    const handleRebind = withErrorHandler(
+        async (values: { totpCode: string }) => {
+            if (!token || !totpData) return
+            await confirmRebind({
+                token,
+                secret: totpData.secret,
+                totpCode: values.totpCode,
+            })
+            setStep('success')
+            message.success('2FA 重新绑定成功！')
+        },
+        {
+            showSuccess: false,
+            errorMessage: '验证码错误，请重试'
+        }
+    )
+
+    const renderContent = () => {
+        switch (step) {
+            case 'verifying':
+                return (
+                    <div style={{ textAlign: 'center', padding: 40 }}>
+                        <Spin size="large" tip="验证链接中..." />
+                    </div>
+                )
+
+            case 'invalid':
+                return (
+                    <Result
+                        status="error"
+                        title="无效的链接"
+                        subTitle="该重置链接无效或已过期，请重新请求。"
+                        extra={[
+                            <Button type="primary" key="retry" onClick={() => navigate('/auth/request-totp-reset')}>
+                                重新发送
+                            </Button>,
+                            <Button key="login" onClick={() => navigate('/login')}>
+                                返回登录
+                            </Button>,
+                        ]}
+                    />
+                )
+
+            case 'confirm':
+                return (
+                    <Result
+                        status="warning"
+                        title="重置并重新绑定 2FA"
+                        subTitle="点击确认后，您将扫描新的二维码来绑定新的验证器。旧的验证器将失效。"
+                        extra={[
+                            <Button
+                                type="primary"
+                                key="confirm"
+                                loading={generating}
+                                onClick={handleConfirm}
+                                size="large"
+                                icon={<QrcodeOutlined />}
+                            >
+                                确认并生成新二维码
+                            </Button>,
+                            <Button key="cancel" onClick={() => navigate('/login')}>
+                                取消
+                            </Button>,
+                        ]}
+                    />
+                )
+
+            case 'rebind':
+                return (
+                    <div style={{ textAlign: 'center' }}>
+                        <h3 style={{ marginBottom: 16 }}>扫描二维码绑定新验证器</h3>
+                        <p style={{ color: '#666', marginBottom: 16 }}>
+                            账号: {totpData?.email}
+                        </p>
+                        {totpData?.qrCode && (
+                            <div style={{ marginBottom: 24 }}>
+                                <img
+                                    src={totpData.qrCode}
+                                    alt="TOTP QR Code"
+                                    style={{ width: 200, height: 200, border: '1px solid #eee', borderRadius: 8 }}
+                                />
+                            </div>
+                        )}
+                        <div style={{
+                            background: '#f5f5f5',
+                            padding: '8px 16px',
+                            borderRadius: 4,
+                            marginBottom: 24,
+                            fontSize: 12,
+                            wordBreak: 'break-all'
+                        }}>
+                            <span style={{ color: '#999' }}>手动输入密钥: </span>
+                            <code>{totpData?.secret}</code>
+                        </div>
+                        <Form onFinish={handleRebind} layout="vertical">
+                            <Form.Item
+                                name="totpCode"
+                                label="输入验证码"
+                                rules={[
+                                    { required: true, message: '请输入验证码' },
+                                    { pattern: /^\d{6}$/, message: '请输入6位数字' }
+                                ]}
+                            >
+                                <Input
+                                    placeholder="输入6位验证码"
+                                    maxLength={6}
+                                    style={{ textAlign: 'center', letterSpacing: 8, fontSize: 18 }}
+                                />
+                            </Form.Item>
+                            <Space style={{ width: '100%' }} direction="vertical">
+                                <Button
+                                    type="primary"
+                                    htmlType="submit"
+                                    loading={confirming}
+                                    block
+                                    size="large"
+                                    icon={<CheckCircleOutlined />}
+                                >
+                                    确认绑定
+                                </Button>
+                                <Button block onClick={() => navigate('/login')}>
+                                    取消
+                                </Button>
+                            </Space>
+                        </Form>
+                    </div>
+                )
+
+            case 'success':
+                return (
+                    <Result
+                        status="success"
+                        title="绑定成功"
+                        subTitle="您的 2FA 已重新绑定，现在可以使用新的验证器登录。"
+                        extra={[
+                            <Button type="primary" key="login" onClick={() => navigate('/login')}>
+                                前往登录
+                            </Button>,
+                        ]}
+                    />
+                )
+        }
+    }
 
     return (
         <Layout className="login-layout">
@@ -68,51 +211,8 @@ export function ResetTotpConfirm() {
                 </div>
             </Header>
             <Content className="login-content">
-                <Card className="login-card" style={{ width: 400 }}>
-                    {verifying ? (
-                        <div style={{ textAlign: 'center', padding: 40 }}>
-                            <Spin size="large" tip="验证链接中..." />
-                        </div>
-                    ) : !valid ? (
-                        <Result
-                            status="error"
-                            title="无效的链接"
-                            subTitle="该重置链接无效或已过期，请重新请求。"
-                            extra={[
-                                <Button type="primary" key="retry" onClick={() => navigate('/auth/request-totp-reset')}>
-                                    重新发送
-                                </Button>,
-                                <Button key="login" onClick={() => navigate('/login')}>
-                                    返回登录
-                                </Button>,
-                            ]}
-                        />
-                    ) : !success ? (
-                        <Result
-                            status="warning"
-                            title="确认重置 2FA？"
-                            subTitle="此操作将移除您账号当前绑定的 Google 验证码。如果您找回了旧设备，之前的验证码将失效。"
-                            extra={[
-                                <Button type="primary" danger key="confirm" loading={confirming} onClick={handleConfirm} size="large">
-                                    确认重置
-                                </Button>,
-                                <Button key="cancel" onClick={() => navigate('/login')}>
-                                    取消
-                                </Button>,
-                            ]}
-                        />
-                    ) : (
-                        <Result
-                            status="success"
-                            title="重置成功"
-                            subTitle="您的 2FA 已被移除，现在您可以仅使用密码登录。"
-                            extra={[
-                                <Button type="primary" key="login" onClick={() => navigate('/login')}>
-                                    前往登录
-                                </Button>,
-                            ]}
-                        />
-                    )}
+                <Card className="login-card" style={{ width: 420 }}>
+                    {renderContent()}
                 </Card>
             </Content>
         </Layout>
