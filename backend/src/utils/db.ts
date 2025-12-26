@@ -173,7 +173,7 @@ export async function getUserFullContext(
       userId: employees.id,
       userEmail: employees.personalEmail,
       employeeName: employees.name,
-      employeeId: employees.id,
+      // employee 和 user 是同一个表，id 相同，不需要重复选择
       orgDepartmentId: employees.orgDepartmentId,
       employeeDepartmentId: employees.departmentId,
       // position
@@ -208,9 +208,9 @@ export async function getUserFullContext(
     }
     : null
 
-  const employee = result.employeeId
+  const employee = result.userId
     ? {
-      id: result.employeeId,
+      id: result.userId,
       orgDepartmentId: result.orgDepartmentId,
       departmentId: result.employeeDepartmentId,
     }
