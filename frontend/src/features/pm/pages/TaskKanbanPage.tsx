@@ -10,7 +10,7 @@ import {
 import {
     PlusOutlined, SearchOutlined, MoreOutlined,
     EditOutlined, DeleteOutlined, ClockCircleOutlined, UserOutlined,
-    ProjectOutlined
+    ProjectOutlined, EyeOutlined
 } from '@ant-design/icons'
 import {
     useKanbanTasks, useUpdateTaskStatus, useDeleteTask, useProjects,
@@ -42,53 +42,79 @@ interface TaskCardProps {
     onDragStart: (e: React.DragEvent, task: Task) => void
     onEdit: (task: Task) => void
     onDelete: (task: Task) => void
+    onView: (task: Task) => void
 }
 
-function TaskCard({ task, onDragStart, onEdit, onDelete }: TaskCardProps) {
+function TaskCard({ task, onDragStart, onEdit, onDelete, onView }: TaskCardProps) {
     const menuItems = [
+        { key: 'view', icon: <EyeOutlined />, label: '查看详情', onClick: () => onView(task) },
         { key: 'edit', icon: <EditOutlined />, label: '编辑', onClick: () => onEdit(task) },
         { type: 'divider' as const },
         { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => onDelete(task) },
     ]
+
+    // 获取负责人列表
+    const assigneeList = task.assigneeNames?.length ? task.assigneeNames : (task.assigneeName ? [task.assigneeName] : [])
 
     return (
         <Card
             size="small"
             draggable
             onDragStart={(e) => onDragStart(e, task)}
-            style={{ marginBottom: 8, cursor: 'grab' }}
+            onClick={() => onView(task)}
+            style={{
+                marginBottom: 8,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+            }}
             hoverable
-            className="page-card-inner"
+            className="page-card-inner task-card"
+            styles={{
+                body: { padding: '12px' }
+            }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <Text strong style={{ flex: 1, marginRight: 8 }} ellipsis>
+                <Text strong style={{ flex: 1, marginRight: 8, fontSize: 14 }} ellipsis={{ tooltip: task.title }}>
                     {task.title}
                 </Text>
                 <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-                    <Button type="text" size="small" icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<MoreOutlined />}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ opacity: 0.6 }}
+                        className="task-card-menu"
+                    />
                 </Dropdown>
             </div>
 
-            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
-                <Text code style={{ fontSize: 10 }}>{task.code}</Text>
+            {task.description && (
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }} ellipsis={{ rows: 2 }}>
+                    {task.description}
+                </Text>
+            )}
+
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 8 }}>
+                <Text code style={{ fontSize: 10, background: '#f5f5f5' }}>{task.code}</Text>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                <Space size={4}>
+                <Space size={4} wrap>
                     <Tag color={PRIORITY_CONFIG[task.priority]?.color} style={{ margin: 0, fontSize: 10 }}>
                         {PRIORITY_CONFIG[task.priority]?.label || task.priority}
                     </Tag>
                     {task.dueDate && (
-                        <span style={{ color: '#8c8c8c' }}>
-                            <ClockCircleOutlined style={{ marginRight: 4 }} />
+                        <span style={{ color: dayjs(task.dueDate).isBefore(dayjs()) ? '#ff4d4f' : '#8c8c8c' }}>
+                            <ClockCircleOutlined style={{ marginRight: 2 }} />
                             {dayjs(task.dueDate).format('MM/DD')}
                         </span>
                     )}
                 </Space>
-                {task.assigneeName && (
-                    <span style={{ color: '#595959' }}>
-                        <UserOutlined style={{ marginRight: 4 }} />
-                        {task.assigneeName}
+                {assigneeList.length > 0 && (
+                    <span style={{ color: '#595959', fontSize: 11 }}>
+                        <UserOutlined style={{ marginRight: 2 }} />
+                        {assigneeList.length > 1 ? `${assigneeList[0]}等${assigneeList.length}人` : assigneeList[0]}
                     </span>
                 )}
             </div>
@@ -107,10 +133,11 @@ interface KanbanColumnProps {
     onDragStart: (e: React.DragEvent, task: Task) => void
     onEdit: (task: Task) => void
     onDelete: (task: Task) => void
+    onView: (task: Task) => void
 }
 
 function KanbanColumn({
-    title, color, tasks, status, onDragOver, onDrop, onDragStart, onEdit, onDelete
+    title, color, tasks, status, onDragOver, onDrop, onDragStart, onEdit, onDelete, onView
 }: KanbanColumnProps) {
     return (
         <Card
@@ -139,6 +166,7 @@ function KanbanColumn({
                             onDragStart={onDragStart}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            onView={onView}
                         />
                     ))
                 )}
@@ -155,6 +183,7 @@ export default function TaskKanbanPage() {
     const [searchText, setSearchText] = useState('')
     const [draggedTask, setDraggedTask] = useState<Task | null>(null)
     const [deleteModalVisible, setDeleteModalVisible] = useState(false)
+    const [viewModalVisible, setViewModalVisible] = useState(false)
     const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
     const { data: projects = [] } = useProjects()
@@ -198,6 +227,12 @@ export default function TaskKanbanPage() {
         } finally {
             setDraggedTask(null)
         }
+    }
+
+    // 处理查看详情
+    const handleView = (task: Task) => {
+        setSelectedTask(task)
+        setViewModalVisible(true)
     }
 
     // 处理编辑
@@ -314,6 +349,7 @@ export default function TaskKanbanPage() {
                                 onDragStart={handleDragStart}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
+                                onView={handleView}
                             />
                         ))}
                     </div>
@@ -330,6 +366,96 @@ export default function TaskKanbanPage() {
                 okButtonProps={{ danger: true }}
             >
                 <p>确定要删除任务 <strong>{selectedTask?.title}</strong> 吗？</p>
+            </Modal>
+
+            {/* 任务详情弹窗 */}
+            <Modal
+                title={
+                    <Space>
+                        <Text code>{selectedTask?.code}</Text>
+                        <Text strong>{selectedTask?.title}</Text>
+                    </Space>
+                }
+                open={viewModalVisible}
+                onCancel={() => setViewModalVisible(false)}
+                footer={[
+                    <Button key="close" onClick={() => setViewModalVisible(false)}>关闭</Button>,
+                    <Button key="edit" type="primary" icon={<EditOutlined />} onClick={() => {
+                        setViewModalVisible(false)
+                        selectedTask && handleEdit(selectedTask)
+                    }}>编辑</Button>
+                ]}
+                width={600}
+            >
+                {selectedTask && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {/* 状态和优先级 */}
+                        <Space size={8}>
+                            <Tag color={KANBAN_COLUMNS.find(c => c.key === selectedTask.status)?.color}>
+                                {KANBAN_COLUMNS.find(c => c.key === selectedTask.status)?.title || selectedTask.status}
+                            </Tag>
+                            <Tag color={PRIORITY_CONFIG[selectedTask.priority]?.color}>
+                                优先级: {PRIORITY_CONFIG[selectedTask.priority]?.label || selectedTask.priority}
+                            </Tag>
+                            {selectedTask.dueDate && (
+                                <Tag icon={<ClockCircleOutlined />} color={dayjs(selectedTask.dueDate).isBefore(dayjs()) ? 'error' : 'default'}>
+                                    截止: {dayjs(selectedTask.dueDate).format('YYYY-MM-DD')}
+                                </Tag>
+                            )}
+                        </Space>
+
+                        {/* 描述 */}
+                        {selectedTask.description && (
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>描述</Text>
+                                <div style={{ marginTop: 4, padding: 12, background: '#fafafa', borderRadius: 4 }}>
+                                    {selectedTask.description}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 人员信息 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>开发人员</Text>
+                                <div style={{ marginTop: 4 }}>
+                                    {selectedTask.assigneeNames?.length ? selectedTask.assigneeNames.join('、') :
+                                        selectedTask.assigneeName || <Text type="secondary">未指定</Text>}
+                                </div>
+                            </div>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>审核人员</Text>
+                                <div style={{ marginTop: 4 }}>
+                                    {selectedTask.reviewerNames?.length ? selectedTask.reviewerNames.join('、') :
+                                        <Text type="secondary">未指定</Text>}
+                                </div>
+                            </div>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>测试人员</Text>
+                                <div style={{ marginTop: 4 }}>
+                                    {selectedTask.testerNames?.length ? selectedTask.testerNames.join('、') :
+                                        <Text type="secondary">未指定</Text>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 工时信息 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>预估工时</Text>
+                                <div style={{ marginTop: 4 }}>{selectedTask.estimatedHours ? `${selectedTask.estimatedHours}h` : '-'}</div>
+                            </div>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>实际工时</Text>
+                                <div style={{ marginTop: 4 }}>{selectedTask.actualHours ? `${selectedTask.actualHours}h` : '-'}</div>
+                            </div>
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>开始日期</Text>
+                                <div style={{ marginTop: 4 }}>{selectedTask.startDate || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </PageContainer>
     )
