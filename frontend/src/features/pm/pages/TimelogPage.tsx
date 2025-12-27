@@ -270,7 +270,7 @@ export default function TimelogPage() {
                 </Card>
 
                 {/* 标签页 */}
-                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+                <Tabs type="card" activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
             </Card>
 
             {/* 创建工时弹窗 */}
