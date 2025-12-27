@@ -209,7 +209,7 @@ export default function ProjectDetailPage() {
 
             {/* 标签页 */}
             <Card>
-                <Tabs activeKey={activeTab} onChange={setActiveTab}>
+                <Tabs type="card" activeKey={activeTab} onChange={setActiveTab}>
                     <TabPane tab="概览" key="overview">
                         {project && (
                             <Descriptions bordered column={2}>

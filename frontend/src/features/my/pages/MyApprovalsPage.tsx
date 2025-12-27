@@ -164,7 +164,7 @@ export function MyApprovals() {
       breadcrumb={[{ title: '个人中心' }, { title: '我的审批' }]}
     >
       <Card bordered={false} className="page-card">
-        <Tabs defaultActiveKey="leaves" items={[
+        <Tabs type="card" defaultActiveKey="leaves" items={[
           {
             key: 'leaves',
             label: <><CalendarOutlined /> 请假 <Badge count={counts.leaves} size="small" /></>,

@@ -58,7 +58,7 @@ export function MyAssets() {
       breadcrumb={[{ title: '个人中心' }, { title: '我的资产' }]}
     >
       <Card bordered={false} className="page-card">
-        <Tabs defaultActiveKey="current" items={[
+        <Tabs type="card" defaultActiveKey="current" items={[
           {
             key: 'current',
             label: `当前持有 (${current.length})`,
