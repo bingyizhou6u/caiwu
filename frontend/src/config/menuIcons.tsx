@@ -36,6 +36,8 @@ import {
     BuildOutlined,
     BookOutlined,
     ThunderboltFilled,
+    ProjectOutlined,
+    ClockCircleOutlined,
 } from '@ant-design/icons'
 import React from 'react'
 
@@ -49,7 +51,7 @@ export const menuIcons: Record<string, React.ReactNode> = {
     'fixed-assets-menu': <HomeOutlined />,
     'reports': <BarChartOutlined />,
     'system': <SettingOutlined />,
-    
+
     // 我的工作台
     'my-center': <UserOutlined />,
     'my-leaves': <CalendarOutlined />,
@@ -58,7 +60,7 @@ export const menuIcons: Record<string, React.ReactNode> = {
     'my-assets': <HomeOutlined />,
     'company-policies': <BookOutlined />,
     'my-approvals': <AuditOutlined />,
-    
+
     // 财务管理
     'flow-create': <PlusOutlined />,
     'flows': <TransactionOutlined />,
@@ -74,7 +76,7 @@ export const menuIcons: Record<string, React.ReactNode> = {
     'account': <BankOutlined />,
     'currency': <GlobalOutlined />,
     'vendor': <ShopOutlined />,
-    
+
     // 人力资源
     'employee': <TeamOutlined />,
     'employee-salary': <MoneyCollectOutlined />,
@@ -82,15 +84,15 @@ export const menuIcons: Record<string, React.ReactNode> = {
     'allowance-payments': <GiftOutlined />,
     'employee-leave': <CalendarOutlined />,
     'expense-reimbursement': <FileTextOutlined />,
-    
+
     // 站点管理
     'site-management': <ShopOutlined />,
     'site-bills': <AccountBookOutlined />,
-    
+
     // 资产管理
     'fixed-assets': <HomeOutlined />,
     'rental-management': <HomeOutlined />,
-    
+
     // 报表中心
     'report-finance': <PieChartOutlined />,
     'report-arap': <TableOutlined />,
@@ -105,7 +107,7 @@ export const menuIcons: Record<string, React.ReactNode> = {
     'report-expense-detail': <TableOutlined />,
     'report-account-balance': <AccountBookFilled />,
     'report-borrowing': <CreditCardOutlined />,
-    
+
     // 系统设置
     'department': <ApartmentOutlined />,
     'position-permissions': <SafetyOutlined />,
@@ -113,6 +115,12 @@ export const menuIcons: Record<string, React.ReactNode> = {
     'ip-whitelist': <SafetyOutlined />,
     'audit': <HistoryOutlined />,
     'change-password': <KeyOutlined />,
+
+    // 项目管理 (PM)
+    'pm': <ProjectOutlined />,
+    'pm-projects': <ProjectOutlined />,
+    'pm-kanban': <AppstoreOutlined />,
+    'pm-timelogs': <ClockCircleOutlined />,
 }
 
 // 获取菜单图标

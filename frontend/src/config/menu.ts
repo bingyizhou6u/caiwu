@@ -55,6 +55,10 @@ export const pageTitles: Record<string, string> = {
     'ip-whitelist': 'IP白名单',
     'audit': '审计日志',
     'change-password': '修改密码',
+    // 项目管理(PM)
+    'pm-projects': '项目列表',
+    'pm-kanban': '任务看板',
+    'pm-timelogs': '工时管理',
 }
 
 export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
@@ -216,7 +220,22 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         items.push({ key: 'reports', label: '报表中心', icon: getMenuIcon('reports'), children: reports })
     }
 
-    // 7. 系统设置
+    // 7. 项目管理 (PM)
+    const pm: MenuProps['items'] = []
+    if (hasPermission(userInfo, 'pm', 'project', 'view')) {
+        pm.push({ key: 'pm-projects', label: '项目列表', icon: getMenuIcon('pm-projects') })
+    }
+    if (hasPermission(userInfo, 'pm', 'task', 'view')) {
+        pm.push({ key: 'pm-kanban', label: '任务看板', icon: getMenuIcon('pm-kanban') })
+    }
+    if (hasPermission(userInfo, 'pm', 'timelog', 'view') || hasPermission(userInfo, 'self', 'timelog', 'view')) {
+        pm.push({ key: 'pm-timelogs', label: '工时管理', icon: getMenuIcon('pm-timelogs') })
+    }
+    if (pm.length > 0) {
+        items.push({ key: 'pm', label: '项目管理', icon: getMenuIcon('pm'), children: pm })
+    }
+
+    // 8. 系统设置
     const system: MenuProps['items'] = []
     // 基础数据管理
     if (hasPermission(userInfo, 'system', 'department', 'view')) {
@@ -286,6 +305,11 @@ export const KEY_TO_PATH: Record<string, string> = {
     'ip-whitelist': '/system/ip-whitelist',
     'audit': '/system/audit',
     'change-password': '/change-password',
+
+    // PM
+    'pm-projects': '/pm/projects',
+    'pm-kanban': '/pm/tasks/kanban',
+    'pm-timelogs': '/pm/timelogs',
 }
 
 // 反向映射：路径 -> 菜单 key
