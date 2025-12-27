@@ -6,13 +6,12 @@
  * - 支持键盘导航
  * - 支持屏幕阅读器
  * - 支持减少动画模式
- * - 支持高对比度模式
  */
 import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
     Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Select, Space,
-    Statistic, Table, Tabs, Row, Col
+    Table, Tabs, Row, Col
 } from 'antd'
 import {
     PlusOutlined, ClockCircleOutlined, TeamOutlined, CalendarOutlined
@@ -23,6 +22,7 @@ import {
     type Timelog, type Project, type Task
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
+import { StatCard } from '../../../components/common'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import styles from './TimelogPage.module.css'
@@ -232,36 +232,30 @@ export default function TimelogPage() {
                 {/* 统计卡片 */}
                 <Row gutter={[24, 24]} className={styles.statsRow} role="region" aria-label="工时统计">
                     <Col xs={24} sm={8}>
-                        <Card className={`page-card-inner ${styles.statCard}`} hoverable>
-                            <Statistic
-                                title="我的工时"
-                                value={myTotalHours.toFixed(1)}
-                                suffix="h"
-                                prefix={<ClockCircleOutlined aria-hidden="true" />}
-                                valueStyle={{ color: 'var(--timelog-stat-my, #1890ff)' }}
-                            />
-                        </Card>
+                        <StatCard
+                            title="我的工时"
+                            value={myTotalHours.toFixed(1)}
+                            suffix="h"
+                            icon={<ClockCircleOutlined />}
+                            color="#1890ff"
+                        />
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Card className={`page-card-inner ${styles.statCard}`} hoverable>
-                            <Statistic
-                                title="团队总工时"
-                                value={teamTotalHours.toFixed(1)}
-                                suffix="h"
-                                prefix={<TeamOutlined aria-hidden="true" />}
-                                valueStyle={{ color: 'var(--timelog-stat-team, #52c41a)' }}
-                            />
-                        </Card>
+                        <StatCard
+                            title="团队总工时"
+                            value={teamTotalHours.toFixed(1)}
+                            suffix="h"
+                            icon={<TeamOutlined />}
+                            color="#52c41a"
+                        />
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Card className={`page-card-inner ${styles.statCard}`} hoverable>
-                            <Statistic
-                                title="活跃成员"
-                                value={workloadSummary.length}
-                                prefix={<TeamOutlined aria-hidden="true" />}
-                                valueStyle={{ color: 'var(--timelog-stat-members, #722ed1)' }}
-                            />
-                        </Card>
+                        <StatCard
+                            title="活跃成员"
+                            value={workloadSummary.length}
+                            icon={<TeamOutlined />}
+                            color="#722ed1"
+                        />
                     </Col>
                 </Row>
 

@@ -1,0 +1,24 @@
+/**
+ * 统计卡片组件样式
+ * 支持暗色模式、减少动画模式
+ */
+
+.statCard {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.statCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+    .statCard {
+        transition: none;
+    }
+
+    .statCard:hover {
+        transform: none;
+    }
+}

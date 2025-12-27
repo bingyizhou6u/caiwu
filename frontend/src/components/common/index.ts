@@ -22,3 +22,7 @@ export type { PageToolbarProps, PageToolbarAction } from './PageToolbar'
 
 export { BatchActionButton } from './BatchActionButton'
 export type { BatchActionButtonProps } from './BatchActionButton'
+
+export { StatCard } from './StatCard'
+export type { StatCardProps } from './StatCard'
+
