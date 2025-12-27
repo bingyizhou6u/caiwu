@@ -149,35 +149,47 @@ export default function TimelogPage() {
         },
     ]
 
+    // 空状态提示
+    const emptyState = (text: string) => (
+        <div style={{ textAlign: 'center', padding: 48, color: '#8c8c8c' }}>
+            <ClockCircleOutlined style={{ fontSize: 48, marginBottom: 16, color: '#bfbfbf' }} />
+            <div>{text}</div>
+        </div>
+    )
+
     const tabItems = [
         {
             key: 'my',
             label: <span><ClockCircleOutlined /> 我的工时 ({myTimelogs.length})</span>,
             children: (
-                <Card className="page-card-inner">
+                <Card className="page-card-inner" hoverable>
                     <Table
                         columns={timelogColumns}
                         dataSource={myTimelogs}
                         rowKey="id"
                         loading={myLoading}
-                        pagination={{ pageSize: 20 }}
+                        pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
                         size="small"
+                        locale={{ emptyText: emptyState('暂无工时记录，点击右上角"记录工时"添加') }}
+                        rowClassName={(_, index) => index % 2 === 0 ? '' : 'table-row-alt'}
                     />
                 </Card>
             ),
         },
         {
             key: 'team',
-            label: <span><TeamOutlined /> 团队工时</span>,
+            label: <span><TeamOutlined /> 团队工时 ({teamTimelogs.length})</span>,
             children: (
-                <Card className="page-card-inner">
+                <Card className="page-card-inner" hoverable>
                     <Table
                         columns={teamTimelogColumns}
                         dataSource={teamTimelogs}
                         rowKey="id"
                         loading={teamLoading}
-                        pagination={{ pageSize: 20 }}
+                        pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
                         size="small"
+                        locale={{ emptyText: emptyState('暂无团队工时记录') }}
+                        rowClassName={(_, index) => index % 2 === 0 ? '' : 'table-row-alt'}
                     />
                 </Card>
             ),
@@ -186,13 +198,15 @@ export default function TimelogPage() {
             key: 'summary',
             label: <span><CalendarOutlined /> 工时汇总</span>,
             children: (
-                <Card className="page-card-inner">
+                <Card className="page-card-inner" hoverable>
                     <Table
                         columns={workloadColumns}
                         dataSource={workloadSummary}
                         rowKey="employeeId"
                         pagination={false}
                         size="small"
+                        locale={{ emptyText: emptyState('暂无工时汇总数据') }}
+                        rowClassName={(_, index) => index % 2 === 0 ? '' : 'table-row-alt'}
                     />
                 </Card>
             ),
@@ -208,7 +222,7 @@ export default function TimelogPage() {
                 {/* 统计卡片 */}
                 <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
                     <Col xs={24} sm={8}>
-                        <Card className="page-card-inner">
+                        <Card className="page-card-inner" hoverable>
                             <Statistic
                                 title="我的工时"
                                 value={myTotalHours.toFixed(1)}
@@ -219,7 +233,7 @@ export default function TimelogPage() {
                         </Card>
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Card className="page-card-inner">
+                        <Card className="page-card-inner" hoverable>
                             <Statistic
                                 title="团队总工时"
                                 value={teamTotalHours.toFixed(1)}
@@ -230,7 +244,7 @@ export default function TimelogPage() {
                         </Card>
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Card className="page-card-inner">
+                        <Card className="page-card-inner" hoverable>
                             <Statistic
                                 title="活跃成员"
                                 value={workloadSummary.length}
