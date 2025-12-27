@@ -172,6 +172,7 @@ export default function ProjectDetailPage() {
     return (
         <PageContainer
             title={project?.name || '项目详情'}
+            documentTitle={project?.name || '项目详情'}
             breadcrumb={[
                 { title: '项目管理' },
                 { title: '项目列表', path: '/pm/projects' },

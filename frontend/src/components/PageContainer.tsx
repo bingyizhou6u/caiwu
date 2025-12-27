@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Breadcrumb, Spin } from 'antd'
 import { Link } from 'react-router-dom'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -12,6 +12,8 @@ interface BreadcrumbItem {
 
 interface PageContainerProps {
     title?: React.ReactNode
+    /** 用于浏览器标签的纯文本标题 */
+    documentTitle?: string
     breadcrumb?: BreadcrumbItem[]
     extra?: React.ReactNode
     children: React.ReactNode
@@ -23,6 +25,7 @@ interface PageContainerProps {
 
 export function PageContainer({
     title,
+    documentTitle,
     breadcrumb,
     extra,
     children,
@@ -31,6 +34,13 @@ export function PageContainer({
     errorBoundary = true,
     errorFallback,
 }: PageContainerProps) {
+    // 设置浏览器标签标题
+    useEffect(() => {
+        const pageTitle = documentTitle || (typeof title === 'string' ? title : null)
+        if (pageTitle) {
+            document.title = `${pageTitle} - AR财务系统`
+        }
+    }, [title, documentTitle])
     const content = (
         <div className={`page-container animate-fade-in ${className}`}>
             {(title || breadcrumb || extra) && (
