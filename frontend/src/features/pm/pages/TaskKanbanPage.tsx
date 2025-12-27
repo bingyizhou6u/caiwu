@@ -2,13 +2,13 @@
  * 任务看板页面
  * 支持拖拽切换任务状态
  */
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
     Badge, Button, Card, Dropdown, Input, message, Modal, Select, Space, Tag, Typography, Spin
 } from 'antd'
 import {
-    PlusOutlined, ArrowLeftOutlined, SearchOutlined, MoreOutlined,
+    PlusOutlined, SearchOutlined, MoreOutlined,
     EditOutlined, DeleteOutlined, ClockCircleOutlined, UserOutlined
 } from '@ant-design/icons'
 import {
@@ -16,9 +16,10 @@ import {
     type Task, type Project
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
+import { PageToolbar } from '../../../components/common'
 import dayjs from 'dayjs'
 
-const { Text, Title } = Typography
+const { Text } = Typography
 
 // 看板列配置
 const KANBAN_COLUMNS = [
@@ -53,10 +54,20 @@ function TaskCard({ task, onDragStart, onEdit, onDelete }: TaskCardProps) {
         <div
             draggable
             onDragStart={(e) => onDragStart(e, task)}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-2 cursor-move hover:shadow-md transition-shadow"
+            style={{
+                background: '#fff',
+                borderRadius: 8,
+                border: '1px solid #f0f0f0',
+                padding: 12,
+                marginBottom: 8,
+                cursor: 'grab',
+                transition: 'box-shadow 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
         >
-            <div className="flex items-start justify-between mb-2">
-                <Text strong className="flex-1 mr-2" ellipsis>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <Text strong style={{ flex: 1, marginRight: 8 }} ellipsis>
                     {task.title}
                 </Text>
                 <Dropdown menu={{ items: menuItems }} trigger={['click']}>
@@ -64,25 +75,25 @@ function TaskCard({ task, onDragStart, onEdit, onDelete }: TaskCardProps) {
                 </Dropdown>
             </div>
 
-            <div className="text-xs text-gray-500 mb-2">
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
                 <Text code style={{ fontSize: 10 }}>{task.code}</Text>
             </div>
 
-            <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                <Space size={4}>
                     <Tag color={PRIORITY_CONFIG[task.priority]?.color} style={{ margin: 0, fontSize: 10 }}>
                         {PRIORITY_CONFIG[task.priority]?.label || task.priority}
                     </Tag>
                     {task.dueDate && (
-                        <span className="text-gray-400">
-                            <ClockCircleOutlined className="mr-1" />
+                        <span style={{ color: '#8c8c8c' }}>
+                            <ClockCircleOutlined style={{ marginRight: 4 }} />
                             {dayjs(task.dueDate).format('MM/DD')}
                         </span>
                     )}
-                </div>
+                </Space>
                 {task.assigneeName && (
-                    <span className="text-gray-500">
-                        <UserOutlined className="mr-1" />
+                    <span style={{ color: '#595959' }}>
+                        <UserOutlined style={{ marginRight: 4 }} />
                         {task.assigneeName}
                     </span>
                 )}
@@ -109,27 +120,37 @@ function KanbanColumn({
 }: KanbanColumnProps) {
     return (
         <div
-            className="flex-1 min-w-[280px] max-w-[350px] bg-gray-50 rounded-lg p-3"
+            style={{
+                flex: 1,
+                minWidth: 280,
+                maxWidth: 320,
+                background: '#fafafa',
+                borderRadius: 8,
+                padding: 12,
+            }}
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, status)}
         >
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                    <Text strong>{title}</Text>
-                    <Badge count={tasks.length} style={{ backgroundColor: '#d9d9d9' }} />
-                </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: `2px solid ${color}` }}>
+                <Text strong>{title}</Text>
+                <Badge count={tasks.length} style={{ backgroundColor: color }} />
             </div>
-            <div className="min-h-[400px]">
-                {tasks.map((task) => (
-                    <TaskCard
-                        key={task.id}
-                        task={task}
-                        onDragStart={onDragStart}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                    />
-                ))}
+            <div style={{ minHeight: 400, maxHeight: 'calc(100vh - 320px)', overflowY: 'auto' }}>
+                {tasks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 24, color: '#bfbfbf' }}>
+                        拖拽任务到此处
+                    </div>
+                ) : (
+                    tasks.map((task) => (
+                        <TaskCard
+                            key={task.id}
+                            task={task}
+                            onDragStart={onDragStart}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                        />
+                    ))
+                )}
             </div>
         </div>
     )
@@ -223,53 +244,56 @@ export default function TaskKanbanPage() {
 
     if (!projectId) {
         return (
-            <div className="p-6">
-                <Card>
-                    <div className="text-center py-8">
-                        <Title level={4}>请选择项目</Title>
+            <PageContainer
+                title="任务看板"
+                breadcrumb={[{ title: '项目管理' }, { title: '任务看板' }]}
+            >
+                <Card bordered={false} className="page-card">
+                    <div style={{ textAlign: 'center', padding: 48 }}>
+                        <Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 16 }}>
+                            请选择一个项目查看任务看板
+                        </Text>
                         <Select
                             placeholder="选择项目"
                             style={{ width: 300 }}
+                            showSearch
+                            optionFilterProp="label"
                             options={projects.map((p: Project) => ({ value: p.id, label: `${p.code} - ${p.name}` }))}
                             onChange={(value) => navigate(`/pm/tasks/kanban?projectId=${value}`)}
                         />
                     </div>
                 </Card>
-            </div>
+            </PageContainer>
         )
     }
 
     return (
         <PageContainer
-            title={`任务看板${currentProject ? ` - ${currentProject.name}` : ''}`}
-            breadcrumb={[{ title: '项目管理' }, { title: '任务看板' }]}
+            title={`任务看板 - ${currentProject?.name || ''}`}
+            breadcrumb={[{ title: '项目管理' }, { title: '进度列表' }, { title: '任务看板' }]}
         >
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/pm/projects/${projectId}`)}>
-                        返回项目
-                    </Button>
-                    <div>
-                        <Title level={4} className="mb-0">任务看板</Title>
-                        {currentProject && <Text type="secondary">{currentProject.name}</Text>}
-                    </div>
-                </div>
-                <Space>
-                    <Input
-                        placeholder="搜索任务..."
-                        prefix={<SearchOutlined className="text-gray-400" />}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        style={{ width: 200 }}
-                        allowClear
-                    />
-                    <Select
-                        placeholder="切换项目"
-                        style={{ width: 200 }}
-                        value={projectId}
-                        options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
-                        onChange={(value) => navigate(`/pm/tasks/kanban?projectId=${value}`)}
-                    />
+            <Card bordered={false} className="page-card">
+                {/* 工具栏 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <Space>
+                        <Input
+                            placeholder="搜索任务..."
+                            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            style={{ width: 200 }}
+                            allowClear
+                        />
+                        <Select
+                            placeholder="切换项目"
+                            style={{ width: 200 }}
+                            value={projectId}
+                            showSearch
+                            optionFilterProp="label"
+                            options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
+                            onChange={(value) => navigate(`/pm/tasks/kanban?projectId=${value}`)}
+                        />
+                    </Space>
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -277,32 +301,32 @@ export default function TaskKanbanPage() {
                     >
                         新建任务
                     </Button>
-                </Space>
-            </div>
+                </div>
 
-            {/* 看板区域 */}
-            {isLoading ? (
-                <div className="flex items-center justify-center h-96">
-                    <Spin size="large" />
-                </div>
-            ) : (
-                <div className="flex gap-4 overflow-x-auto pb-4">
-                    {KANBAN_COLUMNS.map((column) => (
-                        <KanbanColumn
-                            key={column.key}
-                            title={column.title}
-                            color={column.color}
-                            tasks={getTasksByStatus(column.key)}
-                            status={column.key}
-                            onDragOver={handleDragOver}
-                            onDrop={handleDrop}
-                            onDragStart={handleDragStart}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                        />
-                    ))}
-                </div>
-            )}
+                {/* 看板区域 */}
+                {isLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+                        <Spin size="large" />
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
+                        {KANBAN_COLUMNS.map((column) => (
+                            <KanbanColumn
+                                key={column.key}
+                                title={column.title}
+                                color={column.color}
+                                tasks={getTasksByStatus(column.key)}
+                                status={column.key}
+                                onDragOver={handleDragOver}
+                                onDrop={handleDrop}
+                                onDragStart={handleDragStart}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
+                )}
+            </Card>
 
             {/* 删除确认弹窗 */}
             <Modal
