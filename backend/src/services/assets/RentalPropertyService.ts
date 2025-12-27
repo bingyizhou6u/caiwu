@@ -45,8 +45,8 @@ export class RentalPropertyService {
     // 3. 批量查询关联数据
     const departments: { id: string; name: string | null }[] = []
     for (const id of deptIds) {
-      const d = await this.db.select({ id: schema.departments.id, name: schema.departments.name })
-        .from(schema.departments).where(eq(schema.departments.id, id)).get()
+      const d = await this.db.select({ id: schema.projects.id, name: schema.projects.name })
+        .from(schema.projects).where(eq(schema.projects.id, id)).get()
       if (d) departments.push(d)
     }
 
@@ -117,8 +117,8 @@ export class RentalPropertyService {
     // 2. 查询关联数据
     const [department, account, currency, creator, changes] = await Promise.all([
       property.departmentId
-        ? this.db.select({ name: schema.departments.name }).from(schema.departments)
-          .where(eq(schema.departments.id, property.departmentId)).get()
+        ? this.db.select({ name: schema.projects.name }).from(schema.projects)
+          .where(eq(schema.projects.id, property.departmentId)).get()
         : Promise.resolve(null),
       property.paymentAccountId
         ? this.db.select({ name: schema.accounts.name }).from(schema.accounts)

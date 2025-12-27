@@ -4,7 +4,7 @@
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
-import { departments, sites, headquarters } from '../../db/schema.js'
+import { projects, sites, headquarters } from '../../db/schema.js'
 import { eq, and, ne } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
@@ -16,8 +16,8 @@ export class ProjectDepartmentService {
    * 获取总部的 department ID
    */
   async getHQDepartmentId(): Promise<string | null> {
-    const hqDept = await this.db.query.departments.findFirst({
-      where: eq(departments.name, '总部'),
+    const hqDept = await this.db.query.projects.findFirst({
+      where: eq(projects.name, '总部'),
     })
     return hqDept?.id || null
   }
@@ -37,7 +37,7 @@ export class ProjectDepartmentService {
         await this.db.insert(headquarters).values({ id: hqId, name: '总部', active: 1 }).execute()
       }
       await this.db
-        .insert(departments)
+        .insert(projects)
         .values({
           id: hqDeptId,
           name: '总部',
@@ -56,17 +56,17 @@ export class ProjectDepartmentService {
   async getDepartments() {
     return this.db
       .select()
-      .from(departments)
+      .from(projects)
       .orderBy(
-        departments.sortOrder, // 总部 sortOrder = 0，会排在最前面
-        departments.name
+        projects.sortOrder, // 总部 sortOrder = 0，会排在最前面
+        projects.name
       )
       .all()
   }
 
   async createDepartment(data: { name: string; hqId?: string; code?: string; sortOrder?: number }) {
-    const existing = await this.db.query.departments.findFirst({
-      where: eq(departments.name, data.name),
+    const existing = await this.db.query.projects.findFirst({
+      where: eq(projects.name, data.name),
     })
     if (existing) {
       throw Errors.DUPLICATE('部门名称')
@@ -91,7 +91,7 @@ export class ProjectDepartmentService {
     }
 
     await this.db
-      .insert(departments)
+      .insert(projects)
       .values({
         id,
         name: data.name,
@@ -109,15 +109,15 @@ export class ProjectDepartmentService {
 
   async updateDepartment(id: string, data: { name?: string; hqId?: string; active?: number; sortOrder?: number }) {
     if (data.name) {
-      const existing = await this.db.query.departments.findFirst({
-        where: and(eq(departments.name, data.name), ne(departments.id, id)),
+      const existing = await this.db.query.projects.findFirst({
+        where: and(eq(projects.name, data.name), ne(projects.id, id)),
       })
       if (existing) {
         throw Errors.DUPLICATE('部门名称')
       }
     }
 
-    const dept = await this.db.query.departments.findFirst({ where: eq(departments.id, id) })
+    const dept = await this.db.query.projects.findFirst({ where: eq(projects.id, id) })
     if (!dept) {
       throw Errors.NOT_FOUND('部门')
     }
@@ -128,12 +128,12 @@ export class ProjectDepartmentService {
     if (data.active !== undefined) { updates.active = data.active }
     if (data.sortOrder !== undefined) { updates.sortOrder = data.sortOrder }
 
-    await this.db.update(departments).set(updates).where(eq(departments.id, id)).execute()
+    await this.db.update(projects).set(updates).where(eq(projects.id, id)).execute()
     return { ok: true }
   }
 
   async deleteDepartment(id: string) {
-    const dept = await this.db.query.departments.findFirst({ where: eq(departments.id, id) })
+    const dept = await this.db.query.projects.findFirst({ where: eq(projects.id, id) })
     if (!dept) {
       throw Errors.NOT_FOUND('部门')
     }
@@ -160,7 +160,7 @@ export class ProjectDepartmentService {
       throw Errors.BUSINESS_ERROR('无法删除，该项目下还有组织部门')
     }
 
-    await this.db.delete(departments).where(eq(departments.id, id)).execute()
+    await this.db.delete(projects).where(eq(projects.id, id)).execute()
     return { ok: true, name: dept.name }
   }
 }

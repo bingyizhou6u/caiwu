@@ -4,7 +4,7 @@
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
-import { sites, departments } from '../../db/schema.js'
+import { sites, projects } from '../../db/schema.js'
 import { eq, and } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
@@ -13,12 +13,12 @@ export class SiteService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async getSites() {
-    const [sitesList, departmentsList] = await Promise.all([
+    const [sitesList, projectsList] = await Promise.all([
       this.db.select().from(sites).orderBy(sites.name).all(),
-      this.db.select().from(departments).all(),
+      this.db.select().from(projects).all(),
     ])
 
-    const deptMap = new Map(departmentsList.map(d => [d.id, d.name]))
+    const deptMap = new Map(projectsList.map(d => [d.id, d.name]))
 
     return sitesList.map(site => ({
       id: site.id,

@@ -9,7 +9,7 @@ import {
   salaryPayments,
   salaryPaymentAllocations,
   employees,
-  departments,
+  projects,
   orgDepartments,
   positions,
 } from '../../db/schema.js'
@@ -92,15 +92,15 @@ export class SalaryPaymentService {
     const orgDeptIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
     const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
 
-    const [departmentsList, orgDepartmentsList, positionsList] = await Promise.all([
+    const [projectsList, orgDepartmentsList, positionsList] = await Promise.all([
       deptIds.length > 0
         ? dbQuery(
             this.db,
             'SalaryPaymentService.list.getDepartments',
             () => this.db
-              .select({ id: departments.id, name: departments.name })
-              .from(departments)
-              .where(inArray(departments.id, deptIds))
+              .select({ id: projects.id, name: projects.name })
+              .from(projects)
+              .where(inArray(projects.id, deptIds))
               .all(),
             undefined
           )
@@ -133,7 +133,7 @@ export class SalaryPaymentService {
 
     // 4. 创建映射表
     const employeeMap = new Map(employeesList.map(e => [e.id, e]))
-    const deptMap = new Map(departmentsList.map(d => [d.id, d]))
+    const deptMap = new Map(projectsList.map(d => [d.id, d]))
     const orgDeptMap = new Map(orgDepartmentsList.map(od => [od.id, od]))
     const positionMap = new Map(positionsList.map(p => [p.id, p]))
 
@@ -226,9 +226,9 @@ export class SalaryPaymentService {
           this.db,
           'SalaryPaymentService.get.getDepartment',
           () => this.db
-            .select({ id: departments.id, name: departments.name })
-            .from(departments)
-            .where(eq(departments.id, employee.departmentId))
+            .select({ id: projects.id, name: projects.name })
+            .from(projects)
+            .where(eq(projects.id, employee.departmentId))
             .get(),
           undefined
         )

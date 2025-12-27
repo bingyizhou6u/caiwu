@@ -9,7 +9,7 @@ import {
   fixedAssets,
   fixedAssetAllocations,
   fixedAssetChanges,
-  departments,
+  projects,
   employees,
 } from '../../db/schema.js'
 import { eq, and, desc, sql, inArray, isNull, isNotNull } from 'drizzle-orm'
@@ -83,9 +83,9 @@ export class FixedAssetAllocationService {
     )
     const depts =
       deptIds.size > 0
-        ? await getByIds<typeof departments.$inferSelect>(
+        ? await getByIds<typeof projects.$inferSelect>(
           this.db,
-          departments,
+          projects,
           Array.from(deptIds),
           'FixedAssetAllocationService.list.getDepartments',
           { batchSize: 100, parallel: true },

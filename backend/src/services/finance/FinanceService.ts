@@ -6,7 +6,7 @@ import {
   accounts,
   categories,
   sites,
-  departments,
+  projects,
   siteBills,
   employees,
   currencies,

@@ -4,7 +4,7 @@
 
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
-import { orgDepartments, positions, departments } from '../../db/schema.js'
+import { orgDepartments, positions, projects } from '../../db/schema.js'
 import { eq, and, inArray } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
@@ -18,7 +18,7 @@ export class OrgDepartmentService {
     const od = orgDepartments
     const parent = alias(orgDepartments, 'parent')
     const p = positions
-    const d = departments
+    const d = projects
 
     const conditions = [eq(od.active, 1)]
     if (projectId) {
@@ -27,9 +27,9 @@ export class OrgDepartmentService {
 
       // 如果查询结果为空，检查是否为总部部门（hqId 为 null 表示该 department 本身就是总部）
       const projectDept = await this.db
-        .select({ hqId: departments.hqId })
-        .from(departments)
-        .where(eq(departments.id, projectId))
+        .select({ hqId: projects.hqId })
+        .from(projects)
+        .where(eq(projects.id, projectId))
         .get()
 
       // 如果 hqId 为 null，说明这是一个总部级别的 department

@@ -10,7 +10,7 @@ import {
   cashFlows,
   accounts,
   categories,
-  departments,
+  projects,
   sites,
   employees,
 } from '../../db/schema.js'
@@ -152,7 +152,7 @@ export class FinancialReportService {
     const deptIds = [...new Set(flows.map(f => f.departmentId).filter(Boolean) as string[])]
     const siteIds = [...new Set(flows.map(f => f.siteId).filter(Boolean) as string[])]
 
-    const [accountsList, categoriesList, departmentsList, sitesList] = await Promise.all([
+    const [accountsList, categoriesList, projectsList, sitesList] = await Promise.all([
       accountIds.length > 0
         ? this.db
             .select({ id: accounts.id, name: accounts.name, currency: accounts.currency })
@@ -169,9 +169,9 @@ export class FinancialReportService {
         : Promise.resolve([]),
       deptIds.length > 0
         ? this.db
-            .select({ id: departments.id, name: departments.name })
-            .from(departments)
-            .where(inArray(departments.id, deptIds))
+            .select({ id: projects.id, name: projects.name })
+            .from(projects)
+            .where(inArray(projects.id, deptIds))
             .all()
         : Promise.resolve([]),
       siteIds.length > 0
@@ -186,7 +186,7 @@ export class FinancialReportService {
     // 3. 创建映射表
     const accountMap = new Map(accountsList.map(a => [a.id, a]))
     const categoryMap = new Map(categoriesList.map(c => [c.id, c]))
-    const deptMap = new Map(departmentsList.map(d => [d.id, d]))
+    const deptMap = new Map(projectsList.map(d => [d.id, d]))
     const siteMap = new Map(sitesList.map(s => [s.id, s]))
 
     // 4. 组装结果

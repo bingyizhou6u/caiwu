@@ -62,7 +62,6 @@ export const positions = sqliteTable('positions', {
 })
 
 // 项目表（原 departments，现统一为 projects）
-// departments 现在是 projects 的别名，保持向后兼容
 export const projects = sqliteTable('projects', {
   id: text('id').primaryKey(),
   code: text('code').notNull().unique(), // 项目编码
@@ -85,9 +84,6 @@ export const projects = sqliteTable('projects', {
   updatedAt: integer('updated_at'),
   active: integer('active').default(1),
 })
-
-// departments 别名（向后兼容，所有使用 departments 的代码将透明使用 projects 表）
-export const departments = projects
 
 export const headquarters = sqliteTable('headquarters', {
   id: text('id').primaryKey(),

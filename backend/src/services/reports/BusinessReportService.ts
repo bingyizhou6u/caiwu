@@ -7,7 +7,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
 import {
   cashFlows,
-  departments,
+  projects,
   sites,
   employees,
   employeeLeaves,
@@ -45,33 +45,33 @@ export class BusinessReportService {
 
     let deptQuery = this.db
       .select({
-        id: departments.id,
-        name: departments.name,
+        id: projects.id,
+        name: projects.name,
         income_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='income' then ${cashFlows.amountCents} end), 0)`,
         expense_cents: sql<number>`coalesce(sum(case when ${cashFlows.type}='expense' then ${cashFlows.amountCents} end), 0)`,
         income_count: sql<number>`count(distinct case when ${cashFlows.type}='income' then ${cashFlows.id} end)`,
         expense_count: sql<number>`count(distinct case when ${cashFlows.type}='expense' then ${cashFlows.id} end)`,
       })
-      .from(departments)
+      .from(projects)
       .leftJoin(
         cashFlows,
         and(
-          eq(cashFlows.departmentId, departments.id),
+          eq(cashFlows.departmentId, projects.id),
           gte(cashFlows.bizDate, start),
           lte(cashFlows.bizDate, end)
         )
       )
-      .where(eq(departments.active, 1))
+      .where(eq(projects.active, 1))
       .$dynamic()
 
     if (departmentIds && departmentIds.length > 0) {
-      deptQuery = deptQuery.where(inArray(departments.id, departmentIds))
+      deptQuery = deptQuery.where(inArray(projects.id, departmentIds))
     }
 
     const rows = await query(
       this.db,
       'BusinessReportService.getDepartmentCashFlowReport.getRows',
-      () => deptQuery.groupBy(departments.id, departments.name).orderBy(departments.name).all(),
+      () => deptQuery.groupBy(projects.id, projects.name).orderBy(projects.name).all(),
       undefined
     )
 
@@ -265,15 +265,15 @@ export class BusinessReportService {
         id: employees.id,
         name: employees.name,
         departmentId: employees.departmentId,
-        departmentName: departments.name,
+        departmentName: projects.name,
         joinDate: employees.joinDate,
         status: employees.status,
         regularDate: employees.regularDate,
       })
       .from(employees)
-      .leftJoin(departments, eq(employees.departmentId, departments.id))
+      .leftJoin(projects, eq(employees.departmentId, projects.id))
       .where(and(...conditions))
-      .orderBy(departments.name, employees.name)
+      .orderBy(projects.name, employees.name)
       .all()
 
     const yearStart = `${year}-01-01`

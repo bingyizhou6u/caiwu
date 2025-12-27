@@ -87,8 +87,8 @@ export class DormitoryAllocationService {
       ? await (async () => {
         const results = []
         for (const id of deptIds) {
-          const d = await this.db.select({ id: schema.departments.id, name: schema.departments.name })
-            .from(schema.departments).where(eq(schema.departments.id, id)).get()
+          const d = await this.db.select({ id: schema.projects.id, name: schema.projects.name })
+            .from(schema.projects).where(eq(schema.projects.id, id)).get()
           if (d) results.push(d)
         }
         return results
@@ -162,8 +162,8 @@ export class DormitoryAllocationService {
     const deptIds = [...new Set(employees.map(e => e.departmentId).filter(Boolean) as string[])]
     const departments: { id: string; name: string | null }[] = []
     for (const id of deptIds) {
-      const d = await this.db.select({ id: schema.departments.id, name: schema.departments.name })
-        .from(schema.departments).where(eq(schema.departments.id, id)).get()
+      const d = await this.db.select({ id: schema.projects.id, name: schema.projects.name })
+        .from(schema.projects).where(eq(schema.projects.id, id)).get()
       if (d) departments.push(d)
     }
 

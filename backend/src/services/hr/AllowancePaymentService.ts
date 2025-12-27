@@ -28,13 +28,13 @@ export class AllowancePaymentService {
       .select({
         payment: schema.allowancePayments,
         employeeName: employees.name,
-        departmentName: schema.departments.name,
+        departmentName: schema.projects.name,
         currencyName: schema.currencies.name,
         createdByName: creator.email, // Keeping email as per original, though name might be better
       })
       .from(schema.allowancePayments)
       .leftJoin(employees, eq(employees.id, schema.allowancePayments.employeeId))
-      .leftJoin(schema.departments, eq(schema.departments.id, employees.departmentId))
+      .leftJoin(schema.projects, eq(schema.projects.id, employees.departmentId))
       .leftJoin(schema.currencies, eq(schema.currencies.code, schema.allowancePayments.currencyId))
       .leftJoin(creator, eq(creator.id, schema.allowancePayments.createdBy))
       .where(and(...conditions))
@@ -139,13 +139,13 @@ export class AllowancePaymentService {
       .select({
         payment: schema.allowancePayments,
         employeeName: employees.name,
-        departmentName: schema.departments.name,
+        departmentName: schema.projects.name,
         currencyName: schema.currencies.name,
         createdByName: creator.email,
       })
       .from(schema.allowancePayments)
       .leftJoin(employees, eq(employees.id, schema.allowancePayments.employeeId))
-      .leftJoin(schema.departments, eq(schema.departments.id, employees.departmentId))
+      .leftJoin(schema.projects, eq(schema.projects.id, employees.departmentId))
       .leftJoin(schema.currencies, eq(schema.currencies.code, schema.allowancePayments.currencyId))
       .leftJoin(creator, eq(creator.id, schema.allowancePayments.createdBy))
       .where(eq(schema.allowancePayments.id, id))

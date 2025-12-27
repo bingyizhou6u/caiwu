@@ -1,6 +1,6 @@
 import { eq, and, like, or, inArray, desc, sql, isNotNull, SQL } from 'drizzle-orm'
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { employees, departments, orgDepartments, positions } from '../../db/schema.js'
+import { employees, projects, orgDepartments, positions } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
@@ -320,7 +320,7 @@ export class EmployeeService {
         email: employees.email,
         personalEmail: employees.personalEmail,
         departmentId: employees.departmentId,
-        departmentName: departments.name,
+        departmentName: projects.name,
         orgDepartmentId: employees.orgDepartmentId,
         orgDepartmentName: orgDepartments.name,
         orgDepartmentCode: orgDepartments.code,
@@ -354,7 +354,7 @@ export class EmployeeService {
         END`,
       })
       .from(employees)
-      .leftJoin(departments, eq(employees.departmentId, departments.id))
+      .leftJoin(projects, eq(employees.departmentId, projects.id))
       .leftJoin(orgDepartments, eq(employees.orgDepartmentId, orgDepartments.id))
       .leftJoin(positions, eq(employees.positionId, positions.id))
   }
@@ -432,9 +432,9 @@ export class EmployeeService {
         this.db,
         'EmployeeService.getAll.getDepartments',
         () => this.db
-          .select({ id: departments.id, name: departments.name })
-          .from(departments)
-          .where(inArray(departments.id, departmentIds))
+          .select({ id: projects.id, name: projects.name })
+          .from(projects)
+          .where(inArray(projects.id, departmentIds))
           .all(),
         undefined
       )
@@ -528,7 +528,7 @@ export class EmployeeService {
     // Fetch related data
     const [department, orgDepartment, position] = await Promise.all([
       employee.departmentId
-        ? this.db.select().from(departments).where(eq(departments.id, employee.departmentId)).get()
+        ? this.db.select().from(projects).where(eq(projects.id, employee.departmentId)).get()
         : Promise.resolve(null),
       employee.orgDepartmentId
         ? this.db.select().from(orgDepartments).where(eq(orgDepartments.id, employee.orgDepartmentId)).get()

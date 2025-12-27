@@ -4,7 +4,7 @@
  */
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, like, sql, inArray } from 'drizzle-orm'
-import { projects, employees, departments } from '../../db/schema.js'
+import { projects, employees } from '../../db/schema.js'
 import { getBusinessDate } from '../../utils/timezone.js'
 import { DBPerformanceTracker } from '../../utils/db-performance.js'
 
@@ -73,9 +73,9 @@ export class ProjectService {
 
                 if (departmentIds.length > 0) {
                     const depts = await this.db
-                        .select({ id: departments.id, name: departments.name })
-                        .from(departments)
-                        .where(inArray(departments.id, departmentIds))
+                        .select({ id: projects.id, name: projects.name })
+                        .from(projects)
+                        .where(inArray(projects.id, departmentIds))
                         .all()
                     depts.forEach(d => departmentMap.set(d.id, d))
                 }
@@ -116,7 +116,7 @@ export class ProjectService {
 
                 // 顺序查询获取关联数据
                 const department = project.departmentId
-                    ? await this.db.select().from(departments).where(eq(departments.id, project.departmentId)).get()
+                    ? await this.db.select().from(projects).where(eq(projects.id, project.departmentId)).get()
                     : null
 
                 const manager = project.managerId

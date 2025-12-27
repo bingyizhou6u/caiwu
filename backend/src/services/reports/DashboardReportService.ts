@@ -9,7 +9,7 @@ import {
   cashFlows,
   accounts,
   arApDocs,
-  departments,
+  projects,
   categories,
 } from '../../db/schema.js'
 import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
@@ -123,7 +123,7 @@ export class DashboardReportService {
     const categoryIds = [...new Set(recentFlows.map(f => f.categoryId).filter(Boolean) as string[])]
     const deptIds = [...new Set(recentFlows.map(f => f.departmentId).filter(Boolean) as string[])]
 
-    const [accountsList, categoriesList, departmentsList] = await Promise.all([
+    const [accountsList, categoriesList, projectsList] = await Promise.all([
       accountIds.length > 0
         ? this.db
             .select({ id: accounts.id, name: accounts.name, currency: accounts.currency })
@@ -140,9 +140,9 @@ export class DashboardReportService {
         : Promise.resolve([]),
       deptIds.length > 0
         ? this.db
-            .select({ id: departments.id, name: departments.name })
-            .from(departments)
-            .where(inArray(departments.id, deptIds))
+            .select({ id: projects.id, name: projects.name })
+            .from(projects)
+            .where(inArray(projects.id, deptIds))
             .all()
         : Promise.resolve([]),
     ])
@@ -150,7 +150,7 @@ export class DashboardReportService {
     // 3. 创建映射表
     const accountMap = new Map(accountsList.map(a => [a.id, a]))
     const categoryMap = new Map(categoriesList.map(c => [c.id, c]))
-    const deptMap = new Map(departmentsList.map(d => [d.id, d]))
+    const deptMap = new Map(projectsList.map(d => [d.id, d]))
 
     // 4. 组装结果
     const recentFlowsWithDetails = recentFlows.map(flow => {

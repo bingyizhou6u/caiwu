@@ -119,9 +119,9 @@ export class ApprovalService {
 
     if (allDeptIds.size > 0) {
       const depts = await this.db
-        .select({ id: schema.departments.id, name: schema.departments.name })
-        .from(schema.departments)
-        .where(inArray(schema.departments.id, Array.from(allDeptIds)))
+        .select({ id: schema.projects.id, name: schema.projects.name })
+        .from(schema.projects)
+        .where(inArray(schema.projects.id, Array.from(allDeptIds)))
         .execute()
       depts.forEach(d => deptMap.set(d.id, d.name || ''))
     }
@@ -350,9 +350,9 @@ export class ApprovalService {
           this.db,
           'ApprovalService.getApprovalHistory.getDepartments',
           () => this.db
-            .select({ id: schema.departments.id, name: schema.departments.name })
-            .from(schema.departments)
-            .where(inArray(schema.departments.id, deptIds))
+            .select({ id: schema.projects.id, name: schema.projects.name })
+            .from(schema.projects)
+            .where(inArray(schema.projects.id, deptIds))
             .execute(),
           undefined
         )

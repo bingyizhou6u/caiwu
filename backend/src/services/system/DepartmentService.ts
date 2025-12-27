@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid'
 // import { logAudit } from '../../utils/audit' // Removed
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, isNull } from 'drizzle-orm'
-import { orgDepartments, departments } from '../../db/schema.js'
+import { orgDepartments, projects } from '../../db/schema.js'
 import * as schema from '../../db/schema.js'
 import { AuditService } from './AuditService.js'
 import { ProjectDepartmentService } from './ProjectDepartmentService.js'

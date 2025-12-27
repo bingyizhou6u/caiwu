@@ -3,7 +3,7 @@ import { eq, and, inArray, SQL } from 'drizzle-orm'
 import * as schema from '../db/schema.js'
 import {
   employees,
-  departments,
+  projects,
   orgDepartments,
   positions,
   currencies,
@@ -41,13 +41,13 @@ export class QueryBuilder {
         ...selectFields,
         employeeName: employees.name,
         employeeEmail: employees.email,
-        departmentName: departments.name,
+        departmentName: projects.name,
         orgDepartmentName: orgDepartments.name,
         positionName: positions.name,
       })
       .from(baseTable)
       .leftJoin(employees, eq(employees.id, employeeIdField))
-      .leftJoin(departments, eq(departments.id, employees.departmentId))
+      .leftJoin(projects, eq(projects.id, employees.departmentId))
       .leftJoin(orgDepartments, eq(orgDepartments.id, employees.orgDepartmentId))
       .leftJoin(positions, eq(positions.id, employees.positionId))
   }
@@ -65,14 +65,14 @@ export class QueryBuilder {
     employeeIds: string[]
   ): Promise<{
     employees: Map<string, { id: string; name: string | null; email: string | null; departmentId: string | null; orgDepartmentId: string | null; positionId: string | null }>
-    departments: Map<string, { id: string; name: string | null }>
+    projects: Map<string, { id: string; name: string | null }>
     orgDepartments: Map<string, { id: string; name: string | null }>
     positions: Map<string, { id: string; name: string | null }>
   }> {
     if (employeeIds.length === 0) {
       return {
         employees: new Map(),
-        departments: new Map(),
+        projects: new Map(),
         orgDepartments: new Map(),
         positions: new Map(),
       }
@@ -98,12 +98,12 @@ export class QueryBuilder {
     const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
 
     // 3. 并行查询关联数据
-    const [departmentsList, orgDepartmentsList, positionsList] = await Promise.all([
+    const [projectsList, orgDepartmentsList, positionsList] = await Promise.all([
       deptIds.length > 0
         ? db
-            .select({ id: departments.id, name: departments.name })
-            .from(departments)
-            .where(inArray(departments.id, deptIds))
+            .select({ id: projects.id, name: projects.name })
+            .from(projects)
+            .where(inArray(projects.id, deptIds))
             .execute()
         : Promise.resolve([]),
       orgDeptIds.length > 0
@@ -125,7 +125,7 @@ export class QueryBuilder {
     // 4. 创建映射表
     return {
       employees: new Map(employeesList.map(e => [e.id, e])),
-      departments: new Map(departmentsList.map(d => [d.id, d])),
+      projects: new Map(projectsList.map(d => [d.id, d])),
       orgDepartments: new Map(orgDepartmentsList.map(od => [od.id, od])),
       positions: new Map(positionsList.map(p => [p.id, p])),
     }
@@ -147,13 +147,13 @@ export class QueryBuilder {
   ) {
     const { departmentIds, employeeIds, currencyIds, vendorIds, siteIds } = ids
 
-    const [departmentsList, employeesList, currenciesList, vendorsList, sitesList] =
+    const [projectsList, employeesList, currenciesList, vendorsList, sitesList] =
       await Promise.all([
         departmentIds && departmentIds.length > 0
           ? db
             .select()
-            .from(departments)
-            .where(inArray(departments.id, departmentIds))
+            .from(projects)
+            .where(inArray(projects.id, departmentIds))
             .execute()
           : Promise.resolve([]),
         employeeIds && employeeIds.length > 0
@@ -187,7 +187,7 @@ export class QueryBuilder {
       ])
 
     return {
-      departments: departmentsList,
+      projects: projectsList,
       employees: employeesList,
       currencies: currenciesList,
       vendors: vendorsList,

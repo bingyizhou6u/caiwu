@@ -4,7 +4,7 @@ import {
   fixedAssets,
   fixedAssetDepreciations,
   fixedAssetChanges,
-  departments,
+  projects,
   sites,
   vendors,
   currencies,
@@ -74,7 +74,7 @@ export class FixedAssetService {
       currencyIds: Array.from(currencyCodes),
     })
 
-    const deptMap = QueryBuilder.createMaps(relatedData.departments)
+    const deptMap = QueryBuilder.createMaps(relatedData.projects)
     const siteMap = QueryBuilder.createMaps(relatedData.sites)
     const vendorMap = QueryBuilder.createMaps(relatedData.vendors)
     const userMap = QueryBuilder.createMaps(relatedData.employees)
@@ -121,7 +121,7 @@ export class FixedAssetService {
         ? query(
           this.db,
           'FixedAssetService.get.getDepartment',
-          () => this.db.select().from(departments).where(eq(departments.id, asset.departmentId!)).get(),
+          () => this.db.select().from(projects).where(eq(projects.id, asset.departmentId!)).get(),
           c
         )
         : Promise.resolve(null),
@@ -193,7 +193,7 @@ export class FixedAssetService {
       employeeIds: Array.from(changeUserIds),
     })
 
-    const changeDeptMap = QueryBuilder.createMaps(changeRelatedData.departments)
+    const changeDeptMap = QueryBuilder.createMaps(changeRelatedData.projects)
     const changeSiteMap = QueryBuilder.createMaps(changeRelatedData.sites)
     const changeUserMap = QueryBuilder.createMaps(changeRelatedData.employees)
 
