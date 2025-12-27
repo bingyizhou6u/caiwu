@@ -24,7 +24,7 @@
 
 | 资源 | 路径 |
 |------|------|
-| 知识库索引 | [`.agent/KNOWLEDGE_INDEX.md`](.agent/KNOWLEDGE_INDEX.md) |
+| 知识库索引 | [`docs/README.md`](docs/README.md) |
 | 数据库 Schema | [`backend/src/db/schema.ts`](backend/src/db/schema.ts) |
 | API 路由 | `backend/src/routes/v2/` |
 | 前端功能 | `frontend/src/features/` |
