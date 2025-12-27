@@ -104,7 +104,7 @@ export default function TaskFormPage() {
     }
 
     // 加载中状态
-    if (isEditMode && tasksLoading) {
+    if (isEditMode && taskLoading) {
         return (
             <div className="flex items-center justify-center h-96">
                 <Spin size="large" />
@@ -113,7 +113,7 @@ export default function TaskFormPage() {
     }
 
     // 编辑模式下未找到任务
-    if (isEditMode && !currentTask && !tasksLoading) {
+    if (isEditMode && !currentTask && !taskLoading) {
         return (
             <div className="p-6">
                 <Card>
