@@ -17,6 +17,7 @@ import {
     useTeamWorkloadSummary, useProjects, useTasks,
     type Timelog, type CreateTimelogInput, type Project, type Task
 } from '../../../hooks/business/usePM'
+import { PageContainer } from '../../../components/PageContainer'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
@@ -157,8 +158,10 @@ export default function TimelogPage() {
     ]
 
     return (
-        <div className="p-6">
-            {/* 页面标题 */}
+        <PageContainer
+            title="工时管理"
+            breadcrumb={[{ title: '项目管理' }, { title: '工时管理' }]}
+        >
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <Title level={4} className="mb-0">工时管理</Title>
@@ -289,6 +292,6 @@ export default function TimelogPage() {
                     </Form.Item>
                 </Form>
             </Modal>
-        </div>
+        </PageContainer>
     )
 }

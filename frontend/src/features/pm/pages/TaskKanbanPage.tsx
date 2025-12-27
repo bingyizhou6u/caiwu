@@ -15,6 +15,7 @@ import {
     useKanbanTasks, useUpdateTaskStatus, useDeleteTask, useProjects,
     type Task, type Project
 } from '../../../hooks/business/usePM'
+import { PageContainer } from '../../../components/PageContainer'
 import dayjs from 'dayjs'
 
 const { Text, Title } = Typography
@@ -239,8 +240,10 @@ export default function TaskKanbanPage() {
     }
 
     return (
-        <div className="p-6">
-            {/* 顶部导航 */}
+        <PageContainer
+            title={`任务看板${currentProject ? ` - ${currentProject.name}` : ''}`}
+            breadcrumb={[{ title: '项目管理' }, { title: '任务看板' }]}
+        >
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                     <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/pm/projects/${projectId}`)}>
@@ -312,6 +315,6 @@ export default function TaskKanbanPage() {
             >
                 <p>确定要删除任务 <strong>{selectedTask?.title}</strong> 吗？</p>
             </Modal>
-        </div>
+        </PageContainer>
     )
 }

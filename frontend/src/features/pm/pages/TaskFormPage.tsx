@@ -10,6 +10,7 @@ import {
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons'
 import { useCreateTask, useUpdateTask, useTasks, useProjects, type Task, type Project } from '../../../hooks/business/usePM'
 import { useEmployees } from '../../../hooks/business/useEmployees'
+import { PageContainer } from '../../../components/PageContainer'
 import dayjs from 'dayjs'
 
 const { TextArea } = Input
@@ -131,17 +132,11 @@ export default function TaskFormPage() {
     const selectedProjectId = Form.useWatch('projectId', form)
 
     return (
-        <div className="p-6">
-            <div className="mb-6">
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate(-1)}
-                >
-                    返回
-                </Button>
-            </div>
-
-            <Card title={isEditMode ? '编辑任务' : '新建任务'}>
+        <PageContainer
+            title={isEditMode ? '编辑任务' : '新建任务'}
+            breadcrumb={[{ title: '项目管理' }, { title: '任务看板' }, { title: isEditMode ? '编辑' : '新建' }]}
+        >
+            <Card bordered={false} className="page-card">
                 <Form
                     form={form}
                     layout="vertical"
@@ -245,6 +240,6 @@ export default function TaskFormPage() {
                     </Form.Item>
                 </Form>
             </Card>
-        </div>
+        </PageContainer>
     )
 }
