@@ -145,6 +145,7 @@ const ProjectConfigPage = lazy(loaders['pm/config'])
 const ProjectListPage = lazy(loaders['pm/projects'])
 const ProjectDetailPage = lazy(loaders['pm/projects/:id'])
 const TaskKanbanPage = lazy(loaders['pm/tasks/kanban'])
+const TaskFormPage = lazy(loaders['pm/tasks/new'])
 const TimelogPage = lazy(loaders['pm/timelogs'])
 
 /**
@@ -257,6 +258,8 @@ export const router = createBrowserRouter([
             { path: 'pm/projects', element: <Suspense fallback={<Loading />}><ProjectListPage /></Suspense> },
             { path: 'pm/projects/:id', element: <Suspense fallback={<Loading />}><ProjectDetailPage /></Suspense> },
             { path: 'pm/tasks/kanban', element: <Suspense fallback={<Loading />}><TaskKanbanPage /></Suspense> },
+            { path: 'pm/tasks/new', element: <Suspense fallback={<Loading />}><TaskFormPage /></Suspense> },
+            { path: 'pm/tasks/:id/edit', element: <Suspense fallback={<Loading />}><TaskFormPage /></Suspense> },
             { path: 'pm/timelogs', element: <Suspense fallback={<Loading />}><TimelogPage /></Suspense> },
         ]
     }
