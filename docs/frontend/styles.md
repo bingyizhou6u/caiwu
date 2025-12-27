@@ -25,10 +25,8 @@
 - ✅ 无需额外依赖，构建简单
 - ✅ 浏览器原生支持，兼容性好
 - ✅ 易于调试和维护
-
-**潜在改进**：
-- ⚠️ 可考虑引入 CSS Modules 避免类名冲突
-- ⚠️ 可考虑使用 PostCSS 增强功能（如嵌套、自动前缀）
+- ✅ CSS Modules 已引入 (`common.module.css`)
+- ✅ 无障碍支持 (`aria-label`, `role`, `prefers-reduced-motion`)
 
 ---
 
@@ -592,8 +590,8 @@ label: <span><ClockCircleOutlined /> 我的工时 (5)</span>
 ## 🚀 优化建议优先级
 
 ### 高优先级
-1. ✅ **引入 CSS Modules** 避免类名冲突
-2. ✅ **完善暗色模式** 支持
+1. ✅ **引入 CSS Modules** 已完成 - `common.module.css`, `StatCard.module.css`
+2. ✅ **完善暗色模式** 支持 - 通过 `prefers-color-scheme` 媒体查询
 3. ✅ **添加响应式断点** 统一管理
 
 ### 中优先级
@@ -602,8 +600,8 @@ label: <span><ClockCircleOutlined /> 我的工时 (5)</span>
 6. ⚠️ **减少 Ant Design 覆盖** 使用主题配置
 
 ### 低优先级
-7. 📝 **编写样式文档** 提升团队协作
-8. 📝 **添加无障碍支持** 提升可访问性
+7. ✅ **编写样式文档** 已完成 - 本文档
+8. ✅ **添加无障碍支持** 已完成 - `aria-label`, `role`, `prefers-reduced-motion`
 9. 📝 **引入 PostCSS** 增强功能（可选）
 
 ---
@@ -616,15 +614,15 @@ label: <span><ClockCircleOutlined /> 我的工时 (5)</span>
 2. ✅ **设计系统完善**：CSS 变量 + Ant Design 主题配置
 3. ✅ **视觉效果出色**：现代化设计，交互流畅
 4. ✅ **性能优秀**：纯 CSS，零运行时开销
+5. ✅ **CSS Modules**：`common.module.css` 避免类名冲突
+6. ✅ **无障碍支持**：aria 属性 + prefers-reduced-motion
 
 主要改进方向：
 
-1. ⚠️ **引入 CSS Modules** 避免类名冲突
-2. ⚠️ **完善暗色模式** 支持
-3. ⚠️ **优化代码组织** 拆分大文件
-4. ⚠️ **增强无障碍支持** 提升可访问性
+1. ⚠️ **优化代码组织** 拆分大文件（如 MainLayout.css）
+2. ⚠️ **优化动画性能** 使用 will-change
 
-**总体评分**：⭐⭐⭐⭐⭐ (4.5/5)
+**总体评分**：⭐⭐⭐⭐⭐ (4.8/5)
 
 ---
 
