@@ -32,17 +32,55 @@ export const MultiTabs: React.FC = () => {
             if (!exists) {
                 let title = '未命名页面'
 
-                // Find key by path
+                // 1. 先尝试精确匹配
                 const entry = Object.entries(KEY_TO_PATH).find(([_, p]) => p === path)
                 if (entry) {
                     const key = entry[0]
                     title = pageTitles[key] || title
+                } else {
+                    // 2. 尝试从 document.title 获取
+                    const docTitle = document.title
+                    if (docTitle && !docTitle.includes('未命名') && docTitle !== 'AR财务系统') {
+                        title = docTitle.replace(' - AR财务系统', '')
+                    } else {
+                        // 3. 根据路径模式设置默认标题
+                        if (path.startsWith('/pm/projects/') && path !== '/pm/projects') {
+                            title = '项目详情'
+                        } else if (path.startsWith('/pm/tasks/') && path.includes('/edit')) {
+                            title = '编辑任务'
+                        } else if (path === '/pm/tasks/new') {
+                            title = '新建任务'
+                        }
+                    }
                 }
 
                 return [...prev, { key: path, label: title, closable: true }]
             }
             return prev
         })
+    }, [location.pathname])
+
+    // 监听 document.title 变化，更新当前标签名
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            const path = location.pathname
+            const docTitle = document.title
+            if (docTitle && !docTitle.includes('未命名') && docTitle !== 'AR财务系统') {
+                const title = docTitle.replace(' - AR财务系统', '')
+                setItems(prev => prev.map(item =>
+                    item.key === path && item.label === '项目详情'
+                        ? { ...item, label: title }
+                        : item
+                ))
+            }
+        })
+
+        const titleElement = document.querySelector('title')
+        if (titleElement) {
+            observer.observe(titleElement, { childList: true, subtree: true, characterData: true })
+        }
+
+        return () => observer.disconnect()
     }, [location.pathname])
 
     const onChange = (key: string) => {
@@ -152,7 +190,7 @@ export const MultiTabs: React.FC = () => {
             type="editable-card"
             hideAdd
             activeKey={activeKey}
-            items={items.map(item => ({ 
+            items={items.map(item => ({
                 key: item.key,
                 label: renderTabLabel(item),
                 closable: item.closable
