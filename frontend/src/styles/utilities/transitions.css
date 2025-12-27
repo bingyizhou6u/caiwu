@@ -1,6 +1,10 @@
 /**
  * 过渡效果工具类
  * 定义全局过渡效果和交互动画类
+ * 
+ * @performance
+ * - 使用 will-change 提示浏览器优化
+ * - 使用 transform 和 opacity 进行 GPU 加速
  */
 
 /* Global Transitions */
@@ -16,9 +20,10 @@
     transition: var(--transition-bounce);
 }
 
-/* Hover Effects */
+/* Hover Effects - with GPU acceleration */
 .hover-scale {
     transition: transform 0.2s ease;
+    will-change: transform;
 }
 
 .hover-scale:hover {
@@ -27,6 +32,7 @@
 
 .hover-lift {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform, box-shadow;
 }
 
 .hover-lift:hover {
@@ -36,15 +42,17 @@
 
 .hover-glow {
     transition: box-shadow 0.3s ease;
+    will-change: box-shadow;
 }
 
 .hover-glow:hover {
     box-shadow: var(--shadow-glow);
 }
 
-/* Button Micro-interactions */
+/* Button Micro-interactions - with GPU acceleration */
 .btn-interactive {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform;
 }
 
 .btn-interactive:hover:not(:disabled) {
@@ -55,9 +63,10 @@
     transform: translateY(0);
 }
 
-/* Card Animations */
+/* Card Animations - with GPU acceleration */
 .card-hover {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    will-change: transform, box-shadow;
 }
 
 .card-hover:hover {
@@ -69,4 +78,17 @@
 .focus-ring:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+}
+
+/* 减少动画模式: 移除 will-change 以节省资源 */
+@media (prefers-reduced-motion: reduce) {
+
+    .hover-scale,
+    .hover-lift,
+    .hover-glow,
+    .btn-interactive,
+    .card-hover {
+        will-change: auto;
+        transition: none;
+    }
 }
