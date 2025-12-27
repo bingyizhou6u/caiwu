@@ -154,41 +154,47 @@ export default function TimelogPage() {
             key: 'my',
             label: <span><ClockCircleOutlined /> 我的工时 ({myTimelogs.length})</span>,
             children: (
-                <Table
-                    columns={timelogColumns}
-                    dataSource={myTimelogs}
-                    rowKey="id"
-                    loading={myLoading}
-                    pagination={{ pageSize: 20 }}
-                    size="small"
-                />
+                <Card className="page-card-inner">
+                    <Table
+                        columns={timelogColumns}
+                        dataSource={myTimelogs}
+                        rowKey="id"
+                        loading={myLoading}
+                        pagination={{ pageSize: 20 }}
+                        size="small"
+                    />
+                </Card>
             ),
         },
         {
             key: 'team',
             label: <span><TeamOutlined /> 团队工时</span>,
             children: (
-                <Table
-                    columns={teamTimelogColumns}
-                    dataSource={teamTimelogs}
-                    rowKey="id"
-                    loading={teamLoading}
-                    pagination={{ pageSize: 20 }}
-                    size="small"
-                />
+                <Card className="page-card-inner">
+                    <Table
+                        columns={teamTimelogColumns}
+                        dataSource={teamTimelogs}
+                        rowKey="id"
+                        loading={teamLoading}
+                        pagination={{ pageSize: 20 }}
+                        size="small"
+                    />
+                </Card>
             ),
         },
         {
             key: 'summary',
             label: <span><CalendarOutlined /> 工时汇总</span>,
             children: (
-                <Table
-                    columns={workloadColumns}
-                    dataSource={workloadSummary}
-                    rowKey="employeeId"
-                    pagination={false}
-                    size="small"
-                />
+                <Card className="page-card-inner">
+                    <Table
+                        columns={workloadColumns}
+                        dataSource={workloadSummary}
+                        rowKey="employeeId"
+                        pagination={false}
+                        size="small"
+                    />
+                </Card>
             ),
         },
     ]
