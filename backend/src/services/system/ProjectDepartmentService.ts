@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
 
 export class ProjectDepartmentService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   /**
    * 获取总部的 department ID
@@ -95,8 +95,8 @@ export class ProjectDepartmentService {
       .values({
         id,
         name: data.name,
+        code: data.code || `PRJ-${id.substring(0, 8).toUpperCase()}`, // 确保 code 有值
         hqId,
-        code: data.code,
         active: 1,
         sortOrder: data.sortOrder ?? 100, // 默认排序值，总部为 0
         createdAt: Date.now(),
@@ -123,10 +123,10 @@ export class ProjectDepartmentService {
     }
 
     const updates: any = { updatedAt: Date.now() }
-    if (data.name !== undefined) {updates.name = data.name}
-    if (data.hqId !== undefined) {updates.hqId = data.hqId}
-    if (data.active !== undefined) {updates.active = data.active}
-    if (data.sortOrder !== undefined) {updates.sortOrder = data.sortOrder}
+    if (data.name !== undefined) { updates.name = data.name }
+    if (data.hqId !== undefined) { updates.hqId = data.hqId }
+    if (data.active !== undefined) { updates.active = data.active }
+    if (data.sortOrder !== undefined) { updates.sortOrder = data.sortOrder }
 
     await this.db.update(departments).set(updates).where(eq(departments.id, id)).execute()
     return { ok: true }

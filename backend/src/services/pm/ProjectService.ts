@@ -65,7 +65,7 @@ export class ProjectService {
                 const projectList = await query.all()
 
                 // 批量获取关联的部门和项目经理信息
-                const departmentIds = [...new Set(projectList.map(p => p.departmentId).filter(Boolean))]
+                const departmentIds = [...new Set(projectList.map(p => p.departmentId).filter(Boolean))] as string[]
                 const managerIds = [...new Set(projectList.map(p => p.managerId).filter(Boolean))] as string[]
 
                 const departmentMap = new Map<string, { id: string; name: string }>()

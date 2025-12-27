@@ -61,27 +61,33 @@ export const positions = sqliteTable('positions', {
   updatedAt: integer('updated_at'),
 })
 
-export const departments = sqliteTable('departments', {
+// 项目表（原 departments，现统一为 projects）
+// departments 现在是 projects 的别名，保持向后兼容
+export const projects = sqliteTable('projects', {
   id: text('id').primaryKey(),
-  hqId: text('hq_id'),
+  code: text('code').notNull().unique(), // 项目编码
   name: text('name').notNull(),
-  code: text('code'),
-  active: integer('active').default(1),
-  sortOrder: integer('sort_order').default(100),
-  // PM 扩展字段
+  description: text('description'),
+  hqId: text('hq_id'), // 所属总部
+  departmentId: text('department_id'), // 所属部门（可选）
   managerId: text('manager_id'), // 项目经理（员工ID）
   status: text('status').default('active'), // active, on_hold, completed, cancelled
-  priority: text('priority').default('medium'), // high, medium, low
   startDate: text('start_date'), // 计划开始日期
   endDate: text('end_date'), // 计划结束日期
   actualStartDate: text('actual_start_date'),
   actualEndDate: text('actual_end_date'),
+  priority: text('priority').default('medium'), // high, medium, low
   budgetCents: integer('budget_cents'), // 预算（分）
-  description: text('description'),
   memo: text('memo'),
+  sortOrder: integer('sort_order').default(100),
+  createdBy: text('created_by'),
   createdAt: integer('created_at'),
   updatedAt: integer('updated_at'),
+  active: integer('active').default(1),
 })
+
+// departments 别名（向后兼容，所有使用 departments 的代码将透明使用 projects 表）
+export const departments = projects
 
 export const headquarters = sqliteTable('headquarters', {
   id: text('id').primaryKey(),
@@ -658,34 +664,8 @@ export const businessOperationHistory = sqliteTable('business_operation_history'
 // 项目管理模块 (PM - Project Management)
 // ==========================================
 
-// 项目表
-export const projects = sqliteTable(
-  'projects',
-  {
-    id: text('id').primaryKey(),
-    code: text('code').notNull().unique(), // 项目编码，如 PRJ-001
-    name: text('name').notNull(),
-    description: text('description'),
-    departmentId: text('department_id').notNull(), // 所属部门
-    managerId: text('manager_id'), // 项目经理（员工ID）
-    status: text('status').default('active'), // active, on_hold, completed, cancelled
-    startDate: text('start_date'), // 计划开始日期
-    endDate: text('end_date'), // 计划结束日期
-    actualStartDate: text('actual_start_date'),
-    actualEndDate: text('actual_end_date'),
-    priority: text('priority').default('medium'), // high, medium, low
-    budgetCents: integer('budget_cents'), // 预算（分）
-    memo: text('memo'),
-    createdBy: text('created_by'),
-    createdAt: integer('created_at'),
-    updatedAt: integer('updated_at'),
-    active: integer('active').default(1),
-  },
-  t => ({
-    idxDepartment: index('idx_projects_department').on(t.departmentId),
-    idxStatus: index('idx_projects_status').on(t.status),
-  })
-)
+// 项目表已在上方定义（departments = projects）
+// projects 表现在是主表，departments 是别名
 
 // 需求表
 export const requirements = sqliteTable(
