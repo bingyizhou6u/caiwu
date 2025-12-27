@@ -56,7 +56,7 @@ export const pageTitles: Record<string, string> = {
     'change-password': '修改密码',
     // 项目管理(PM)
     'pm-config': '项目配置',
-    'pm-projects': '项目列表',
+    'pm-projects': '进度列表',
     'pm-kanban': '任务看板',
     'pm-timelogs': '工时管理',
 }
@@ -227,7 +227,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         pm.push({ key: 'pm-config', label: '项目配置', icon: getMenuIcon('pm-config') })
     }
     if (hasPermission(userInfo, 'pm', 'project', 'view')) {
-        pm.push({ key: 'pm-projects', label: '项目列表', icon: getMenuIcon('pm-projects') })
+        pm.push({ key: 'pm-projects', label: '进度列表', icon: getMenuIcon('pm-projects') })
     }
     if (hasPermission(userInfo, 'pm', 'task', 'view')) {
         pm.push({ key: 'pm-kanban', label: '任务看板', icon: getMenuIcon('pm-kanban') })

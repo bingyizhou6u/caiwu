@@ -4,13 +4,12 @@
  */
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, desc, inArray, sql } from 'drizzle-orm'
-import { tasks, employees, departments, requirements } from '../../db/schema.js'
+import { tasks, employees, projects, requirements } from '../../db/schema.js'
 import { DBPerformanceTracker } from '../../utils/db-performance.js'
 
 // 类型定义
 export interface TaskFilter {
-    projectId?: string // 兼容旧字段
-    departmentId?: string // 新字段
+    projectId?: string
     requirementId?: string
     status?: string
     assigneeId?: string
@@ -19,8 +18,7 @@ export interface TaskFilter {
 
 export interface CreateTaskInput {
     code: string
-    projectId?: string // 兼容旧字段
-    departmentId?: string // 新字段
+    projectId: string
     requirementId?: string
     parentTaskId?: string
     title: string
@@ -61,9 +59,6 @@ export class TaskService {
                 if (filter?.projectId) {
                     conditions.push(eq(tasks.projectId, filter.projectId))
                 }
-                if (filter?.departmentId) {
-                    conditions.push(eq(tasks.departmentId, filter.departmentId))
-                }
                 if (filter?.requirementId) {
                     conditions.push(eq(tasks.requirementId, filter.requirementId))
                 }
@@ -83,10 +78,10 @@ export class TaskService {
 
                 // 批量获取关联数据
                 const assigneeIds = [...new Set(taskList.map(t => t.assigneeId).filter(Boolean))] as string[]
-                const departmentIds = [...new Set(taskList.map(t => t.departmentId).filter(Boolean))] as string[]
+                const projectIds = [...new Set(taskList.map(t => t.projectId).filter(Boolean))] as string[]
 
                 const assigneeMap = new Map<string, { id: string; name: string | null }>()
-                const departmentMap = new Map<string, { id: string; name: string }>()
+                const projectMap = new Map<string, { id: string; name: string }>()
 
                 if (assigneeIds.length > 0) {
                     const assignees = await this.db
@@ -97,19 +92,19 @@ export class TaskService {
                     assignees.forEach(a => assigneeMap.set(a.id, a))
                 }
 
-                if (departmentIds.length > 0) {
-                    const depts = await this.db
-                        .select({ id: departments.id, name: departments.name })
-                        .from(departments)
-                        .where(inArray(departments.id, departmentIds))
+                if (projectIds.length > 0) {
+                    const prjs = await this.db
+                        .select({ id: projects.id, name: projects.name })
+                        .from(projects)
+                        .where(inArray(projects.id, projectIds))
                         .all()
-                    depts.forEach(d => departmentMap.set(d.id, d))
+                    prjs.forEach(p => projectMap.set(p.id, p))
                 }
 
                 return taskList.map(t => ({
                     ...t,
                     assigneeName: t.assigneeId ? assigneeMap.get(t.assigneeId)?.name : null,
-                    projectName: t.departmentId ? departmentMap.get(t.departmentId)?.name : null,
+                    projectName: t.projectId ? projectMap.get(t.projectId)?.name : null,
                 }))
             }
         )
@@ -163,8 +158,8 @@ export class TaskService {
                 if (!task) return null
 
                 // 顺序查询获取关联数据
-                const department = task.departmentId
-                    ? await this.db.select({ id: departments.id, name: departments.name }).from(departments).where(eq(departments.id, task.departmentId)).get()
+                const project = task.projectId
+                    ? await this.db.select({ id: projects.id, name: projects.name }).from(projects).where(eq(projects.id, task.projectId)).get()
                     : null
 
                 const assignee = task.assigneeId
@@ -177,7 +172,7 @@ export class TaskService {
 
                 return {
                     ...task,
-                    projectName: department?.name,
+                    projectName: project?.name,
                     assigneeName: assignee?.name,
                     requirementTitle: requirement?.title,
                 }
@@ -199,7 +194,6 @@ export class TaskService {
                     id,
                     code: data.code,
                     projectId: data.projectId,
-                    departmentId: data.departmentId,
                     requirementId: data.requirementId,
                     parentTaskId: data.parentTaskId,
                     title: data.title,
@@ -278,18 +272,18 @@ export class TaskService {
     /**
      * 生成下一个任务编号
      */
-    async getNextCode(departmentId: string) {
+    async getNextCode(projectId: string) {
         return DBPerformanceTracker.track(
             'TaskService.getNextCode',
             async () => {
                 // 获取项目前缀
-                const dept = await this.db.select({ code: departments.code }).from(departments).where(eq(departments.id, departmentId)).get()
-                const prefix = dept?.code ? `TASK-${dept.code}` : 'TASK'
+                const project = await this.db.select({ code: projects.code }).from(projects).where(eq(projects.id, projectId)).get()
+                const prefix = project?.code ? `TASK-${project.code}` : 'TASK'
 
                 const lastTask = await this.db
                     .select({ code: tasks.code })
                     .from(tasks)
-                    .where(eq(tasks.departmentId, departmentId))
+                    .where(eq(tasks.projectId, projectId))
                     .orderBy(desc(tasks.createdAt))
                     .limit(1)
                     .get()
