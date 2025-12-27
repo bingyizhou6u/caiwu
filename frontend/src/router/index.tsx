@@ -66,6 +66,8 @@ const loaders: Record<string, () => Promise<any>> = {
     'pm/projects': () => import('../features/pm/pages/ProjectListPage'),
     'pm/projects/:id': () => import('../features/pm/pages/ProjectDetailPage'),
     'pm/tasks/kanban': () => import('../features/pm/pages/TaskKanbanPage'),
+    'pm/tasks/new': () => import('../features/pm/pages/TaskFormPage'),
+    'pm/tasks/:id/edit': () => import('../features/pm/pages/TaskFormPage'),
     'pm/timelogs': () => import('../features/pm/pages/TimelogPage'),
 
     // Auth
