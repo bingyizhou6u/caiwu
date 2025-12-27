@@ -303,6 +303,101 @@ main.tsx
 
 ---
 
+## 📐 页面布局规范（**重要**）
+
+> **参考标准**：`MyCenterPage.tsx`（个人中心页面）
+
+所有新增模块页面必须遵循以下布局规范，确保样式统一：
+
+### 1. 页面结构层级
+
+```tsx
+<PageContainer
+  title="页面标题"
+  breadcrumb={[{ title: '一级菜单' }, { title: '当前页面' }]}
+>
+  <Card bordered className="page-card page-card-outer">
+    {/* 页面内容 */}
+  </Card>
+</PageContainer>
+```
+
+### 2. 卡片类名规范
+
+| 类名 | 用途 | 示例 |
+|------|------|------|
+| `page-card page-card-outer` | **外层主容器** | 包裹整个页面内容 |
+| `page-card-inner` | **内嵌卡片** | 统计卡片、工具栏、列表区域 |
+
+### 3. 标准页面布局示例
+
+```tsx
+<PageContainer title="工时管理" breadcrumb={[...]} >
+  <Card bordered className="page-card page-card-outer">
+    {/* 1. 统计区域 - Row/Col 布局 */}
+    <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
+      <Col xs={24} sm={8}>
+        <Card className="page-card-inner">
+          <Statistic title="统计项" value={100} prefix={<Icon />} />
+        </Card>
+      </Col>
+      {/* 更多统计卡片... */}
+    </Row>
+
+    {/* 2. 工具栏区域 */}
+    <Card className="page-card-inner" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Space>{/* 搜索/筛选控件 */}</Space>
+        <Button type="primary">{/* 主操作按钮 */}</Button>
+      </div>
+    </Card>
+
+    {/* 3. 内容区域 - Tabs 或 Table */}
+    <Tabs type="card" items={[
+      {
+        key: 'tab1',
+        label: <span><Icon /> 标签1</span>,
+        children: (
+          <Card className="page-card-inner">
+            <Table ... />
+          </Card>
+        ),
+      },
+    ]} />
+  </Card>
+</PageContainer>
+```
+
+### 4. 组件使用规范
+
+| 组件 | 属性/样式 | 说明 |
+|------|-----------|------|
+| `Card` 外层 | `bordered className="page-card page-card-outer"` | 必须添加 |
+| `Card` 内嵌 | `className="page-card-inner"` | 统计/工具栏/表格区域 |
+| `Tabs` | `type="card"` | 使用卡片样式标签页 |
+| `Row/Col` | `gutter={[24, 24]}` | 统一间距 |
+| `Statistic` | 带有 `prefix` 图标 | 增强视觉效果 |
+
+### 5. Tab 标签格式
+
+```tsx
+label: <span><ClockCircleOutlined /> 我的工时 (5)</span>
+```
+
+- ✅ 必须包含图标
+- ✅ 可包含数量统计
+
+### 6. 应用示例
+
+以下页面已按此规范实现：
+
+- ✅ `MyCenterPage.tsx` - 个人中心（**参考标准**）
+- ✅ `TimelogPage.tsx` - 工时管理
+- ✅ `TaskKanbanPage.tsx` - 任务看板
+- ✅ `ProjectListPage.tsx` - 项目列表
+
+---
+
 ## 🎭 特殊页面样式
 
 ### 1. 登录页 (`Login.css`)
