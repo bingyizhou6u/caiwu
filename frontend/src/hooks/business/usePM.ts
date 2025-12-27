@@ -191,6 +191,18 @@ export function useTasks(filter?: { projectId?: string; status?: string; assigne
     )
 }
 
+// 获取单个任务
+export function useTask(id: string) {
+    return useApiQuery<Task>(
+        ['pm-task', id],
+        api.pm.tasksById(id),
+        {
+            enabled: !!id,
+            staleTime: 2 * 60 * 1000,
+        }
+    )
+}
+
 export function useKanbanTasks(projectId: string) {
     return useApiQuery<Record<string, Task[]>>(
         ['pm-kanban', projectId],
@@ -237,6 +249,7 @@ export function useUpdateTask() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['pm-tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['pm-task'] })
             queryClient.invalidateQueries({ queryKey: ['pm-kanban'] })
             queryClient.invalidateQueries({ queryKey: ['pm-my-tasks'] })
         },

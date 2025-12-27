@@ -8,7 +8,7 @@ import {
     Button, Card, Form, Input, Select, DatePicker, InputNumber, message, Spin, Typography
 } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons'
-import { useCreateTask, useUpdateTask, useTasks, useProjects, type Task, type Project } from '../../../hooks/business/usePM'
+import { useCreateTask, useUpdateTask, useTask, useProjects, type Task, type Project } from '../../../hooks/business/usePM'
 import { useEmployees } from '../../../hooks/business/useEmployees'
 import { PageContainer } from '../../../components/PageContainer'
 import dayjs from 'dayjs'
@@ -57,14 +57,11 @@ export default function TaskFormPage() {
     const { data: projects = [] } = useProjects()
     const { data: employees = [] } = useEmployees()
     const employeeOptions = employees.map((e: any) => ({ value: e.id, label: e.name || e.email }))
-    const { data: tasks = [], isLoading: tasksLoading } = useTasks(
-        isEditMode ? {} : undefined // 只在编辑模式下获取任务列表
-    )
+
+    // 编辑模式直接获取单个任务
+    const { data: currentTask, isLoading: taskLoading } = useTask(isEditMode ? id! : '')
     const createTask = useCreateTask()
     const updateTask = useUpdateTask()
-
-    // 获取当前编辑的任务
-    const currentTask = isEditMode ? tasks.find((t: Task) => t.id === id) : null
 
     // 初始化表单
     useEffect(() => {
