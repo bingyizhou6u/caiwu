@@ -134,6 +134,23 @@ export default function ProjectDetailPage() {
             width: 100,
             render: (date) => date ? dayjs(date).format('MM/DD') : '-',
         },
+        {
+            title: '操作',
+            key: 'action',
+            width: 100,
+            render: (_, record) => (
+                <Space size="small">
+                    <Button
+                        type="link"
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => navigate(`/pm/tasks/${record.id}/edit`)}
+                    >
+                        编辑
+                    </Button>
+                </Space>
+            ),
+        },
     ]
 
     // 工时汇总列
