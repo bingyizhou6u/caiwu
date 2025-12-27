@@ -10,7 +10,7 @@ export class PermissionService {
    * 检查是否可以查看指定员工的数据
    */
   async canViewEmployee(
-    actor: { id: string; projectId: string | null; orgProjectId: string | null },
+    actor: { id: string; projectId: string | null; orgDepartmentId: string | null },
     actorPosition: { code: string; dataScope?: string },
     targetEmployeeId: string
   ): Promise<boolean> {
@@ -31,7 +31,7 @@ export class PermissionService {
       .select({
         id: employees.id,
         projectId: employees.projectId,
-        orgProjectId: employees.orgProjectId,
+        orgDepartmentId: employees.orgDepartmentId,
       })
       .from(employees)
       .where(eq(employees.id, targetEmployeeId))
@@ -46,7 +46,7 @@ export class PermissionService {
 
     // 4. DataScope.GROUP
     if (dataScope === 'group') {
-      return target.orgProjectId === actor.orgProjectId
+      return target.orgDepartmentId === actor.orgDepartmentId
     }
 
     return false
@@ -56,7 +56,7 @@ export class PermissionService {
    * 检查是否可以审批指定员工的申请（请假/报销）
    */
   async canApproveApplication(
-    actor: { id: string; projectId: string | null; orgProjectId: string | null },
+    actor: { id: string; projectId: string | null; orgDepartmentId: string | null },
     actorPosition: { code: string; canManageSubordinates: number; dataScope?: string },
     applicantEmployeeId: string
   ): Promise<boolean> {
@@ -75,7 +75,7 @@ export class PermissionService {
       .select({
         id: employees.id,
         projectId: employees.projectId,
-        orgProjectId: employees.orgProjectId,
+        orgDepartmentId: employees.orgDepartmentId,
         positionId: employees.positionId,
       })
       .from(employees)
@@ -91,7 +91,7 @@ export class PermissionService {
 
     // 3. DataScope.GROUP
     if (dataScope === 'group') {
-      return applicant.orgProjectId === actor.orgProjectId
+      return applicant.orgDepartmentId === actor.orgDepartmentId
     }
 
     return false
@@ -105,7 +105,7 @@ export class PermissionService {
       .select({
         id: employees.id,
         projectId: employees.projectId,
-        orgProjectId: employees.orgProjectId,
+        orgDepartmentId: employees.orgDepartmentId,
         positionId: employees.positionId,
       })
       .from(employees)

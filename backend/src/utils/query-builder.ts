@@ -48,7 +48,7 @@ export class QueryBuilder {
       .from(baseTable)
       .leftJoin(employees, eq(employees.id, employeeIdField))
       .leftJoin(projects, eq(projects.id, employees.projectId))
-      .leftJoin(orgDepartments, eq(orgDepartments.id, employees.orgProjectId))
+      .leftJoin(orgDepartments, eq(orgDepartments.id, employees.orgDepartmentId))
       .leftJoin(positions, eq(positions.id, employees.positionId))
   }
 
@@ -64,7 +64,7 @@ export class QueryBuilder {
     db: DrizzleD1Database<typeof schema>,
     employeeIds: string[]
   ): Promise<{
-    employees: Map<string, { id: string; name: string | null; email: string | null; projectId: string | null; orgProjectId: string | null; positionId: string | null }>
+    employees: Map<string, { id: string; name: string | null; email: string | null; projectId: string | null; orgDepartmentId: string | null; positionId: string | null }>
     projects: Map<string, { id: string; name: string | null }>
     orgDepartments: Map<string, { id: string; name: string | null }>
     positions: Map<string, { id: string; name: string | null }>
@@ -85,7 +85,7 @@ export class QueryBuilder {
         name: employees.name,
         email: employees.email,
         projectId: employees.projectId,
-        orgProjectId: employees.orgProjectId,
+        orgDepartmentId: employees.orgDepartmentId,
         positionId: employees.positionId,
       })
       .from(employees)
@@ -94,7 +94,7 @@ export class QueryBuilder {
 
     // 2. 收集关联ID
     const deptIds = [...new Set(employeesList.map(e => e.projectId).filter(Boolean) as string[])]
-    const orgDeptIds = [...new Set(employeesList.map(e => e.orgProjectId).filter(Boolean) as string[])]
+    const orgDeptIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
     const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
 
     // 3. 并行查询关联数据

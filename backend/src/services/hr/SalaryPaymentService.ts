@@ -77,7 +77,7 @@ export class SalaryPaymentService {
               id: employees.id,
               name: employees.name,
               projectId: employees.projectId,
-              orgProjectId: employees.orgProjectId,
+              orgDepartmentId: employees.orgDepartmentId,
               positionId: employees.positionId,
             })
             .from(employees)
@@ -89,7 +89,7 @@ export class SalaryPaymentService {
 
     // 3. 批量获取部门和职位信息
     const deptIds = [...new Set(employeesList.map(e => e.projectId).filter(Boolean) as string[])]
-    const orgDeptIds = [...new Set(employeesList.map(e => e.orgProjectId).filter(Boolean) as string[])]
+    const orgDeptIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
     const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
 
     const [projectsList, orgDepartmentsList, positionsList] = await Promise.all([
@@ -141,7 +141,7 @@ export class SalaryPaymentService {
     const paymentsWithEmployeeInfo = payments.map(payment => {
       const employee = payment.employeeId ? employeeMap.get(payment.employeeId) : null
       const department = employee?.projectId ? deptMap.get(employee.projectId) : null
-      const orgDepartment = employee?.orgProjectId ? orgDeptMap.get(employee.orgProjectId) : null
+      const orgDepartment = employee?.orgDepartmentId ? orgDeptMap.get(employee.orgDepartmentId) : null
       const position = employee?.positionId ? positionMap.get(employee.positionId) : null
 
       return {

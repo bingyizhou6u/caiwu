@@ -10,7 +10,7 @@ import { uuidSchema, dateSchema, emailSchema } from './common.schema.js'
  */
 export const createEmployeeSchema = z.object({
     name: z.string().min(1, 'name参数必填'),
-    orgProjectId: uuidSchema,
+    orgDepartmentId: uuidSchema,
     positionId: uuidSchema,
     projectId: uuidSchema.optional(),
     joinDate: dateSchema,
@@ -55,7 +55,7 @@ export const createEmployeeSchema = z.object({
 export const updateEmployeeSchema = z.object({
     name: z.string().min(1).optional(),
     projectId: z.string().optional(),
-    orgProjectId: z.string().optional().nullable(),
+    orgDepartmentId: z.string().optional().nullable(),
     positionId: z.string().optional().nullable(),
     joinDate: dateSchema.optional(),
     active: z.number().int().min(0).max(1).optional(),

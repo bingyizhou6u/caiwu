@@ -90,20 +90,20 @@ export class ApprovalService {
     })
 
     // 4. 批量查询员工信息（包含部门）
-    const employeeMap = new Map<string, { name: string | null; projectId: string | null; orgProjectId: string | null }>()
+    const employeeMap = new Map<string, { name: string | null; projectId: string | null; orgDepartmentId: string | null }>()
     if (allEmployeeIds.size > 0) {
       const employees = await this.db
         .select({
           id: schema.employees.id,
           name: schema.employees.name,
           projectId: schema.employees.projectId,
-          orgProjectId: schema.employees.orgProjectId,
+          orgDepartmentId: schema.employees.orgDepartmentId,
         })
         .from(schema.employees)
         .where(inArray(schema.employees.id, Array.from(allEmployeeIds)))
         .execute()
 
-      employees.forEach(e => employeeMap.set(e.id, { name: e.name, projectId: e.projectId, orgProjectId: e.orgProjectId }))
+      employees.forEach(e => employeeMap.set(e.id, { name: e.name, projectId: e.projectId, orgDepartmentId: e.orgDepartmentId }))
     }
 
     // 5. 批量查询部门信息
@@ -111,7 +111,7 @@ export class ApprovalService {
     const allOrgDeptIds = new Set<string>()
     employeeMap.forEach(e => {
       if (e.projectId) allDeptIds.add(e.projectId)
-      if (e.orgProjectId) allOrgDeptIds.add(e.orgProjectId)
+      if (e.orgDepartmentId) allOrgDeptIds.add(e.orgDepartmentId)
     })
 
     const deptMap = new Map<string, string>()
@@ -153,7 +153,7 @@ export class ApprovalService {
         ...l,
         employeeName: emp?.name || null,
         departmentName: emp?.projectId ? deptMap.get(emp.projectId) || null : null,
-        orgDepartmentName: emp?.orgProjectId ? orgDeptMap.get(emp.orgProjectId) || null : null,
+        orgDepartmentName: emp?.orgDepartmentId ? orgDeptMap.get(emp.orgDepartmentId) || null : null,
       }
     })
 
@@ -163,7 +163,7 @@ export class ApprovalService {
         ...r,
         employeeName: emp?.name || null,
         departmentName: emp?.projectId ? deptMap.get(emp.projectId) || null : null,
-        orgDepartmentName: emp?.orgProjectId ? orgDeptMap.get(emp.orgProjectId) || null : null,
+        orgDepartmentName: emp?.orgDepartmentId ? orgDeptMap.get(emp.orgDepartmentId) || null : null,
         currencySymbol: r.currencyId ? currencyMap.get(r.currencyId) || null : null,
       }
     })

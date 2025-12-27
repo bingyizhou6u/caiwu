@@ -59,7 +59,7 @@ export async function getSessionWithUserAndPosition(
   } | null
   employee: {
     id: string
-    orgProjectId: string | null
+    orgDepartmentId: string | null
     projectId: string | null
   } | null
   departmentModules: string[] // 部门允许的模块列表
@@ -108,11 +108,11 @@ export async function getSessionWithUserAndPosition(
 
   // 4. 查询 org department modules
   let departmentModules: string[] = ['*']
-  if (employee.orgProjectId) {
+  if (employee.orgDepartmentId) {
     const dept = await db
       .select()
       .from(orgDepartments)
-      .where(and(eq(orgDepartments.id, employee.orgProjectId), eq(orgDepartments.active, 1)))
+      .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
       .get()
 
     if (dept && dept.allowedModules) {
@@ -138,7 +138,7 @@ export async function getSessionWithUserAndPosition(
     position,
     employee: {
       id: employee.id,
-      orgProjectId: employee.orgProjectId,
+      orgDepartmentId: employee.orgDepartmentId,
       projectId: employee.projectId,
     },
     departmentModules,
@@ -161,7 +161,7 @@ export async function getUserFullContext(
   } | null
   employee: {
     id: string
-    orgProjectId: string | null
+    orgDepartmentId: string | null
     projectId: string | null
   } | null
   departmentModules: string[]
@@ -197,11 +197,11 @@ export async function getUserFullContext(
 
   // 2. 获取 Department Modules
   let departmentModules: string[] = ['*']
-  if (employee.orgProjectId) {
+  if (employee.orgDepartmentId) {
     const dept = await db
       .select()
       .from(orgDepartments)
-      .where(and(eq(orgDepartments.id, employee.orgProjectId), eq(orgDepartments.active, 1)))
+      .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
       .get()
 
     if (dept && dept.allowedModules) {
@@ -222,7 +222,7 @@ export async function getUserFullContext(
     position,
     employee: {
       id: employee.id,
-      orgProjectId: employee.orgProjectId,
+      orgDepartmentId: employee.orgDepartmentId,
       projectId: employee.projectId,
     },
     departmentModules,

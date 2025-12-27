@@ -24,7 +24,7 @@ export class EmployeeService {
     data: {
       name: string
       personalEmail: string // 真实邮箱，用于接收转发的邮件
-      orgProjectId: string
+      orgDepartmentId: string
       projectId?: string
       positionId: string
       joinDate: string
@@ -101,7 +101,7 @@ export class EmployeeService {
       () => this.db
         .select()
         .from(orgDepartments)
-        .where(eq(orgDepartments.id, data.orgProjectId))
+        .where(eq(orgDepartments.id, data.orgDepartmentId))
         .get(),
       undefined
     )
@@ -158,7 +158,7 @@ export class EmployeeService {
           email: companyEmail,
           personalEmail: data.personalEmail,
           projectId: actualProjectId,
-          orgProjectId: data.orgProjectId,
+          orgDepartmentId: data.orgDepartmentId,
           positionId: data.positionId,
           joinDate: data.joinDate,
           birthday: data.birthday,
@@ -321,7 +321,7 @@ export class EmployeeService {
         personalEmail: employees.personalEmail,
         projectId: employees.projectId,
         departmentName: projects.name,
-        orgProjectId: employees.orgProjectId,
+        orgDepartmentId: employees.orgDepartmentId,
         orgDepartmentName: orgDepartments.name,
         orgDepartmentCode: orgDepartments.code,
         positionId: employees.positionId,
@@ -355,7 +355,7 @@ export class EmployeeService {
       })
       .from(employees)
       .leftJoin(projects, eq(employees.projectId, projects.id))
-      .leftJoin(orgDepartments, eq(employees.orgProjectId, orgDepartments.id))
+      .leftJoin(orgDepartments, eq(employees.orgDepartmentId, orgDepartments.id))
       .leftJoin(positions, eq(employees.positionId, positions.id))
   }
 
@@ -363,7 +363,7 @@ export class EmployeeService {
     filters: {
       status?: string
       projectId?: string
-      orgProjectId?: string
+      orgDepartmentId?: string
       name?: string
       email?: string
       positionId?: string
@@ -385,8 +385,8 @@ export class EmployeeService {
     if (filters.projectId) {
       conditions.push(eq(employees.projectId, filters.projectId))
     }
-    if (filters.orgProjectId) {
-      conditions.push(eq(employees.orgProjectId, filters.orgProjectId))
+    if (filters.orgDepartmentId) {
+      conditions.push(eq(employees.orgDepartmentId, filters.orgDepartmentId))
     }
     if (filters.name) {
       conditions.push(like(employees.name, `%${filters.name}%`))
@@ -420,7 +420,7 @@ export class EmployeeService {
 
     // 2. 批量获取关联数据
     const projectIds = [...new Set(employeesList.map(e => e.projectId).filter(Boolean) as string[])]
-    const orgProjectIds = [...new Set(employeesList.map(e => e.orgProjectId).filter(Boolean) as string[])]
+    const orgDepartmentIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
     const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
 
     const departmentMap = new Map<string, { name: string }>()
@@ -441,14 +441,14 @@ export class EmployeeService {
       depts.forEach(d => departmentMap.set(d.id, { name: d.name || '' }))
     }
 
-    if (orgProjectIds.length > 0) {
+    if (orgDepartmentIds.length > 0) {
       const orgDepts = await query(
         this.db,
         'EmployeeService.getAll.getOrgDepartments',
         () => this.db
           .select({ id: orgDepartments.id, name: orgDepartments.name, code: orgDepartments.code })
           .from(orgDepartments)
-          .where(inArray(orgDepartments.id, orgProjectIds))
+          .where(inArray(orgDepartments.id, orgDepartmentIds))
           .all(),
         undefined
       )
@@ -472,7 +472,7 @@ export class EmployeeService {
     // 3. 组装结果
     return employeesList.map(emp => {
       const dept = emp.projectId ? departmentMap.get(emp.projectId) : null
-      const orgDept = emp.orgProjectId ? orgDepartmentMap.get(emp.orgProjectId) : null
+      const orgDept = emp.orgDepartmentId ? orgDepartmentMap.get(emp.orgDepartmentId) : null
       const pos = emp.positionId ? positionMap.get(emp.positionId) : null
 
       return {
@@ -482,7 +482,7 @@ export class EmployeeService {
         personalEmail: emp.personalEmail,
         projectId: emp.projectId,
         departmentName: dept?.name || null,
-        orgProjectId: emp.orgProjectId,
+        orgDepartmentId: emp.orgDepartmentId,
         orgDepartmentName: orgDept?.name || null,
         orgDepartmentCode: orgDept?.code || null,
         positionId: emp.positionId,
@@ -530,8 +530,8 @@ export class EmployeeService {
       employee.projectId
         ? this.db.select().from(projects).where(eq(projects.id, employee.projectId)).get()
         : Promise.resolve(null),
-      employee.orgProjectId
-        ? this.db.select().from(orgDepartments).where(eq(orgDepartments.id, employee.orgProjectId)).get()
+      employee.orgDepartmentId
+        ? this.db.select().from(orgDepartments).where(eq(orgDepartments.id, employee.orgDepartmentId)).get()
         : Promise.resolve(null),
       employee.positionId
         ? this.db.select().from(positions).where(eq(positions.id, employee.positionId)).get()
@@ -545,7 +545,7 @@ export class EmployeeService {
       personalEmail: employee.personalEmail,
       projectId: employee.projectId,
       departmentName: department?.name || null,
-      orgProjectId: employee.orgProjectId,
+      orgDepartmentId: employee.orgDepartmentId,
       orgDepartmentName: orgDepartment?.name || null,
       orgDepartmentCode: orgDepartment?.code || null,
       positionId: employee.positionId,
@@ -579,7 +579,7 @@ export class EmployeeService {
   async migrateFromUser(
     userId: string,
     data: {
-      orgProjectId: string
+      orgDepartmentId: string
       positionId: string
       joinDate: string
       birthday?: string
@@ -621,7 +621,7 @@ export class EmployeeService {
         () => tx
           .select()
           .from(orgDepartments)
-          .where(eq(orgDepartments.id, data.orgProjectId))
+          .where(eq(orgDepartments.id, data.orgDepartmentId))
           .get(),
         c
       )
@@ -657,7 +657,7 @@ export class EmployeeService {
         .update(employees)
         .set({
           projectId: actualProjectId,
-          orgProjectId: data.orgProjectId,
+          orgDepartmentId: data.orgDepartmentId,
           positionId: data.positionId,
           joinDate: data.joinDate,
           status: 'probation', // 迁移时默认为试用期
@@ -677,7 +677,7 @@ export class EmployeeService {
     data: {
       name?: string
       projectId?: string
-      orgProjectId?: string
+      orgDepartmentId?: string
       positionId?: string
       joinDate?: string
       active?: number
@@ -709,7 +709,7 @@ export class EmployeeService {
     const updateData: any = { updatedAt: Date.now() }
     if (data.name !== undefined) { updateData.name = data.name }
     if (data.projectId !== undefined) { updateData.projectId = data.projectId }
-    if (data.orgProjectId !== undefined) { updateData.orgProjectId = data.orgProjectId }
+    if (data.orgDepartmentId !== undefined) { updateData.orgDepartmentId = data.orgDepartmentId }
     if (data.positionId !== undefined) { updateData.positionId = data.positionId }
     if (data.joinDate !== undefined) { updateData.joinDate = data.joinDate }
     if (data.active !== undefined) { updateData.active = Number(data.active) }
@@ -838,7 +838,7 @@ export class EmployeeService {
         email: schema.employees.personalEmail,
         positionId: schema.employees.positionId,
         projectId: schema.employees.projectId,
-        orgProjectId: schema.employees.orgProjectId,
+        orgDepartmentId: schema.employees.orgDepartmentId,
       })
       .from(schema.employees)
       .where(eq(schema.employees.id, userId))
@@ -881,12 +881,12 @@ export class EmployeeService {
     }
 
     // 3. DataScope.GROUP: View group employees
-    if (position.dataScope === DataScope.GROUP && employee?.orgProjectId) {
+    if (position.dataScope === DataScope.GROUP && employee?.orgDepartmentId) {
       const teamEmployees = await this.db
         .select({ id: employees.id })
         .from(employees)
         .where(
-          and(eq(employees.orgProjectId, employee.orgProjectId), eq(employees.active, 1))
+          and(eq(employees.orgDepartmentId, employee.orgDepartmentId), eq(employees.active, 1))
         )
         .execute()
       return teamEmployees.map(e => e.id)
@@ -1009,7 +1009,7 @@ export class EmployeeService {
    */
   async getUserGroupId(userId: string): Promise<string | null> {
     const employee = await this.getUserById(userId)
-    if (!employee?.orgProjectId) { return null }
+    if (!employee?.orgDepartmentId) { return null }
 
     const { orgDepartments } = await import('../../db/schema.js')
     const { isNotNull } = await import('drizzle-orm')
@@ -1017,7 +1017,7 @@ export class EmployeeService {
       .select({ id: orgDepartments.id })
       .from(orgDepartments)
       .where(
-        and(eq(orgDepartments.id, employee.orgProjectId), isNotNull(orgDepartments.parentId))
+        and(eq(orgDepartments.id, employee.orgDepartmentId), isNotNull(orgDepartments.parentId))
       )
       .get()
 
@@ -1029,7 +1029,7 @@ export class EmployeeService {
    */
   async getUserOrgProjectId(userId: string): Promise<string | null> {
     const employee = await this.getUserById(userId)
-    return employee?.orgProjectId || null
+    return employee?.orgDepartmentId || null
   }
 
   /**

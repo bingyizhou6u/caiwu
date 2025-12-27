@@ -130,7 +130,7 @@ flowsRoutes.openapi(
 
     // 使用 getDataAccessFilterSQL 获取数据访问过滤条件（返回 SQL 对象，更安全）
     // cash_flows 表使用 'created_by' 和 'project_id' 列
-    // 它没有 org_project_id，所以我们跳过那一层
+    // 它没有 org_department_id，所以我们跳过那一层
     const accessFilter = getDataAccessFilterSQL(c, 'cash_flows', {
       ownerColumn: 'created_by',
       deptColumn: 'project_id',

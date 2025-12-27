@@ -33,7 +33,7 @@ export type AppVariables = {
   }
   userEmployee?: {
     id: string
-    orgProjectId: string | null
+    orgDepartmentId: string | null
     projectId: string | null
   }
   departmentModules?: string[] // 部门允许的功能模块列表

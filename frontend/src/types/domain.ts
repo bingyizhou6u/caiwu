@@ -74,7 +74,7 @@ export interface Employee {
     // 部门和组织
     projectId: ID
     departmentName?: string
-    orgProjectId?: ID
+    orgDepartmentId?: ID
     orgDepartmentName?: string
     orgDepartmentCode?: string
 

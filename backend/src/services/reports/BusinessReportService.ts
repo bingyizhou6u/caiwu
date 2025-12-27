@@ -519,13 +519,13 @@ export class BusinessReportService {
     return result
   }
 
-  async getAnnualLeaveReport(projectId?: string, orgProjectId?: string) {
+  async getAnnualLeaveReport(projectId?: string, orgDepartmentId?: string) {
     const conditions = [eq(employees.active, 1)]
     if (projectId) {
       conditions.push(eq(employees.projectId, projectId))
     }
-    if (orgProjectId) {
-      conditions.push(eq(employees.orgProjectId, orgProjectId))
+    if (orgDepartmentId) {
+      conditions.push(eq(employees.orgDepartmentId, orgDepartmentId))
     }
 
     const emps = await this.db
@@ -534,7 +534,7 @@ export class BusinessReportService {
         name: employees.name,
         joinDate: employees.joinDate,
         projectId: employees.projectId,
-        orgProjectId: employees.orgProjectId,
+        orgDepartmentId: employees.orgDepartmentId,
       })
       .from(employees)
       .where(and(...conditions))
@@ -550,7 +550,7 @@ export class BusinessReportService {
           employeeId: emp.id,
           employeeName: emp.name,
           projectId: emp.projectId,
-          orgProjectId: emp.orgProjectId,
+          orgDepartmentId: emp.orgDepartmentId,
           joinDate: emp.joinDate,
           cycleMonths: annualLeaveStats.config.cycleMonths,
           cycleNumber: annualLeaveStats.cycle.cycleNumber,

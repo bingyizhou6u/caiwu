@@ -140,7 +140,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
                 name: employee.name,
                 project_id: projectId,
                 projectId: employee.projectId,
-                orgProjectId: employee.orgProjectId,
+                orgDepartmentId: employee.orgDepartmentId,
                 positionId: employee.positionId,
                 joinDate: employee.joinDate ? dayjs(employee.joinDate) : undefined,
                 regularDate: employee.regularDate ? dayjs(employee.regularDate) : undefined,
@@ -197,7 +197,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
                 housing_allowances,
                 transportation_allowances,
                 meal_allowances,
-                orgProjectId,
+                orgDepartmentId,
                 project_id,
                 probation_salaries,
                 regular_salaries,
@@ -213,7 +213,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
 
             const employeeData = {
                 ...restData,
-                orgProjectId,
+                orgDepartmentId,
                 projectId: project_id,
                 probationSalaries: probation_salaries as any,
                 regularSalaries: regular_salaries as any,
@@ -284,7 +284,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
             // 基础字段
             if (values.name) payload.name = values.name
             if (values.projectId) payload.projectId = values.projectId
-            if (values.orgProjectId) payload.orgProjectId = values.orgProjectId
+            if (values.orgDepartmentId) payload.orgDepartmentId = values.orgDepartmentId
             if (values.positionId) payload.positionId = values.positionId
             if (isEdit && 'active' in values && values.active !== undefined) {
                 payload.active = values.active ? 1 : 0
@@ -407,7 +407,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
     const getStepFields = (step: number): string[] => {
         switch (step) {
             case 0:
-                return ['name', 'project_id', 'orgProjectId', 'positionId', 'joinDate', 'regularDate', 'birthday', 'personalEmail']
+                return ['name', 'project_id', 'orgDepartmentId', 'positionId', 'joinDate', 'regularDate', 'birthday', 'personalEmail']
             case 1:
                 return [] // 联系方式都是可选的
             case 2:

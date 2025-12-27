@@ -62,7 +62,7 @@ employeesRoutes.openapi(
     // 使用 getDataAccessFilterSQL 获取安全的 SQL 对象
     const accessFilter = getDataAccessFilterSQL(c, 'employees', {
       deptColumn: 'projectId',
-      orgDeptColumn: 'orgProjectId',
+      orgDeptColumn: 'orgDepartmentId',
     })
 
     const results = await service.getAll(filters, accessFilter)
@@ -165,7 +165,7 @@ employeesRoutes.openapi(
       {
         name: body.name,
         personalEmail: body.personalEmail,
-        orgProjectId: body.orgProjectId,
+        orgDepartmentId: body.orgDepartmentId,
         projectId: body.projectId,
         positionId: body.positionId,
         joinDate: body.joinDate,
@@ -342,7 +342,7 @@ employeesRoutes.openapi(
     const result = await service.update(id, {
       name: body.name,
       projectId: body.projectId,
-      orgProjectId: body.orgProjectId,
+      orgDepartmentId: body.orgDepartmentId,
       positionId: body.positionId,
       joinDate: body.joinDate,
       active: body.active,

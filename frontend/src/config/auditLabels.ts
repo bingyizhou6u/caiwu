@@ -122,7 +122,7 @@ const DETAIL_FIELD_LABELS: Record<string, string> = {
   emailRoutingCreated: '邮箱路由已创建',
   positionId: '职位',
   projectId: '项目',
-  orgProjectId: '部门',
+  orgDepartmentId: '部门',
   joinDate: '入职日期',
   regularDate: '转正日期',
   leaveDate: '离职日期',

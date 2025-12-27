@@ -32,7 +32,7 @@ export class PositionService {
     return positionsList
   }
 
-  async getAvailablePositions(orgProjectId?: string) {
+  async getAvailablePositions(orgDepartmentId?: string) {
     // 返回所有可用职位，按 dataScope 分组，让调用方根据需要筛选
     // D1 兼容性：使用单个 orderBy，然后在内存中排序
 

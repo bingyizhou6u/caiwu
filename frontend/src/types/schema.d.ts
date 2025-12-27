@@ -1650,7 +1650,7 @@ export interface paths {
         get: {
             parameters: {
                 query: {
-                    orgProjectId: string;
+                    orgDepartmentId: string;
                 };
                 header?: never;
                 path?: never;
@@ -3086,7 +3086,7 @@ export interface paths {
             parameters: {
                 query?: {
                     projectId?: string;
-                    orgProjectId?: string;
+                    orgDepartmentId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3186,7 +3186,7 @@ export interface paths {
                 query?: {
                     status?: string;
                     projectId?: string;
-                    orgProjectId?: string;
+                    orgDepartmentId?: string;
                     name?: string;
                     email?: string;
                     positionId?: string;
@@ -3232,7 +3232,7 @@ export interface paths {
                          */
                         personalEmail: string;
                         /** @example org-dept-1 */
-                        orgProjectId: string;
+                        orgDepartmentId: string;
                         /** @example dept-1 */
                         projectId?: string;
                         /** @example pos-1 */
@@ -3334,7 +3334,7 @@ export interface paths {
                     "application/json": {
                         name?: string;
                         projectId?: string;
-                        orgProjectId?: string;
+                        orgDepartmentId?: string;
                         positionId?: string;
                         joinDate?: string;
                         active?: number;

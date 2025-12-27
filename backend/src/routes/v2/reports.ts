@@ -601,7 +601,7 @@ app.openapi(
     request: {
       query: z.object({
         projectId: z.string().optional(),
-        orgProjectId: z.string().optional(),
+        orgDepartmentId: z.string().optional(),
       }),
     },
     responses: {
@@ -622,20 +622,20 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'hr', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { projectId, orgProjectId } = c.req.valid('query')
+    const { projectId, orgDepartmentId } = c.req.valid('query')
 
     const validDeptId = validateScope(c, projectId)
-    let validOrgDeptId = orgProjectId
+    let validOrgDeptId = orgDepartmentId
 
     const position = getUserPosition(c)
     const employee = c.get('userEmployee')
 
     if (position && position.dataScope === DataScope.GROUP) {
-      if (employee?.orgProjectId) {
-        if (validOrgDeptId && validOrgDeptId !== employee.orgProjectId) {
+      if (employee?.orgDepartmentId) {
+        if (validOrgDeptId && validOrgDeptId !== employee.orgDepartmentId) {
           throw Errors.FORBIDDEN('Cannot access other groups')
         }
-        validOrgDeptId = employee.orgProjectId
+        validOrgDeptId = employee.orgDepartmentId
       } else {
         validOrgDeptId = 'NONE'
       }

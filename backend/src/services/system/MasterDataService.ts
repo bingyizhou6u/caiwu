@@ -250,8 +250,8 @@ export class MasterDataService {
     return this.positionService.getPositions()
   }
 
-  async getAvailablePositions(orgProjectId: string) {
-    return this.positionService.getAvailablePositions(orgProjectId)
+  async getAvailablePositions(orgDepartmentId: string) {
+    return this.positionService.getAvailablePositions(orgDepartmentId)
   }
 
   // ========== Org Departments ==========

@@ -17,7 +17,7 @@ export const employees = sqliteTable('employees', {
   personalEmail: text('personal_email'),
   name: text('name'),
   positionId: text('position_id'),
-  orgProjectId: text('org_project_id'),
+  orgDepartmentId: text('org_department_id'),
   projectId: text('project_id'),
   joinDate: text('join_date'),
   status: text('status'),

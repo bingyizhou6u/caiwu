@@ -72,7 +72,7 @@ export class ReportService {
     return this.businessService.getEmployeeSalaryReport(year, month, projectId, useCache)
   }
 
-  async getAnnualLeaveReport(projectId?: string, orgProjectId?: string) {
-    return this.businessService.getAnnualLeaveReport(projectId, orgProjectId)
+  async getAnnualLeaveReport(projectId?: string, orgDepartmentId?: string) {
+    return this.businessService.getAnnualLeaveReport(projectId, orgDepartmentId)
   }
 }

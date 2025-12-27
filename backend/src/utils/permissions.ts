@@ -25,7 +25,7 @@ export interface Employee {
   name: string
   positionId: string
   projectId: string | null // 项目ID
-  orgProjectId: string | null // 组ID
+  orgDepartmentId: string | null // 组ID
 }
 
 // 从Context获取用户职位信息（由中间件预加载）
@@ -164,10 +164,10 @@ export async function canViewEmployee(
   // Scope: GROUP (Same Org Department)
   if (position.dataScope === DataScope.GROUP) {
     const target = await c.env.DB.prepare(
-      'SELECT org_project_id FROM employees WHERE id = ?'
-    ).bind(targetEmployeeId).first<{ org_project_id: string }>()
+      'SELECT org_department_id FROM employees WHERE id = ?'
+    ).bind(targetEmployeeId).first<{ org_department_id: string }>()
 
-    return target ? target.org_project_id === employee.orgProjectId : false
+    return target ? target.org_department_id === employee.orgDepartmentId : false
   }
 
   // Scope: SELF
@@ -212,10 +212,10 @@ export async function canApproveApplication(
   // Scope: GROUP
   if (position.dataScope === DataScope.GROUP) {
     const applicant = await c.env.DB.prepare(
-      'SELECT org_project_id FROM employees WHERE id = ?'
-    ).bind(applicantEmployeeId).first<{ org_project_id: string }>()
+      'SELECT org_department_id FROM employees WHERE id = ?'
+    ).bind(applicantEmployeeId).first<{ org_department_id: string }>()
 
-    return applicant ? applicant.org_project_id === employee.orgProjectId : false
+    return applicant ? applicant.org_department_id === employee.orgDepartmentId : false
   }
 
   return false
@@ -248,7 +248,7 @@ export function getDataAccessFilterSQL(
   tableAlias: string = '',
   options: {
     deptColumn?: string // 部门字段，默认 'projectId'
-    orgDeptColumn?: string // 组织/组字段，默认 'orgProjectId'
+    orgDeptColumn?: string // 组织/组字段，默认 'orgDepartmentId'
     ownerColumn?: string // 所有者字段，默认 'id'
     skipOrgDept?: boolean // 是否跳过组织部门检查（用于没有 orgDept 字段的表）
   } = {}
@@ -269,7 +269,7 @@ export function getDataAccessFilterSQL(
   }
 
   const deptCol = validateColumnName(options.deptColumn || 'projectId')
-  const orgDeptCol = validateColumnName(options.orgDeptColumn || 'orgProjectId')
+  const orgDeptCol = validateColumnName(options.orgDeptColumn || 'orgDepartmentId')
   const ownerCol = validateColumnName(options.ownerColumn || 'id')
 
   // 构建表别名前缀（如果提供，也需要验证）
@@ -288,8 +288,8 @@ export function getDataAccessFilterSQL(
         // 如果表没有 orgDept 字段，且用户范围是 GROUP，则降级为 SELF
         return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
       }
-      if (!employee.orgProjectId) return sql`1=0`
-      return sql`${sql.raw(`${aliasPrefix}${orgDeptCol}`)} = ${employee.orgProjectId}`
+      if (!employee.orgDepartmentId) return sql`1=0`
+      return sql`${sql.raw(`${aliasPrefix}${orgDeptCol}`)} = ${employee.orgDepartmentId}`
 
     case DataScope.SELF:
     default:
