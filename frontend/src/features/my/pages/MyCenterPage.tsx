@@ -145,7 +145,7 @@ export function MyCenter() {
       breadcrumb={[{ title: '个人中心' }, { title: '工作台' }]}
     >
       <Card bordered className="page-card page-card-outer">
-        <Tabs defaultActiveKey="dashboard" items={[
+        <Tabs type="card" defaultActiveKey="dashboard" items={[
           {
             key: 'dashboard', label: <span><ClockCircleOutlined aria-hidden="true" /> 工作台</span>, children: (
               <Row gutter={[24, 24]}>
