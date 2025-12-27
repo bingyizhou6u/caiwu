@@ -1,3 +1,10 @@
+/**
+ * 个人中心页面
+ * 
+ * @accessibility
+ * - 使用 role 和 aria-label 增强屏幕阅读器支持
+ * - 所有装饰性图标添加 aria-hidden
+ */
 import { useState, useEffect } from 'react'
 import { Card, Row, Col, Statistic, Button, Descriptions, Tag, message, Spin, Space, Timeline, Alert, Modal, Tabs, Progress } from 'antd'
 import { ClockCircleOutlined, LoginOutlined, LogoutOutlined, UserOutlined, CalendarOutlined, WalletOutlined, FileTextOutlined, DollarOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
@@ -140,10 +147,10 @@ export function MyCenter() {
       <Card bordered className="page-card page-card-outer">
         <Tabs defaultActiveKey="dashboard" items={[
           {
-            key: 'dashboard', label: <span><ClockCircleOutlined /> 工作台</span>, children: (
+            key: 'dashboard', label: <span><ClockCircleOutlined aria-hidden="true" /> 工作台</span>, children: (
               <Row gutter={[24, 24]}>
                 <Col xs={24} lg={12}>
-                  <Card title={<><ClockCircleOutlined /> 今日打卡</>} extra={<span style={{ fontSize: 24, fontWeight: 'bold' }}>{currentTime.toLocaleTimeString('zh-CN')}</span>} className="page-card-inner">
+                  <Card title={<><ClockCircleOutlined aria-hidden="true" /> 今日打卡</>} extra={<span style={{ fontSize: 24, fontWeight: 'bold' }} aria-label="当前时间">{currentTime.toLocaleTimeString('zh-CN')}</span>} className="page-card-inner">
                     <Alert type={isWorkingDay ? 'info' : 'warning'} message={<Space direction="vertical" size={4} style={{ width: '100%' }}><div><strong>排班时间：</strong>{getWorkScheduleText(workSchedule)}</div>{!isWorkingDay && <div style={{ color: '#fa8c16' }}>今天不是工作日</div>}</Space>} style={{ marginBottom: 16 }} />
                     <Row gutter={16} style={{ marginBottom: 24 }}>
                       <Col span={12}><Card size="small" style={{ textAlign: 'center', background: attendanceData?.record?.clockInTime ? '#f6ffed' : '#fafafa' }}><div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>签到时间</div><div style={{ fontSize: 20, fontWeight: 'bold', color: attendanceData?.record?.clockInTime ? '#52c41a' : '#999' }}>{attendanceData?.record?.clockInTime ? formatTime(attendanceData.record.clockInTime) : '--:--:--'}</div></Card></Col>
