@@ -48,12 +48,17 @@ export interface Task {
     startDate?: string
     dueDate?: string
     completedAt?: number
+    // 多选人员 ID 数组
+    assigneeIds?: string[]
+    reviewerIds?: string[]
+    testerIds?: string[]
+    // 人员名称数组
+    assigneeNames?: string[]
+    reviewerNames?: string[]
+    testerNames?: string[]
+    // 兼容旧字段
     assigneeId?: string
     assigneeName?: string
-    reviewerId?: string
-    reviewerName?: string
-    testerId?: string
-    testerName?: string
     sortOrder: number
     createdBy?: string
     createdAt?: number

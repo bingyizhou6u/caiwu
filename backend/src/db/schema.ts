@@ -715,9 +715,14 @@ export const tasks = sqliteTable(
     startDate: text('start_date'),
     dueDate: text('due_date'),
     completedAt: integer('completed_at'),
-    assigneeId: text('assignee_id'), // 开发人员
-    reviewerId: text('reviewer_id'), // 审核人员
-    testerId: text('tester_id'), // 测试人员
+    // 人员字段改为 JSON 数组支持多选
+    assigneeIds: text('assignee_ids'), // 开发人员 (JSON 数组)
+    reviewerIds: text('reviewer_ids'), // 审核人员 (JSON 数组)
+    testerIds: text('tester_ids'), // 测试人员 (JSON 数组)
+    // 保留旧字段用于兼容
+    assigneeId: text('assignee_id'), // 已废弃，兼容旧数据
+    reviewerId: text('reviewer_id'), // 已废弃，兼容旧数据
+    testerId: text('tester_id'), // 已废弃，兼容旧数据
     sortOrder: integer('sort_order').default(0), // 排序顺序（看板用）
     version: integer('version').default(1), // 乐观锁
     createdBy: text('created_by'),
@@ -729,9 +734,6 @@ export const tasks = sqliteTable(
     idxDepartment: index('idx_tasks_department').on(t.projectId),
     idxRequirement: index('idx_tasks_requirement').on(t.requirementId),
     idxStatus: index('idx_tasks_status').on(t.status),
-    idxAssignee: index('idx_tasks_assignee').on(t.assigneeId),
-    idxReviewer: index('idx_tasks_reviewer').on(t.reviewerId),
-    idxTester: index('idx_tasks_tester').on(t.testerId),
   })
 )
 

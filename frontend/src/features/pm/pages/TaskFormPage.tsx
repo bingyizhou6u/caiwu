@@ -199,10 +199,11 @@ export default function TaskFormPage() {
                         </Form.Item>
                     )}
 
-                    {/* 负责人 */}
-                    <Form.Item name="assigneeId" label="开发人员">
+                    {/* 开发人员（多选） */}
+                    <Form.Item name="assigneeIds" label="开发人员">
                         <Select
-                            placeholder="选择开发人员"
+                            mode="multiple"
+                            placeholder="选择开发人员（可多选）"
                             showSearch
                             allowClear
                             optionFilterProp="label"
@@ -210,10 +211,11 @@ export default function TaskFormPage() {
                         />
                     </Form.Item>
 
-                    {/* 审核人和测试人 */}
+                    {/* 审核人和测试人（多选） */}
                     <div className="grid grid-cols-2 gap-4">
-                        <Form.Item name="reviewerId" label="审核人员">
+                        <Form.Item name="reviewerIds" label="审核人员">
                             <Select
+                                mode="multiple"
                                 placeholder="选择审核人员"
                                 showSearch
                                 allowClear
@@ -221,8 +223,9 @@ export default function TaskFormPage() {
                                 options={employeeOptions}
                             />
                         </Form.Item>
-                        <Form.Item name="testerId" label="测试人员">
+                        <Form.Item name="testerIds" label="测试人员">
                             <Select
+                                mode="multiple"
                                 placeholder="选择测试人员"
                                 showSearch
                                 allowClear
