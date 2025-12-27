@@ -68,6 +68,17 @@ export const departments = sqliteTable('departments', {
   code: text('code'),
   active: integer('active').default(1),
   sortOrder: integer('sort_order').default(100),
+  // PM 扩展字段
+  managerId: text('manager_id'), // 项目经理（员工ID）
+  status: text('status').default('active'), // active, on_hold, completed, cancelled
+  priority: text('priority').default('medium'), // high, medium, low
+  startDate: text('start_date'), // 计划开始日期
+  endDate: text('end_date'), // 计划结束日期
+  actualStartDate: text('actual_start_date'),
+  actualEndDate: text('actual_end_date'),
+  budgetCents: integer('budget_cents'), // 预算（分）
+  description: text('description'),
+  memo: text('memo'),
   createdAt: integer('created_at'),
   updatedAt: integer('updated_at'),
 })
@@ -682,7 +693,8 @@ export const requirements = sqliteTable(
   {
     id: text('id').primaryKey(),
     code: text('code').notNull().unique(), // 需求编号，如 REQ-001
-    projectId: text('project_id').notNull(), // 所属项目
+    projectId: text('project_id'), // 所属项目（旧字段，逐步废弃）
+    departmentId: text('department_id'), // 所属项目（关联 departments 表）
     title: text('title').notNull(),
     description: text('description'), // 支持 Markdown
     type: text('type').notNull(), // feature, bug, improvement, task
@@ -703,6 +715,7 @@ export const requirements = sqliteTable(
   },
   t => ({
     idxProject: index('idx_requirements_project').on(t.projectId),
+    idxDepartment: index('idx_requirements_department').on(t.departmentId),
     idxStatus: index('idx_requirements_status').on(t.status),
     idxAssignee: index('idx_requirements_assignee').on(t.assigneeId),
   })
@@ -715,7 +728,8 @@ export const tasks = sqliteTable(
     id: text('id').primaryKey(),
     code: text('code').notNull().unique(), // 任务编号，如 TASK-001
     requirementId: text('requirement_id'), // 关联需求（可选）
-    projectId: text('project_id').notNull(), // 所属项目
+    projectId: text('project_id'), // 所属项目（旧字段，逐步废弃）
+    departmentId: text('department_id'), // 所属项目（关联 departments 表）
     parentTaskId: text('parent_task_id'), // 父任务（支持子任务）
     title: text('title').notNull(),
     description: text('description'),
@@ -736,6 +750,7 @@ export const tasks = sqliteTable(
   },
   t => ({
     idxProject: index('idx_tasks_project').on(t.projectId),
+    idxDepartment: index('idx_tasks_department').on(t.departmentId),
     idxRequirement: index('idx_tasks_requirement').on(t.requirementId),
     idxStatus: index('idx_tasks_status').on(t.status),
     idxAssignee: index('idx_tasks_assignee').on(t.assigneeId),
@@ -748,6 +763,7 @@ export const taskTimelogs = sqliteTable(
   {
     id: text('id').primaryKey(),
     taskId: text('task_id').notNull(), // 关联任务
+    departmentId: text('department_id'), // 所属项目（即查询优化）
     employeeId: text('employee_id').notNull(), // 员工
     logDate: text('log_date').notNull(), // 日志日期
     hours: real('hours').notNull(), // 工时（支持 0.5 小时）
@@ -757,6 +773,7 @@ export const taskTimelogs = sqliteTable(
   },
   t => ({
     idxTask: index('idx_timelogs_task').on(t.taskId),
+    idxDepartment: index('idx_timelogs_department').on(t.departmentId),
     idxEmployeeDate: index('idx_timelogs_employee_date').on(t.employeeId, t.logDate),
   })
 )
@@ -766,7 +783,8 @@ export const milestones = sqliteTable(
   'milestones',
   {
     id: text('id').primaryKey(),
-    projectId: text('project_id').notNull(), // 所属项目
+    projectId: text('project_id'), // 所属项目（旧字段，逐步废弃）
+    departmentId: text('department_id'), // 所属项目（关联 departments 表）
     name: text('name').notNull(),
     description: text('description'),
     dueDate: text('due_date').notNull(), // 截止日期
@@ -779,6 +797,7 @@ export const milestones = sqliteTable(
   },
   t => ({
     idxProject: index('idx_milestones_project').on(t.projectId),
+    idxDepartment: index('idx_milestones_department').on(t.departmentId),
   })
 )
 
