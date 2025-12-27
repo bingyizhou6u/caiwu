@@ -62,6 +62,7 @@ const loaders: Record<string, () => Promise<any>> = {
     'my/approvals': () => import('../features/my/pages/MyApprovalsPage').then(m => ({ default: m.MyApprovals })),
 
     // PM (项目管理)
+    'pm/config': () => import('../features/system/pages/DepartmentManagementPage').then(m => ({ default: m.DepartmentManagement })),
     'pm/projects': () => import('../features/pm/pages/ProjectListPage'),
     'pm/projects/:id': () => import('../features/pm/pages/ProjectDetailPage'),
     'pm/tasks/kanban': () => import('../features/pm/pages/TaskKanbanPage'),
@@ -138,6 +139,7 @@ const RequestTotpReset = lazy(loaders['auth/request-totp-reset'])
 const ResetTotpConfirm = lazy(loaders['auth/reset-totp'])
 
 // PM
+const ProjectConfigPage = lazy(loaders['pm/config'])
 const ProjectListPage = lazy(loaders['pm/projects'])
 const ProjectDetailPage = lazy(loaders['pm/projects/:id'])
 const TaskKanbanPage = lazy(loaders['pm/tasks/kanban'])
@@ -249,6 +251,7 @@ export const router = createBrowserRouter([
             { path: 'system/audit', element: <Suspense fallback={<Loading />}><AuditLogs /></Suspense> },
 
             // PM (项目管理)
+            { path: 'pm/config', element: <Suspense fallback={<Loading />}><ProjectConfigPage /></Suspense> },
             { path: 'pm/projects', element: <Suspense fallback={<Loading />}><ProjectListPage /></Suspense> },
             { path: 'pm/projects/:id', element: <Suspense fallback={<Loading />}><ProjectDetailPage /></Suspense> },
             { path: 'pm/tasks/kanban', element: <Suspense fallback={<Loading />}><TaskKanbanPage /></Suspense> },

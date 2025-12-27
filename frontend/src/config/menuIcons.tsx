@@ -118,6 +118,7 @@ export const menuIcons: Record<string, React.ReactNode> = {
 
     // 项目管理 (PM)
     'pm': <ProjectOutlined />,
+    'pm-config': <SettingOutlined />,
     'pm-projects': <ProjectOutlined />,
     'pm-kanban': <AppstoreOutlined />,
     'pm-timelogs': <ClockCircleOutlined />,

@@ -45,7 +45,6 @@ export const pageTitles: Record<string, string> = {
     'report-expense-detail': '日常支出明细',
     'report-account-balance': '账户余额报表',
     // 系统设置
-    'department': '项目管理',
     'category': '类别管理',
     'account': '账户管理',
     'currency': '币种管理',
@@ -56,6 +55,7 @@ export const pageTitles: Record<string, string> = {
     'audit': '审计日志',
     'change-password': '修改密码',
     // 项目管理(PM)
+    'pm-config': '项目配置',
     'pm-projects': '项目列表',
     'pm-kanban': '任务看板',
     'pm-timelogs': '工时管理',
@@ -222,6 +222,10 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
 
     // 7. 项目管理 (PM)
     const pm: MenuProps['items'] = []
+    // 项目配置（原系统设置>项目管理）
+    if (hasPermission(userInfo, 'system', 'department', 'view')) {
+        pm.push({ key: 'pm-config', label: '项目配置', icon: getMenuIcon('pm-config') })
+    }
     if (hasPermission(userInfo, 'pm', 'project', 'view')) {
         pm.push({ key: 'pm-projects', label: '项目列表', icon: getMenuIcon('pm-projects') })
     }
@@ -237,10 +241,6 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
 
     // 8. 系统设置
     const system: MenuProps['items'] = []
-    // 基础数据管理
-    if (hasPermission(userInfo, 'system', 'department', 'view')) {
-        system.push({ key: 'department', label: '项目管理', icon: getMenuIcon('department') })
-    }
     // 系统管理：只有总部主管 (DataScope='all') 可见
     if (userInfo?.position?.dataScope === 'all') {
         system.push({ key: 'position-permissions', label: '权限管理', icon: getMenuIcon('position-permissions') })
@@ -295,7 +295,6 @@ export const KEY_TO_PATH: Record<string, string> = {
     'report-expense-detail': '/reports/expense-detail',
     'report-account-balance': '/reports/account-balance',
 
-    'department': '/system/departments',
     'category': '/system/categories',
     'account': '/system/accounts',
     'currency': '/system/currencies',
@@ -307,6 +306,7 @@ export const KEY_TO_PATH: Record<string, string> = {
     'change-password': '/change-password',
 
     // PM
+    'pm-config': '/pm/config',
     'pm-projects': '/pm/projects',
     'pm-kanban': '/pm/tasks/kanban',
     'pm-timelogs': '/pm/timelogs',
