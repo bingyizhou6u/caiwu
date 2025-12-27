@@ -5,24 +5,22 @@
 import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
-    Badge, Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Select, Space,
-    Statistic, Table, Tabs, Tag, Typography
+    Button, Card, DatePicker, Form, Input, InputNumber, message, Modal, Select, Space,
+    Statistic, Table, Tabs, Row, Col
 } from 'antd'
 import {
-    PlusOutlined, ArrowLeftOutlined, ClockCircleOutlined, TeamOutlined,
-    DeleteOutlined, CalendarOutlined
+    PlusOutlined, ClockCircleOutlined, TeamOutlined
 } from '@ant-design/icons'
 import {
     useTimelogs, useMyTimelogs, useCreateTimelog, useDeleteTimelog,
     useTeamWorkloadSummary, useProjects, useTasks,
-    type Timelog, type CreateTimelogInput, type Project, type Task
+    type Timelog, type Project, type Task
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
+import { PageToolbar } from '../../../components/common'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
-const { Title, Text } = Typography
-const { TabPane } = Tabs
 const { RangePicker } = DatePicker
 
 export default function TimelogPage() {
@@ -106,27 +104,22 @@ export default function TimelogPage() {
             dataIndex: 'hours',
             key: 'hours',
             width: 80,
-            render: (hours) => `${hours} h`,
+            render: (hours: number) => `${hours.toFixed(1)} h`,
         },
         {
             title: '描述',
             dataIndex: 'description',
             key: 'description',
             ellipsis: true,
-            render: (desc) => desc || '-',
         },
         {
             title: '操作',
             key: 'action',
             width: 80,
             render: (_, record) => (
-                <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleDelete(record.id)}
-                />
+                <Button size="small" danger onClick={() => handleDelete(record.id)}>
+                    删除
+                </Button>
             ),
         },
     ]
@@ -157,101 +150,118 @@ export default function TimelogPage() {
         },
     ]
 
+    const tabItems = [
+        {
+            key: 'my',
+            label: `我的工时 (${myTimelogs.length})`,
+            children: (
+                <Table
+                    columns={timelogColumns}
+                    dataSource={myTimelogs}
+                    rowKey="id"
+                    loading={myLoading}
+                    pagination={{ pageSize: 20 }}
+                    size="small"
+                />
+            ),
+        },
+        {
+            key: 'team',
+            label: '团队工时',
+            children: (
+                <Table
+                    columns={teamTimelogColumns}
+                    dataSource={teamTimelogs}
+                    rowKey="id"
+                    loading={teamLoading}
+                    pagination={{ pageSize: 20 }}
+                    size="small"
+                />
+            ),
+        },
+        {
+            key: 'summary',
+            label: '工时汇总',
+            children: (
+                <Table
+                    columns={workloadColumns}
+                    dataSource={workloadSummary}
+                    rowKey="employeeId"
+                    pagination={false}
+                    size="small"
+                />
+            ),
+        },
+    ]
+
     return (
         <PageContainer
             title="工时管理"
             breadcrumb={[{ title: '项目管理' }, { title: '工时管理' }]}
         >
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <Title level={4} className="mb-0">工时管理</Title>
-                    <Text type="secondary">记录和查看工时</Text>
+            <Card bordered={false} className="page-card">
+                {/* 统计卡片 */}
+                <Row gutter={16} style={{ marginBottom: 24 }}>
+                    <Col span={8}>
+                        <Card bordered>
+                            <Statistic
+                                title="我的本周工时"
+                                value={myTotalHours.toFixed(1)}
+                                suffix="h"
+                                prefix={<ClockCircleOutlined />}
+                            />
+                        </Card>
+                    </Col>
+                    <Col span={8}>
+                        <Card bordered>
+                            <Statistic
+                                title="团队总工时"
+                                value={teamTotalHours.toFixed(1)}
+                                suffix="h"
+                                prefix={<TeamOutlined />}
+                            />
+                        </Card>
+                    </Col>
+                    <Col span={8}>
+                        <Card bordered>
+                            <Statistic
+                                title="活跃成员"
+                                value={workloadSummary.length}
+                                prefix={<TeamOutlined />}
+                            />
+                        </Card>
+                    </Col>
+                </Row>
+
+                {/* 工具栏 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <Space>
+                        <Select
+                            placeholder="选择项目"
+                            style={{ width: 200 }}
+                            allowClear
+                            showSearch
+                            optionFilterProp="label"
+                            value={projectId || undefined}
+                            options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
+                            onChange={(value) => setProjectId(value || '')}
+                        />
+                        <RangePicker
+                            value={dateRange}
+                            onChange={(dates) => setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null])}
+                        />
+                    </Space>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setCreateModalVisible(true)}
+                    >
+                        记录工时
+                    </Button>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
-                    记录工时
-                </Button>
-            </div>
 
-            {/* 统计卡片 */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                <Card>
-                    <Statistic
-                        title="我的本周工时"
-                        value={myTotalHours}
-                        suffix="h"
-                        prefix={<ClockCircleOutlined />}
-                    />
-                </Card>
-                <Card>
-                    <Statistic
-                        title="团队总工时"
-                        value={teamTotalHours}
-                        suffix="h"
-                        prefix={<TeamOutlined />}
-                    />
-                </Card>
-                <Card>
-                    <Statistic
-                        title="活跃成员"
-                        value={workloadSummary.length}
-                        prefix={<TeamOutlined />}
-                    />
-                </Card>
-            </div>
-
-            {/* 筛选区 */}
-            <Card className="mb-4">
-                <Space>
-                    <Select
-                        placeholder="选择项目"
-                        style={{ width: 200 }}
-                        allowClear
-                        value={projectId || undefined}
-                        options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
-                        onChange={(value) => setProjectId(value || '')}
-                    />
-                    <RangePicker
-                        value={dateRange}
-                        onChange={(dates) => setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null])}
-                    />
-                </Space>
-            </Card>
-
-            {/* 标签页 */}
-            <Card>
-                <Tabs activeKey={activeTab} onChange={setActiveTab}>
-                    <TabPane tab={`我的工时 (${myTimelogs.length})`} key="my">
-                        <Table
-                            columns={timelogColumns}
-                            dataSource={myTimelogs}
-                            rowKey="id"
-                            loading={myLoading}
-                            pagination={{ pageSize: 20 }}
-                            size="small"
-                        />
-                    </TabPane>
-
-                    <TabPane tab="团队工时" key="team">
-                        <Table
-                            columns={teamTimelogColumns}
-                            dataSource={teamTimelogs}
-                            rowKey="id"
-                            loading={teamLoading}
-                            pagination={{ pageSize: 20 }}
-                            size="small"
-                        />
-                    </TabPane>
-
-                    <TabPane tab="工时汇总" key="summary">
-                        <Table
-                            columns={workloadColumns}
-                            dataSource={workloadSummary}
-                            rowKey="employeeId"
-                            pagination={false}
-                            size="small"
-                        />
-                    </TabPane>
-                </Tabs>
+                {/* 标签页 */}
+                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
             </Card>
 
             {/* 创建工时弹窗 */}
