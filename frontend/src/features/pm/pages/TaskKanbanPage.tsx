@@ -9,14 +9,14 @@ import {
 } from 'antd'
 import {
     PlusOutlined, SearchOutlined, MoreOutlined,
-    EditOutlined, DeleteOutlined, ClockCircleOutlined, UserOutlined
+    EditOutlined, DeleteOutlined, ClockCircleOutlined, UserOutlined,
+    ProjectOutlined
 } from '@ant-design/icons'
 import {
     useKanbanTasks, useUpdateTaskStatus, useDeleteTask, useProjects,
     type Task, type Project
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
-import { PageToolbar } from '../../../components/common'
 import dayjs from 'dayjs'
 
 const { Text } = Typography
@@ -51,20 +51,13 @@ function TaskCard({ task, onDragStart, onEdit, onDelete }: TaskCardProps) {
     ]
 
     return (
-        <div
+        <Card
+            size="small"
             draggable
             onDragStart={(e) => onDragStart(e, task)}
-            style={{
-                background: '#fff',
-                borderRadius: 8,
-                border: '1px solid #f0f0f0',
-                padding: 12,
-                marginBottom: 8,
-                cursor: 'grab',
-                transition: 'box-shadow 0.2s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)')}
-            onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
+            style={{ marginBottom: 8, cursor: 'grab' }}
+            hoverable
+            className="page-card-inner"
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <Text strong style={{ flex: 1, marginRight: 8 }} ellipsis>
@@ -98,7 +91,7 @@ function TaskCard({ task, onDragStart, onEdit, onDelete }: TaskCardProps) {
                     </span>
                 )}
             </div>
-        </div>
+        </Card>
     )
 }
 
@@ -119,22 +112,19 @@ function KanbanColumn({
     title, color, tasks, status, onDragOver, onDrop, onDragStart, onEdit, onDelete
 }: KanbanColumnProps) {
     return (
-        <div
-            style={{
-                flex: 1,
-                minWidth: 280,
-                maxWidth: 320,
-                background: '#fafafa',
-                borderRadius: 8,
-                padding: 12,
-            }}
+        <Card
+            className="page-card-inner"
+            style={{ flex: 1, minWidth: 280, maxWidth: 320 }}
+            title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color }} />
+                    <span>{title}</span>
+                    <Badge count={tasks.length} style={{ backgroundColor: color }} />
+                </div>
+            }
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, status)}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: `2px solid ${color}` }}>
-                <Text strong>{title}</Text>
-                <Badge count={tasks.length} style={{ backgroundColor: color }} />
-            </div>
             <div style={{ minHeight: 400, maxHeight: 'calc(100vh - 320px)', overflowY: 'auto' }}>
                 {tasks.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 24, color: '#bfbfbf' }}>
@@ -152,7 +142,7 @@ function KanbanColumn({
                     ))
                 )}
             </div>
-        </div>
+        </Card>
     )
 }
 
@@ -248,11 +238,10 @@ export default function TaskKanbanPage() {
                 title="任务看板"
                 breadcrumb={[{ title: '项目管理' }, { title: '任务看板' }]}
             >
-                <Card bordered={false} className="page-card">
-                    <div style={{ textAlign: 'center', padding: 48 }}>
-                        <Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 16 }}>
-                            请选择一个项目查看任务看板
-                        </Text>
+                <Card bordered className="page-card page-card-outer">
+                    <Card className="page-card-inner" style={{ textAlign: 'center', padding: 48 }}>
+                        <ProjectOutlined style={{ fontSize: 48, color: '#bfbfbf', marginBottom: 16 }} />
+                        <div style={{ color: '#8c8c8c', marginBottom: 16 }}>请选择一个项目查看任务看板</div>
                         <Select
                             placeholder="选择项目"
                             style={{ width: 300 }}
@@ -261,7 +250,7 @@ export default function TaskKanbanPage() {
                             options={projects.map((p: Project) => ({ value: p.id, label: `${p.code} - ${p.name}` }))}
                             onChange={(value) => navigate(`/pm/tasks/kanban?projectId=${value}`)}
                         />
-                    </div>
+                    </Card>
                 </Card>
             </PageContainer>
         )
@@ -272,36 +261,38 @@ export default function TaskKanbanPage() {
             title={`任务看板 - ${currentProject?.name || ''}`}
             breadcrumb={[{ title: '项目管理' }, { title: '进度列表' }, { title: '任务看板' }]}
         >
-            <Card bordered={false} className="page-card">
+            <Card bordered className="page-card page-card-outer">
                 {/* 工具栏 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <Space>
-                        <Input
-                            placeholder="搜索任务..."
-                            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            style={{ width: 200 }}
-                            allowClear
-                        />
-                        <Select
-                            placeholder="切换项目"
-                            style={{ width: 200 }}
-                            value={projectId}
-                            showSearch
-                            optionFilterProp="label"
-                            options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
-                            onChange={(value) => navigate(`/pm/tasks/kanban?projectId=${value}`)}
-                        />
-                    </Space>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => navigate(`/pm/tasks/new?projectId=${projectId}`)}
-                    >
-                        新建任务
-                    </Button>
-                </div>
+                <Card className="page-card-inner" style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
+                            <Input
+                                placeholder="搜索任务..."
+                                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                style={{ width: 200 }}
+                                allowClear
+                            />
+                            <Select
+                                placeholder="切换项目"
+                                style={{ width: 200 }}
+                                value={projectId}
+                                showSearch
+                                optionFilterProp="label"
+                                options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
+                                onChange={(value) => navigate(`/pm/tasks/kanban?projectId=${value}`)}
+                            />
+                        </Space>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => navigate(`/pm/tasks/new?projectId=${projectId}`)}
+                        >
+                            新建任务
+                        </Button>
+                    </div>
+                </Card>
 
                 {/* 看板区域 */}
                 {isLoading ? (

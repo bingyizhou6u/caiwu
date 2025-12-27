@@ -9,7 +9,7 @@ import {
     Statistic, Table, Tabs, Row, Col
 } from 'antd'
 import {
-    PlusOutlined, ClockCircleOutlined, TeamOutlined
+    PlusOutlined, ClockCircleOutlined, TeamOutlined, CalendarOutlined
 } from '@ant-design/icons'
 import {
     useTimelogs, useMyTimelogs, useCreateTimelog, useDeleteTimelog,
@@ -17,7 +17,6 @@ import {
     type Timelog, type Project, type Task
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
-import { PageToolbar } from '../../../components/common'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
@@ -153,7 +152,7 @@ export default function TimelogPage() {
     const tabItems = [
         {
             key: 'my',
-            label: `我的工时 (${myTimelogs.length})`,
+            label: <span><ClockCircleOutlined /> 我的工时 ({myTimelogs.length})</span>,
             children: (
                 <Table
                     columns={timelogColumns}
@@ -167,7 +166,7 @@ export default function TimelogPage() {
         },
         {
             key: 'team',
-            label: '团队工时',
+            label: <span><TeamOutlined /> 团队工时</span>,
             children: (
                 <Table
                     columns={teamTimelogColumns}
@@ -181,7 +180,7 @@ export default function TimelogPage() {
         },
         {
             key: 'summary',
-            label: '工时汇总',
+            label: <span><CalendarOutlined /> 工时汇总</span>,
             children: (
                 <Table
                     columns={workloadColumns}
@@ -199,31 +198,33 @@ export default function TimelogPage() {
             title="工时管理"
             breadcrumb={[{ title: '项目管理' }, { title: '工时管理' }]}
         >
-            <Card bordered={false} className="page-card">
+            <Card bordered className="page-card page-card-outer">
                 {/* 统计卡片 */}
-                <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={8}>
-                        <Card bordered>
+                <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
+                    <Col xs={24} sm={8}>
+                        <Card className="page-card-inner">
                             <Statistic
-                                title="我的本周工时"
+                                title="我的工时"
                                 value={myTotalHours.toFixed(1)}
                                 suffix="h"
                                 prefix={<ClockCircleOutlined />}
+                                valueStyle={{ color: '#1890ff' }}
                             />
                         </Card>
                     </Col>
-                    <Col span={8}>
-                        <Card bordered>
+                    <Col xs={24} sm={8}>
+                        <Card className="page-card-inner">
                             <Statistic
                                 title="团队总工时"
                                 value={teamTotalHours.toFixed(1)}
                                 suffix="h"
                                 prefix={<TeamOutlined />}
+                                valueStyle={{ color: '#52c41a' }}
                             />
                         </Card>
                     </Col>
-                    <Col span={8}>
-                        <Card bordered>
+                    <Col xs={24} sm={8}>
+                        <Card className="page-card-inner">
                             <Statistic
                                 title="活跃成员"
                                 value={workloadSummary.length}
@@ -233,32 +234,34 @@ export default function TimelogPage() {
                     </Col>
                 </Row>
 
-                {/* 工具栏 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <Space>
-                        <Select
-                            placeholder="选择项目"
-                            style={{ width: 200 }}
-                            allowClear
-                            showSearch
-                            optionFilterProp="label"
-                            value={projectId || undefined}
-                            options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
-                            onChange={(value) => setProjectId(value || '')}
-                        />
-                        <RangePicker
-                            value={dateRange}
-                            onChange={(dates) => setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null])}
-                        />
-                    </Space>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => setCreateModalVisible(true)}
-                    >
-                        记录工时
-                    </Button>
-                </div>
+                {/* 筛选工具栏 */}
+                <Card className="page-card-inner" style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
+                            <Select
+                                placeholder="选择项目"
+                                style={{ width: 200 }}
+                                allowClear
+                                showSearch
+                                optionFilterProp="label"
+                                value={projectId || undefined}
+                                options={projects.map((p: Project) => ({ value: p.id, label: p.name }))}
+                                onChange={(value) => setProjectId(value || '')}
+                            />
+                            <RangePicker
+                                value={dateRange}
+                                onChange={(dates) => setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null])}
+                            />
+                        </Space>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setCreateModalVisible(true)}
+                        >
+                            记录工时
+                        </Button>
+                    </div>
+                </Card>
 
                 {/* 标签页 */}
                 <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
