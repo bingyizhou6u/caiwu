@@ -61,6 +61,12 @@ const loaders: Record<string, () => Promise<any>> = {
     'my/policies': () => import('../features/my/pages/CompanyPoliciesPage').then(m => ({ default: m.CompanyPolicies })),
     'my/approvals': () => import('../features/my/pages/MyApprovalsPage').then(m => ({ default: m.MyApprovals })),
 
+    // PM (项目管理)
+    'pm/projects': () => import('../features/pm/pages/ProjectListPage'),
+    'pm/projects/:id': () => import('../features/pm/pages/ProjectDetailPage'),
+    'pm/tasks/kanban': () => import('../features/pm/pages/TaskKanbanPage'),
+    'pm/timelogs': () => import('../features/pm/pages/TimelogPage'),
+
     // Auth
     'change-password': () => import('../features/auth/pages/ChangePasswordPage').then(m => ({ default: m.ChangePassword })),
     'login': () => import('../features/auth/pages/LoginPage').then(m => ({ default: m.Login })),
@@ -130,6 +136,12 @@ const ActivateAccount = lazy(loaders['auth/activate'])
 const ResetPassword = lazy(loaders['auth/reset-password'])
 const RequestTotpReset = lazy(loaders['auth/request-totp-reset'])
 const ResetTotpConfirm = lazy(loaders['auth/reset-totp'])
+
+// PM
+const ProjectListPage = lazy(loaders['pm/projects'])
+const ProjectDetailPage = lazy(loaders['pm/projects/:id'])
+const TaskKanbanPage = lazy(loaders['pm/tasks/kanban'])
+const TimelogPage = lazy(loaders['pm/timelogs'])
 
 /**
  * 预加载路由组件
@@ -235,6 +247,12 @@ export const router = createBrowserRouter([
             { path: 'system/email', element: <Suspense fallback={<Loading />}><EmailNotificationSettings /></Suspense> },
             { path: 'system/ip-whitelist', element: <Suspense fallback={<Loading />}><IPWhitelistManagement /></Suspense> },
             { path: 'system/audit', element: <Suspense fallback={<Loading />}><AuditLogs /></Suspense> },
+
+            // PM (项目管理)
+            { path: 'pm/projects', element: <Suspense fallback={<Loading />}><ProjectListPage /></Suspense> },
+            { path: 'pm/projects/:id', element: <Suspense fallback={<Loading />}><ProjectDetailPage /></Suspense> },
+            { path: 'pm/tasks/kanban', element: <Suspense fallback={<Loading />}><TaskKanbanPage /></Suspense> },
+            { path: 'pm/timelogs', element: <Suspense fallback={<Loading />}><TimelogPage /></Suspense> },
         ]
     }
 ])

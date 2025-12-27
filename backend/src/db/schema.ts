@@ -642,3 +642,160 @@ export const businessOperationHistory = sqliteTable('business_operation_history'
   memo: text('memo'),
   createdAt: integer('created_at').notNull(),
 })
+
+// ==========================================
+// 项目管理模块 (PM - Project Management)
+// ==========================================
+
+// 项目表
+export const projects = sqliteTable(
+  'projects',
+  {
+    id: text('id').primaryKey(),
+    code: text('code').notNull().unique(), // 项目编码，如 PRJ-001
+    name: text('name').notNull(),
+    description: text('description'),
+    departmentId: text('department_id').notNull(), // 所属部门
+    managerId: text('manager_id'), // 项目经理（员工ID）
+    status: text('status').default('active'), // active, on_hold, completed, cancelled
+    startDate: text('start_date'), // 计划开始日期
+    endDate: text('end_date'), // 计划结束日期
+    actualStartDate: text('actual_start_date'),
+    actualEndDate: text('actual_end_date'),
+    priority: text('priority').default('medium'), // high, medium, low
+    budgetCents: integer('budget_cents'), // 预算（分）
+    memo: text('memo'),
+    createdBy: text('created_by'),
+    createdAt: integer('created_at'),
+    updatedAt: integer('updated_at'),
+    active: integer('active').default(1),
+  },
+  t => ({
+    idxDepartment: index('idx_projects_department').on(t.departmentId),
+    idxStatus: index('idx_projects_status').on(t.status),
+  })
+)
+
+// 需求表
+export const requirements = sqliteTable(
+  'requirements',
+  {
+    id: text('id').primaryKey(),
+    code: text('code').notNull().unique(), // 需求编号，如 REQ-001
+    projectId: text('project_id').notNull(), // 所属项目
+    title: text('title').notNull(),
+    description: text('description'), // 支持 Markdown
+    type: text('type').notNull(), // feature, bug, improvement, task
+    priority: text('priority').default('medium'), // critical, high, medium, low
+    status: text('status').default('draft'), // draft, reviewing, approved, in_progress, testing, completed, rejected, cancelled
+    estimatedHours: integer('estimated_hours'), // 预估工时
+    actualHours: integer('actual_hours'), // 实际工时（汇总自 task_timelogs）
+    deadline: text('deadline'), // 截止日期
+    assigneeId: text('assignee_id'), // 指派人
+    reviewerId: text('reviewer_id'), // 评审人
+    reviewedAt: integer('reviewed_at'),
+    reviewMemo: text('review_memo'),
+    attachmentUrls: text('attachment_urls'), // 附件URL列表（JSON）
+    version: integer('version').default(1), // 乐观锁
+    createdBy: text('created_by'),
+    createdAt: integer('created_at'),
+    updatedAt: integer('updated_at'),
+  },
+  t => ({
+    idxProject: index('idx_requirements_project').on(t.projectId),
+    idxStatus: index('idx_requirements_status').on(t.status),
+    idxAssignee: index('idx_requirements_assignee').on(t.assigneeId),
+  })
+)
+
+// 任务表
+export const tasks = sqliteTable(
+  'tasks',
+  {
+    id: text('id').primaryKey(),
+    code: text('code').notNull().unique(), // 任务编号，如 TASK-001
+    requirementId: text('requirement_id'), // 关联需求（可选）
+    projectId: text('project_id').notNull(), // 所属项目
+    parentTaskId: text('parent_task_id'), // 父任务（支持子任务）
+    title: text('title').notNull(),
+    description: text('description'),
+    type: text('type').default('dev'), // dev, design, test, doc, deploy, meeting, other
+    priority: text('priority').default('medium'), // high, medium, low
+    status: text('status').default('todo'), // todo, in_progress, review, completed, blocked, cancelled
+    estimatedHours: integer('estimated_hours'),
+    actualHours: integer('actual_hours'), // 汇总自 task_timelogs
+    startDate: text('start_date'),
+    dueDate: text('due_date'),
+    completedAt: integer('completed_at'),
+    assigneeId: text('assignee_id'),
+    sortOrder: integer('sort_order').default(0), // 排序顺序（看板用）
+    version: integer('version').default(1), // 乐观锁
+    createdBy: text('created_by'),
+    createdAt: integer('created_at'),
+    updatedAt: integer('updated_at'),
+  },
+  t => ({
+    idxProject: index('idx_tasks_project').on(t.projectId),
+    idxRequirement: index('idx_tasks_requirement').on(t.requirementId),
+    idxStatus: index('idx_tasks_status').on(t.status),
+    idxAssignee: index('idx_tasks_assignee').on(t.assigneeId),
+  })
+)
+
+// 工时记录表
+export const taskTimelogs = sqliteTable(
+  'task_timelogs',
+  {
+    id: text('id').primaryKey(),
+    taskId: text('task_id').notNull(), // 关联任务
+    employeeId: text('employee_id').notNull(), // 员工
+    logDate: text('log_date').notNull(), // 日志日期
+    hours: real('hours').notNull(), // 工时（支持 0.5 小时）
+    description: text('description'), // 工作描述
+    createdAt: integer('created_at'),
+    updatedAt: integer('updated_at'),
+  },
+  t => ({
+    idxTask: index('idx_timelogs_task').on(t.taskId),
+    idxEmployeeDate: index('idx_timelogs_employee_date').on(t.employeeId, t.logDate),
+  })
+)
+
+// 里程碑表
+export const milestones = sqliteTable(
+  'milestones',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(), // 所属项目
+    name: text('name').notNull(),
+    description: text('description'),
+    dueDate: text('due_date').notNull(), // 截止日期
+    status: text('status').default('pending'), // pending, completed, overdue
+    completedAt: integer('completed_at'),
+    sortOrder: integer('sort_order').default(0),
+    createdBy: text('created_by'),
+    createdAt: integer('created_at'),
+    updatedAt: integer('updated_at'),
+  },
+  t => ({
+    idxProject: index('idx_milestones_project').on(t.projectId),
+  })
+)
+
+// 需求/任务评论表
+export const pmComments = sqliteTable(
+  'pm_comments',
+  {
+    id: text('id').primaryKey(),
+    entityType: text('entity_type').notNull(), // requirement, task
+    entityId: text('entity_id').notNull(), // 关联实体ID
+    content: text('content').notNull(), // 评论内容（支持 Markdown）
+    authorId: text('author_id').notNull(), // 评论人
+    parentCommentId: text('parent_comment_id'), // 父评论（支持回复）
+    createdAt: integer('created_at'),
+    updatedAt: integer('updated_at'),
+  },
+  t => ({
+    idxEntity: index('idx_pm_comments_entity').on(t.entityType, t.entityId),
+  })
+)

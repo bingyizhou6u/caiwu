@@ -21,9 +21,10 @@ export enum PermissionModule {
   SYSTEM = 'system',
   SITE = 'site',
   AUTH = 'auth',
+  PM = 'pm', // 项目管理模块
 }
 
-export type PermissionModuleType = 'hr' | 'finance' | 'asset' | 'report' | 'system' | 'site' | 'auth'
+export type PermissionModuleType = 'hr' | 'finance' | 'asset' | 'report' | 'system' | 'site' | 'auth' | 'pm'
 
 // 权限操作
 export enum PermissionAction {
@@ -37,9 +38,11 @@ export enum PermissionAction {
   REVERSE = 'reverse', // 红冲
   PAY = 'pay',         // 支付
   ALLOCATE = 'allocate', // 分配
+  ASSIGN = 'assign',   // 指派
+  REVIEW = 'review',   // 评审
 }
 
-export type PermissionActionType = 'view' | 'create' | 'update' | 'delete' | 'approve' | 'reject' | 'export' | 'reverse' | 'pay' | 'allocate' | 'view_sensitive'
+export type PermissionActionType = 'view' | 'create' | 'update' | 'delete' | 'approve' | 'reject' | 'export' | 'reverse' | 'pay' | 'allocate' | 'view_sensitive' | 'assign' | 'review'
 
 // 操作标签映射
 export const ACTION_LABELS: Record<string, string> = {
@@ -54,6 +57,8 @@ export const ACTION_LABELS: Record<string, string> = {
   pay: '支付',
   allocate: '分配',
   view_sensitive: '敏感信息',
+  assign: '指派',
+  review: '评审',
 }
 
 // DataScope 标签映射
@@ -128,6 +133,17 @@ export const PERMISSION_MODULES: Record<string, PermissionModuleConfig> = {
       config: { label: '系统配置', actions: ['view', 'update'] },
     }
   },
+  pm: {
+    label: '项目管理',
+    subModules: {
+      project: { label: '项目', actions: ['view', 'create', 'update', 'delete'] },
+      requirement: { label: '需求', actions: ['view', 'create', 'update', 'delete', 'review', 'assign'] },
+      task: { label: '任务', actions: ['view', 'create', 'update', 'delete', 'assign'] },
+      timelog: { label: '工时', actions: ['view', 'create', 'update', 'delete'] },
+      milestone: { label: '里程碑', actions: ['view', 'create', 'update', 'delete'] },
+      report: { label: '进度报表', actions: ['view', 'export'] },
+    }
+  },
   self: {
     label: '个人模块',
     subModules: {
@@ -135,6 +151,9 @@ export const PERMISSION_MODULES: Record<string, PermissionModuleConfig> = {
       reimbursement: { label: '我的报销', actions: ['view', 'create'] },
       salary: { label: '我的工资', actions: ['view'] },
       asset: { label: '我的资产', actions: ['view'] },
+      task: { label: '我的任务', actions: ['view', 'update'] },
+      timelog: { label: '我的工时', actions: ['view', 'create', 'update'] },
     }
   },
 }
+

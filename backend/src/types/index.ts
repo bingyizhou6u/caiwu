@@ -75,6 +75,10 @@ export type AppVariables = {
     fixedAssetAllocation: FixedAssetAllocationService
     fixedAssetChange: FixedAssetChangeService
     fixedAssetDepreciation: FixedAssetDepreciationService
+    // PM services
+    project: ProjectService
+    task: TaskService
+    taskTimelog: TaskTimelogService
   }
 }
 
@@ -114,6 +118,10 @@ import { SiteBillService } from '../services/finance/SiteBillService.js'
 import { ArApService } from '../services/finance/ArApService.js'
 import { AccountTransferService } from '../services/finance/AccountTransferService.js'
 import { RateLimitService } from '../services/common/RateLimitService.js'
+// PM services
+import { ProjectService } from '../services/pm/ProjectService.js'
+import { TaskService } from '../services/pm/TaskService.js'
+import { TaskTimelogService } from '../services/pm/TaskTimelogService.js'
 
 // 已移除固定超级管理员
 // 所有管理员权限现在基于员工记录的职位

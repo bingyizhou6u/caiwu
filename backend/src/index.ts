@@ -49,6 +49,7 @@ import { approvalsRoutes as approvalsRoutesV2 } from './routes/v2/approvals.js'
 import { employeesLeavesRoutes as employeesLeavesRoutesV2 } from './routes/v2/employee-leaves.js'
 import { expenseReimbursementsRoutes as expenseReimbursementsRoutesV2 } from './routes/v2/expense-reimbursements.js'
 import permissionConfigRoutesV2 from './routes/v2/permission-config.js'
+import pmRoutesV2 from './routes/v2/pm/index.js'
 
 // App initialization
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
@@ -73,24 +74,24 @@ app.use(
     origin: origin => {
       // 允许的前端域名（精确匹配，防止子域名绕过）
       if (!origin) { return null }
-      
+
       // 精确匹配白名单
       if (ALLOWED_ORIGINS.includes(origin)) {
         return origin
       }
-      
+
       // 开发环境：允许 localhost 和 127.0.0.1（任何端口）
       if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
         return origin
       }
-      
+
       // 生产环境：仅允许特定的 pages.dev 域名（需要配置）
       // 注意：使用 startsWith 而不是 includes，防止 evil.pages.dev 绕过
       // const productionDomain = 'https://your-domain.pages.dev'
       // if (origin === productionDomain) {
       //   return origin
       // }
-      
+
       return null
     },
     credentials: true,
@@ -191,7 +192,7 @@ app.get('/api/health', async c => {
 
   // 生产环境隐藏敏感信息
   const isProduction = c.req.url.includes('https://') && !c.req.url.includes('localhost')
-  
+
   // 构建响应对象
   const responseData: any = {
     status: healthy ? 'healthy' : 'degraded',
@@ -213,31 +214,31 @@ app.get('/api/health', async c => {
       performance: {
         requestDuration: requestDurationStats
           ? {
-              avg: Math.round(requestDurationStats.avg),
-              p95: Math.round(requestDurationStats.p95),
-              p99: Math.round(requestDurationStats.p99),
-            }
+            avg: Math.round(requestDurationStats.avg),
+            p95: Math.round(requestDurationStats.p95),
+            p99: Math.round(requestDurationStats.p99),
+          }
           : null,
         dbQueryDuration: dbQueryStats
           ? {
-              avg: Math.round(dbQueryStats.avg),
-              p95: Math.round(dbQueryStats.p95),
-              p99: Math.round(dbQueryStats.p99),
-            }
+            avg: Math.round(dbQueryStats.avg),
+            p95: Math.round(dbQueryStats.p95),
+            p99: Math.round(dbQueryStats.p99),
+          }
           : null,
         slowQueries: slowQueryStats
           ? {
-              count: slowQueryStats.count,
-              avg: Math.round(slowQueryStats.avg),
-              max: Math.round(slowQueryStats.max),
-            }
+            count: slowQueryStats.count,
+            avg: Math.round(slowQueryStats.avg),
+            max: Math.round(slowQueryStats.max),
+          }
           : null,
         batchQueryDuration: batchQueryStats
           ? {
-              avg: Math.round(batchQueryStats.avg),
-              p95: Math.round(batchQueryStats.p95),
-              p99: Math.round(batchQueryStats.p99),
-            }
+            avg: Math.round(batchQueryStats.avg),
+            p95: Math.round(batchQueryStats.p95),
+            p99: Math.round(batchQueryStats.p99),
+          }
           : null,
       },
     }
@@ -425,6 +426,7 @@ v2.route('/', ipWhitelistRoutesV2)
 v2.route('/', systemConfigRoutesV2)
 v2.route('/', positionPermissionsRoutesV2)
 v2.route('/permission-config', permissionConfigRoutesV2)
+v2.route('/pm', pmRoutesV2)
 
 // Mount versions to app
 // Default: /api/* -> v2

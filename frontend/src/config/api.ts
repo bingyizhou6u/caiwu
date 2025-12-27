@@ -180,4 +180,20 @@ export const api = {
     reimbursementApprove: (id: string) => `${API_BASE}/api/v2/approvals/reimbursement/${id}/approve`,
     reimbursementReject: (id: string) => `${API_BASE}/api/v2/approvals/reimbursement/${id}/reject`,
   },
+  // 项目管理 (PM)
+  pm: {
+    projects: `${API_BASE}/api/v2/pm/projects`,
+    projectsById: (id: string) => `${API_BASE}/api/v2/pm/projects/${id}`,
+    projectsNextCode: `${API_BASE}/api/v2/pm/projects/next-code`,
+    tasks: `${API_BASE}/api/v2/pm/tasks`,
+    tasksById: (id: string) => `${API_BASE}/api/v2/pm/tasks/${id}`,
+    tasksNextCode: `${API_BASE}/api/v2/pm/tasks/next-code`,
+    tasksKanban: `${API_BASE}/api/v2/pm/tasks/kanban`,
+    tasksMy: `${API_BASE}/api/v2/pm/tasks/my`,
+    tasksStatus: (id: string) => `${API_BASE}/api/v2/pm/tasks/${id}/status`,
+    timelogs: `${API_BASE}/api/v2/pm/timelogs`,
+    timelogsById: (id: string) => `${API_BASE}/api/v2/pm/timelogs/${id}`,
+    timelogsMy: `${API_BASE}/api/v2/pm/timelogs/my`,
+    timelogsTeamSummary: `${API_BASE}/api/v2/pm/timelogs/team-summary`,
+  },
 }

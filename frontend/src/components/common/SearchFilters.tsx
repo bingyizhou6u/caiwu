@@ -450,4 +450,3 @@ export function SearchFilters({
 
   return formContent
 }
-

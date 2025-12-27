@@ -934,4 +934,96 @@ test.describe.serial('线上环境测试', () => {
             expect(page.url()).toContain('/assets/dormitory');
         });
     });
+
+    // ==================== 项目管理(PM)模块 ====================
+    test.describe('项目管理模块', () => {
+        test.beforeEach(async ({ page }) => {
+            await page.waitForTimeout(1000);
+        });
+
+        test('查看项目列表', async ({ page }) => {
+            await navigateAndWait(page, `${config.baseUrl}/pm/projects`);
+            expect(page.url()).toContain('/pm/projects');
+        });
+
+        test('测试项目列表搜索功能', async ({ page }) => {
+            await navigateAndWait(page, `${config.baseUrl}/pm/projects`);
+            await page.waitForTimeout(2000);
+
+            // 查找搜索输入框
+            const searchInput = page.locator('input[placeholder*="搜索"], input[placeholder*="项目"]').first();
+            if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await searchInput.fill('测试');
+                await page.waitForTimeout(1000);
+                expect(await searchInput.inputValue()).toBe('测试');
+            }
+        });
+
+        test('测试项目列表筛选功能', async ({ page }) => {
+            await navigateAndWait(page, `${config.baseUrl}/pm/projects`);
+            await page.waitForTimeout(2000);
+
+            // 查找状态筛选按钮
+            const filterButton = page.getByRole('button').filter({ hasText: /状态|全部/ }).first();
+            if (await filterButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await filterButton.click();
+                await page.waitForTimeout(500);
+                const option = page.locator('.ant-dropdown-menu-item').first();
+                if (await option.isVisible({ timeout: 2000 }).catch(() => false)) {
+                    await option.click();
+                    await page.waitForTimeout(1000);
+                }
+            }
+        });
+
+        test('查看任务看板', async ({ page }) => {
+            await navigateAndWait(page, `${config.baseUrl}/pm/tasks/kanban`);
+            expect(page.url()).toContain('/pm/tasks/kanban');
+        });
+
+        test('查看工时管理', async ({ page }) => {
+            await navigateAndWait(page, `${config.baseUrl}/pm/timelogs`);
+            expect(page.url()).toContain('/pm/timelogs');
+        });
+
+        test('测试工时管理筛选功能', async ({ page }) => {
+            await navigateAndWait(page, `${config.baseUrl}/pm/timelogs`);
+            await page.waitForTimeout(2000);
+
+            // 查找项目筛选下拉框
+            const projectSelect = page.locator('.ant-select').first();
+            if (await projectSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await projectSelect.click();
+                await page.waitForTimeout(500);
+                const option = page.locator('.ant-select-item-option').first();
+                if (await option.isVisible({ timeout: 2000 }).catch(() => false)) {
+                    await option.click();
+                    await page.waitForTimeout(1000);
+                }
+            }
+        });
+
+        test('测试工时创建弹窗', async ({ page }) => {
+            await navigateAndWait(page, `${config.baseUrl}/pm/timelogs`);
+            await page.waitForTimeout(2000);
+
+            // 点击新建按钮
+            const createBtn = page.getByRole('button').filter({ hasText: /记录工时|新建/ }).first();
+            if (await createBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await createBtn.click();
+                await page.waitForTimeout(1000);
+
+                // 检查模态框
+                const modal = page.locator('.ant-modal-content');
+                if (await modal.isVisible({ timeout: 3000 }).catch(() => false)) {
+                    // 关闭模态框
+                    const cancelBtn = modal.getByRole('button').filter({ hasText: /取消|关闭/ }).first();
+                    if (await cancelBtn.isVisible()) {
+                        await cancelBtn.click();
+                        await page.waitForTimeout(500);
+                    }
+                }
+            }
+        });
+    });
 });
