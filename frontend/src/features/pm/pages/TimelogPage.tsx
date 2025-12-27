@@ -232,7 +232,7 @@ export default function TimelogPage() {
                 {/* 统计卡片 */}
                 <Row gutter={[24, 24]} className={styles.statsRow} role="region" aria-label="工时统计">
                     <Col xs={24} sm={8}>
-                        <Card className={`page-card-inner ${styles.statCard}`} hoverable tabIndex={0}>
+                        <Card className={`page-card-inner ${styles.statCard}`} hoverable>
                             <Statistic
                                 title="我的工时"
                                 value={myTotalHours.toFixed(1)}
@@ -243,7 +243,7 @@ export default function TimelogPage() {
                         </Card>
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Card className={`page-card-inner ${styles.statCard}`} hoverable tabIndex={0}>
+                        <Card className={`page-card-inner ${styles.statCard}`} hoverable>
                             <Statistic
                                 title="团队总工时"
                                 value={teamTotalHours.toFixed(1)}
@@ -254,7 +254,7 @@ export default function TimelogPage() {
                         </Card>
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Card className={`page-card-inner ${styles.statCard}`} hoverable tabIndex={0}>
+                        <Card className={`page-card-inner ${styles.statCard}`} hoverable>
                             <Statistic
                                 title="活跃成员"
                                 value={workloadSummary.length}
