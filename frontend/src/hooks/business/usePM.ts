@@ -50,6 +50,10 @@ export interface Task {
     completedAt?: number
     assigneeId?: string
     assigneeName?: string
+    reviewerId?: string
+    reviewerName?: string
+    testerId?: string
+    testerName?: string
     sortOrder: number
     createdBy?: string
     createdAt?: number
@@ -96,6 +100,8 @@ export interface CreateTaskInput {
     startDate?: string
     dueDate?: string
     assigneeId?: string
+    reviewerId?: string
+    testerId?: string
 }
 
 export interface CreateTimelogInput {

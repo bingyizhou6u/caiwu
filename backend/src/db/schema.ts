@@ -709,13 +709,15 @@ export const tasks = sqliteTable(
     description: text('description'),
     type: text('type').default('dev'), // dev, design, test, doc, deploy, meeting, other
     priority: text('priority').default('medium'), // high, medium, low
-    status: text('status').default('todo'), // todo, in_progress, review, completed, blocked, cancelled
+    status: text('status').default('todo'), // todo, in_progress, review, testing, completed, blocked, cancelled
     estimatedHours: integer('estimated_hours'),
     actualHours: integer('actual_hours'), // 汇总自 task_timelogs
     startDate: text('start_date'),
     dueDate: text('due_date'),
     completedAt: integer('completed_at'),
-    assigneeId: text('assignee_id'),
+    assigneeId: text('assignee_id'), // 开发人员
+    reviewerId: text('reviewer_id'), // 审核人员
+    testerId: text('tester_id'), // 测试人员
     sortOrder: integer('sort_order').default(0), // 排序顺序（看板用）
     version: integer('version').default(1), // 乐观锁
     createdBy: text('created_by'),
@@ -728,6 +730,8 @@ export const tasks = sqliteTable(
     idxRequirement: index('idx_tasks_requirement').on(t.requirementId),
     idxStatus: index('idx_tasks_status').on(t.status),
     idxAssignee: index('idx_tasks_assignee').on(t.assigneeId),
+    idxReviewer: index('idx_tasks_reviewer').on(t.reviewerId),
+    idxTester: index('idx_tasks_tester').on(t.testerId),
   })
 )
 

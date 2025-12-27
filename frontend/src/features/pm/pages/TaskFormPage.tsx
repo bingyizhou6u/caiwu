@@ -37,8 +37,9 @@ const PRIORITY_OPTIONS = [
 // 状态选项
 const STATUS_OPTIONS = [
     { value: 'todo', label: '待办' },
-    { value: 'in_progress', label: '进行中' },
+    { value: 'in_progress', label: '开发中' },
     { value: 'review', label: '评审中' },
+    { value: 'testing', label: '测试中' },
     { value: 'completed', label: '已完成' },
     { value: 'blocked', label: '已阻塞' },
     { value: 'cancelled', label: '已取消' },
@@ -199,15 +200,37 @@ export default function TaskFormPage() {
                     )}
 
                     {/* 负责人 */}
-                    <Form.Item name="assigneeId" label="负责人">
+                    <Form.Item name="assigneeId" label="开发人员">
                         <Select
-                            placeholder="选择负责人"
+                            placeholder="选择开发人员"
                             showSearch
                             allowClear
                             optionFilterProp="label"
                             options={employeeOptions}
                         />
                     </Form.Item>
+
+                    {/* 审核人和测试人 */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <Form.Item name="reviewerId" label="审核人员">
+                            <Select
+                                placeholder="选择审核人员"
+                                showSearch
+                                allowClear
+                                optionFilterProp="label"
+                                options={employeeOptions}
+                            />
+                        </Form.Item>
+                        <Form.Item name="testerId" label="测试人员">
+                            <Select
+                                placeholder="选择测试人员"
+                                showSearch
+                                allowClear
+                                optionFilterProp="label"
+                                options={employeeOptions}
+                            />
+                        </Form.Item>
+                    </div>
 
                     {/* 日期范围 */}
                     <div className="grid grid-cols-2 gap-4">

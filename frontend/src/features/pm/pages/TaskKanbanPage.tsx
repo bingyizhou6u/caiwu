@@ -24,8 +24,9 @@ const { Text } = Typography
 // 看板列配置
 const KANBAN_COLUMNS = [
     { key: 'todo', title: '待办', color: '#8c8c8c' },
-    { key: 'in_progress', title: '进行中', color: '#1890ff' },
+    { key: 'in_progress', title: '开发中', color: '#1890ff' },
     { key: 'review', title: '评审中', color: '#faad14' },
+    { key: 'testing', title: '测试中', color: '#722ed1' },
     { key: 'completed', title: '已完成', color: '#52c41a' },
 ] as const
 

@@ -29,6 +29,8 @@ export interface CreateTaskInput {
     startDate?: string
     dueDate?: string
     assigneeId?: string
+    reviewerId?: string
+    testerId?: string
 }
 
 export interface UpdateTaskInput {
@@ -41,6 +43,8 @@ export interface UpdateTaskInput {
     startDate?: string
     dueDate?: string
     assigneeId?: string
+    reviewerId?: string
+    testerId?: string
     sortOrder?: number
 }
 
@@ -78,18 +82,21 @@ export class TaskService {
 
                 // 批量获取关联数据
                 const assigneeIds = [...new Set(taskList.map(t => t.assigneeId).filter(Boolean))] as string[]
+                const reviewerIds = [...new Set(taskList.map(t => t.reviewerId).filter(Boolean))] as string[]
+                const testerIds = [...new Set(taskList.map(t => t.testerId).filter(Boolean))] as string[]
                 const projectIds = [...new Set(taskList.map(t => t.projectId).filter(Boolean))] as string[]
+                const allPersonIds = [...new Set([...assigneeIds, ...reviewerIds, ...testerIds])]
 
-                const assigneeMap = new Map<string, { id: string; name: string | null }>()
+                const personMap = new Map<string, { id: string; name: string | null }>()
                 const projectMap = new Map<string, { id: string; name: string }>()
 
-                if (assigneeIds.length > 0) {
-                    const assignees = await this.db
+                if (allPersonIds.length > 0) {
+                    const persons = await this.db
                         .select({ id: employees.id, name: employees.name })
                         .from(employees)
-                        .where(inArray(employees.id, assigneeIds))
+                        .where(inArray(employees.id, allPersonIds))
                         .all()
-                    assignees.forEach(a => assigneeMap.set(a.id, a))
+                    persons.forEach(p => personMap.set(p.id, p))
                 }
 
                 if (projectIds.length > 0) {
@@ -103,7 +110,9 @@ export class TaskService {
 
                 return taskList.map(t => ({
                     ...t,
-                    assigneeName: t.assigneeId ? assigneeMap.get(t.assigneeId)?.name : null,
+                    assigneeName: t.assigneeId ? personMap.get(t.assigneeId)?.name : null,
+                    reviewerName: t.reviewerId ? personMap.get(t.reviewerId)?.name : null,
+                    testerName: t.testerId ? personMap.get(t.testerId)?.name : null,
                     projectName: t.projectId ? projectMap.get(t.projectId)?.name : null,
                 }))
             }
@@ -166,6 +175,14 @@ export class TaskService {
                     ? await this.db.select({ id: employees.id, name: employees.name }).from(employees).where(eq(employees.id, task.assigneeId)).get()
                     : null
 
+                const reviewer = task.reviewerId
+                    ? await this.db.select({ id: employees.id, name: employees.name }).from(employees).where(eq(employees.id, task.reviewerId)).get()
+                    : null
+
+                const tester = task.testerId
+                    ? await this.db.select({ id: employees.id, name: employees.name }).from(employees).where(eq(employees.id, task.testerId)).get()
+                    : null
+
                 const requirement = task.requirementId
                     ? await this.db.select({ id: requirements.id, title: requirements.title }).from(requirements).where(eq(requirements.id, task.requirementId)).get()
                     : null
@@ -174,6 +191,8 @@ export class TaskService {
                     ...task,
                     projectName: project?.name,
                     assigneeName: assignee?.name,
+                    reviewerName: reviewer?.name,
+                    testerName: tester?.name,
                     requirementTitle: requirement?.title,
                 }
             }
