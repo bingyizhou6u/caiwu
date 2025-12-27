@@ -113,6 +113,8 @@ export async function errorHandler(err: Error, c: Context) {
   }
 
   // 未预期的错误，使用 error 级别
+  const isProduction = c.req.url.includes('https://') && !c.req.url.includes('localhost')
+  
   Logger.error(
     'Unexpected Error',
     {
@@ -125,9 +127,10 @@ export async function errorHandler(err: Error, c: Context) {
 
   return c.json(
     {
-      error: err.message,
+      error: isProduction ? '服务器内部错误' : err.message,
       code: ErrorCodes.SYS_INTERNAL_ERROR,
-      stack: err.stack,
+      // 生产环境不返回堆栈信息
+      ...(isProduction ? {} : { stack: err.stack }),
     },
     500
   )

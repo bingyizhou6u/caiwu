@@ -10,6 +10,8 @@ import {
   salaryPaymentAllocations,
   employees,
   departments,
+  orgDepartments,
+  positions,
 } from '../../db/schema.js'
 import { eq, and, sql, inArray, desc } from 'drizzle-orm'
 import { Errors } from '../../utils/errors.js'
@@ -17,7 +19,6 @@ import { Logger } from '../../utils/logger.js'
 import { salaryPaymentStateMachine } from '../../utils/state-machine.js'
 import { validateVersion, incrementVersion } from '../../utils/optimistic-lock.js'
 import type { OperationHistoryService } from '../system/OperationHistoryService.js'
-import { QueryBuilder } from '../../utils/query-builder.js'
 import { query as dbQuery } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../../types/index.js'
@@ -47,17 +48,111 @@ export class SalaryPaymentService {
       conditions.push(eq(salaryPayments.employeeId, query.employeeId))
     }
 
-    // 使用QueryBuilder优化员工关联查询
-    const paymentsQuery = QueryBuilder.buildEmployeeJoinQuery(
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+    // 1. 查询薪资支付记录
+    const payments = await dbQuery(
       this.db,
-      salaryPayments,
-      salaryPayments.employeeId,
-      { payment: salaryPayments }
+      'SalaryPaymentService.list.getPayments',
+      () => this.db
+        .select()
+        .from(salaryPayments)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(salaryPayments.year), desc(salaryPayments.month))
+        .all(),
+      undefined
     )
-    const payments = await paymentsQuery
-      .where(and(...conditions))
-      .orderBy(desc(salaryPayments.year), desc(salaryPayments.month))
-      .all()
+
+    if (payments.length === 0) {
+      return []
+    }
+
+    // 2. 批量获取员工信息
+    const employeeIds = [...new Set(payments.map(p => p.employeeId).filter(Boolean) as string[])]
+    const employeesList = employeeIds.length > 0
+      ? await dbQuery(
+          this.db,
+          'SalaryPaymentService.list.getEmployees',
+          () => this.db
+            .select({
+              id: employees.id,
+              name: employees.name,
+              departmentId: employees.departmentId,
+              orgDepartmentId: employees.orgDepartmentId,
+              positionId: employees.positionId,
+            })
+            .from(employees)
+            .where(inArray(employees.id, employeeIds))
+            .all(),
+          undefined
+        )
+      : []
+
+    // 3. 批量获取部门和职位信息
+    const deptIds = [...new Set(employeesList.map(e => e.departmentId).filter(Boolean) as string[])]
+    const orgDeptIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
+    const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
+
+    const [departmentsList, orgDepartmentsList, positionsList] = await Promise.all([
+      deptIds.length > 0
+        ? dbQuery(
+            this.db,
+            'SalaryPaymentService.list.getDepartments',
+            () => this.db
+              .select({ id: departments.id, name: departments.name })
+              .from(departments)
+              .where(inArray(departments.id, deptIds))
+              .all(),
+            undefined
+          )
+        : Promise.resolve([]),
+      orgDeptIds.length > 0
+        ? dbQuery(
+            this.db,
+            'SalaryPaymentService.list.getOrgDepartments',
+            () => this.db
+              .select({ id: orgDepartments.id, name: orgDepartments.name })
+              .from(orgDepartments)
+              .where(inArray(orgDepartments.id, orgDeptIds))
+              .all(),
+            undefined
+          )
+        : Promise.resolve([]),
+      positionIds.length > 0
+        ? dbQuery(
+            this.db,
+            'SalaryPaymentService.list.getPositions',
+            () => this.db
+              .select({ id: positions.id, name: positions.name })
+              .from(positions)
+              .where(inArray(positions.id, positionIds))
+              .all(),
+            undefined
+          )
+        : Promise.resolve([]),
+    ])
+
+    // 4. 创建映射表
+    const employeeMap = new Map(employeesList.map(e => [e.id, e]))
+    const deptMap = new Map(departmentsList.map(d => [d.id, d]))
+    const orgDeptMap = new Map(orgDepartmentsList.map(od => [od.id, od]))
+    const positionMap = new Map(positionsList.map(p => [p.id, p]))
+
+    // 5. 组装结果
+    const paymentsWithEmployeeInfo = payments.map(payment => {
+      const employee = payment.employeeId ? employeeMap.get(payment.employeeId) : null
+      const department = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+      const orgDepartment = employee?.orgDepartmentId ? orgDeptMap.get(employee.orgDepartmentId) : null
+      const position = employee?.positionId ? positionMap.get(employee.positionId) : null
+
+      return {
+        payment,
+        employeeName: employee?.name || null,
+        employeeEmail: employee?.email || null,
+        departmentName: department?.name || null,
+        orgDepartmentName: orgDepartment?.name || null,
+        positionName: position?.name || null,
+      }
+    })
 
     // 获取分配情况 - 添加性能监控
     const paymentIds = payments.map((p: any) => p.payment.id)
@@ -92,21 +187,52 @@ export class SalaryPaymentService {
   }
 
   async get(id: string) {
-    const payment = await this.db
-      .select({
-        payment: salaryPayments,
-        employeeName: employees.name,
-        departmentName: departments.name,
-      })
-      .from(salaryPayments)
-      .leftJoin(employees, eq(employees.id, salaryPayments.employeeId))
-      .leftJoin(departments, eq(departments.id, employees.departmentId))
-      .where(eq(salaryPayments.id, id))
-      .get()
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+    const payment = await dbQuery(
+      this.db,
+      'SalaryPaymentService.get.getPayment',
+      () => this.db
+        .select()
+        .from(salaryPayments)
+        .where(eq(salaryPayments.id, id))
+        .get(),
+      undefined
+    )
 
     if (!payment) {
       return null
     }
+
+    // 批量查询员工和部门信息
+    const employee = payment.employeeId
+      ? await dbQuery(
+          this.db,
+          'SalaryPaymentService.get.getEmployee',
+          () => this.db
+            .select({
+              id: employees.id,
+              name: employees.name,
+              departmentId: employees.departmentId,
+            })
+            .from(employees)
+            .where(eq(employees.id, payment.employeeId))
+            .get(),
+          undefined
+        )
+      : null
+
+    const department = employee?.departmentId
+      ? await dbQuery(
+          this.db,
+          'SalaryPaymentService.get.getDepartment',
+          () => this.db
+            .select({ id: departments.id, name: departments.name })
+            .from(departments)
+            .where(eq(departments.id, employee.departmentId))
+            .get(),
+          undefined
+        )
+      : null
 
     const allocations = await this.db
       .select()
@@ -115,8 +241,8 @@ export class SalaryPaymentService {
       .all()
 
     return {
-      ...payment.payment,
-      employeeName: payment.employeeName,
+      ...payment,
+      employeeName: employee?.name || null,
       departmentName: payment.departmentName,
       allocations,
     }

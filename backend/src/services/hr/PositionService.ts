@@ -5,7 +5,7 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
 import { positions, orgDepartments, departments, employees } from '../../db/schema.js'
-import { eq, and, or } from 'drizzle-orm'
+import { eq, and, or, asc, desc } from 'drizzle-orm'
 import { Errors } from '../../utils/errors.js'
 import { v4 as uuid } from 'uuid'
 
@@ -13,23 +13,53 @@ export class PositionService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async getPositions() {
-    return this.db
+    const positionsList = await this.db
       .select()
       .from(positions)
       .where(eq(positions.active, 1))
-      .orderBy(positions.sortOrder, positions.name)
       .all()
+    
+    // 在内存中排序（D1 对多个字段的 ORDER BY 支持不稳定）
+    positionsList.sort((a, b) => {
+      const sortA = a.sortOrder || 0
+      const sortB = b.sortOrder || 0
+      if (sortA !== sortB) {
+        return sortA - sortB
+      }
+      return (a.name || '').localeCompare(b.name || '')
+    })
+    
+    return positionsList
   }
 
   async getAvailablePositions(orgDepartmentId?: string) {
     // 返回所有可用职位，按 dataScope 分组，让调用方根据需要筛选
+    // D1 兼容性：使用单个 orderBy，然后在内存中排序
 
     const positionsList = await this.db
       .select()
       .from(positions)
       .where(eq(positions.active, 1))
-      .orderBy(positions.dataScope, positions.sortOrder, positions.name)
       .all()
+    
+    // 在内存中排序（D1 对多个字段的 ORDER BY 支持不稳定）
+    positionsList.sort((a, b) => {
+      // 首先按 dataScope 排序
+      const scopeOrder = { 'all': 1, 'project': 2, 'group': 3, 'self': 4 }
+      const scopeA = scopeOrder[a.dataScope as keyof typeof scopeOrder] || 99
+      const scopeB = scopeOrder[b.dataScope as keyof typeof scopeOrder] || 99
+      if (scopeA !== scopeB) {
+        return scopeA - scopeB
+      }
+      // 然后按 sortOrder 排序
+      const sortA = a.sortOrder || 0
+      const sortB = b.sortOrder || 0
+      if (sortA !== sortB) {
+        return sortA - sortB
+      }
+      // 最后按 name 排序
+      return (a.name || '').localeCompare(b.name || '')
+    })
 
     // 按 dataScope 分组
     const SCOPE_LABELS: Record<string, string> = {

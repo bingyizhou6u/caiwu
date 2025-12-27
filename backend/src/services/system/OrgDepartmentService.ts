@@ -5,7 +5,7 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
 import { orgDepartments, positions, departments } from '../../db/schema.js'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { Errors } from '../../utils/errors.js'
@@ -52,29 +52,11 @@ export class OrgDepartmentService {
       }
     }
 
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+    // 1. 查询组织部门
     const rows = await this.db
-      .select({
-        id: od.id,
-        projectId: od.projectId,
-        parentId: od.parentId,
-        name: od.name,
-        code: od.code,
-        description: od.description,
-        allowedModules: od.allowedModules,
-        allowedPositions: od.allowedPositions,
-        defaultPositionId: od.defaultPositionId,
-        active: od.active,
-        sortOrder: od.sortOrder,
-        createdAt: od.createdAt,
-        updatedAt: od.updatedAt,
-        defaultPositionName: p.name,
-        parentName: parent.name,
-        projectName: d.name,
-      })
+      .select()
       .from(od)
-      .leftJoin(p, eq(p.id, od.defaultPositionId))
-      .leftJoin(parent, eq(parent.id, od.parentId))
-      .leftJoin(d, eq(d.id, od.projectId))
       .where(and(...conditions))
       .orderBy(
         od.sortOrder,
@@ -82,7 +64,53 @@ export class OrgDepartmentService {
       )
       .all()
 
-    return rows.map(row => ({
+    if (rows.length === 0) {
+      return []
+    }
+
+    // 2. 批量查询关联数据
+    const positionIds = [...new Set(rows.map(r => r.defaultPositionId).filter(Boolean) as string[])]
+    const parentIds = [...new Set(rows.map(r => r.parentId).filter(Boolean) as string[])]
+    const projectIds = [...new Set(rows.map(r => r.projectId).filter(Boolean) as string[])]
+
+    const [positionsList, parentsList, projectsList] = await Promise.all([
+      positionIds.length > 0
+        ? this.db
+            .select({ id: p.id, name: p.name })
+            .from(p)
+            .where(inArray(p.id, positionIds))
+            .all()
+        : Promise.resolve([]),
+      parentIds.length > 0
+        ? this.db
+            .select({ id: parent.id, name: parent.name })
+            .from(parent)
+            .where(inArray(parent.id, parentIds))
+            .all()
+        : Promise.resolve([]),
+      projectIds.length > 0
+        ? this.db
+            .select({ id: d.id, name: d.name })
+            .from(d)
+            .where(inArray(d.id, projectIds))
+            .all()
+        : Promise.resolve([]),
+    ])
+
+    // 3. 创建映射表
+    const positionMap = new Map(positionsList.map(p => [p.id, p]))
+    const parentMap = new Map(parentsList.map(par => [par.id, par]))
+    const projectMap = new Map(projectsList.map(proj => [proj.id, proj]))
+
+    // 4. 组装结果
+    const rowsWithDetails = rows.map(row => ({
+      ...row,
+      defaultPositionName: row.defaultPositionId ? positionMap.get(row.defaultPositionId)?.name || null : null,
+      parentName: row.parentId ? parentMap.get(row.parentId)?.name || null : null,
+      projectName: row.projectId ? projectMap.get(row.projectId)?.name || null : null,
+    }))
+
+    return rowsWithDetails.map(row => ({
       ...row,
       allowedModules: row.allowedModules ? JSON.parse(row.allowedModules) : ['*'],
       allowedPositions: row.allowedPositions ? JSON.parse(row.allowedPositions) : null,

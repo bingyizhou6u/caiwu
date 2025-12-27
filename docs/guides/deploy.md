@@ -1,4 +1,92 @@
-# 部署到 Cloudflare - 总部改造更新
+# 部署到 Cloudflare
+
+## 数据库迁移管理
+
+### 迁移流程概述
+
+项目使用 **Drizzle Kit** 生成迁移文件，并通过自定义脚本管理迁移执行。
+
+**迁移文件位置**:
+- Drizzle 生成的迁移：`backend/drizzle/XXXXX_description.sql`
+- 手动迁移（如需要）：`backend/src/db/migration_YYYYMMDD_description.sql`
+
+### 标准迁移流程
+
+#### 1. 生成迁移文件
+
+修改 `backend/src/db/schema.ts` 后，运行：
+
+```bash
+cd backend
+npm run db:generate
+```
+
+这会：
+- 分析 schema.ts 的变更
+- 在 `backend/drizzle/` 目录生成迁移文件
+- 更新 `backend/drizzle/meta/_journal.json`
+
+#### 2. 检查迁移文件
+
+生成后，检查迁移文件内容：
+
+```bash
+# 查看最新生成的迁移文件
+ls -lt backend/drizzle/*.sql | head -1
+cat backend/drizzle/最新文件.sql
+```
+
+#### 3. 应用迁移
+
+**本地环境**:
+```bash
+npm run migrate:up
+```
+
+**远程环境（生产）**:
+```bash
+npm run migrate:up:remote
+```
+
+#### 4. 验证迁移状态
+
+```bash
+# 查看迁移状态
+npm run migrate:status        # 本地
+npm run migrate:status:remote # 远程
+
+# 检查迁移一致性
+npm run migrate:check        # 本地
+npm run migrate:check:remote # 远程
+```
+
+### 迁移追踪机制
+
+项目使用 `schema_migrations` 表追踪已执行的迁移：
+
+- **表结构**: `version` (迁移文件名), `checksum` (文件校验和), `executed_at` (执行时间)
+- **自动检查**: 迁移脚本会自动检查迁移是否已执行，避免重复执行
+- **校验和验证**: 通过文件校验和确保迁移文件未被修改
+
+### 特殊情况处理
+
+#### 手动迁移文件
+
+如果需要在 Drizzle 生成的迁移之外添加手动 SQL，请遵循以下规范：
+
+1. **文件命名**: `migration_YYYYMMDD_description.sql`
+2. **文件位置**: `backend/src/db/`
+3. **执行方式**: 使用 `migrate:up` 脚本自动执行
+
+#### 迁移回滚
+
+当前版本**不支持自动回滚**。如需回滚：
+
+1. 手动编写回滚 SQL
+2. 创建新的迁移文件执行回滚
+3. 记录回滚操作到 `schema_migrations` 表
+
+---
 
 ## 部署步骤
 

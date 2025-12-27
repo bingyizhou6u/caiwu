@@ -15,11 +15,13 @@ function QuickDateRangePicker({
   onChange,
   allowClear = true,
   showTime = false,
+  id,
 }: {
   value?: [Dayjs, Dayjs] | null
   onChange?: (value: [Dayjs, Dayjs] | null) => void
   allowClear?: boolean
   showTime?: boolean
+  id?: string
 }) {
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(value || null)
 
@@ -267,11 +269,21 @@ export function SearchFilters({
   }
 
   const renderField = (field: SearchFilterField) => {
+    // 基础属性：对于单一表单控件，使用 commonProps
+    // Form.Item 会自动为 label 生成 htmlFor，关联到第一个表单控件的 id
     const commonProps = {
       key: field.name,
       name: field.name,
       label: field.label,
     }
+
+    // 为需要 id 的字段生成唯一 ID（用于 label 关联）
+    // 对于包含多个元素的字段类型，需要为第一个表单控件生成 id
+    const fieldId = field.type === 'dateRange' && field.showQuickSelect
+      ? `date-range-${field.name}-${Math.random().toString(36).substring(2, 9)}`
+      : field.type === 'numberRange'
+      ? `number-range-min-${field.name}-${Math.random().toString(36).substring(2, 9)}`
+      : undefined
 
     switch (field.type) {
       case 'input':
@@ -305,26 +317,26 @@ export function SearchFilters({
           </Form.Item>
         )
       case 'dateRange':
-        return (
-          <Form.Item 
-            {...commonProps} 
-            // 当使用 QuickDateRangePicker 时，禁用 label 的 htmlFor 属性
-            // 因为 QuickDateRangePicker 返回多个元素而非单一表单控件
-            htmlFor={field.showQuickSelect ? '' : undefined}
-          >
-            {field.showQuickSelect ? (
+        // 当使用 QuickDateRangePicker 时，为 DatePicker 设置 id，Form.Item 会自动关联 label
+        if (field.showQuickSelect) {
+          return (
+            <Form.Item {...commonProps}>
               <QuickDateRangePicker
+                id={fieldId}
                 allowClear={field.allowClear !== false}
                 showTime={field.showTime}
               />
-            ) : (
-              <DatePicker.RangePicker
-                allowClear={field.allowClear !== false}
-                showTime={field.showTime}
-                format={field.showTime ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'}
-                style={{ width: field.showTime ? 380 : 240 }}
-              />
-            )}
+            </Form.Item>
+          )
+        }
+        return (
+          <Form.Item {...commonProps}>
+            <DatePicker.RangePicker
+              allowClear={field.allowClear !== false}
+              showTime={field.showTime}
+              format={field.showTime ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'}
+              style={{ width: field.showTime ? 380 : 240 }}
+            />
           </Form.Item>
         )
       case 'number':
@@ -365,6 +377,8 @@ export function SearchFilters({
           </Form.Item>
         )
       case 'custom':
+        // custom 类型：如果组件是单一表单控件，Form.Item 会自动关联
+        // 如果是多个元素，建议在自定义组件中为第一个表单控件添加 id
         return (
           <Form.Item {...commonProps}>
             {field.component}

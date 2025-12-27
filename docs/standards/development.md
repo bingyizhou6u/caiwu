@@ -1,7 +1,7 @@
 # 开发规范与标准
 
-**文档版本**: 1.1  
-**最后更新**: 2025-12-26  
+**文档版本**: 1.2  
+**最后更新**: 2025-01-27  
 **开发阶段**: 开发中（不考虑向后兼容）
 
 ---
@@ -116,6 +116,54 @@ const result = await DBPerformanceTracker.track(
 )
 ```
 
+#### 必须使用事务而非批量操作（Jan 2025）
+
+**规则**: 所有需要原子性的数据库操作必须使用 `db.transaction()`，而不是 `db.batch()`。
+
+**原因**:
+- `transaction()` 语义更清晰，明确表示事务操作
+- 统一事务管理，便于维护和调试
+- 确保操作的原子性和一致性
+
+**模板**:
+```typescript
+// ❌ 错误：使用 batch（语义不清晰）
+const result = await db.batch([
+  db.update(table).set({ ... }),
+  db.insert(table).values({ ... }),
+])
+
+// ✅ 正确：使用 transaction（语义清晰）
+await db.transaction(async tx => {
+  await tx.update(table).set({ ... }).execute()
+  await tx.insert(table).values({ ... }).execute()
+})
+```
+
+**注意事项**:
+- 如果方法已经接收 `tx` 参数，说明已经在事务中，直接使用 `tx` 而不是创建新事务
+- 事务中的操作必须使用 `tx` 而不是 `db`
+
+**示例**:
+```typescript
+async createCashFlow(data: any, tx?: any) {
+  const db = tx || this.db
+  
+  const executeInTransaction = async (transactionDb: any) => {
+    // 使用 transactionDb 执行操作
+    await transactionDb.update(...).execute()
+    await transactionDb.insert(...).execute()
+  }
+  
+  // 如果已经传入 tx，直接执行；否则创建新事务
+  if (tx) {
+    await executeInTransaction(tx)
+  } else {
+    await db.transaction(executeInTransaction)
+  }
+}
+```
+
 #### 禁止在 D1 中使用复杂 JOIN 查询 (Dec 2025)
 
 **规则**: Cloudflare D1 对复杂 JOIN 查询支持不稳定，生产环境会随机返回 500 错误。**必须使用顺序查询模式**代替复杂 JOIN。
@@ -124,6 +172,7 @@ const result = await DBPerformanceTracker.track(
 - 超过 1 个 JOIN 的查询
 - INNER JOIN + LEFT JOIN 组合
 - 多表 JOIN 查询
+- 链式 JOIN（如 `leftJoin(...).leftJoin(...).leftJoin(...)`）
 
 **模板**:
 ```typescript
@@ -178,10 +227,16 @@ return items.map(i => ({
 
 **已修复的服务**（可作为参考）:
 - `db.ts` - `getSessionWithUserAndPosition()`
-- `ApprovalService.ts` - `getPendingApprovals()`
+- `ApprovalService.ts` - `getPendingApprovals()`, `getApprovalHistory()`
 - `EmployeeLeaveService.ts` - `listLeaves()`, `getLeavesWithApprover()`
 - `ExpenseReimbursementService.ts` - `listReimbursements()`, `getReimbursementsWithApprover()`
 - `EmployeeService.ts` - `getById()`
+- `FinanceService.ts` - `createCashFlow()` (使用 transaction), `listCashFlows()`
+- `SalaryPaymentService.ts` - `list()`, `get()`
+- `OrgDepartmentService.ts` - `getOrgDepartments()`
+- `FinancialReportService.ts` - `getExpenseDetail()`
+- `DashboardReportService.ts` - `getRecentFlows()`
+- `QueryBuilder.ts` - `buildEmployeeJoinQuery()` (已废弃，使用 `buildEmployeeRelatedData()`)
 
 ---
 
@@ -231,7 +286,35 @@ async createNewMasterData(data: any) {
 
 ---
 
-### 3. 服务层组织规范
+### 3. 迁移管理规范
+
+#### 统一使用 Drizzle Kit 生成迁移
+
+**规则**: 所有数据库结构变更必须通过 Drizzle Kit 生成迁移文件，禁止手动编写 SQL。
+
+**流程**:
+1. 修改 `backend/src/db/schema.ts`
+2. 运行 `npm run db:generate` 生成迁移文件
+3. 检查生成的迁移文件（位于 `backend/drizzle/` 目录）
+4. 运行 `npm run migrate:up` 应用迁移（本地）或 `npm run migrate:up:remote`（远程）
+
+**禁止**:
+- 手动编写 SQL 迁移文件（除非特殊情况）
+- 直接在生产环境执行 SQL
+- 跳过迁移追踪
+
+**迁移文件命名**:
+- Drizzle 自动生成：`XXXXX_description.sql`
+- 手动迁移（如需要）：`migration_YYYYMMDD_description.sql`
+
+**迁移追踪**:
+- 使用 `schema_migrations` 表追踪已执行的迁移
+- 运行 `npm run migrate:status` 查看迁移状态
+- 运行 `npm run migrate:check` 检查迁移一致性
+
+---
+
+### 4. 服务层组织规范
 
 #### 必须按业务域分组
 

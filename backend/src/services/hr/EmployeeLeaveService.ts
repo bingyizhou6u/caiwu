@@ -22,6 +22,10 @@ export class EmployeeLeaveService {
     if (params.employeeId) { filters.push(eq(employeeLeaves.employeeId, params.employeeId)) }
     if (params.status) { filters.push(eq(employeeLeaves.status, params.status)) }
     if (params.year) {
+      // 验证年份格式（防止 SQL 注入）
+      if (!/^\d{4}$/.test(params.year)) {
+        throw Errors.VALIDATION_ERROR('年份格式错误，应为4位数字（如：2023）')
+      }
       filters.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year} `)
     }
 
@@ -76,6 +80,10 @@ export class EmployeeLeaveService {
     if (params.employeeId) { conditions.push(eq(employeeLeaves.employeeId, params.employeeId)) }
     if (params.status) { conditions.push(eq(employeeLeaves.status, params.status)) }
     if (params.year) {
+      // 验证年份格式（防止 SQL 注入）
+      if (!/^\d{4}$/.test(params.year)) {
+        throw Errors.VALIDATION_ERROR('年份格式错误，应为4位数字（如：2023）')
+      }
       conditions.push(sql`strftime('%Y', ${employeeLeaves.startDate}) = ${params.year} `)
     }
 
@@ -122,6 +130,7 @@ export class EmployeeLeaveService {
           eq(employeeLeaves.employeeId, employeeId),
           eq(employeeLeaves.status, 'approved'),
           // 使用SQLite的strftime函数提取年份（保留原生SQL，因为Drizzle ORM没有直接的日期提取函数）
+          // year 参数已在调用处验证，这里直接使用
           sql`strftime('%Y', ${employeeLeaves.startDate}) = ${year} `
         )
       )

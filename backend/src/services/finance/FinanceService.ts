@@ -161,15 +161,29 @@ export class FinanceService {
     // 2. 乐观锁检查: 尝试更新 account version
     // 这充当了一个 "Mutex"，确保同一账户的交易是串行写入的 (至少在并发冲突时会失败)
     // 使用事务确保原子性
-    const result = await db.batch([
-      db
+    // 如果已经传入 tx，说明已经在事务中，直接执行操作；否则创建新事务
+    const executeInTransaction = async (tx: any) => {
+      // 更新账户版本号（乐观锁）
+      const updateResult = await tx
         .update(accounts)
         .set({
           version: (account.version || 0) + 1,
         })
-        .where(and(eq(accounts.id, data.accountId), eq(accounts.version, account.version || 0))),
+        .where(and(eq(accounts.id, data.accountId), eq(accounts.version, account.version || 0)))
+        .execute()
 
-      db
+      // 检查乐观锁是否成功
+      if (updateResult.meta.changes === 0) {
+        throw createError(
+          409, // Conflict
+          ErrorCodes.BUS_CONCURRENT_MODIFICATION,
+          '账户状态已更变（并发冲突），请重试',
+          { accountId: data.accountId }
+        )
+      }
+
+      // 插入现金流水
+      await tx
         .insert(cashFlows)
         .values({
           id,
@@ -187,9 +201,11 @@ export class FinanceService {
           voucherUrl: voucherUrlJson,
           createdBy: data.createdBy ?? 'system',
           createdAt: now,
-        }),
+        })
+        .execute()
 
-      db
+      // 插入账户交易记录
+      await tx
         .insert(accountTransactions)
         .values({
           id: uuid(),
@@ -202,17 +218,15 @@ export class FinanceService {
           balanceAfterCents: balanceAfter,
           createdAt: now,
         })
-    ])
+        .execute()
+    }
 
-    // Check update result (first operation in batch)
-    const updateResult = result[0] as D1Result
-    if (updateResult.meta.changes === 0) {
-      throw createError(
-        409, // Conflict
-        ErrorCodes.BUS_CONCURRENT_MODIFICATION,
-        '账户状态已更变（并发冲突），请重试',
-        { accountId: data.accountId }
-      )
+    // 如果已经传入 tx，说明已经在事务中，直接执行
+    if (tx) {
+      await executeInTransaction(tx)
+    } else {
+      // 否则创建新事务
+      await db.transaction(executeInTransaction)
     }
 
     return { id, voucherNo }
@@ -239,20 +253,52 @@ export class FinanceService {
 
     const total = countResult?.count ?? 0
 
-    const list = await this.db
-      .select({
-        flow: cashFlows,
-        accountName: accounts.name,
-        categoryName: categories.name,
-      })
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+    // 1. 查询现金流水
+    const flows = await this.db
+      .select()
       .from(cashFlows)
-      .leftJoin(accounts, eq(accounts.id, cashFlows.accountId))
-      .leftJoin(categories, eq(categories.id, cashFlows.categoryId))
       .where(whereClause)
       .orderBy(desc(cashFlows.bizDate), desc(cashFlows.createdAt))
       .limit(pageSize)
       .offset(offset)
       .all()
+
+    if (flows.length === 0) {
+      return { total, list: [] }
+    }
+
+    // 2. 批量查询账户和分类信息
+    const accountIds = [...new Set(flows.map(f => f.accountId).filter(Boolean) as string[])]
+    const categoryIds = [...new Set(flows.map(f => f.categoryId).filter(Boolean) as string[])]
+
+    const [accountsList, categoriesList] = await Promise.all([
+      accountIds.length > 0
+        ? this.db
+            .select({ id: accounts.id, name: accounts.name })
+            .from(accounts)
+            .where(inArray(accounts.id, accountIds))
+            .all()
+        : Promise.resolve([]),
+      categoryIds.length > 0
+        ? this.db
+            .select({ id: categories.id, name: categories.name })
+            .from(categories)
+            .where(inArray(categories.id, categoryIds))
+            .all()
+        : Promise.resolve([]),
+    ])
+
+    // 3. 创建映射表
+    const accountMap = new Map(accountsList.map(a => [a.id, a]))
+    const categoryMap = new Map(categoriesList.map(c => [c.id, c]))
+
+    // 4. 组装结果
+    const list = flows.map(flow => ({
+      flow,
+      accountName: flow.accountId ? accountMap.get(flow.accountId)?.name || null : null,
+      categoryName: flow.categoryId ? categoryMap.get(flow.categoryId)?.name || null : null,
+    }))
 
     return { total, list }
   }

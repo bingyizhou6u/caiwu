@@ -10,6 +10,16 @@ import { ErrorSeverity } from './monitoring.js'
 import { Logger } from './logger.js'
 
 /**
+ * 慢查询阈值配置（毫秒）
+ */
+export const SLOW_QUERY_THRESHOLDS = {
+  /** 警告阈值：超过此时间会记录警告日志 */
+  WARNING: 1000, // 1秒
+  /** 严重阈值：超过此时间会记录错误日志 */
+  CRITICAL: 5000, // 5秒
+} as const
+
+/**
  * 数据库查询性能追踪器
  */
 export class DBPerformanceTracker {
@@ -45,23 +55,44 @@ export class DBPerformanceTracker {
         success: String(success),
       })
 
-      // 记录慢查询（超过1秒）
-      if (duration > 1000) {
+      // 记录慢查询告警
+      if (duration > SLOW_QUERY_THRESHOLDS.WARNING) {
+        const severity = duration > SLOW_QUERY_THRESHOLDS.CRITICAL ? 'critical' : 'warning'
+        
         monitoring.recordMetric('db.query.slow', duration, 'ms', {
           query: queryName,
           duration: String(duration),
+          severity,
         })
 
-        Logger.warn(`[DB Performance] Slow query detected: ${queryName} took ${duration}ms`, {
-          query: queryName,
-          duration,
-          error: error?.message,
-          context: c ? {
-            requestId: c.get('requestId'),
-            employeeId: c.get('employeeId'),
-            path: c.req.path,
-          } : undefined,
-        })
+        const logLevel = duration > SLOW_QUERY_THRESHOLDS.CRITICAL ? 'error' : 'warn'
+        const logMessage = `[DB Performance] ${severity.toUpperCase()} slow query detected: ${queryName} took ${duration}ms`
+        
+        if (logLevel === 'error') {
+          Logger.error(logMessage, {
+            query: queryName,
+            duration,
+            threshold: SLOW_QUERY_THRESHOLDS.CRITICAL,
+            error: error?.message,
+            context: c ? {
+              requestId: c.get('requestId'),
+              employeeId: c.get('employeeId'),
+              path: c.req.path,
+            } : undefined,
+          }, c)
+        } else {
+          Logger.warn(logMessage, {
+            query: queryName,
+            duration,
+            threshold: SLOW_QUERY_THRESHOLDS.WARNING,
+            error: error?.message,
+            context: c ? {
+              requestId: c.get('requestId'),
+              employeeId: c.get('employeeId'),
+              path: c.req.path,
+            } : undefined,
+          }, c)
+        }
       }
 
       // 记录查询错误

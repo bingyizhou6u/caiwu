@@ -224,14 +224,13 @@ flowsRoutes.openapi(
       throw Errors.VALIDATION_ERROR('文件必填')
     }
 
-    const maxSize = 10 * 1024 * 1024
-    if (file.size > maxSize) {
-      throw Errors.VALIDATION_ERROR('文件过大（最大10MB）')
-    }
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-    if (!allowedTypes.includes(file.type)) {
-      throw Errors.VALIDATION_ERROR('只允许上传图片格式（JPEG、PNG、GIF、WebP）')
+    // 使用文件验证工具（包含 Magic Number 检查）
+    const { validateImageFile, generateSafeFileName } = await import('../../utils/file-validation.js')
+    
+    // 验证文件（仅允许 WebP）
+    const validation = await validateImageFile(file, ['image/webp'])
+    if (!validation.valid) {
+      throw Errors.VALIDATION_ERROR(validation.error || '文件验证失败')
     }
 
     if (file.type !== 'image/webp') {
@@ -239,9 +238,9 @@ flowsRoutes.openapi(
     }
 
     try {
-      const timestamp = Date.now()
-      const random = Math.random().toString(36).substring(2, 8)
-      const fileName = `${timestamp}-${random}.webp`
+      // 生成安全的文件名
+      const { generateSafeFileName } = await import('../../utils/file-validation.js')
+      const fileName = generateSafeFileName(file.name || 'voucher', '.webp')
       const key = `vouchers/${fileName}`
 
       const bucket = c.env.VOUCHERS as unknown as R2Bucket

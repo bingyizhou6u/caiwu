@@ -5,7 +5,8 @@ import { SalaryPaymentProcessingService } from '../../src/services/hr/SalaryPaym
 import { createDb } from '../../src/db'
 import { env } from 'cloudflare:test'
 import { applySchema } from '../setup'
-import { employees, employeeSalaries, currencies } from '../../src/db/schema'
+import { employees, employeeSalaries, currencies, departments, orgDepartments, positions } from '../../src/db/schema'
+import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 
 describe('SalaryPaymentService', () => {
@@ -276,6 +277,56 @@ describe('SalaryPaymentService', () => {
       await expect(
         salaryPaymentService.rollbackPayment(id, '测试', 'emp1')
       ).rejects.toThrow()
+    })
+  })
+
+  describe('list', () => {
+    it('should list salary payments with employee and department names (sequential query)', async () => {
+      // 生成薪资支付记录
+      const genResult = await salaryPaymentGenerationService.generate(2023, 11, 'admin')
+      const paymentId = genResult.ids[0]
+
+      // 测试列表查询
+      const result = await salaryPaymentService.list({ year: 2023, month: 11 })
+
+      expect(result).toBeDefined()
+      expect(Array.isArray(result)).toBe(true)
+      expect(result.length).toBeGreaterThan(0)
+
+      // 查找我们创建的支付记录
+      const payment = result.find((p: any) => p.id === paymentId)
+      expect(payment).toBeDefined()
+
+      // 验证顺序查询正确组装了关联数据
+      expect(payment?.employeeName).toBeDefined()
+      expect(payment?.departmentName).toBeDefined()
+      expect(payment?.orgDepartmentName).toBeDefined()
+      expect(payment?.positionName).toBeDefined()
+
+      // 验证数据正确性
+      expect(payment?.employeeName).toBe('Test Employee')
+      expect(payment?.allocations).toBeDefined()
+      expect(Array.isArray(payment?.allocations)).toBe(true)
+    })
+
+    it('should filter by status', async () => {
+      await salaryPaymentGenerationService.generate(2023, 12, 'admin')
+
+      const pendingPayments = await salaryPaymentService.list({
+        year: 2023,
+        month: 12,
+        status: 'pending_employee_confirmation',
+      })
+
+      expect(pendingPayments.length).toBeGreaterThan(0)
+      pendingPayments.forEach((p: any) => {
+        expect(p.status).toBe('pending_employee_confirmation')
+      })
+    })
+
+    it('should return empty array when no payments match', async () => {
+      const result = await salaryPaymentService.list({ year: 2099, month: 1 })
+      expect(result).toEqual([])
     })
   })
 })

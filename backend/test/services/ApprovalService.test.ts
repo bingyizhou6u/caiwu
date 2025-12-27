@@ -98,8 +98,11 @@ describe('ApprovalService', () => {
         code: 'mock_engineer',
         dataScope: 'self',
         name: 'Engineer',
+        level: 5,
         canManageSubordinates: 0,
         active: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       })
       .execute()
 
@@ -534,6 +537,102 @@ describe('ApprovalService', () => {
       expect(result.success[0]).toBe(leaveId1)
       expect(result.failed.length).toBe(1)
       expect(result.failed[0].id).toBe(invalidId)
+    })
+  })
+
+  describe('getApprovalHistory', () => {
+    beforeEach(async () => {
+      // 清理审批历史数据
+      await db.delete(expenseReimbursements).execute()
+      await db.delete(employeeLeaves).execute()
+    })
+
+    it('should get approval history with employee and department names (sequential query)', async () => {
+      // 创建请假记录并审批
+      const leaveId = uuid()
+      await db
+        .insert(employeeLeaves)
+        .values({
+          id: leaveId,
+          employeeId: subordinateEmployeeId,
+          leaveType: 'annual',
+          startDate: '2023-02-01',
+          endDate: '2023-02-03',
+          days: 3,
+          status: 'approved',
+          approvedBy: managerUserId,
+          approvedAt: Date.now(),
+          createdAt: Date.now(),
+        })
+        .execute()
+
+      // 创建报销记录并审批
+      const reimbursementId = uuid()
+      await db
+        .insert(expenseReimbursements)
+        .values({
+          id: reimbursementId,
+          employeeId: subordinateEmployeeId,
+          expenseType: 'travel',
+          amountCents: 50000,
+          currencyId: 'CNY',
+          expenseDate: '2023-02-01',
+          description: 'Test reimbursement',
+          status: 'approved',
+          approvedBy: managerUserId,
+          approvedAt: Date.now(),
+          createdAt: Date.now(),
+        })
+        .execute()
+
+      // 测试获取审批历史
+      const history = await service.getApprovalHistory(managerUserId, 50)
+
+      expect(history.leaves).toBeDefined()
+      expect(history.reimbursements).toBeDefined()
+
+      // 验证请假记录包含员工和部门名称
+      const leaveRecord = history.leaves.find((l: any) => l.id === leaveId)
+      expect(leaveRecord).toBeDefined()
+      expect(leaveRecord?.employeeName).toBeDefined()
+      expect(leaveRecord?.departmentName).toBeDefined()
+
+      // 验证报销记录包含员工、部门和币种信息
+      const reimbursementRecord = history.reimbursements.find((r: any) => r.id === reimbursementId)
+      expect(reimbursementRecord).toBeDefined()
+      expect(reimbursementRecord?.employeeName).toBeDefined()
+      expect(reimbursementRecord?.departmentName).toBeDefined()
+      expect(reimbursementRecord?.currencySymbol).toBeDefined()
+    })
+
+    it('should return empty arrays when no approval history', async () => {
+      const history = await service.getApprovalHistory(managerUserId, 50)
+      expect(history.leaves).toEqual([])
+      expect(history.reimbursements).toEqual([])
+    })
+
+    it('should limit results by limit parameter', async () => {
+      // 创建多个审批记录
+      for (let i = 0; i < 5; i++) {
+        await db
+          .insert(employeeLeaves)
+          .values({
+            id: uuid(),
+            employeeId: subordinateEmployeeId,
+            leaveType: 'annual',
+            startDate: `2023-02-${String(i + 1).padStart(2, '0')}`,
+            endDate: `2023-02-${String(i + 3).padStart(2, '0')}`,
+            days: 3,
+            status: 'approved',
+            approvedBy: managerUserId,
+            approvedAt: Date.now() + i,
+            createdAt: Date.now() + i,
+          })
+          .execute()
+      }
+
+      const history = await service.getApprovalHistory(managerUserId, 3)
+      expect(history.leaves.length).toBeLessThanOrEqual(3)
     })
   })
 })

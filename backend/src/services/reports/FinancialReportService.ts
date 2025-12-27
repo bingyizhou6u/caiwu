@@ -133,33 +133,78 @@ export class FinancialReportService {
       conditions.push(eq(cashFlows.departmentId, departmentId))
     }
 
-    const rows = await this.db
-      .select({
-        flow: cashFlows,
-        account_name: accounts.name,
-        account_currency: accounts.currency,
-        category_name: categories.name,
-        department_name: departments.name,
-        site_name: sites.name,
-      })
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+    // 1. 查询现金流水
+    const flows = await this.db
+      .select()
       .from(cashFlows)
-      .leftJoin(accounts, eq(accounts.id, cashFlows.accountId))
-      .leftJoin(categories, eq(categories.id, cashFlows.categoryId))
-      .leftJoin(departments, eq(departments.id, cashFlows.departmentId))
-      .leftJoin(sites, eq(sites.id, cashFlows.siteId))
       .where(and(...conditions))
       .orderBy(desc(cashFlows.bizDate), desc(cashFlows.createdAt))
       .all()
 
+    if (flows.length === 0) {
+      return { rows: [] }
+    }
+
+    // 2. 批量查询关联数据
+    const accountIds = [...new Set(flows.map(f => f.accountId).filter(Boolean) as string[])]
+    const categoryIds = [...new Set(flows.map(f => f.categoryId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(flows.map(f => f.departmentId).filter(Boolean) as string[])]
+    const siteIds = [...new Set(flows.map(f => f.siteId).filter(Boolean) as string[])]
+
+    const [accountsList, categoriesList, departmentsList, sitesList] = await Promise.all([
+      accountIds.length > 0
+        ? this.db
+            .select({ id: accounts.id, name: accounts.name, currency: accounts.currency })
+            .from(accounts)
+            .where(inArray(accounts.id, accountIds))
+            .all()
+        : Promise.resolve([]),
+      categoryIds.length > 0
+        ? this.db
+            .select({ id: categories.id, name: categories.name })
+            .from(categories)
+            .where(inArray(categories.id, categoryIds))
+            .all()
+        : Promise.resolve([]),
+      deptIds.length > 0
+        ? this.db
+            .select({ id: departments.id, name: departments.name })
+            .from(departments)
+            .where(inArray(departments.id, deptIds))
+            .all()
+        : Promise.resolve([]),
+      siteIds.length > 0
+        ? this.db
+            .select({ id: sites.id, name: sites.name })
+            .from(sites)
+            .where(inArray(sites.id, siteIds))
+            .all()
+        : Promise.resolve([]),
+    ])
+
+    // 3. 创建映射表
+    const accountMap = new Map(accountsList.map(a => [a.id, a]))
+    const categoryMap = new Map(categoriesList.map(c => [c.id, c]))
+    const deptMap = new Map(departmentsList.map(d => [d.id, d]))
+    const siteMap = new Map(sitesList.map(s => [s.id, s]))
+
+    // 4. 组装结果
     return {
-      rows: rows.map(r => ({
-        ...r.flow,
-        accountName: r.account_name,
-        accountCurrency: r.account_currency,
-        categoryName: r.category_name,
-        departmentName: r.department_name,
-        siteName: r.site_name,
-      })),
+      rows: flows.map(flow => {
+        const account = flow.accountId ? accountMap.get(flow.accountId) : null
+        const category = flow.categoryId ? categoryMap.get(flow.categoryId) : null
+        const department = flow.departmentId ? deptMap.get(flow.departmentId) : null
+        const site = flow.siteId ? siteMap.get(flow.siteId) : null
+        return {
+          ...flow,
+          accountName: account?.name || null,
+          accountCurrency: account?.currency || null,
+          categoryName: category?.name || null,
+          departmentName: department?.name || null,
+          siteName: site?.name || null,
+        }
+      }),
     }
   }
 

@@ -11,10 +11,36 @@ import { cacheKeys, cacheTTL } from '../../utils/query-cache.js'
 
 export class KVCachedMasterDataService extends MasterDataService {
   private kvCache: KVCache
+  private cacheStats = {
+    hits: 0,
+    misses: 0,
+    sets: 0,
+  }
 
   constructor(db: DrizzleD1Database<typeof schema>, kv: KVNamespace) {
     super(db)
     this.kvCache = createKVCache(kv, cacheTTL.masterData)
+  }
+
+  /**
+   * 获取缓存统计信息
+   */
+  getCacheStats() {
+    const total = this.cacheStats.hits + this.cacheStats.misses
+    return {
+      hits: this.cacheStats.hits,
+      misses: this.cacheStats.misses,
+      sets: this.cacheStats.sets,
+      hitRate: total > 0 ? (this.cacheStats.hits / total) * 100 : 0,
+      total,
+    }
+  }
+
+  /**
+   * 重置缓存统计
+   */
+  resetCacheStats() {
+    this.cacheStats = { hits: 0, misses: 0, sets: 0 }
   }
 
   // ========== Currencies ==========
@@ -23,11 +49,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.currencies(search)}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getCurrencies(search)
     await this.kvCache.set(cacheKey, result, cacheTTL.masterData)
+    this.cacheStats.sets++
     return result
   }
 
@@ -37,11 +66,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.departments()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getDepartments()
     await this.kvCache.set(cacheKey, result, cacheTTL.masterData)
+    this.cacheStats.sets++
     return result
   }
 
@@ -51,11 +83,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.sites()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getSites()
     await this.kvCache.set(cacheKey, result, cacheTTL.masterData)
+    this.cacheStats.sets++
     return result
   }
 
@@ -65,11 +100,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.categories()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getCategories()
     await this.kvCache.set(cacheKey, result, cacheTTL.masterData)
+    this.cacheStats.sets++
     return result
   }
 
@@ -79,11 +117,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.vendors()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getVendors()
     await this.kvCache.set(cacheKey, result, cacheTTL.masterData)
+    this.cacheStats.sets++
     return result
   }
 
@@ -93,11 +134,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.accounts(search)}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getAccounts(search)
     await this.kvCache.set(cacheKey, result, cacheTTL.masterData)
+    this.cacheStats.sets++
     return result
   }
 
@@ -107,11 +151,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.masterData.headquarters()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getHeadquarters()
     await this.kvCache.set(cacheKey, result, cacheTTL.masterData)
+    this.cacheStats.sets++
     return result
   }
 
@@ -121,11 +168,14 @@ export class KVCachedMasterDataService extends MasterDataService {
     const cacheKey = `kv:${cacheKeys.business.positions()}`
     const cached = await this.kvCache.get(cacheKey)
     if (cached) {
+      this.cacheStats.hits++
       return cached as any
     }
 
+    this.cacheStats.misses++
     const result = await super.getPositions()
     await this.kvCache.set(cacheKey, result, cacheTTL.business)
+    this.cacheStats.sets++
     return result
   }
 

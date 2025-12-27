@@ -372,7 +372,8 @@ export class EmployeeService {
     },
     accessFilter?: SQL
   ) {
-    const conditions = []
+    // D1 兼容性修复：使用顺序查询代替多个 LEFT JOIN
+    const conditions: ReturnType<typeof eq | typeof like | typeof SQL>[] = []
 
     if (accessFilter) {
       conditions.push(accessFilter)
@@ -397,14 +398,120 @@ export class EmployeeService {
       conditions.push(eq(employees.positionId, filters.positionId))
     }
 
-    let query: any = this.buildEmployeeQuery()
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions))
+    // 1. 查询员工记录
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+    const employeesList = await query(
+      this.db,
+      'EmployeeService.getAll.getEmployees',
+      () => this.db
+        .select()
+        .from(employees)
+        .where(whereClause)
+        .orderBy(desc(employees.createdAt))
+        .limit(filters.limit || 100)
+        .offset(filters.offset || 0)
+        .all(),
+      undefined
+    )
+
+    if (employeesList.length === 0) {
+      return []
     }
-    return await query
-      .orderBy(desc(employees.createdAt))
-      .limit(filters.limit || 100)
-      .offset(filters.offset || 0)
+
+    // 2. 批量获取关联数据
+    const departmentIds = [...new Set(employeesList.map(e => e.departmentId).filter(Boolean) as string[])]
+    const orgDepartmentIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
+    const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
+
+    const departmentMap = new Map<string, { name: string }>()
+    const orgDepartmentMap = new Map<string, { name: string; code: string }>()
+    const positionMap = new Map<string, { name: string; dataScope: string; code: string }>()
+
+    if (departmentIds.length > 0) {
+      const depts = await query(
+        this.db,
+        'EmployeeService.getAll.getDepartments',
+        () => this.db
+          .select({ id: departments.id, name: departments.name })
+          .from(departments)
+          .where(inArray(departments.id, departmentIds))
+          .all(),
+        undefined
+      )
+      depts.forEach(d => departmentMap.set(d.id, { name: d.name || '' }))
+    }
+
+    if (orgDepartmentIds.length > 0) {
+      const orgDepts = await query(
+        this.db,
+        'EmployeeService.getAll.getOrgDepartments',
+        () => this.db
+          .select({ id: orgDepartments.id, name: orgDepartments.name, code: orgDepartments.code })
+          .from(orgDepartments)
+          .where(inArray(orgDepartments.id, orgDepartmentIds))
+          .all(),
+        undefined
+      )
+      orgDepts.forEach(d => orgDepartmentMap.set(d.id, { name: d.name || '', code: d.code || '' }))
+    }
+
+    if (positionIds.length > 0) {
+      const pos = await query(
+        this.db,
+        'EmployeeService.getAll.getPositions',
+        () => this.db
+          .select({ id: positions.id, name: positions.name, dataScope: positions.dataScope, code: positions.code })
+          .from(positions)
+          .where(inArray(positions.id, positionIds))
+          .all(),
+        undefined
+      )
+      pos.forEach(p => positionMap.set(p.id, { name: p.name || '', dataScope: p.dataScope || 'self', code: p.code || '' }))
+    }
+
+    // 3. 组装结果
+    return employeesList.map(emp => {
+      const dept = emp.departmentId ? departmentMap.get(emp.departmentId) : null
+      const orgDept = emp.orgDepartmentId ? orgDepartmentMap.get(emp.orgDepartmentId) : null
+      const pos = emp.positionId ? positionMap.get(emp.positionId) : null
+
+      return {
+        id: emp.id,
+        name: emp.name,
+        email: emp.email,
+        personalEmail: emp.personalEmail,
+        departmentId: emp.departmentId,
+        departmentName: dept?.name || null,
+        orgDepartmentId: emp.orgDepartmentId,
+        orgDepartmentName: orgDept?.name || null,
+        orgDepartmentCode: orgDept?.code || null,
+        positionId: emp.positionId,
+        positionName: pos?.name || null,
+        positionDataScope: pos?.dataScope || null,
+        positionCode: pos?.code || null,
+        joinDate: emp.joinDate,
+        status: emp.status,
+        active: emp.active,
+        phone: emp.phone,
+        regularDate: emp.regularDate,
+        birthday: emp.birthday,
+        usdtAddress: emp.usdtAddress,
+        emergencyContact: emp.emergencyContact,
+        emergencyPhone: emp.emergencyPhone,
+        address: emp.address,
+        memo: emp.memo,
+        workSchedule: emp.workSchedule,
+        annualLeaveCycleMonths: emp.annualLeaveCycleMonths,
+        annualLeaveDays: emp.annualLeaveDays,
+        createdAt: emp.createdAt,
+        updatedAt: emp.updatedAt,
+        userId: emp.id,
+        userActive: emp.active,
+        userLastLoginAt: emp.lastLoginAt,
+        isActivated: emp.passwordHash ? (emp.passwordHash !== '' ? true : false) : false,
+        totpEnabled: emp.totpSecret ? (emp.totpSecret !== '' ? true : false) : false,
+      }
+    })
   }
 
   async getById(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {

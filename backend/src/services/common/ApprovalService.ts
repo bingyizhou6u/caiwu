@@ -278,61 +278,128 @@ export class ApprovalService {
   }
 
   async getApprovalHistory(userId: string, limit: number = 50) {
-    const approvedLeaves = await this.db
-      .select({
-        leave: schema.employeeLeaves,
-        employeeName: schema.employees.name,
-        departmentName: schema.departments.name,
-      })
-      .from(schema.employeeLeaves)
-      .leftJoin(schema.employees, eq(schema.employees.id, schema.employeeLeaves.employeeId))
-      .leftJoin(schema.departments, eq(schema.departments.id, schema.employees.departmentId))
-      .where(
-        and(
-          eq(schema.employeeLeaves.approvedBy, userId),
-          inArray(schema.employeeLeaves.status, ['approved', 'rejected'])
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+    // 1. 查询已审批的请假记录
+    const approvedLeaves = await query(
+      this.db,
+      'ApprovalService.getApprovalHistory.getLeaves',
+      () => this.db
+        .select()
+        .from(schema.employeeLeaves)
+        .where(
+          and(
+            eq(schema.employeeLeaves.approvedBy, userId),
+            inArray(schema.employeeLeaves.status, ['approved', 'rejected'])
+          )
         )
-      )
-      .orderBy(desc(schema.employeeLeaves.approvedAt))
-      .limit(limit)
-      .execute()
+        .orderBy(desc(schema.employeeLeaves.approvedAt))
+        .limit(limit)
+        .execute(),
+      undefined
+    )
 
-    const approvedReimbursements = await this.db
-      .select({
-        reimbursement: schema.expenseReimbursements,
-        employeeName: schema.employees.name,
-        departmentName: schema.departments.name,
-        currencySymbol: schema.currencies.symbol,
-      })
-      .from(schema.expenseReimbursements)
-      .leftJoin(schema.employees, eq(schema.employees.id, schema.expenseReimbursements.employeeId))
-      .leftJoin(schema.departments, eq(schema.departments.id, schema.employees.departmentId))
-      .leftJoin(
-        schema.currencies,
-        eq(schema.currencies.code, schema.expenseReimbursements.currencyId)
-      )
-      .where(
-        and(
-          eq(schema.expenseReimbursements.approvedBy, userId),
-          inArray(schema.expenseReimbursements.status, ['approved', 'rejected'])
+    // 2. 查询已审批的报销记录
+    const approvedReimbursements = await query(
+      this.db,
+      'ApprovalService.getApprovalHistory.getReimbursements',
+      () => this.db
+        .select()
+        .from(schema.expenseReimbursements)
+        .where(
+          and(
+            eq(schema.expenseReimbursements.approvedBy, userId),
+            inArray(schema.expenseReimbursements.status, ['approved', 'rejected'])
+          )
         )
-      )
-      .orderBy(desc(schema.expenseReimbursements.approvedAt))
-      .limit(limit)
-      .execute()
+        .orderBy(desc(schema.expenseReimbursements.approvedAt))
+        .limit(limit)
+        .execute(),
+      undefined
+    )
 
+    if (approvedLeaves.length === 0 && approvedReimbursements.length === 0) {
+      return { leaves: [], reimbursements: [] }
+    }
+
+    // 3. 批量查询员工信息
+    const leaveEmployeeIds = [...new Set(approvedLeaves.map(l => l.employeeId).filter(Boolean) as string[])]
+    const reimbursementEmployeeIds = [...new Set(approvedReimbursements.map(r => r.employeeId).filter(Boolean) as string[])]
+    const allEmployeeIds = [...new Set([...leaveEmployeeIds, ...reimbursementEmployeeIds])]
+
+    const employeesList = allEmployeeIds.length > 0
+      ? await query(
+          this.db,
+          'ApprovalService.getApprovalHistory.getEmployees',
+          () => this.db
+            .select({
+              id: schema.employees.id,
+              name: schema.employees.name,
+              departmentId: schema.employees.departmentId,
+            })
+            .from(schema.employees)
+            .where(inArray(schema.employees.id, allEmployeeIds))
+            .execute(),
+          undefined
+        )
+      : []
+
+    // 4. 批量查询部门信息
+    const deptIds = [...new Set(employeesList.map(e => e.departmentId).filter(Boolean) as string[])]
+    const departmentsList = deptIds.length > 0
+      ? await query(
+          this.db,
+          'ApprovalService.getApprovalHistory.getDepartments',
+          () => this.db
+            .select({ id: schema.departments.id, name: schema.departments.name })
+            .from(schema.departments)
+            .where(inArray(schema.departments.id, deptIds))
+            .execute(),
+          undefined
+        )
+      : []
+
+    // 5. 批量查询币种信息（用于报销）
+    const currencyIds = [...new Set(approvedReimbursements.map(r => r.currencyId).filter(Boolean) as string[])]
+    const currenciesList = currencyIds.length > 0
+      ? await query(
+          this.db,
+          'ApprovalService.getApprovalHistory.getCurrencies',
+          () => this.db
+            .select({ code: schema.currencies.code, symbol: schema.currencies.symbol })
+            .from(schema.currencies)
+            .where(inArray(schema.currencies.code, currencyIds))
+            .execute(),
+          undefined
+        )
+      : []
+
+    // 6. 创建映射表
+    const employeeMap = new Map(employeesList.map(e => [e.id, e]))
+    const deptMap = new Map(departmentsList.map(d => [d.id, d]))
+    const currencyMap = new Map(currenciesList.map(c => [c.code, c]))
+
+    // 7. 组装结果
     return {
-      leaves: approvedLeaves.map(r => ({
-        ...r.leave,
-        employeeName: r.employeeName,
-        departmentName: r.departmentName,
-      })),
-      reimbursements: approvedReimbursements.map(r => ({
-        ...r.reimbursement,
-        employeeName: r.employeeName,
-        departmentName: r.departmentName,
-        currencySymbol: r.currencySymbol,
-      })),
+      leaves: approvedLeaves.map(leave => {
+        const employee = leave.employeeId ? employeeMap.get(leave.employeeId) : null
+        const department = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+        return {
+          ...leave,
+          employeeName: employee?.name || null,
+          departmentName: department?.name || null,
+        }
+      }),
+      reimbursements: approvedReimbursements.map(reimbursement => {
+        const employee = reimbursement.employeeId ? employeeMap.get(reimbursement.employeeId) : null
+        const department = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+        const currency = reimbursement.currencyId ? currencyMap.get(reimbursement.currencyId) : null
+        return {
+          ...reimbursement,
+          employeeName: employee?.name || null,
+          departmentName: department?.name || null,
+          currencySymbol: currency?.symbol || null,
+        }
+      }),
     }
   }
 

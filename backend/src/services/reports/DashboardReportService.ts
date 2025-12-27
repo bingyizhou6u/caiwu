@@ -12,7 +12,7 @@ import {
   departments,
   categories,
 } from '../../db/schema.js'
-import { sql, eq, and, gte, lte, desc } from 'drizzle-orm'
+import { sql, eq, and, gte, lte, desc, inArray } from 'drizzle-orm'
 import { Logger } from '../../utils/logger.js'
 import { getBusinessDate, getBusinessMonthStart, getBusinessTimezoneDisplay } from '../../utils/timezone.js'
 
@@ -108,22 +108,63 @@ export class DashboardReportService {
       recentConditions.push(eq(cashFlows.departmentId, departmentId))
     }
 
+    // D1 兼容性修复：使用顺序查询代替复杂 JOIN
+    // 1. 查询最近的现金流水
     const recentFlows = await this.db
-      .select({
-        flow: cashFlows,
-        accountName: accounts.name,
-        accountCurrency: accounts.currency,
-        categoryName: categories.name,
-        departmentName: departments.name,
-      })
+      .select()
       .from(cashFlows)
-      .leftJoin(accounts, eq(accounts.id, cashFlows.accountId))
-      .leftJoin(categories, eq(categories.id, cashFlows.categoryId))
-      .leftJoin(departments, eq(departments.id, cashFlows.departmentId))
       .where(and(...recentConditions))
       .orderBy(desc(cashFlows.createdAt))
       .limit(10)
       .all()
+
+    // 2. 批量查询关联数据
+    const accountIds = [...new Set(recentFlows.map(f => f.accountId).filter(Boolean) as string[])]
+    const categoryIds = [...new Set(recentFlows.map(f => f.categoryId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(recentFlows.map(f => f.departmentId).filter(Boolean) as string[])]
+
+    const [accountsList, categoriesList, departmentsList] = await Promise.all([
+      accountIds.length > 0
+        ? this.db
+            .select({ id: accounts.id, name: accounts.name, currency: accounts.currency })
+            .from(accounts)
+            .where(inArray(accounts.id, accountIds))
+            .all()
+        : Promise.resolve([]),
+      categoryIds.length > 0
+        ? this.db
+            .select({ id: categories.id, name: categories.name })
+            .from(categories)
+            .where(inArray(categories.id, categoryIds))
+            .all()
+        : Promise.resolve([]),
+      deptIds.length > 0
+        ? this.db
+            .select({ id: departments.id, name: departments.name })
+            .from(departments)
+            .where(inArray(departments.id, deptIds))
+            .all()
+        : Promise.resolve([]),
+    ])
+
+    // 3. 创建映射表
+    const accountMap = new Map(accountsList.map(a => [a.id, a]))
+    const categoryMap = new Map(categoriesList.map(c => [c.id, c]))
+    const deptMap = new Map(departmentsList.map(d => [d.id, d]))
+
+    // 4. 组装结果
+    const recentFlowsWithDetails = recentFlows.map(flow => {
+      const account = flow.accountId ? accountMap.get(flow.accountId) : null
+      const category = flow.categoryId ? categoryMap.get(flow.categoryId) : null
+      const department = flow.departmentId ? deptMap.get(flow.departmentId) : null
+      return {
+        flow,
+        accountName: account?.name || null,
+        accountCurrency: account?.currency || null,
+        categoryName: category?.name || null,
+        departmentName: department?.name || null,
+      }
+    })
 
     const result = {
       today: {
@@ -147,7 +188,7 @@ export class DashboardReportService {
         }
         return acc
       }, {}),
-      recentFlows: recentFlows.map(r => ({
+      recentFlows: recentFlowsWithDetails.map(r => ({
         ...r.flow,
         accountName: r.accountName,
         accountCurrency: r.accountCurrency,

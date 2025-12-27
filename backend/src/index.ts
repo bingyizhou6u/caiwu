@@ -57,20 +57,40 @@ const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 app.use('*', createRequestIdMiddleware())
 app.use('*', securityHeaders()) // 安全响应头
 app.use('*', performanceMonitor()) // 性能监控
+// CORS 白名单（精确匹配，防止子域名绕过）
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  // 生产环境域名（需要根据实际域名配置）
+  // 'https://your-domain.pages.dev',
+]
+
 app.use(
   '*',
   cors({
     origin: origin => {
-      // 允许的前端域名
+      // 允许的前端域名（精确匹配，防止子域名绕过）
       if (!origin) { return null }
-      if (
-        origin.includes('.pages.dev') ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1') ||
-        origin.includes('cloudflarets.com')
-      ) {
+      
+      // 精确匹配白名单
+      if (ALLOWED_ORIGINS.includes(origin)) {
         return origin
       }
+      
+      // 开发环境：允许 localhost 和 127.0.0.1（任何端口）
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return origin
+      }
+      
+      // 生产环境：仅允许特定的 pages.dev 域名（需要配置）
+      // 注意：使用 startsWith 而不是 includes，防止 evil.pages.dev 绕过
+      // const productionDomain = 'https://your-domain.pages.dev'
+      // if (origin === productionDomain) {
+      //   return origin
+      // }
+      
       return null
     },
     credentials: true,
@@ -145,47 +165,103 @@ app.get('/api/health', async c => {
   const { getMonitoringService } = await import('./utils/monitoring.js')
   const monitoring = getMonitoringService()
 
+  // 获取缓存统计（如果可用）
+  let cacheStats = null
+  try {
+    // 注意：在健康检查端点中，services 可能还未初始化
+    // 这里尝试获取，如果失败则忽略
+    const services = c.get('services')
+    // KVCachedMasterDataService 有 getCacheStats 方法，但类型是 MasterDataService
+    // 使用类型断言或检查方法是否存在
+    if (services?.masterData && 'getCacheStats' in services.masterData) {
+      cacheStats = (services.masterData as any).getCacheStats()
+    }
+  } catch (error) {
+    // 忽略错误，缓存统计不是必需的
+  }
+
   // 获取最近1小时的错误统计
   const errorStats = monitoring.getErrorStats(3600000)
 
   // 获取性能指标统计
   const requestDurationStats = monitoring.getMetricStats('http.request.duration', 3600000)
   const dbQueryStats = monitoring.getMetricStats('db.query.duration', 3600000)
+  const slowQueryStats = monitoring.getMetricStats('db.query.slow', 3600000)
+  const batchQueryStats = monitoring.getMetricStats('db.query.batch.duration', 3600000)
 
-  return c.json(
-    {
-      status: healthy ? 'healthy' : 'degraded',
-      checks,
-      timestamp: new Date().toISOString(),
-      metrics: {
-        errors: {
-          total: errorStats.total,
-          bySeverity: errorStats.bySeverity,
-          topCodes: Object.entries(errorStats.byCode)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
-            .map(([code, count]) => ({ code, count })),
-        },
-        performance: {
-          requestDuration: requestDurationStats
-            ? {
+  // 生产环境隐藏敏感信息
+  const isProduction = c.req.url.includes('https://') && !c.req.url.includes('localhost')
+  
+  // 构建响应对象
+  const responseData: any = {
+    status: healthy ? 'healthy' : 'degraded',
+    checks,
+    timestamp: new Date().toISOString(),
+  }
+
+  // 生产环境不返回详细指标
+  if (!isProduction) {
+    responseData.metrics = {
+      errors: {
+        total: errorStats.total,
+        bySeverity: errorStats.bySeverity,
+        topCodes: Object.entries(errorStats.byCode)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 5)
+          .map(([code, count]) => ({ code, count })),
+      },
+      performance: {
+        requestDuration: requestDurationStats
+          ? {
               avg: Math.round(requestDurationStats.avg),
               p95: Math.round(requestDurationStats.p95),
               p99: Math.round(requestDurationStats.p99),
             }
-            : null,
-          dbQueryDuration: dbQueryStats
-            ? {
+          : null,
+        dbQueryDuration: dbQueryStats
+          ? {
               avg: Math.round(dbQueryStats.avg),
               p95: Math.round(dbQueryStats.p95),
               p99: Math.round(dbQueryStats.p99),
             }
-            : null,
-        },
+          : null,
+        slowQueries: slowQueryStats
+          ? {
+              count: slowQueryStats.count,
+              avg: Math.round(slowQueryStats.avg),
+              max: Math.round(slowQueryStats.max),
+            }
+          : null,
+        batchQueryDuration: batchQueryStats
+          ? {
+              avg: Math.round(batchQueryStats.avg),
+              p95: Math.round(batchQueryStats.p95),
+              p99: Math.round(batchQueryStats.p99),
+            }
+          : null,
       },
-    },
-    healthy ? 200 : 503
-  )
+    }
+    // 慢查询详情（最近10条）
+    // MonitoringService 没有公开 getRecentMetrics 方法，需要直接访问内部 metrics
+    // 使用类型断言访问私有属性（仅用于健康检查端点）
+    const monitoringAny = monitoring as any
+    const allMetrics = monitoringAny.metrics || []
+    const slowQueryMetrics = allMetrics
+      .filter((m: any) => m.name === 'db.query.slow')
+      .sort((a: any, b: any) => b.timestamp - a.timestamp)
+      .slice(0, 10)
+      .map((m: any) => ({
+        query: m.tags?.query || 'unknown',
+        duration: m.value,
+        timestamp: m.timestamp,
+        severity: m.tags?.severity || 'warning',
+      }))
+    responseData.slowQueries = slowQueryMetrics
+    // 缓存统计
+    responseData.cache = cacheStats || null
+  }
+
+  return c.json(responseData, healthy ? 200 : 503)
 })
 
 app.get('/api/version', c => c.json({ version: 'v2' }))

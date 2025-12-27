@@ -17,7 +17,11 @@ import {
  */
 export class QueryBuilder {
   /**
-   * 构建员工关联查询
+   * 构建员工关联查询（已废弃）
+   * 
+   * @deprecated 此方法使用多个 LEFT JOIN，违反 D1 兼容性规范。
+   * 请使用 buildEmployeeRelatedData 方法进行顺序查询。
+   * 
    * 自动关联员工、部门、组织部门、职位表
    */
   static buildEmployeeJoinQuery<T extends { employeeId: any }, TSelect extends Record<string, any>>(
@@ -26,6 +30,12 @@ export class QueryBuilder {
     employeeIdField: any,
     selectFields: TSelect
   ) {
+    // 警告：此方法使用多个 JOIN，在 D1 中可能不稳定
+    // 建议使用 buildEmployeeRelatedData 代替
+    console.warn(
+      '[QueryBuilder] buildEmployeeJoinQuery is deprecated. ' +
+      'Use buildEmployeeRelatedData instead for D1 compatibility.'
+    )
     return db
       .select({
         ...selectFields,
@@ -40,6 +50,85 @@ export class QueryBuilder {
       .leftJoin(departments, eq(departments.id, employees.departmentId))
       .leftJoin(orgDepartments, eq(orgDepartments.id, employees.orgDepartmentId))
       .leftJoin(positions, eq(positions.id, employees.positionId))
+  }
+
+  /**
+   * 批量获取员工关联数据（D1 兼容）
+   * 使用顺序查询代替复杂 JOIN，避免 D1 不稳定问题
+   * 
+   * @param db 数据库实例
+   * @param employeeIds 员工ID数组
+   * @returns 包含员工、部门、组织部门、职位信息的映射表
+   */
+  static async buildEmployeeRelatedData(
+    db: DrizzleD1Database<typeof schema>,
+    employeeIds: string[]
+  ): Promise<{
+    employees: Map<string, { id: string; name: string | null; email: string | null; departmentId: string | null; orgDepartmentId: string | null; positionId: string | null }>
+    departments: Map<string, { id: string; name: string | null }>
+    orgDepartments: Map<string, { id: string; name: string | null }>
+    positions: Map<string, { id: string; name: string | null }>
+  }> {
+    if (employeeIds.length === 0) {
+      return {
+        employees: new Map(),
+        departments: new Map(),
+        orgDepartments: new Map(),
+        positions: new Map(),
+      }
+    }
+
+    // 1. 批量查询员工信息
+    const employeesList = await db
+      .select({
+        id: employees.id,
+        name: employees.name,
+        email: employees.email,
+        departmentId: employees.departmentId,
+        orgDepartmentId: employees.orgDepartmentId,
+        positionId: employees.positionId,
+      })
+      .from(employees)
+      .where(inArray(employees.id, employeeIds))
+      .execute()
+
+    // 2. 收集关联ID
+    const deptIds = [...new Set(employeesList.map(e => e.departmentId).filter(Boolean) as string[])]
+    const orgDeptIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
+    const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
+
+    // 3. 并行查询关联数据
+    const [departmentsList, orgDepartmentsList, positionsList] = await Promise.all([
+      deptIds.length > 0
+        ? db
+            .select({ id: departments.id, name: departments.name })
+            .from(departments)
+            .where(inArray(departments.id, deptIds))
+            .execute()
+        : Promise.resolve([]),
+      orgDeptIds.length > 0
+        ? db
+            .select({ id: orgDepartments.id, name: orgDepartments.name })
+            .from(orgDepartments)
+            .where(inArray(orgDepartments.id, orgDeptIds))
+            .execute()
+        : Promise.resolve([]),
+      positionIds.length > 0
+        ? db
+            .select({ id: positions.id, name: positions.name })
+            .from(positions)
+            .where(inArray(positions.id, positionIds))
+            .execute()
+        : Promise.resolve([]),
+    ])
+
+    // 4. 创建映射表
+    return {
+      employees: new Map(employeesList.map(e => [e.id, e])),
+      departments: new Map(departmentsList.map(d => [d.id, d])),
+      orgDepartments: new Map(orgDepartmentsList.map(od => [od.id, od])),
+      positions: new Map(positionsList.map(p => [p.id, p])),
+    }
   }
 
   /**
