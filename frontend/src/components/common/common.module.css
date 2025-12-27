@@ -1,0 +1,78 @@
+/**
+ * 公共组件样式 - CSS Module
+ * 统一的样式变量和工具类，供所有公共组件使用
+ * 
+ * 使用方法:
+ * import styles from './common.module.css'
+ * className={styles.statsRow}
+ */
+
+/* === 布局工具类 === */
+.statsRow {
+    margin-bottom: 24px;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toolbarCard {
+    margin-bottom: 16px;
+}
+
+/* === 卡片样式 === */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.cardStatic {
+    /* 无悬浮效果的卡片 */
+}
+
+/* === 表格区域 === */
+.tableCard {
+    transition: box-shadow 0.2s ease;
+}
+
+.tableCard:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 斑马纹 */
+.tableRowAlt {
+    background-color: rgba(99, 102, 241, 0.04);
+}
+
+/* === 空状态 === */
+.emptyState {
+    text-align: center;
+    padding: 48px;
+    color: #8c8c8c;
+}
+
+.emptyStateIcon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #bfbfbf;
+}
+
+/* === 无障碍支持 === */
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+
+    .card,
+    .tableCard {
+        transition: none;
+    }
+
+    .card:hover {
+        transform: none;
+    }
+}

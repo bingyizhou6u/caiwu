@@ -23,9 +23,9 @@ import {
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
 import { StatCard } from '../../../components/common'
+import commonStyles from '../../../components/common/common.module.css'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
-import styles from './TimelogPage.module.css'
 
 const { RangePicker } = DatePicker
 
@@ -158,8 +158,8 @@ export default function TimelogPage() {
 
     // 空状态提示 (无障碍: 添加 role 和 aria-label)
     const emptyState = (text: string) => (
-        <div className={styles.emptyState} role="status" aria-label={text}>
-            <ClockCircleOutlined className={styles.emptyStateIcon} aria-hidden="true" />
+        <div className={commonStyles.emptyState} role="status" aria-label={text}>
+            <ClockCircleOutlined className={commonStyles.emptyStateIcon} aria-hidden="true" />
             <div>{text}</div>
         </div>
     )
@@ -169,7 +169,7 @@ export default function TimelogPage() {
             key: 'my',
             label: <span><ClockCircleOutlined aria-hidden="true" /> 我的工时 ({myTimelogs.length})</span>,
             children: (
-                <Card className={`page-card-inner ${styles.tableCard}`} hoverable>
+                <Card className={`page-card-inner ${commonStyles.tableCard}`} hoverable>
                     <Table
                         columns={timelogColumns}
                         dataSource={myTimelogs}
@@ -178,7 +178,7 @@ export default function TimelogPage() {
                         pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
                         size="small"
                         locale={{ emptyText: emptyState('暂无工时记录，点击右上角"记录工时"添加') }}
-                        rowClassName={(_, index) => index % 2 === 0 ? '' : styles.tableRowAlt}
+                        rowClassName={(_, index) => index % 2 === 0 ? '' : commonStyles.tableRowAlt}
                         aria-label="我的工时记录列表"
                     />
                 </Card>
@@ -188,7 +188,7 @@ export default function TimelogPage() {
             key: 'team',
             label: <span><TeamOutlined aria-hidden="true" /> 团队工时 ({teamTimelogs.length})</span>,
             children: (
-                <Card className={`page-card-inner ${styles.tableCard}`} hoverable>
+                <Card className={`page-card-inner ${commonStyles.tableCard}`} hoverable>
                     <Table
                         columns={teamTimelogColumns}
                         dataSource={teamTimelogs}
@@ -197,7 +197,7 @@ export default function TimelogPage() {
                         pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
                         size="small"
                         locale={{ emptyText: emptyState('暂无团队工时记录') }}
-                        rowClassName={(_, index) => index % 2 === 0 ? '' : styles.tableRowAlt}
+                        rowClassName={(_, index) => index % 2 === 0 ? '' : commonStyles.tableRowAlt}
                         aria-label="团队工时记录列表"
                     />
                 </Card>
@@ -207,7 +207,7 @@ export default function TimelogPage() {
             key: 'summary',
             label: <span><CalendarOutlined aria-hidden="true" /> 工时汇总</span>,
             children: (
-                <Card className={`page-card-inner ${styles.tableCard}`} hoverable>
+                <Card className={`page-card-inner ${commonStyles.tableCard}`} hoverable>
                     <Table
                         columns={workloadColumns}
                         dataSource={workloadSummary}
@@ -215,7 +215,7 @@ export default function TimelogPage() {
                         pagination={false}
                         size="small"
                         locale={{ emptyText: emptyState('暂无工时汇总数据') }}
-                        rowClassName={(_, index) => index % 2 === 0 ? '' : styles.tableRowAlt}
+                        rowClassName={(_, index) => index % 2 === 0 ? '' : commonStyles.tableRowAlt}
                         aria-label="工时汇总列表"
                     />
                 </Card>
@@ -230,7 +230,7 @@ export default function TimelogPage() {
         >
             <Card bordered className="page-card page-card-outer">
                 {/* 统计卡片 */}
-                <Row gutter={[24, 24]} className={styles.statsRow} role="region" aria-label="工时统计">
+                <Row gutter={[24, 24]} className={commonStyles.statsRow} role="region" aria-label="工时统计">
                     <Col xs={24} sm={8}>
                         <StatCard
                             title="我的工时"
@@ -260,8 +260,8 @@ export default function TimelogPage() {
                 </Row>
 
                 {/* 筛选工具栏 */}
-                <Card className={`page-card-inner ${styles.toolbarCard}`} style={{ marginBottom: 16 }}>
-                    <div className={styles.toolbar}>
+                <Card className={`page-card-inner ${commonStyles.toolbarCard}`} style={{ marginBottom: 16 }}>
+                    <div className={commonStyles.toolbar}>
                         <Space>
                             <Select
                                 placeholder="选择项目"

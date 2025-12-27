@@ -27,13 +27,13 @@ export function StatusTag({
   style,
 }: StatusTagProps) {
   const config = getStatusConfig(status, statusMap)
-  
+
   if (!config) {
     return <span style={style}>{status || emptyText}</span>
   }
 
   return (
-    <Tag color={config.color} style={style}>
+    <Tag color={config.color} style={style} role="status" aria-label={`状态: ${config.text}`}>
       {config.text}
     </Tag>
   )

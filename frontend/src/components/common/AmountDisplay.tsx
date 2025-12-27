@@ -43,7 +43,7 @@ export function AmountDisplay({
     : formatAmountSimple(cents, precision)
 
   return (
-    <span style={style} className={className}>
+    <span style={style} className={className} aria-label={`金额 ${formatted}`}>
       {formatted}
     </span>
   )

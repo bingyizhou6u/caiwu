@@ -24,9 +24,9 @@ export function EmptyText({
   className,
 }: EmptyTextProps) {
   const displayValue = value == null || value === '' ? emptyText : String(value)
-  
+
   return (
-    <span style={style} className={className}>
+    <span style={style} className={className} role="status">
       {displayValue}
     </span>
   )

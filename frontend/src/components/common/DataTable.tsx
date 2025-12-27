@@ -1,6 +1,10 @@
 /**
  * 通用数据表格组件
  * 封装常用的表格功能：列定义、分页、加载状态、操作按钮、排序、筛选
+ * 
+ * @accessibility
+ * - 表格添加 aria-label 描述
+ * - 刷新按钮添加 aria-label
  */
 
 import { Table, TableProps, Button, Space, Popconfirm } from 'antd'
@@ -40,6 +44,8 @@ export interface DataTableProps<T> {
   actionColumnWidth?: number
   /** 是否启用虚拟滚动（大数据量时使用） */
   virtual?: boolean
+  /** 无障碍标签 */
+  ariaLabel?: string
   tableProps?: Omit<TableProps<T>, 'columns' | 'dataSource' | 'loading' | 'pagination' | 'rowSelection' | 'onChange'>
 }
 
@@ -59,6 +65,7 @@ export function DataTable<T extends Record<string, any>>({
   actionColumnTitle = '操作',
   actionColumnWidth = 150,
   virtual = false,
+  ariaLabel,
   tableProps = {},
 }: DataTableProps<T>) {
   // 构建操作列（使用 useMemo 缓存）
@@ -163,10 +170,10 @@ export function DataTable<T extends Record<string, any>>({
   }, [virtual, safeData.length])
 
   return (
-    <div>
+    <div role="region" aria-label={ariaLabel || '数据表格'}>
       {onRefresh && (
         <div style={{ marginBottom: 12, textAlign: 'right' }}>
-          <Button icon={<ReloadOutlined />} onClick={onRefresh} loading={loading}>
+          <Button icon={<ReloadOutlined aria-hidden="true" />} onClick={onRefresh} loading={loading} aria-label="刷新表格">
             刷新
           </Button>
         </div>
