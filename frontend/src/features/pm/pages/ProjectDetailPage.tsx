@@ -6,17 +6,19 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     Badge, Button, Card, Descriptions, Dropdown, message, Modal, Progress,
-    Space, Statistic, Table, Tabs, Tag, Tooltip, Typography
+    Row, Col, Space, Table, Tabs, Tag, Tooltip, Typography
 } from 'antd'
 import {
     ArrowLeftOutlined, EditOutlined, DeleteOutlined, PlusOutlined,
     ProjectOutlined, ClockCircleOutlined, TeamOutlined, CalendarOutlined,
-    MoreOutlined
+    MoreOutlined, CheckCircleOutlined
 } from '@ant-design/icons'
 import {
     useProject, useDeleteProject, useTasks, useTeamWorkloadSummary,
     type Project, type Task
 } from '../../../hooks/business/usePM'
+import { PageContainer } from '../../../components/PageContainer'
+import { StatCard } from '../../../components/common'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
@@ -150,20 +152,14 @@ export default function ProjectDetailPage() {
     ]
 
     return (
-        <div className="p-6">
-            {/* 顶部导航 */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/pm/projects')}>
-                        返回
-                    </Button>
-                    {project && (
-                        <div>
-                            <Title level={4} className="mb-0">{project.name}</Title>
-                            <Text type="secondary">{project.code}</Text>
-                        </div>
-                    )}
-                </div>
+        <PageContainer
+            title={project?.name || '项目详情'}
+            breadcrumb={[
+                { title: '项目管理' },
+                { title: '项目列表', path: '/pm/projects' },
+                { title: project?.name || '加载中...' }
+            ]}
+            extra={
                 <Space>
                     <Button
                         type="primary"
@@ -179,114 +175,128 @@ export default function ProjectDetailPage() {
                         删除
                     </Button>
                 </Space>
-            </div>
-
-            {/* 统计卡片 */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
-                <Card>
-                    <Statistic
-                        title="任务完成率"
-                        value={completionRate}
-                        suffix="%"
-                        prefix={<Progress size="small" percent={completionRate} showInfo={false} style={{ width: 60 }} />}
-                    />
-                </Card>
-                <Card>
-                    <Statistic title="任务总数" value={taskStats.total} prefix={<ProjectOutlined />} />
-                </Card>
-                <Card>
-                    <Statistic
-                        title="实际/预估工时"
-                        value={totalHours}
-                        suffix={`/ ${estimatedHours} h`}
-                        prefix={<ClockCircleOutlined />}
-                    />
-                </Card>
-                <Card>
-                    <Statistic title="团队成员" value={workloadSummary.length} prefix={<TeamOutlined />} />
-                </Card>
-            </div>
-
-            {/* 标签页 */}
-            <Card>
-                <Tabs type="card" activeKey={activeTab} onChange={setActiveTab}>
-                    <TabPane tab="概览" key="overview">
-                        {project && (
-                            <Descriptions bordered column={2}>
-                                <Descriptions.Item label="项目编号">{project.code}</Descriptions.Item>
-                                <Descriptions.Item label="状态">
-                                    <Badge
-                                        status={STATUS_CONFIG[project.status]?.color as any || 'default'}
-                                        text={STATUS_CONFIG[project.status]?.label || project.status}
-                                    />
-                                </Descriptions.Item>
-                                <Descriptions.Item label="部门">{project.departmentName || '-'}</Descriptions.Item>
-                                <Descriptions.Item label="项目经理">{project.managerName || '-'}</Descriptions.Item>
-                                <Descriptions.Item label="优先级">
-                                    <Tag color={PRIORITY_CONFIG[project.priority]?.color}>
-                                        {PRIORITY_CONFIG[project.priority]?.label || project.priority}
-                                    </Tag>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="预算">
-                                    {project.budgetCents ? `¥${(project.budgetCents / 100).toLocaleString()}` : '-'}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="计划周期">
-                                    {project.startDate || '-'} ~ {project.endDate || '-'}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="实际周期">
-                                    {project.actualStartDate || '-'} ~ {project.actualEndDate || '-'}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="描述" span={2}>
-                                    {project.description || '暂无描述'}
-                                </Descriptions.Item>
-                            </Descriptions>
-                        )}
-                    </TabPane>
-
-                    <TabPane tab={`任务 (${tasks.length})`} key="tasks">
-                        <div className="mb-4">
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => navigate(`/pm/tasks/new?projectId=${id}`)}
-                            >
-                                新建任务
-                            </Button>
-                        </div>
-                        <Table
-                            columns={taskColumns}
-                            dataSource={tasks}
-                            rowKey="id"
-                            loading={tasksLoading}
-                            pagination={{ pageSize: 10 }}
-                            size="small"
+            }
+        >
+            <Card bordered className="page-card page-card-outer">
+                {/* 统计卡片 */}
+                <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
+                    <Col xs={24} sm={12} md={6}>
+                        <StatCard
+                            title="任务完成率"
+                            value={completionRate}
+                            suffix="%"
+                            icon={<CheckCircleOutlined />}
+                            color={completionRate >= 50 ? '#52c41a' : '#faad14'}
                         />
-                    </TabPane>
-
-                    <TabPane tab="团队工时" key="workload">
-                        <Table
-                            columns={workloadColumns}
-                            dataSource={workloadSummary}
-                            rowKey="employeeId"
-                            pagination={false}
-                            size="small"
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <StatCard
+                            title="任务总数"
+                            value={taskStats.total}
+                            icon={<ProjectOutlined />}
+                            color="#1890ff"
                         />
-                    </TabPane>
-                </Tabs>
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <StatCard
+                            title="实际/预估工时"
+                            value={totalHours}
+                            suffix={`/${estimatedHours}h`}
+                            icon={<ClockCircleOutlined />}
+                            color="#722ed1"
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <StatCard
+                            title="团队成员"
+                            value={workloadSummary.length}
+                            icon={<TeamOutlined />}
+                            color="#13c2c2"
+                        />
+                    </Col>
+                </Row>
+
+                {/* 标签页 */}
+                <Card className="page-card-inner">
+                    <Tabs type="card" activeKey={activeTab} onChange={setActiveTab}>
+                        <TabPane tab="概览" key="overview">
+                            {project && (
+                                <Descriptions bordered column={2}>
+                                    <Descriptions.Item label="项目编号">{project.code}</Descriptions.Item>
+                                    <Descriptions.Item label="状态">
+                                        <Badge
+                                            status={STATUS_CONFIG[project.status]?.color as any || 'default'}
+                                            text={STATUS_CONFIG[project.status]?.label || project.status}
+                                        />
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="部门">{project.departmentName || '-'}</Descriptions.Item>
+                                    <Descriptions.Item label="项目经理">{project.managerName || '-'}</Descriptions.Item>
+                                    <Descriptions.Item label="优先级">
+                                        <Tag color={PRIORITY_CONFIG[project.priority]?.color}>
+                                            {PRIORITY_CONFIG[project.priority]?.label || project.priority}
+                                        </Tag>
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="预算">
+                                        {project.budgetCents ? `¥${(project.budgetCents / 100).toLocaleString()}` : '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="计划周期">
+                                        {project.startDate || '-'} ~ {project.endDate || '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="实际周期">
+                                        {project.actualStartDate || '-'} ~ {project.actualEndDate || '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="描述" span={2}>
+                                        {project.description || '暂无描述'}
+                                    </Descriptions.Item>
+                                </Descriptions>
+                            )}
+                        </TabPane>
+
+                        <TabPane tab={`任务 (${tasks.length})`} key="tasks">
+                            <div className="mb-4">
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => navigate(`/pm/tasks/new?projectId=${id}`)}
+                                >
+                                    新建任务
+                                </Button>
+                            </div>
+                            <Table
+                                columns={taskColumns}
+                                dataSource={tasks}
+                                rowKey="id"
+                                loading={tasksLoading}
+                                pagination={{ pageSize: 10 }}
+                                size="small"
+                            />
+                        </TabPane>
+
+                        <TabPane tab="团队工时" key="workload">
+                            <Table
+                                columns={workloadColumns}
+                                dataSource={workloadSummary}
+                                rowKey="employeeId"
+                                pagination={false}
+                                size="small"
+                            />
+                        </TabPane>
+                    </Tabs>
+                </Card>
+
+                {/* 删除确认弹窗 */}
+                <Modal
+                    title="确认删除"
+                    open={deleteModalVisible}
+                    onOk={handleDelete}
+                    onCancel={() => setDeleteModalVisible(false)}
+                    confirmLoading={deleteProject.isPending}
+                    okButtonProps={{ danger: true }}
+                >
+                    <p>确定要删除项目 <strong>{project?.name}</strong> 吗？</p>
+                    <p className="text-gray-500 text-sm mt-2">此操作将软删除项目，相关数据将保留但不再显示。</p>
+                </Modal>
             </Card>
-
-            {/* 删除确认弹窗 */}
-            <Modal
-                title="确认删除"
-                open={deleteModalVisible}
-                onOk={handleDelete}
-                onCancel={() => setDeleteModalVisible(false)}
-                confirmLoading={deleteProject.isPending}
-                okButtonProps={{ danger: true }}
-            >
-                <p>确定要删除项目 <strong>{project?.name}</strong> 吗？</p>
-                <p className="text-gray-500 text-sm mt-2">此操作将软删除项目，相关数据将保留但不再显示。</p>
-            </Modal>
-        </div>
+        </PageContainer>
     )
 }
