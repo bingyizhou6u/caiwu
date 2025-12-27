@@ -5,56 +5,57 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Department, SelectOption } from '../../types'
 import type { ListResponse } from '../../types/responses'
 
+// 类型别名：Project = Department（向后兼容）
+export type Project = Department
+
 // API 响应类型
-type DepartmentListResponse = Department[] | ListResponse<Department>
+type ProjectListResponse = Project[] | ListResponse<Project>
 
 // 辅助函数
-function extractDepartments(data: DepartmentListResponse): Department[] {
+function extractProjects(data: ProjectListResponse): Project[] {
     return Array.isArray(data) ? data : data?.results || []
 }
 
 /**
- * 部门数据查询Hook
- * 封装部门列表的查询逻辑
+ * 项目数据查询Hook（原 useDepartments）
+ * 封装项目列表的查询逻辑
  * 
- * @returns 部门列表和查询状态
+ * @returns 项目列表和查询状态
  * 
  * @example
  * ```tsx
- * const { data: departments, isLoading } = useDepartments()
+ * const { data: projects, isLoading } = useProjects()
  * ```
  */
-export function useDepartments() {
-    return useApiQuery<Department[]>(
-        ['departments'],
+export function useProjects() {
+    return useApiQuery<Project[]>(
+        ['departments'], // 保持查询键兼容
         api.departments,
         {
-            select: (data: DepartmentListResponse) => extractDepartments(data),
+            select: (data: ProjectListResponse) => extractProjects(data),
             staleTime: 60 * 60 * 1000, // 1小时缓存 - Master Data
         }
     )
 }
 
 /**
- * 部门选项查询Hook
+ * 项目选项查询Hook（原 useDepartmentOptions）
  * 返回适用于Select组件的选项格式
  * 
  * @param includeHQ - 是否包含总部选项
- * @returns Select组件选项格式的部门列表
+ * @returns Select组件选项格式的项目列表
  */
-export function useDepartmentOptions(includeHQ = true) {
+export function useProjectOptions(includeHQ = true) {
     return useApiQuery<SelectOption[]>(
         ['departments', 'options', includeHQ],
         api.departments,
         {
-            select: (data: DepartmentListResponse) => {
-                const rawList = extractDepartments(data)
+            select: (data: ProjectListResponse) => {
+                const rawList = extractProjects(data)
                 const options = rawList.map(d => ({
                     value: d.id,
                     label: d.name
                 }))
-
-                // 移除手动注入总部选项，因为后端现在返回真实的总部部门
 
                 return options
             },
@@ -63,11 +64,11 @@ export function useDepartmentOptions(includeHQ = true) {
     )
 }
 
-export function useCreateDepartment() {
+export function useCreateProject() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async (data: Partial<Department>) => {
-            const result = await apiClient.post<Department>(api.departments, data)
+        mutationFn: async (data: Partial<Project>) => {
+            const result = await apiClient.post<Project>(api.departments, data)
             return result
         },
         onSuccess: () => {
@@ -76,11 +77,11 @@ export function useCreateDepartment() {
     })
 }
 
-export function useUpdateDepartment() {
+export function useUpdateProject() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: Partial<Department> }) => {
-            const result = await apiClient.put<Department>(`${api.departments}/${id}`, data)
+        mutationFn: async ({ id, data }: { id: string; data: Partial<Project> }) => {
+            const result = await apiClient.put<Project>(`${api.departments}/${id}`, data)
             return result
         },
         onSuccess: () => {
@@ -89,7 +90,7 @@ export function useUpdateDepartment() {
     })
 }
 
-export function useDeleteDepartment() {
+export function useDeleteProject() {
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async (id: string) => {
@@ -100,3 +101,15 @@ export function useDeleteDepartment() {
         },
     })
 }
+
+// 向后兼容别名（deprecated，建议使用新名称）
+/** @deprecated Use useProjects instead */
+export const useDepartments = useProjects
+/** @deprecated Use useProjectOptions instead */
+export const useDepartmentOptions = useProjectOptions
+/** @deprecated Use useCreateProject instead */
+export const useCreateDepartment = useCreateProject
+/** @deprecated Use useUpdateProject instead */
+export const useUpdateDepartment = useUpdateProject
+/** @deprecated Use useDeleteProject instead */
+export const useDeleteDepartment = useDeleteProject
