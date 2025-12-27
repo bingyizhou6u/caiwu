@@ -882,7 +882,7 @@ export interface paths {
                                 /** Format: uuid */
                                 id: string;
                                 /** Format: uuid */
-                                departmentId: string;
+                                projectId: string;
                                 name: string;
                                 siteCode?: string | null;
                                 themeStyle?: string | null;
@@ -910,7 +910,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** Format: uuid */
-                        departmentId: string;
+                        projectId: string;
                         name: string;
                         siteCode?: string | null;
                         themeStyle?: string | null;
@@ -932,7 +932,7 @@ export interface paths {
                             /** Format: uuid */
                             id: string;
                             /** Format: uuid */
-                            departmentId: string;
+                            projectId: string;
                             name: string;
                             siteCode?: string | null;
                             themeStyle?: string | null;
@@ -974,7 +974,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** Format: uuid */
-                        departmentId?: string;
+                        projectId?: string;
                         name?: string;
                         siteCode?: string | null;
                         themeStyle?: string | null;
@@ -1650,7 +1650,7 @@ export interface paths {
         get: {
             parameters: {
                 query: {
-                    orgDepartmentId: string;
+                    orgProjectId: string;
                 };
                 header?: never;
                 path?: never;
@@ -2081,7 +2081,7 @@ export interface paths {
                                 method: string | null;
                                 amountCents: number;
                                 siteId: string | null;
-                                departmentId: string | null;
+                                projectId: string | null;
                                 counterparty: string | null;
                                 memo: string | null;
                                 voucherUrls: string[];
@@ -2124,7 +2124,7 @@ export interface paths {
                         /** Format: uuid */
                         siteId?: string;
                         /** Format: uuid */
-                        departmentId?: string;
+                        projectId?: string;
                         /** @enum {string} */
                         ownerScope?: "hq" | "department";
                         counterparty?: string;
@@ -2281,7 +2281,7 @@ export interface paths {
                                 docNo: string | null;
                                 partyId: string | null;
                                 siteId: string | null;
-                                departmentId: string | null;
+                                projectId: string | null;
                                 issueDate: string | null;
                                 dueDate: string | null;
                                 amountCents: number;
@@ -2315,7 +2315,7 @@ export interface paths {
                         /** Format: uuid */
                         siteId?: string;
                         /** Format: uuid */
-                        departmentId?: string;
+                        projectId?: string;
                         issueDate?: string;
                         dueDate?: string;
                         amountCents: number;
@@ -2458,7 +2458,7 @@ export interface paths {
                                 docNo: string | null;
                                 partyId: string | null;
                                 siteId: string | null;
-                                departmentId: string | null;
+                                projectId: string | null;
                                 issueDate: string | null;
                                 dueDate: string | null;
                                 amountCents: number;
@@ -2558,7 +2558,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -2626,7 +2626,7 @@ export interface paths {
                 query: {
                     start: string;
                     end: string;
-                    departmentIds?: string;
+                    projectIds?: string;
                 };
                 header?: never;
                 path?: never;
@@ -2666,7 +2666,7 @@ export interface paths {
                 query: {
                     start: string;
                     end: string;
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -2713,7 +2713,7 @@ export interface paths {
                     start: string;
                     end: string;
                     kind: "AR" | "AP";
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -2761,7 +2761,7 @@ export interface paths {
                     start: string;
                     end: string;
                     kind: "AR" | "AP";
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -2801,7 +2801,7 @@ export interface paths {
                 query: {
                     start: string;
                     end: string;
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -2842,7 +2842,7 @@ export interface paths {
                     start: string;
                     end: string;
                     category_id?: string;
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3005,7 +3005,7 @@ export interface paths {
                     start: string;
                     end: string;
                     days?: number | null;
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3045,7 +3045,7 @@ export interface paths {
                 query?: {
                     year?: number;
                     month?: number;
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3085,8 +3085,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    departmentId?: string;
-                    orgDepartmentId?: string;
+                    projectId?: string;
+                    orgProjectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3185,8 +3185,8 @@ export interface paths {
             parameters: {
                 query?: {
                     status?: string;
-                    departmentId?: string;
-                    orgDepartmentId?: string;
+                    projectId?: string;
+                    orgProjectId?: string;
                     name?: string;
                     email?: string;
                     positionId?: string;
@@ -3232,9 +3232,9 @@ export interface paths {
                          */
                         personalEmail: string;
                         /** @example org-dept-1 */
-                        orgDepartmentId: string;
+                        orgProjectId: string;
                         /** @example dept-1 */
-                        departmentId?: string;
+                        projectId?: string;
                         /** @example pos-1 */
                         positionId: string;
                         /** @example 2024-01-01 */
@@ -3333,8 +3333,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         name?: string;
-                        departmentId?: string;
-                        orgDepartmentId?: string;
+                        projectId?: string;
+                        orgProjectId?: string;
                         positionId?: string;
                         joinDate?: string;
                         active?: number;
@@ -5023,7 +5023,7 @@ export interface paths {
                 query?: {
                     search?: string;
                     status?: "in_use" | "idle" | "maintenance" | "scrapped";
-                    departmentId?: string;
+                    projectId?: string;
                     category?: string;
                 };
                 header?: never;
@@ -5062,7 +5062,7 @@ export interface paths {
                         purchasePriceCents: number;
                         currency: string;
                         /** Format: uuid */
-                        departmentId?: string;
+                        projectId?: string;
                         /** Format: uuid */
                         siteId?: string;
                         /** Format: uuid */
@@ -5228,7 +5228,7 @@ export interface paths {
                         purchasePriceCents?: number;
                         currency?: string;
                         /** Format: uuid */
-                        departmentId?: string;
+                        projectId?: string;
                         /** Format: uuid */
                         siteId?: string;
                         /** Format: uuid */
@@ -5359,7 +5359,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** Format: uuid */
-                        toDepartmentId?: string;
+                        toProjectId?: string;
                         /** Format: uuid */
                         toSiteId?: string;
                         toCustodian?: string;
@@ -5421,7 +5421,7 @@ export interface paths {
                         /** Format: uuid */
                         vendorId?: string;
                         /** Format: uuid */
-                        departmentId?: string;
+                        projectId?: string;
                         /** Format: uuid */
                         siteId?: string;
                         custodian?: string;
@@ -6863,7 +6863,7 @@ export interface paths {
                 query?: {
                     propertyType?: "office" | "warehouse" | "dormitory" | "other";
                     status?: string;
-                    departmentId?: string;
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -6958,7 +6958,7 @@ export interface paths {
                                 propertyCode: string | null;
                                 propertyName: string | null;
                                 employeeName: string | null;
-                                employeeDepartmentId: string | null;
+                                employeeProjectId: string | null;
                                 employeeDepartmentName: string | null;
                                 createdByName: string | null;
                             }[];
@@ -7125,7 +7125,7 @@ export interface paths {
                         paymentAccountId?: string;
                         paymentDay?: number;
                         /** Format: uuid */
-                        departmentId?: string;
+                        projectId?: string;
                         status?: string;
                         memo?: string;
                         /** Format: uri */

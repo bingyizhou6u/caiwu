@@ -51,7 +51,7 @@ export function ReportDepartmentCash() {
           ]}
           data={rows}
           loading={isLoading}
-          rowKey="departmentId"
+          rowKey="projectId"
           tableProps={{ className: 'table-striped' }}
         />
       </Card>

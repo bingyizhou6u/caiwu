@@ -19,7 +19,7 @@ const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
 function validateScope(
   c: Context<{ Bindings: Env; Variables: AppVariables }>,
-  requestedDepartmentId?: string
+  requestedProjectId?: string
 ): string | undefined {
   const position = getUserPosition(c)
   const employee = c.get('userEmployee')
@@ -30,20 +30,20 @@ function validateScope(
 
   // 总部 - 无限制
   if (position.dataScope === DataScope.ALL) {
-    return requestedDepartmentId
+    return requestedProjectId
   }
 
   // 其他 - 必须限制在本部门
-  const userDepartmentId = employee?.departmentId
-  if (!userDepartmentId) {
+  const userProjectId = employee?.projectId
+  if (!userProjectId) {
     return '00000000-0000-0000-0000-000000000000'
   }
 
-  if (requestedDepartmentId && requestedDepartmentId !== userDepartmentId) {
+  if (requestedProjectId && requestedProjectId !== userProjectId) {
     throw Errors.FORBIDDEN('Cannot access data from other departments')
   }
 
-  return userDepartmentId
+  return userProjectId
 }
 
 // 仪表盘统计
@@ -55,7 +55,7 @@ app.openapi(
     summary: 'Get dashboard statistics',
     request: {
       query: z.object({
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -98,8 +98,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
       throw Errors.FORBIDDEN()
     }
-    const { departmentId } = c.req.valid('query')
-    const startId = validateScope(c, departmentId)
+    const { projectId } = c.req.valid('query')
+    const startId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const stats = await reportService.getDashboardStats(startId)
     return stats
@@ -117,7 +117,7 @@ app.openapi(
       query: z.object({
         start: z.string().date(),
         end: z.string().date(),
-        departmentIds: z.string().optional(),
+        projectIds: z.string().optional(),
       }),
     },
     responses: {
@@ -138,14 +138,14 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, departmentIds } = c.req.valid('query')
+    const { start, end, projectIds } = c.req.valid('query')
 
     // 使用统一的 validateScope 函数验证权限
-    const rawIds = departmentIds ? departmentIds.split(',') : []
+    const rawIds = projectIds ? projectIds.split(',') : []
     const validatedIds: string[] = []
 
     if (rawIds.length > 0) {
-      // 验证每个 departmentId
+      // 验证每个 projectId
       for (const id of rawIds) {
         try {
           const validatedId = validateScope(c, id)
@@ -158,7 +158,7 @@ app.openapi(
         }
       }
     } else {
-      // 如果没有提供 departmentIds，使用 validateScope 获取用户的 departmentId
+      // 如果没有提供 projectIds，使用 validateScope 获取用户的 projectId
       const userDeptId = validateScope(c, undefined)
       if (userDeptId && userDeptId !== '00000000-0000-0000-0000-000000000000') {
         validatedIds.push(userDeptId)
@@ -186,7 +186,7 @@ app.openapi(
       query: z.object({
         start: z.string().date(),
         end: z.string().date(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -213,8 +213,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getSiteGrowth(start, end, validId)
     return data
@@ -232,7 +232,7 @@ app.openapi(
       query: z.object({
         start: z.string().date(),
         end: z.string().date(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -258,8 +258,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getArApSummary('AR', start, end, validId)
     return data
@@ -276,7 +276,7 @@ app.openapi(
       query: z.object({
         start: z.string().date(),
         end: z.string().date(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -302,8 +302,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getArApSummary('AP', start, end, validId)
     return data
@@ -321,7 +321,7 @@ app.openapi(
       query: z.object({
         start: z.string().date(),
         end: z.string().date(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -342,8 +342,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getArApDetail('AR', start, end, validId)
     return data
@@ -360,7 +360,7 @@ app.openapi(
       query: z.object({
         start: z.string().date(),
         end: z.string().date(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -381,8 +381,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getArApDetail('AP', start, end, validId)
     return data
@@ -400,7 +400,7 @@ app.openapi(
       query: z.object({
         start: z.string().date(),
         end: z.string().date(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -421,8 +421,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getExpenseSummary(start, end, validId)
     return data
@@ -441,7 +441,7 @@ app.openapi(
         start: z.string().date(),
         end: z.string().date(),
         category_id: z.string().optional(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -462,8 +462,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, category_id, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, category_id, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getExpenseDetail(start, end, category_id, validId)
     return data
@@ -520,7 +520,7 @@ app.openapi(
         start: z.string().date(),
         end: z.string().date(),
         days: z.coerce.number().optional(),
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -541,8 +541,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { start, end, days, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { start, end, days, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const data = await reportService.getNewSiteRevenue(start, end, days, validId)
     return data
@@ -558,7 +558,7 @@ app.openapi(
     summary: 'Get employee salary report',
     request: {
       query: salaryReportQuerySchema.extend({
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -582,8 +582,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
       throw Errors.FORBIDDEN()
     }
-    const { year, month, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { year, month, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const y = year || new Date().getFullYear()
     const data = await reportService.getEmployeeSalaryReport(y, month, validId)
@@ -600,8 +600,8 @@ app.openapi(
     summary: 'Get annual leave report',
     request: {
       query: z.object({
-        departmentId: z.string().optional(),
-        orgDepartmentId: z.string().optional(),
+        projectId: z.string().optional(),
+        orgProjectId: z.string().optional(),
       }),
     },
     responses: {
@@ -622,20 +622,20 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'hr', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
-    const { departmentId, orgDepartmentId } = c.req.valid('query')
+    const { projectId, orgProjectId } = c.req.valid('query')
 
-    const validDeptId = validateScope(c, departmentId)
-    let validOrgDeptId = orgDepartmentId
+    const validDeptId = validateScope(c, projectId)
+    let validOrgDeptId = orgProjectId
 
     const position = getUserPosition(c)
     const employee = c.get('userEmployee')
 
     if (position && position.dataScope === DataScope.GROUP) {
-      if (employee?.orgDepartmentId) {
-        if (validOrgDeptId && validOrgDeptId !== employee.orgDepartmentId) {
+      if (employee?.orgProjectId) {
+        if (validOrgDeptId && validOrgDeptId !== employee.orgProjectId) {
           throw Errors.FORBIDDEN('Cannot access other groups')
         }
-        validOrgDeptId = employee.orgDepartmentId
+        validOrgDeptId = employee.orgProjectId
       } else {
         validOrgDeptId = 'NONE'
       }
@@ -656,7 +656,7 @@ app.openapi(
     summary: 'Export employee salary report to CSV',
     request: {
       query: salaryReportQuerySchema.extend({
-        departmentId: z.string().optional(),
+        projectId: z.string().optional(),
       }),
     },
     responses: {
@@ -675,8 +675,8 @@ app.openapi(
     if (!hasPermission(c, PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
       throw Errors.FORBIDDEN()
     }
-    const { year, month, departmentId } = c.req.valid('query')
-    const validId = validateScope(c, departmentId)
+    const { year, month, projectId } = c.req.valid('query')
+    const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
     const y = year || new Date().getFullYear()
     const data = await reportService.getEmployeeSalaryReport(y, month, validId, false) // 不使用缓存

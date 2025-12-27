@@ -29,8 +29,8 @@ export class BusinessReportService {
     private kv: KVNamespace
   ) { }
 
-  async getDepartmentCashFlow(start: string, end: string, departmentIds?: string[]) {
-    const cacheKey = `report:dept_flow:${start}:${end}:${departmentIds ? departmentIds.sort().join(',') : 'all'}`
+  async getDepartmentCashFlow(start: string, end: string, projectIds?: string[]) {
+    const cacheKey = `report:dept_flow:${start}:${end}:${projectIds ? projectIds.sort().join(',') : 'all'}`
 
     try {
       const cached = await this.kv.get(cacheKey, 'json')
@@ -56,7 +56,7 @@ export class BusinessReportService {
       .leftJoin(
         cashFlows,
         and(
-          eq(cashFlows.departmentId, projects.id),
+          eq(cashFlows.projectId, projects.id),
           gte(cashFlows.bizDate, start),
           lte(cashFlows.bizDate, end)
         )
@@ -64,8 +64,8 @@ export class BusinessReportService {
       .where(eq(projects.active, 1))
       .$dynamic()
 
-    if (departmentIds && departmentIds.length > 0) {
-      deptQuery = deptQuery.where(inArray(projects.id, departmentIds))
+    if (projectIds && projectIds.length > 0) {
+      deptQuery = deptQuery.where(inArray(projects.id, projectIds))
     }
 
     const rows = await query(
@@ -76,7 +76,7 @@ export class BusinessReportService {
     )
 
     const result = rows.map(r => ({
-      departmentId: r.id,
+      projectId: r.id,
       departmentName: r.name,
       incomeCents: r.income_cents,
       expenseCents: r.expense_cents,
@@ -94,7 +94,7 @@ export class BusinessReportService {
     return result
   }
 
-  async getSiteGrowth(start: string, end: string, departmentId?: string) {
+  async getSiteGrowth(start: string, end: string, projectId?: string) {
     const startDate = new Date(start + 'T00:00:00Z')
     const endDate = new Date(end + 'T00:00:00Z')
     const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1)
@@ -104,8 +104,8 @@ export class BusinessReportService {
     const prevEndStr = prevEnd.toISOString().slice(0, 10)
 
     const siteConditions = []
-    if (departmentId) {
-      siteConditions.push(eq(sites.departmentId, departmentId))
+    if (projectId) {
+      siteConditions.push(eq(sites.projectId, projectId))
     }
 
     const curRows = await this.db
@@ -171,17 +171,17 @@ export class BusinessReportService {
     }
   }
 
-  async getNewSiteRevenue(start: string, end: string, days: number = 30, departmentId?: string) {
+  async getNewSiteRevenue(start: string, end: string, days: number = 30, projectId?: string) {
     const siteConditions = []
-    if (departmentId) {
-      siteConditions.push(eq(sites.departmentId, departmentId))
+    if (projectId) {
+      siteConditions.push(eq(sites.projectId, projectId))
     }
 
     const sitesList = await this.db
       .select({
         id: sites.id,
         name: sites.name,
-        departmentId: sites.departmentId,
+        projectId: sites.projectId,
         createdAt: sites.createdAt,
       })
       .from(sites)
@@ -240,11 +240,11 @@ export class BusinessReportService {
   async getEmployeeSalaryReport(
     year: number,
     month?: number,
-    departmentId?: string,
+    projectId?: string,
     useCache = true
   ) {
     if (useCache) {
-      const cacheKey = `report:salary:${year}:${month || 'all'}:${departmentId || 'all'}`
+      const cacheKey = `report:salary:${year}:${month || 'all'}:${projectId || 'all'}`
       try {
         const cached = await this.kv.get(cacheKey, 'json')
         if (cached) {
@@ -256,22 +256,22 @@ export class BusinessReportService {
     }
 
     const conditions = [eq(employees.active, 1)]
-    if (departmentId) {
-      conditions.push(eq(employees.departmentId, departmentId))
+    if (projectId) {
+      conditions.push(eq(employees.projectId, projectId))
     }
 
     const emps = await this.db
       .select({
         id: employees.id,
         name: employees.name,
-        departmentId: employees.departmentId,
+        projectId: employees.projectId,
         departmentName: projects.name,
         joinDate: employees.joinDate,
         status: employees.status,
         regularDate: employees.regularDate,
       })
       .from(employees)
-      .leftJoin(projects, eq(employees.departmentId, projects.id))
+      .leftJoin(projects, eq(employees.projectId, projects.id))
       .where(and(...conditions))
       .orderBy(projects.name, employees.name)
       .all()
@@ -476,7 +476,7 @@ export class BusinessReportService {
         return {
           employeeId: emp.id,
           employeeName: emp.name,
-          departmentId: emp.departmentId,
+          projectId: emp.projectId,
           departmentName: emp.departmentName,
           year: year,
           month: m,
@@ -508,7 +508,7 @@ export class BusinessReportService {
     const result = { results: rows }
 
     if (useCache) {
-      const cacheKey = `report:salary:${year}:${month || 'all'}:${departmentId || 'all'}`
+      const cacheKey = `report:salary:${year}:${month || 'all'}:${projectId || 'all'}`
       try {
         await this.kv.put(cacheKey, JSON.stringify(result), { expirationTtl: 3600 })
       } catch (e) {
@@ -519,13 +519,13 @@ export class BusinessReportService {
     return result
   }
 
-  async getAnnualLeaveReport(departmentId?: string, orgDepartmentId?: string) {
+  async getAnnualLeaveReport(projectId?: string, orgProjectId?: string) {
     const conditions = [eq(employees.active, 1)]
-    if (departmentId) {
-      conditions.push(eq(employees.departmentId, departmentId))
+    if (projectId) {
+      conditions.push(eq(employees.projectId, projectId))
     }
-    if (orgDepartmentId) {
-      conditions.push(eq(employees.orgDepartmentId, orgDepartmentId))
+    if (orgProjectId) {
+      conditions.push(eq(employees.orgProjectId, orgProjectId))
     }
 
     const emps = await this.db
@@ -533,8 +533,8 @@ export class BusinessReportService {
         id: employees.id,
         name: employees.name,
         joinDate: employees.joinDate,
-        departmentId: employees.departmentId,
-        orgDepartmentId: employees.orgDepartmentId,
+        projectId: employees.projectId,
+        orgProjectId: employees.orgProjectId,
       })
       .from(employees)
       .where(and(...conditions))
@@ -549,8 +549,8 @@ export class BusinessReportService {
         return {
           employeeId: emp.id,
           employeeName: emp.name,
-          departmentId: emp.departmentId,
-          orgDepartmentId: emp.orgDepartmentId,
+          projectId: emp.projectId,
+          orgProjectId: emp.orgProjectId,
           joinDate: emp.joinDate,
           cycleMonths: annualLeaveStats.config.cycleMonths,
           cycleNumber: annualLeaveStats.cycle.cycleNumber,

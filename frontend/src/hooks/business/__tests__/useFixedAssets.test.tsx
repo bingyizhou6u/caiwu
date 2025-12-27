@@ -169,7 +169,7 @@ describe('useFixedAssets', () => {
                 wrapper: createWrapper(),
             })
 
-            result.current.mutate({ id: '1', data: { toDepartmentId: '2', transferDate: '2023-01-01' } })
+            result.current.mutate({ id: '1', data: { toProjectId: '2', transferDate: '2023-01-01' } })
 
             await waitFor(() => expect(result.current.isSuccess).toBe(true))
 

@@ -7,7 +7,7 @@ export interface EmployeeLeave {
     id: string
     employeeId: string
     employeeName?: string
-    departmentId?: string
+    projectId?: string
     departmentName?: string
     leave_type: string
     startDate: string

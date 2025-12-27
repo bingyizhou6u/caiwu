@@ -209,7 +209,7 @@ export class RentalPaymentService {
           method: data.paymentMethod,
           amountCents: data.amountCents,
           siteId: null,
-          departmentId: property.departmentId,
+          projectId: property.projectId,
           counterparty: property.landlordName,
           memo:
             `支付租金：${property.name}（${property.propertyCode}）` +

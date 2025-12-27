@@ -88,7 +88,7 @@ export interface BorrowerDetail {
 export interface EmployeeSalaryRow {
     employeeId: ID
     employeeName: string
-    departmentId: ID
+    projectId: ID
     departmentName?: string
     year: number
     month: number

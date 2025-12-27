@@ -7,7 +7,7 @@ export interface AllowancePayment {
     id: string
     employeeId: string
     employeeName: string
-    departmentId?: string
+    projectId?: string
     departmentName?: string
     year: number
     month: number

@@ -22,20 +22,20 @@ export class SiteService {
 
     return sitesList.map(site => ({
       id: site.id,
-      departmentId: site.departmentId,
+      projectId: site.projectId,
       name: site.name,
       siteCode: site.siteCode,
       active: site.active,
       createdAt: site.createdAt,
       updatedAt: site.updatedAt,
-      departmentName: deptMap.get(site.departmentId) || null,
+      departmentName: deptMap.get(site.projectId) || null,
     }))
   }
 
-  async createSite(data: { name: string; departmentId: string }) {
+  async createSite(data: { name: string; projectId: string }) {
     const existing = await this.db.query.sites.findFirst({
       where: and(
-        eq(sites.departmentId, data.departmentId),
+        eq(sites.projectId, data.projectId),
         eq(sites.name, data.name),
         eq(sites.active, 1)
       ),
@@ -49,7 +49,7 @@ export class SiteService {
       .insert(sites)
       .values({
         id,
-        departmentId: data.departmentId,
+        projectId: data.projectId,
         name: data.name,
         active: 1,
         createdAt: Date.now(),
@@ -60,7 +60,7 @@ export class SiteService {
     return { id, ...data }
   }
 
-  async updateSite(id: string, data: { name?: string; departmentId?: string; active?: number }) {
+  async updateSite(id: string, data: { name?: string; projectId?: string; active?: number }) {
     const site = await this.db.query.sites.findFirst({ where: eq(sites.id, id) })
     if (!site) {
       throw Errors.NOT_FOUND('站点')
@@ -68,7 +68,7 @@ export class SiteService {
 
     const updates: any = { updatedAt: Date.now() }
     if (data.name !== undefined) { updates.name = data.name }
-    if (data.departmentId !== undefined) { updates.departmentId = data.departmentId }
+    if (data.projectId !== undefined) { updates.projectId = data.projectId }
     if (data.active !== undefined) { updates.active = data.active }
 
     await this.db.update(sites).set(updates).where(eq(sites.id, id)).execute()

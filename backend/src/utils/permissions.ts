@@ -24,8 +24,8 @@ export interface Employee {
   email: string
   name: string
   positionId: string
-  departmentId: string | null // 项目ID
-  orgDepartmentId: string | null // 组ID
+  projectId: string | null // 项目ID
+  orgProjectId: string | null // 组ID
 }
 
 // 从Context获取用户职位信息（由中间件预加载）
@@ -155,19 +155,19 @@ export async function canViewEmployee(
   // Scope: PROJECT (Same Department)
   if (position.dataScope === DataScope.PROJECT) {
     const target = await c.env.DB.prepare(
-      'SELECT department_id FROM employees WHERE id = ?'
-    ).bind(targetEmployeeId).first<{ department_id: string }>()
+      'SELECT project_id FROM employees WHERE id = ?'
+    ).bind(targetEmployeeId).first<{ project_id: string }>()
 
-    return target ? target.department_id === employee.departmentId : false
+    return target ? target.project_id === employee.projectId : false
   }
 
   // Scope: GROUP (Same Org Department)
   if (position.dataScope === DataScope.GROUP) {
     const target = await c.env.DB.prepare(
-      'SELECT org_department_id FROM employees WHERE id = ?'
-    ).bind(targetEmployeeId).first<{ org_department_id: string }>()
+      'SELECT org_project_id FROM employees WHERE id = ?'
+    ).bind(targetEmployeeId).first<{ org_project_id: string }>()
 
-    return target ? target.org_department_id === employee.orgDepartmentId : false
+    return target ? target.org_project_id === employee.orgProjectId : false
   }
 
   // Scope: SELF
@@ -203,19 +203,19 @@ export async function canApproveApplication(
   // Scope: PROJECT
   if (position.dataScope === DataScope.PROJECT) {
     const applicant = await c.env.DB.prepare(
-      'SELECT department_id FROM employees WHERE id = ?'
-    ).bind(applicantEmployeeId).first<{ department_id: string }>()
+      'SELECT project_id FROM employees WHERE id = ?'
+    ).bind(applicantEmployeeId).first<{ project_id: string }>()
 
-    return applicant ? applicant.department_id === employee.departmentId : false
+    return applicant ? applicant.project_id === employee.projectId : false
   }
 
   // Scope: GROUP
   if (position.dataScope === DataScope.GROUP) {
     const applicant = await c.env.DB.prepare(
-      'SELECT org_department_id FROM employees WHERE id = ?'
-    ).bind(applicantEmployeeId).first<{ org_department_id: string }>()
+      'SELECT org_project_id FROM employees WHERE id = ?'
+    ).bind(applicantEmployeeId).first<{ org_project_id: string }>()
 
-    return applicant ? applicant.org_department_id === employee.orgDepartmentId : false
+    return applicant ? applicant.org_project_id === employee.orgProjectId : false
   }
 
   return false
@@ -247,8 +247,8 @@ export function getDataAccessFilterSQL(
   c: Context<{ Bindings: Env, Variables: AppVariables }>,
   tableAlias: string = '',
   options: {
-    deptColumn?: string // 部门字段，默认 'departmentId'
-    orgDeptColumn?: string // 组织/组字段，默认 'orgDepartmentId'
+    deptColumn?: string // 部门字段，默认 'projectId'
+    orgDeptColumn?: string // 组织/组字段，默认 'orgProjectId'
     ownerColumn?: string // 所有者字段，默认 'id'
     skipOrgDept?: boolean // 是否跳过组织部门检查（用于没有 orgDept 字段的表）
   } = {}
@@ -268,8 +268,8 @@ export function getDataAccessFilterSQL(
     return name
   }
 
-  const deptCol = validateColumnName(options.deptColumn || 'departmentId')
-  const orgDeptCol = validateColumnName(options.orgDeptColumn || 'orgDepartmentId')
+  const deptCol = validateColumnName(options.deptColumn || 'projectId')
+  const orgDeptCol = validateColumnName(options.orgDeptColumn || 'orgProjectId')
   const ownerCol = validateColumnName(options.ownerColumn || 'id')
 
   // 构建表别名前缀（如果提供，也需要验证）
@@ -280,16 +280,16 @@ export function getDataAccessFilterSQL(
       return sql`1=1`
 
     case DataScope.PROJECT:
-      if (!employee.departmentId) return sql`1=0`
-      return sql`${sql.raw(`${aliasPrefix}${deptCol}`)} = ${employee.departmentId}`
+      if (!employee.projectId) return sql`1=0`
+      return sql`${sql.raw(`${aliasPrefix}${deptCol}`)} = ${employee.projectId}`
 
     case DataScope.GROUP:
       if (options.skipOrgDept) {
         // 如果表没有 orgDept 字段，且用户范围是 GROUP，则降级为 SELF
         return sql`${sql.raw(`${aliasPrefix}${ownerCol}`)} = ${employee.id}`
       }
-      if (!employee.orgDepartmentId) return sql`1=0`
-      return sql`${sql.raw(`${aliasPrefix}${orgDeptCol}`)} = ${employee.orgDepartmentId}`
+      if (!employee.orgProjectId) return sql`1=0`
+      return sql`${sql.raw(`${aliasPrefix}${orgDeptCol}`)} = ${employee.orgProjectId}`
 
     case DataScope.SELF:
     default:

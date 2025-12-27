@@ -22,13 +22,13 @@ export class DashboardReportService {
     private kv: KVNamespace
   ) { }
 
-  async getDashboardStats(departmentId?: string) {
+  async getDashboardStats(projectId?: string) {
     // 使用业务时区 (UTC+4 迪拜时间) 计算日期
     const today = getBusinessDate()
     const thisMonthStart = getBusinessMonthStart()
     const thisMonthEnd = today
 
-    const cacheKey = `report:dashboard:${today}:${departmentId || 'all'}`
+    const cacheKey = `report:dashboard:${today}:${projectId || 'all'}`
 
     // Try Cache
     try {
@@ -42,8 +42,8 @@ export class DashboardReportService {
 
     // 今日统计
     const todayConditions = [eq(cashFlows.bizDate, today)]
-    if (departmentId) {
-      todayConditions.push(eq(cashFlows.departmentId, departmentId))
+    if (projectId) {
+      todayConditions.push(eq(cashFlows.projectId, projectId))
     }
 
     const todayStats = await this.db
@@ -61,8 +61,8 @@ export class DashboardReportService {
       gte(cashFlows.bizDate, thisMonthStart),
       lte(cashFlows.bizDate, thisMonthEnd),
     ]
-    if (departmentId) {
-      monthConditions.push(eq(cashFlows.departmentId, departmentId))
+    if (projectId) {
+      monthConditions.push(eq(cashFlows.projectId, projectId))
     }
 
     const monthStats = await this.db
@@ -84,8 +84,8 @@ export class DashboardReportService {
 
     // AR/AP 统计
     const arApConditions = [gte(arApDocs.issueDate, thisMonthStart)]
-    if (departmentId) {
-      arApConditions.push(eq(arApDocs.departmentId, departmentId))
+    if (projectId) {
+      arApConditions.push(eq(arApDocs.projectId, projectId))
     }
 
     const arApStats = await this.db
@@ -104,8 +104,8 @@ export class DashboardReportService {
 
     // 最近流水
     const recentConditions = []
-    if (departmentId) {
-      recentConditions.push(eq(cashFlows.departmentId, departmentId))
+    if (projectId) {
+      recentConditions.push(eq(cashFlows.projectId, projectId))
     }
 
     // D1 兼容性修复：使用顺序查询代替复杂 JOIN
@@ -121,7 +121,7 @@ export class DashboardReportService {
     // 2. 批量查询关联数据
     const accountIds = [...new Set(recentFlows.map(f => f.accountId).filter(Boolean) as string[])]
     const categoryIds = [...new Set(recentFlows.map(f => f.categoryId).filter(Boolean) as string[])]
-    const deptIds = [...new Set(recentFlows.map(f => f.departmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(recentFlows.map(f => f.projectId).filter(Boolean) as string[])]
 
     const [accountsList, categoriesList, projectsList] = await Promise.all([
       accountIds.length > 0
@@ -156,7 +156,7 @@ export class DashboardReportService {
     const recentFlowsWithDetails = recentFlows.map(flow => {
       const account = flow.accountId ? accountMap.get(flow.accountId) : null
       const category = flow.categoryId ? categoryMap.get(flow.categoryId) : null
-      const department = flow.departmentId ? deptMap.get(flow.departmentId) : null
+      const department = flow.projectId ? deptMap.get(flow.projectId) : null
       return {
         flow,
         accountName: account?.name || null,

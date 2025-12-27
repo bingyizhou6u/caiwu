@@ -50,7 +50,7 @@ const getAvailablePositionsRoute = createRoute({
   summary: '获取可用职位列表',
   request: {
     query: z.object({
-      orgDepartmentId: z.string(),
+      orgProjectId: z.string(),
     }),
   },
   responses: {
@@ -74,12 +74,12 @@ positionsRoutes.openapi(
     if (!getUserPosition(c)) {
       throw Errors.FORBIDDEN()
     }
-    const orgDepartmentId = c.req.query('orgDepartmentId')
-    if (!orgDepartmentId) {
-      throw Errors.VALIDATION_ERROR('orgDepartmentId参数必填')}
+    const orgProjectId = c.req.query('orgProjectId')
+    if (!orgProjectId) {
+      throw Errors.VALIDATION_ERROR('orgProjectId参数必填')}
 
     const service = c.var.services.masterData
-    const result = await service.getAvailablePositions(orgDepartmentId)
+    const result = await service.getAvailablePositions(orgProjectId)
 
     // Result is directly the data we want
     return result

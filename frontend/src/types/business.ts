@@ -18,7 +18,7 @@ export interface Flow {
     method?: string
     amountCents: number
     siteId?: string
-    departmentId?: string
+    projectId?: string
     counterparty?: string
     memo?: string
     voucherUrl?: string

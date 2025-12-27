@@ -4,8 +4,8 @@ import dayjs from 'dayjs'
 export const createEmployeeSchema = z.object({
     name: z.string().min(1, '请输入姓名'),
     project_id: z.string().min(1, '请选择项目归属或总部'),
-    orgDepartmentId: z.string().min(1, '请选择部门'),
-    departmentId: z.string().optional(),
+    orgProjectId: z.string().min(1, '请选择部门'),
+    projectId: z.string().optional(),
     positionId: z.string().min(1, '请选择职位'),
     joinDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的入职日期'),
     regularDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的转正日期'),
@@ -54,8 +54,8 @@ export const updateEmployeeSchema = z.object({
     // 基本信息 - 如果提供则验证
     name: z.string().optional(),
     project_id: z.any().optional(),
-    orgDepartmentId: z.any().optional(),
-    departmentId: z.any().optional(),
+    orgProjectId: z.any().optional(),
+    projectId: z.any().optional(),
     positionId: z.any().optional(),
     joinDate: z.any().optional(),
     regularDate: z.any().optional(),

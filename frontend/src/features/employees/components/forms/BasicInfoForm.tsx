@@ -36,19 +36,19 @@ interface BasicInfoFormProps {
 export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormProps) {
     const { data: departmentOptions = [] } = useDepartmentOptions()
     const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>()
-    const [selectedOrgDepartmentId, setSelectedOrgDepartmentId] = useState<string | undefined>()
+    const [selectedOrgProjectId, setSelectedOrgProjectId] = useState<string | undefined>()
 
     // 监听表单变化
     const projectId = Form.useWatch('project_id', form)
-    const orgDepartmentId = Form.useWatch('orgDepartmentId', form)
+    const orgProjectId = Form.useWatch('orgProjectId', form)
 
     useEffect(() => {
         if (projectId) setSelectedProjectId(projectId)
     }, [projectId])
 
     useEffect(() => {
-        if (orgDepartmentId) setSelectedOrgDepartmentId(orgDepartmentId)
-    }, [orgDepartmentId])
+        if (orgProjectId) setSelectedOrgProjectId(orgProjectId)
+    }, [orgProjectId])
 
     // 查询组织部门
     const { data: orgDepartments = [] } = useApiQuery<unknown[]>(
@@ -65,9 +65,9 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
 
     // 查询职位
     const { data: positionsData } = useApiQuery<PositionsResponse | Position[]>(
-        ['positionsAvailable', selectedOrgDepartmentId || ''],
-        `${api.positionsAvailable}?orgDepartmentId=${selectedOrgDepartmentId}`,
-        { enabled: !!selectedOrgDepartmentId }
+        ['positionsAvailable', selectedOrgProjectId || ''],
+        `${api.positionsAvailable}?orgProjectId=${selectedOrgProjectId}`,
+        { enabled: !!selectedOrgProjectId }
     )
 
     const positions = Array.isArray(positionsData) ? positionsData : positionsData?.results || []
@@ -75,14 +75,14 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
     const hasGroupedPositions = Object.keys(groupedPositions).length > 0
 
     // 处理部门列表
-    const currentOrgDepartmentId = form.getFieldValue('orgDepartmentId')
+    const currentOrgProjectId = form.getFieldValue('orgProjectId')
     const displayOrgDepartments = [...orgDepartments]
 
-    if (isEdit && currentOrgDepartmentId && employee?.orgDepartmentName) {
-        const existsInList = orgDepartments.some((d: any) => d.id === currentOrgDepartmentId)
+    if (isEdit && currentOrgProjectId && employee?.orgDepartmentName) {
+        const existsInList = orgDepartments.some((d: any) => d.id === currentOrgProjectId)
         if (!existsInList) {
             displayOrgDepartments.unshift({
-                id: currentOrgDepartmentId,
+                id: currentOrgProjectId,
                 name: employee.orgDepartmentName,
                 code: employee.orgDepartmentCode || null,
                 active: 1,
@@ -178,12 +178,12 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
                             optionFilterProp="children"
                             onChange={(value) => {
                                 form.setFieldsValue({
-                                    orgDepartmentId: undefined,
+                                    orgProjectId: undefined,
                                     positionId: undefined,
-                                    departmentId: value,
+                                    projectId: value,
                                 })
                                 setSelectedProjectId(value)
-                                setSelectedOrgDepartmentId(undefined)
+                                setSelectedOrgProjectId(undefined)
                             }}
                         >
                             {departmentOptions.map((dept: any) => (
@@ -195,7 +195,7 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
                     </Form.Item>
 
                     <Form.Item
-                        name="orgDepartmentId"
+                        name="orgProjectId"
                         label="部门"
                         rules={[{ required: true, message: '请选择部门' }]}
                     >
@@ -209,7 +209,7 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
                             }}
                             onChange={(value) => {
                                 form.setFieldsValue({ positionId: undefined })
-                                setSelectedOrgDepartmentId(value)
+                                setSelectedOrgProjectId(value)
                             }}
                         >
                             {displayOrgDepartments
@@ -231,8 +231,8 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
                         rules={[{ required: true, message: '请选择职位' }]}
                     >
                         <Select
-                            placeholder={selectedOrgDepartmentId ? '请选择职位' : '请先选择部门'}
-                            disabled={!selectedOrgDepartmentId}
+                            placeholder={selectedOrgProjectId ? '请选择职位' : '请先选择部门'}
+                            disabled={!selectedOrgProjectId}
                             showSearch
                             filterOption={(input, option) => {
                                 const label = option?.label || option?.children
@@ -259,7 +259,7 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
                         </Select>
                     </Form.Item>
 
-                    <Form.Item name="departmentId" label="项目" hidden>
+                    <Form.Item name="projectId" label="项目" hidden>
                         <Input />
                     </Form.Item>
                 </div>

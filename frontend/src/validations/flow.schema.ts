@@ -15,7 +15,7 @@ export const createFlowSchema = z.object({
     // Refactoring to use form field is better.
     // But for now, let's stick to the form fields that are actually inside <Form.Item name="...">.
 
-    departmentId: z.string().optional(),
+    projectId: z.string().optional(),
     siteId: z.string().optional(),
     type: z.string().min(1, '请选择类型'),
     amount: z.number().min(0.01, '金额必须大于0'),

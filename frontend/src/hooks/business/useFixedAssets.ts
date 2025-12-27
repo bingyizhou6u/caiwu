@@ -16,7 +16,7 @@ import type {
 export interface FixedAssetQueryParams {
     search?: string
     status?: string
-    departmentId?: string
+    projectId?: string
     category?: string
 }
 
@@ -24,7 +24,7 @@ export function useFixedAssets(params: FixedAssetQueryParams = {}) {
     const queryParams = new URLSearchParams()
     if (params.search) queryParams.append('search', params.search)
     if (params.status) queryParams.append('status', params.status)
-    if (params.departmentId) queryParams.append('departmentId', params.departmentId)
+    if (params.projectId) queryParams.append('projectId', params.projectId)
     if (params.category) queryParams.append('category', params.category)
 
     const url = `${api.fixedAssets}?${queryParams.toString()}`

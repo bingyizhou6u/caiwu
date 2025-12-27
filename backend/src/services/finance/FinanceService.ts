@@ -84,7 +84,7 @@ export class FinanceService {
       categoryId?: string | null
       method?: string | null
       siteId?: string | null
-      departmentId?: string | null
+      projectId?: string | null
       counterparty?: string | null
       memo?: string | null
       voucherUrls?: string[]
@@ -195,7 +195,7 @@ export class FinanceService {
           method: data.method,
           amountCents: data.amountCents,
           siteId: data.siteId,
-          departmentId: data.departmentId,
+          projectId: data.projectId,
           counterparty: data.counterparty,
           memo: data.memo,
           voucherUrl: voucherUrlJson,
@@ -421,7 +421,7 @@ export class FinanceService {
           method: originalFlow.method,
           amountCents: originalFlow.amountCents,
           siteId: originalFlow.siteId,
-          departmentId: originalFlow.departmentId,
+          projectId: originalFlow.projectId,
           counterparty: originalFlow.counterparty,
           memo: `【红冲】原凭证号:${originalFlow.voucherNo} | 冲正原因:${data.reversalReason}`,
           voucherUrl: voucherUrlJson,

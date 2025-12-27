@@ -13,7 +13,7 @@ export interface Project {
     code: string
     name: string
     description?: string
-    departmentId: string
+    projectId: string
     departmentName?: string
     managerId?: string
     managerName?: string
@@ -73,7 +73,7 @@ export interface CreateProjectInput {
     code?: string
     name: string
     description?: string
-    departmentId: string
+    projectId: string
     managerId?: string
     status?: string
     startDate?: string
@@ -107,10 +107,10 @@ export interface CreateTimelogInput {
 
 // ============ 项目 Hooks ============
 
-export function useProjects(filter?: { status?: string; departmentId?: string }) {
+export function useProjects(filter?: { status?: string; projectId?: string }) {
     const params = new URLSearchParams()
     if (filter?.status) params.append('status', filter.status)
-    if (filter?.departmentId) params.append('departmentId', filter.departmentId)
+    if (filter?.projectId) params.append('projectId', filter.projectId)
 
     return useApiQuery<Project[]>(
         ['pm-projects', filter],

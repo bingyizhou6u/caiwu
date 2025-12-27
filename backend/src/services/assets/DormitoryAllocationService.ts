@@ -61,7 +61,7 @@ export class DormitoryAllocationService {
         ? (async () => {
           const results = []
           for (const id of employeeIds) {
-            const e = await this.db.select({ id: schema.employees.id, name: schema.employees.name, departmentId: schema.employees.departmentId })
+            const e = await this.db.select({ id: schema.employees.id, name: schema.employees.name, projectId: schema.employees.projectId })
               .from(schema.employees).where(eq(schema.employees.id, id)).get()
             if (e) results.push(e)
           }
@@ -82,7 +82,7 @@ export class DormitoryAllocationService {
     ])
 
     // 4. 查询部门信息
-    const deptIds = [...new Set(employees.map(e => e.departmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(employees.map(e => e.projectId).filter(Boolean) as string[])]
     const departments = deptIds.length > 0
       ? await (async () => {
         const results = []
@@ -106,14 +106,14 @@ export class DormitoryAllocationService {
       const property = a.propertyId ? propertyMap.get(a.propertyId) : null
       const employee = a.employeeId ? employeeMap.get(a.employeeId) : null
       const creator = a.createdBy ? creatorMap.get(a.createdBy) : null
-      const dept = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+      const dept = employee?.projectId ? deptMap.get(employee.projectId) : null
 
       return {
         allocation: a,
         propertyCode: property?.propertyCode || null,
         propertyName: property?.name || null,
         employeeName: employee?.name || null,
-        employeeDepartmentId: employee?.departmentId || null,
+        employeeProjectId: employee?.projectId || null,
         employeeDepartmentName: dept?.name || null,
         createdByName: creator?.name || null,
       }
@@ -152,14 +152,14 @@ export class DormitoryAllocationService {
       if (p) properties.push(p)
     }
 
-    const employees: { id: string; name: string | null; departmentId: string | null }[] = []
+    const employees: { id: string; name: string | null; projectId: string | null }[] = []
     for (const id of employeeIds) {
-      const e = await this.db.select({ id: schema.employees.id, name: schema.employees.name, departmentId: schema.employees.departmentId })
+      const e = await this.db.select({ id: schema.employees.id, name: schema.employees.name, projectId: schema.employees.projectId })
         .from(schema.employees).where(eq(schema.employees.id, id)).get()
       if (e) employees.push(e)
     }
 
-    const deptIds = [...new Set(employees.map(e => e.departmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(employees.map(e => e.projectId).filter(Boolean) as string[])]
     const departments: { id: string; name: string | null }[] = []
     for (const id of deptIds) {
       const d = await this.db.select({ id: schema.projects.id, name: schema.projects.name })
@@ -174,14 +174,14 @@ export class DormitoryAllocationService {
     return allocations.map(a => {
       const property = a.propertyId ? propertyMap.get(a.propertyId) : null
       const employee = a.employeeId ? employeeMap.get(a.employeeId) : null
-      const dept = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+      const dept = employee?.projectId ? deptMap.get(employee.projectId) : null
 
       return {
         allocation: a,
         propertyCode: property?.propertyCode || null,
         propertyName: property?.name || null,
         employeeName: employee?.name || null,
-        employeeDepartmentId: employee?.departmentId || null,
+        employeeProjectId: employee?.projectId || null,
         employeeDepartmentName: dept?.name || null,
       }
     })

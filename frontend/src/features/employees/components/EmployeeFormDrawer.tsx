@@ -99,7 +99,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
     // 初始化表单数据（编辑模式）
     useEffect(() => {
         if (open && employee) {
-            const projectId = employee.departmentId
+            const projectId = employee.projectId
 
             // 解析电话号码
             let phoneCountryCode = '+971'
@@ -139,8 +139,8 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
             form.setFieldsValue({
                 name: employee.name,
                 project_id: projectId,
-                departmentId: employee.departmentId,
-                orgDepartmentId: employee.orgDepartmentId,
+                projectId: employee.projectId,
+                orgProjectId: employee.orgProjectId,
                 positionId: employee.positionId,
                 joinDate: employee.joinDate ? dayjs(employee.joinDate) : undefined,
                 regularDate: employee.regularDate ? dayjs(employee.regularDate) : undefined,
@@ -197,7 +197,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
                 housing_allowances,
                 transportation_allowances,
                 meal_allowances,
-                orgDepartmentId,
+                orgProjectId,
                 project_id,
                 probation_salaries,
                 regular_salaries,
@@ -213,8 +213,8 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
 
             const employeeData = {
                 ...restData,
-                orgDepartmentId,
-                departmentId: project_id,
+                orgProjectId,
+                projectId: project_id,
                 probationSalaries: probation_salaries as any,
                 regularSalaries: regular_salaries as any,
                 phone: phone_country_code && phone_number ? `${phone_country_code}${phone_number}` : undefined,
@@ -283,8 +283,8 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
 
             // 基础字段
             if (values.name) payload.name = values.name
-            if (values.departmentId) payload.departmentId = values.departmentId
-            if (values.orgDepartmentId) payload.orgDepartmentId = values.orgDepartmentId
+            if (values.projectId) payload.projectId = values.projectId
+            if (values.orgProjectId) payload.orgProjectId = values.orgProjectId
             if (values.positionId) payload.positionId = values.positionId
             if (isEdit && 'active' in values && values.active !== undefined) {
                 payload.active = values.active ? 1 : 0
@@ -407,7 +407,7 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
     const getStepFields = (step: number): string[] => {
         switch (step) {
             case 0:
-                return ['name', 'project_id', 'orgDepartmentId', 'positionId', 'joinDate', 'regularDate', 'birthday', 'personalEmail']
+                return ['name', 'project_id', 'orgProjectId', 'positionId', 'joinDate', 'regularDate', 'birthday', 'personalEmail']
             case 1:
                 return [] // 联系方式都是可选的
             case 2:

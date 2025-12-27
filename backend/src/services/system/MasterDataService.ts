@@ -68,11 +68,11 @@ export class MasterDataService {
     return this.siteService.getSites()
   }
 
-  async createSite(data: { name: string; departmentId: string }) {
+  async createSite(data: { name: string; projectId: string }) {
     return this.siteService.createSite(data)
   }
 
-  async updateSite(id: string, data: { name?: string; departmentId?: string; active?: number }) {
+  async updateSite(id: string, data: { name?: string; projectId?: string; active?: number }) {
     return this.siteService.updateSite(id, data)
   }
 
@@ -250,8 +250,8 @@ export class MasterDataService {
     return this.positionService.getPositions()
   }
 
-  async getAvailablePositions(orgDepartmentId: string) {
-    return this.positionService.getAvailablePositions(orgDepartmentId)
+  async getAvailablePositions(orgProjectId: string) {
+    return this.positionService.getAvailablePositions(orgProjectId)
   }
 
   // ========== Org Departments ==========

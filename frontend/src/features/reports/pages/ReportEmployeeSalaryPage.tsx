@@ -10,7 +10,7 @@ import type { ColumnsType } from 'antd/es/table'
 type EmployeeSalaryRow = {
   employeeId: string
   employeeName: string
-  departmentId: string
+  projectId: string
   departmentName?: string
   year: number
   month: number

@@ -26,14 +26,14 @@ export class FinancialReportService {
     private kv: KVNamespace
   ) { }
 
-  async getArApSummary(kind: 'AR' | 'AP', start: string, end: string, departmentId?: string) {
+  async getArApSummary(kind: 'AR' | 'AP', start: string, end: string, projectId?: string) {
     const conditions = [
       eq(arApDocs.kind, kind),
       gte(arApDocs.issueDate, start),
       lte(arApDocs.issueDate, end),
     ]
-    if (departmentId) {
-      conditions.push(eq(arApDocs.departmentId, departmentId))
+    if (projectId) {
+      conditions.push(eq(arApDocs.projectId, projectId))
     }
 
     const docs = await this.db
@@ -60,14 +60,14 @@ export class FinancialReportService {
     return { totalCents: total, settledCents: settled, byStatus: byStatus, rows }
   }
 
-  async getArApDetail(kind: 'AR' | 'AP', start: string, end: string, departmentId?: string) {
+  async getArApDetail(kind: 'AR' | 'AP', start: string, end: string, projectId?: string) {
     const conditions = [
       eq(arApDocs.kind, kind),
       gte(arApDocs.issueDate, start),
       lte(arApDocs.issueDate, end),
     ]
-    if (departmentId) {
-      conditions.push(eq(arApDocs.departmentId, departmentId))
+    if (projectId) {
+      conditions.push(eq(arApDocs.projectId, projectId))
     }
 
     const rows = await this.db
@@ -82,14 +82,14 @@ export class FinancialReportService {
     return { rows: rows.map(r => ({ ...r.doc, settledCents: r.settled_cents })) }
   }
 
-  async getExpenseSummary(start: string, end: string, departmentId?: string) {
+  async getExpenseSummary(start: string, end: string, projectId?: string) {
     const conditions = [
       eq(cashFlows.type, 'expense'),
       gte(cashFlows.bizDate, start),
       lte(cashFlows.bizDate, end),
     ]
-    if (departmentId) {
-      conditions.push(eq(cashFlows.departmentId, departmentId))
+    if (projectId) {
+      conditions.push(eq(cashFlows.projectId, projectId))
     }
 
     const rows = await this.db
@@ -120,7 +120,7 @@ export class FinancialReportService {
     }
   }
 
-  async getExpenseDetail(start: string, end: string, categoryId?: string, departmentId?: string) {
+  async getExpenseDetail(start: string, end: string, categoryId?: string, projectId?: string) {
     const conditions = [
       eq(cashFlows.type, 'expense'),
       gte(cashFlows.bizDate, start),
@@ -129,8 +129,8 @@ export class FinancialReportService {
     if (categoryId) {
       conditions.push(eq(cashFlows.categoryId, categoryId))
     }
-    if (departmentId) {
-      conditions.push(eq(cashFlows.departmentId, departmentId))
+    if (projectId) {
+      conditions.push(eq(cashFlows.projectId, projectId))
     }
 
     // D1 兼容性修复：使用顺序查询代替复杂 JOIN
@@ -149,7 +149,7 @@ export class FinancialReportService {
     // 2. 批量查询关联数据
     const accountIds = [...new Set(flows.map(f => f.accountId).filter(Boolean) as string[])]
     const categoryIds = [...new Set(flows.map(f => f.categoryId).filter(Boolean) as string[])]
-    const deptIds = [...new Set(flows.map(f => f.departmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(flows.map(f => f.projectId).filter(Boolean) as string[])]
     const siteIds = [...new Set(flows.map(f => f.siteId).filter(Boolean) as string[])]
 
     const [accountsList, categoriesList, projectsList, sitesList] = await Promise.all([
@@ -194,7 +194,7 @@ export class FinancialReportService {
       rows: flows.map(flow => {
         const account = flow.accountId ? accountMap.get(flow.accountId) : null
         const category = flow.categoryId ? categoryMap.get(flow.categoryId) : null
-        const department = flow.departmentId ? deptMap.get(flow.departmentId) : null
+        const department = flow.projectId ? deptMap.get(flow.projectId) : null
         const site = flow.siteId ? siteMap.get(flow.siteId) : null
         return {
           ...flow,

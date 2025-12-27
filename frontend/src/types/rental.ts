@@ -34,7 +34,7 @@ export interface RentalProperty {
   depositCents?: number
   paymentMethod?: PaymentMethod
   paymentDay?: number
-  departmentId?: string
+  projectId?: string
   departmentName?: string
   paymentAccountId?: string
   paymentAccountName?: string

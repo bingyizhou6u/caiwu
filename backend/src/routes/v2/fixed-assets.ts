@@ -64,12 +64,12 @@ fixedAssetsRoutes.openapi(
 
     const position = getUserPosition(c)
     const employee = getUserEmployee(c)
-    let departmentId = undefined
+    let projectId = undefined
     let createdBy = undefined
 
     if (position && employee) {
       if (position.dataScope === 'project') {
-        departmentId = employee.departmentId || undefined
+        projectId = employee.projectId || undefined
       } else if (position.dataScope === 'group' || position.dataScope === 'self') {
         createdBy = employee.id
       }
@@ -79,7 +79,7 @@ fixedAssetsRoutes.openapi(
       search: query.search,
       status: query.status,
       category: query.category,
-      departmentId,
+      projectId,
       createdBy,
     })
 
@@ -92,7 +92,7 @@ fixedAssetsRoutes.openapi(
       purchasePriceCents: row.asset.purchasePriceCents,
       currency: row.asset.currency,
       vendorId: row.asset.vendorId,
-      departmentId: row.asset.departmentId,
+      projectId: row.asset.projectId,
       siteId: row.asset.siteId,
       custodian: row.asset.custodian,
       status: row.asset.status,
@@ -201,7 +201,7 @@ fixedAssetsRoutes.openapi(
       assetCode: row.assetCode,
       assetName: row.assetName,
       employeeName: row.employeeName,
-      employeeDepartmentId: row.employeeDepartmentId,
+      employeeProjectId: row.employeeProjectId,
       employeeDepartmentName: row.employeeDepartmentName,
       createdByName: row.createdByName,
     }))
@@ -255,7 +255,7 @@ fixedAssetsRoutes.openapi(
       purchasePriceCents: asset.purchasePriceCents,
       currency: asset.currency,
       vendorId: asset.vendorId,
-      departmentId: asset.departmentId,
+      projectId: asset.projectId,
       siteId: asset.siteId,
       custodian: asset.custodian,
       status: asset.status,
@@ -358,7 +358,7 @@ fixedAssetsRoutes.openapi(
       purchaseDate: body.purchaseDate,
       purchasePriceCents: body.purchasePriceCents,
       currency: body.currency,
-      departmentId: body.departmentId,
+      projectId: body.projectId,
       siteId: body.siteId,
       vendorId: body.vendorId,
       custodian: body.custodian,
@@ -430,7 +430,7 @@ fixedAssetsRoutes.openapi(
       purchaseDate: body.purchaseDate,
       purchasePriceCents: body.purchasePriceCents,
       currency: body.currency,
-      departmentId: body.departmentId,
+      projectId: body.projectId,
       siteId: body.siteId,
       vendorId: body.vendorId,
       custodian: body.custodian,
@@ -586,7 +586,7 @@ fixedAssetsRoutes.openapi(
     const userId = getUserId(c)
 
     await c.var.services.fixedAssetChange.transfer(id, {
-      toDepartmentId: body.toDepartmentId,
+      toProjectId: body.toProjectId,
       toSiteId: body.toSiteId,
       toCustodian: body.toCustodian,
       transferDate: body.transferDate,
@@ -600,7 +600,7 @@ fixedAssetsRoutes.openapi(
       'fixed_asset',
       id,
       JSON.stringify({
-        toDepartmentId: body.toDepartmentId,
+        toProjectId: body.toProjectId,
         toSiteId: body.toSiteId,
         toCustodian: body.toCustodian,
       })
@@ -662,7 +662,7 @@ fixedAssetsRoutes.openapi(
       accountId: body.accountId,
       categoryId: body.categoryId,
       vendorId: body.vendorId,
-      departmentId: body.departmentId,
+      projectId: body.projectId,
       siteId: body.siteId,
       custodian: body.custodian,
       memo: body.memo,

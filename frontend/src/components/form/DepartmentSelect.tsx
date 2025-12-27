@@ -17,7 +17,7 @@ export interface DepartmentSelectProps extends Omit<SelectProps, 'options' | 'lo
  * 
  * @example
  * ```tsx
- * <Form.Item name="departmentId" label="部门">
+ * <Form.Item name="projectId" label="部门">
  *   <DepartmentSelect placeholder="请选择部门" />
  * </Form.Item>
  * ```

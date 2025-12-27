@@ -351,7 +351,7 @@ app.post('/api/v2/init-if-empty', async c => {
     await c.env.DB.prepare(
       `
       INSERT OR IGNORE INTO employees (
-        id, email, name, position_id, department_id, join_date, status, active,
+        id, email, name, position_id, project_id, join_date, status, active,
         password_hash, must_change_password, password_changed,
         created_at, updated_at
       ) VALUES (

@@ -160,7 +160,7 @@ export interface ExpenseDetailResponse {
     currencyId?: string
     currencySymbol?: string
     description?: string
-    departmentId?: string
+    projectId?: string
     departmentName?: string
   }>
 }
@@ -240,9 +240,9 @@ export interface AnnualLeaveResponse {
   }
 }
 
-export function useAnnualLeave(params?: { departmentId?: string }) {
+export function useAnnualLeave(params?: { projectId?: string }) {
   const queryParams = new URLSearchParams()
-  if (params?.departmentId) queryParams.append('departmentId', params.departmentId)
+  if (params?.projectId) queryParams.append('projectId', params.projectId)
 
   return useApiQuery<AnnualLeaveResponse>(
     ['reports', 'annualLeave', params],
@@ -299,7 +299,7 @@ export function useAccountBalance(params: { asOf: string }) {
  */
 export interface DepartmentCashResponse {
   rows: Array<{
-    departmentId: string
+    projectId: string
     departmentName: string
     incomeCents: number
     expenseCents: number
@@ -329,7 +329,7 @@ export interface EmployeeSalaryResponse {
   results: Array<{
     employeeId: string
     employeeName: string
-    departmentId: string
+    projectId: string
     departmentName?: string
     year: number
     month: number

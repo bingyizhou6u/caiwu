@@ -23,7 +23,7 @@ export class FixedAssetChangeService {
     id: string,
     data: {
       transferDate: string
-      toDepartmentId?: string
+      toProjectId?: string
       toSiteId?: string
       toCustodian?: string
       memo?: string
@@ -31,9 +31,9 @@ export class FixedAssetChangeService {
     },
     c?: Context<{ Bindings: Env; Variables: AppVariables }>
   ) {
-    if (!data.toDepartmentId && !data.toSiteId && !data.toCustodian) {
+    if (!data.toProjectId && !data.toSiteId && !data.toCustodian) {
       throw Errors.VALIDATION_ERROR(
-        'transfer_date and at least one of to_department_id, to_site_id, to_custodian参数必填'
+        'transfer_date and at least one of to_project_id, to_site_id, to_custodian参数必填'
       )
     }
 
@@ -58,8 +58,8 @@ export class FixedAssetChangeService {
           assetId: id,
           changeType: 'transfer',
           changeDate: data.transferDate,
-          fromDeptId: asset.departmentId,
-          toDeptId: data.toDepartmentId,
+          fromDeptId: asset.projectId,
+          toDeptId: data.toProjectId,
           fromSiteId: asset.siteId,
           toSiteId: data.toSiteId,
           fromCustodian: asset.custodian,
@@ -71,8 +71,8 @@ export class FixedAssetChangeService {
         .run()
 
       const updates: any = { updatedAt: now }
-      if (data.toDepartmentId !== undefined) {
-        updates.departmentId = data.toDepartmentId
+      if (data.toProjectId !== undefined) {
+        updates.projectId = data.toProjectId
       }
       if (data.toSiteId !== undefined) {
         updates.siteId = data.toSiteId

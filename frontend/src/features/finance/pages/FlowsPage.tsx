@@ -227,7 +227,7 @@ export function Flows() {
             { title: '日期', dataIndex: 'bizDate', key: 'bizDate', render: (v: string) => <EmptyText value={v} /> },
             { title: '类型', dataIndex: 'type', key: 'type', render: (v: string) => TYPE_LABELS[v] || v },
             { title: '金额', dataIndex: 'amountCents', key: 'amountCents', render: (v: number) => <AmountDisplay cents={v} currency="CNY" /> },
-            { title: '归属', key: 'owner', render: (_: unknown, r: Flow) => r.departmentId ? '项目' : '总部' },
+            { title: '归属', key: 'owner', render: (_: unknown, r: Flow) => r.projectId ? '项目' : '总部' },
             { title: '账户', dataIndex: 'accountName', key: 'accountName' },
             { title: '类别', dataIndex: 'categoryName', key: 'categoryName' },
             { title: '对方', dataIndex: 'counterparty', key: 'counterparty', render: (v: string) => <EmptyText value={v} /> },

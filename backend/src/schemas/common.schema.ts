@@ -44,7 +44,7 @@ export const idQuerySchema = z.object({
   id: uuidSchema.optional(),
   employeeId: uuidSchema.optional(),
   accountId: uuidSchema.optional(),
-  departmentId: uuidSchema.optional(),
+  projectId: uuidSchema.optional(),
 })
 
 /**
@@ -103,7 +103,7 @@ export const csvImportQuerySchema = z.object({
 export const fixedAssetQuerySchema = z.object({
   search: z.string().optional(),
   status: z.enum(['in_use', 'idle', 'maintenance', 'scrapped']).optional(),
-  departmentId: uuidSchema.optional(),
+  projectId: uuidSchema.optional(),
   category: z.string().optional(),
 })
 
@@ -122,7 +122,7 @@ export const fixedAssetAllocationQuerySchema = z.object({
 export const rentalPropertyQuerySchema = z.object({
   propertyType: z.enum(['office', 'warehouse', 'dormitory', 'other']).optional(),
   status: z.string().optional(),
-  departmentId: uuidSchema.optional(),
+  projectId: uuidSchema.optional(),
 })
 
 /**

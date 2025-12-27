@@ -29,7 +29,7 @@ export class FixedAssetService {
   async list(query: {
     search?: string
     status?: string
-    departmentId?: string
+    projectId?: string
     category?: string
     createdBy?: string
     limit?: number
@@ -47,7 +47,7 @@ export class FixedAssetService {
       )
     }
     if (query.status) { conditions.push(eq(fixedAssets.status, query.status)) }
-    if (query.departmentId) { conditions.push(eq(fixedAssets.departmentId, query.departmentId)) }
+    if (query.projectId) { conditions.push(eq(fixedAssets.projectId, query.projectId)) }
     if (query.category) { conditions.push(eq(fixedAssets.category, query.category)) }
     if (query.createdBy) { conditions.push(eq(fixedAssets.createdBy, query.createdBy)) }
 
@@ -62,7 +62,7 @@ export class FixedAssetService {
 
     // 使用 QueryBuilder 提取关联ID并批量获取
     const relatedIds = QueryBuilder.extractRelatedIds(assets, {
-      departmentId: a => a.departmentId,
+      projectId: a => a.projectId,
       siteId: a => a.siteId,
       vendorId: a => a.vendorId,
       employeeId: a => a.createdBy,
@@ -83,7 +83,7 @@ export class FixedAssetService {
 
     return assets.map(asset => ({
       asset,
-      departmentName: asset.departmentId ? deptMap.get(asset.departmentId)?.name || null : null,
+      departmentName: asset.projectId ? deptMap.get(asset.projectId)?.name || null : null,
       siteName: asset.siteId ? siteMap.get(asset.siteId)?.name || null : null,
       vendorName: asset.vendorId ? vendorMap.get(asset.vendorId)?.name || null : null,
       currencyName: asset.currency ? currencyMap.get(asset.currency)?.name || null : null,
@@ -117,11 +117,11 @@ export class FixedAssetService {
     if (!asset) { return null }
 
     const [dept, site, vendor, currency, user] = await Promise.all([
-      asset.departmentId
+      asset.projectId
         ? query(
           this.db,
           'FixedAssetService.get.getDepartment',
-          () => this.db.select().from(projects).where(eq(projects.id, asset.departmentId!)).get(),
+          () => this.db.select().from(projects).where(eq(projects.id, asset.projectId!)).get(),
           c
         )
         : Promise.resolve(null),
@@ -188,7 +188,7 @@ export class FixedAssetService {
 
     // 使用 QueryBuilder 批量获取关联数据
     const changeRelatedData = await QueryBuilder.fetchRelatedData(this.db, {
-      departmentIds: Array.from(changeDeptIds),
+      projectIds: Array.from(changeDeptIds),
       siteIds: Array.from(changeSiteIds),
       employeeIds: Array.from(changeUserIds),
     })
@@ -224,7 +224,7 @@ export class FixedAssetService {
     purchasePriceCents: number
     currency: string
     vendorId?: string
-    departmentId?: string
+    projectId?: string
     siteId?: string
     custodian?: string
     status?: string
@@ -270,7 +270,7 @@ export class FixedAssetService {
       purchasePriceCents?: number
       currency?: string
       vendorId?: string
-      departmentId?: string
+      projectId?: string
       siteId?: string
       custodian?: string
       status?: string
@@ -299,7 +299,7 @@ export class FixedAssetService {
       .execute()
 
     // 如果状态、部门、站点或保管人发生变化，记录变更日志
-    if (data.status || data.departmentId || data.siteId || data.custodian) {
+    if (data.status || data.projectId || data.siteId || data.custodian) {
       const changeId = uuid()
       await this.db
         .insert(fixedAssetChanges)
@@ -308,8 +308,8 @@ export class FixedAssetService {
           assetId: id,
           changeType: 'status_change',
           changeDate: getBusinessDate(),
-          fromDeptId: existing.departmentId,
-          toDeptId: data.departmentId !== undefined ? data.departmentId : existing.departmentId,
+          fromDeptId: existing.projectId,
+          toDeptId: data.projectId !== undefined ? data.projectId : existing.projectId,
           fromSiteId: existing.siteId,
           toSiteId: data.siteId !== undefined ? data.siteId : existing.siteId,
           fromCustodian: existing.custodian,
@@ -364,7 +364,7 @@ export class FixedAssetService {
     purchasePriceCents: number
     currency: string
     vendorId?: string
-    departmentId?: string
+    projectId?: string
     siteId?: string
     custodian?: string
     depreciationMethod?: string
@@ -458,7 +458,7 @@ export class FixedAssetService {
           purchasePriceCents: data.purchasePriceCents,
           currency: data.currency,
           vendorId: data.vendorId,
-          departmentId: data.departmentId,
+          projectId: data.projectId,
           siteId: data.siteId,
           custodian: data.custodian,
           status: 'in_use',
@@ -484,7 +484,7 @@ export class FixedAssetService {
           categoryId: data.categoryId,
           amountCents: data.purchasePriceCents,
           siteId: data.siteId,
-          departmentId: data.departmentId,
+          projectId: data.projectId,
           counterparty: vendorName,
           memo: `购买资产：${data.name}（${data.assetCode}）` + (data.memo ? `；${data.memo}` : ''),
           voucherUrl: data.voucherUrl,
@@ -622,7 +622,7 @@ export class FixedAssetService {
           categoryId: data.categoryId,
           amountCents: data.salePriceCents,
           siteId: asset.siteId,
-          departmentId: asset.departmentId,
+          projectId: asset.projectId,
           counterparty: data.saleBuyer,
           memo:
             `卖出资产：${asset.name}（${asset.assetCode}）` +

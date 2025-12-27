@@ -191,7 +191,7 @@ export function RentalManagement() {
         depositCents: currentProperty.depositCents ? currentProperty.depositCents / 100 : null,
         paymentMethod: currentProperty.paymentMethod,
         paymentDay: currentProperty.paymentDay || 1,
-        departmentId: currentProperty.departmentId,
+        projectId: currentProperty.projectId,
         status: currentProperty.status,
         memo: currentProperty.memo,
         contractFileUrl: currentProperty.contractFileUrl,
@@ -660,7 +660,7 @@ export function RentalManagement() {
             {({ getFieldValue }) => {
               const propertyType = getFieldValue('propertyType')
               return propertyType === 'office' ? (
-                <Form.Item name="departmentId" label="使用项目">
+                <Form.Item name="projectId" label="使用项目">
                   <DepartmentSelect placeholder="选择项目" allowClear />
                 </Form.Item>
               ) : propertyType === 'dormitory' ? (
@@ -781,7 +781,7 @@ export function RentalManagement() {
             {({ getFieldValue }) => {
               const propertyType = getFieldValue('propertyType')
               return propertyType === 'office' ? (
-                <Form.Item name="departmentId" label="使用项目">
+                <Form.Item name="projectId" label="使用项目">
                   <DepartmentSelect placeholder="选择项目" allowClear />
                 </Form.Item>
               ) : null

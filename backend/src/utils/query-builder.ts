@@ -47,8 +47,8 @@ export class QueryBuilder {
       })
       .from(baseTable)
       .leftJoin(employees, eq(employees.id, employeeIdField))
-      .leftJoin(projects, eq(projects.id, employees.departmentId))
-      .leftJoin(orgDepartments, eq(orgDepartments.id, employees.orgDepartmentId))
+      .leftJoin(projects, eq(projects.id, employees.projectId))
+      .leftJoin(orgDepartments, eq(orgDepartments.id, employees.orgProjectId))
       .leftJoin(positions, eq(positions.id, employees.positionId))
   }
 
@@ -64,7 +64,7 @@ export class QueryBuilder {
     db: DrizzleD1Database<typeof schema>,
     employeeIds: string[]
   ): Promise<{
-    employees: Map<string, { id: string; name: string | null; email: string | null; departmentId: string | null; orgDepartmentId: string | null; positionId: string | null }>
+    employees: Map<string, { id: string; name: string | null; email: string | null; projectId: string | null; orgProjectId: string | null; positionId: string | null }>
     projects: Map<string, { id: string; name: string | null }>
     orgDepartments: Map<string, { id: string; name: string | null }>
     positions: Map<string, { id: string; name: string | null }>
@@ -84,8 +84,8 @@ export class QueryBuilder {
         id: employees.id,
         name: employees.name,
         email: employees.email,
-        departmentId: employees.departmentId,
-        orgDepartmentId: employees.orgDepartmentId,
+        projectId: employees.projectId,
+        orgProjectId: employees.orgProjectId,
         positionId: employees.positionId,
       })
       .from(employees)
@@ -93,8 +93,8 @@ export class QueryBuilder {
       .execute()
 
     // 2. 收集关联ID
-    const deptIds = [...new Set(employeesList.map(e => e.departmentId).filter(Boolean) as string[])]
-    const orgDeptIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(employeesList.map(e => e.projectId).filter(Boolean) as string[])]
+    const orgDeptIds = [...new Set(employeesList.map(e => e.orgProjectId).filter(Boolean) as string[])]
     const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
 
     // 3. 并行查询关联数据
@@ -138,22 +138,22 @@ export class QueryBuilder {
   static async fetchRelatedData(
     db: DrizzleD1Database<typeof schema>,
     ids: {
-      departmentIds?: string[]
+      projectIds?: string[]
       employeeIds?: string[]
       currencyIds?: string[]
       vendorIds?: string[]
       siteIds?: string[]
     }
   ) {
-    const { departmentIds, employeeIds, currencyIds, vendorIds, siteIds } = ids
+    const { projectIds, employeeIds, currencyIds, vendorIds, siteIds } = ids
 
     const [projectsList, employeesList, currenciesList, vendorsList, sitesList] =
       await Promise.all([
-        departmentIds && departmentIds.length > 0
+        projectIds && projectIds.length > 0
           ? db
             .select()
             .from(projects)
-            .where(inArray(projects.id, departmentIds))
+            .where(inArray(projects.id, projectIds))
             .execute()
           : Promise.resolve([]),
         employeeIds && employeeIds.length > 0
@@ -210,23 +210,23 @@ export class QueryBuilder {
   static extractRelatedIds<T>(
     items: T[],
     extractors: {
-      departmentId?: (item: T) => string | null | undefined
+      projectId?: (item: T) => string | null | undefined
       employeeId?: (item: T) => string | null | undefined
       currencyId?: (item: T) => string | null | undefined
       vendorId?: (item: T) => string | null | undefined
       siteId?: (item: T) => string | null | undefined
     }
   ) {
-    const departmentIds = new Set<string>()
+    const projectIds = new Set<string>()
     const employeeIds = new Set<string>()
     const currencyIds = new Set<string>()
     const vendorIds = new Set<string>()
     const siteIds = new Set<string>()
 
     items.forEach(item => {
-      if (extractors.departmentId) {
-        const id = extractors.departmentId(item)
-        if (id) departmentIds.add(id)
+      if (extractors.projectId) {
+        const id = extractors.projectId(item)
+        if (id) projectIds.add(id)
       }
       if (extractors.employeeId) {
         const id = extractors.employeeId(item)
@@ -247,7 +247,7 @@ export class QueryBuilder {
     })
 
     return {
-      departmentIds: Array.from(departmentIds),
+      projectIds: Array.from(projectIds),
       employeeIds: Array.from(employeeIds),
       currencyIds: Array.from(currencyIds),
       vendorIds: Array.from(vendorIds),

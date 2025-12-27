@@ -76,8 +76,8 @@ export class SalaryPaymentService {
             .select({
               id: employees.id,
               name: employees.name,
-              departmentId: employees.departmentId,
-              orgDepartmentId: employees.orgDepartmentId,
+              projectId: employees.projectId,
+              orgProjectId: employees.orgProjectId,
               positionId: employees.positionId,
             })
             .from(employees)
@@ -88,8 +88,8 @@ export class SalaryPaymentService {
       : []
 
     // 3. 批量获取部门和职位信息
-    const deptIds = [...new Set(employeesList.map(e => e.departmentId).filter(Boolean) as string[])]
-    const orgDeptIds = [...new Set(employeesList.map(e => e.orgDepartmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(employeesList.map(e => e.projectId).filter(Boolean) as string[])]
+    const orgDeptIds = [...new Set(employeesList.map(e => e.orgProjectId).filter(Boolean) as string[])]
     const positionIds = [...new Set(employeesList.map(e => e.positionId).filter(Boolean) as string[])]
 
     const [projectsList, orgDepartmentsList, positionsList] = await Promise.all([
@@ -140,8 +140,8 @@ export class SalaryPaymentService {
     // 5. 组装结果
     const paymentsWithEmployeeInfo = payments.map(payment => {
       const employee = payment.employeeId ? employeeMap.get(payment.employeeId) : null
-      const department = employee?.departmentId ? deptMap.get(employee.departmentId) : null
-      const orgDepartment = employee?.orgDepartmentId ? orgDeptMap.get(employee.orgDepartmentId) : null
+      const department = employee?.projectId ? deptMap.get(employee.projectId) : null
+      const orgDepartment = employee?.orgProjectId ? orgDeptMap.get(employee.orgProjectId) : null
       const position = employee?.positionId ? positionMap.get(employee.positionId) : null
 
       return {
@@ -212,7 +212,7 @@ export class SalaryPaymentService {
             .select({
               id: employees.id,
               name: employees.name,
-              departmentId: employees.departmentId,
+              projectId: employees.projectId,
             })
             .from(employees)
             .where(eq(employees.id, payment.employeeId))
@@ -221,14 +221,14 @@ export class SalaryPaymentService {
         )
       : null
 
-    const department = employee?.departmentId
+    const department = employee?.projectId
       ? await dbQuery(
           this.db,
           'SalaryPaymentService.get.getDepartment',
           () => this.db
             .select({ id: projects.id, name: projects.name })
             .from(projects)
-            .where(eq(projects.id, employee.departmentId))
+            .where(eq(projects.id, employee.projectId))
             .get(),
           undefined
         )

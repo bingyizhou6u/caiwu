@@ -18,12 +18,12 @@ import { getBusinessDate } from '../../utils/timezone.js'
 export class RentalPropertyService {
   constructor(private db: DrizzleD1Database<typeof schema>) { }
 
-  async listProperties(query: { propertyType?: string; status?: string; departmentId?: string }) {
+  async listProperties(query: { propertyType?: string; status?: string; projectId?: string }) {
     // D1 兼容性修复：使用顺序查询代替复杂 JOIN
     const conditions = []
     if (query.propertyType) { conditions.push(eq(rentalProperties.propertyType, query.propertyType)) }
     if (query.status) { conditions.push(eq(rentalProperties.status, query.status)) }
-    if (query.departmentId) { conditions.push(eq(rentalProperties.departmentId, query.departmentId)) }
+    if (query.projectId) { conditions.push(eq(rentalProperties.projectId, query.projectId)) }
 
     // 1. 查询物业列表
     const properties = await this.db
@@ -36,7 +36,7 @@ export class RentalPropertyService {
     if (properties.length === 0) return []
 
     // 2. 收集关联 ID
-    const deptIds = [...new Set(properties.map(p => p.departmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(properties.map(p => p.projectId).filter(Boolean) as string[])]
     const accountIds = [...new Set(properties.map(p => p.paymentAccountId).filter(Boolean) as string[])]
     const currencyCodes = [...new Set(properties.map(p => p.currency).filter(Boolean) as string[])]
     const creatorIds = [...new Set(properties.map(p => p.createdBy).filter(Boolean) as string[])]
@@ -92,7 +92,7 @@ export class RentalPropertyService {
     // 6. 组装结果
     return properties.map(p => ({
       property: p,
-      departmentName: p.departmentId ? deptMap.get(p.departmentId) || null : null,
+      departmentName: p.projectId ? deptMap.get(p.projectId) || null : null,
       paymentAccountName: p.paymentAccountId ? accountMap.get(p.paymentAccountId) || null : null,
       currencyName: p.currency ? currencyMap.get(p.currency) || null : null,
       createdByName: p.createdBy ? creatorMap.get(p.createdBy) || null : null,
@@ -116,9 +116,9 @@ export class RentalPropertyService {
 
     // 2. 查询关联数据
     const [department, account, currency, creator, changes] = await Promise.all([
-      property.departmentId
+      property.projectId
         ? this.db.select({ name: schema.projects.name }).from(schema.projects)
-          .where(eq(schema.projects.id, property.departmentId)).get()
+          .where(eq(schema.projects.id, property.projectId)).get()
         : Promise.resolve(null),
       property.paymentAccountId
         ? this.db.select({ name: schema.accounts.name }).from(schema.accounts)
@@ -169,7 +169,7 @@ export class RentalPropertyService {
     paymentMethod?: string
     paymentAccountId?: string
     paymentDay?: number
-    departmentId?: string
+    projectId?: string
     status?: string
     memo?: string
     contractFileUrl?: string
@@ -209,7 +209,7 @@ export class RentalPropertyService {
         paymentMethod: data.paymentMethod,
         paymentAccountId: data.paymentAccountId,
         paymentDay: data.paymentDay || 1,
-        departmentId: data.propertyType === 'office' ? data.departmentId : null,
+        projectId: data.propertyType === 'office' ? data.projectId : null,
         status: data.status || 'active',
         memo: data.memo,
         contractFileUrl: data.contractFileUrl,

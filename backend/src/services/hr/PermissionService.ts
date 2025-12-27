@@ -10,7 +10,7 @@ export class PermissionService {
    * 检查是否可以查看指定员工的数据
    */
   async canViewEmployee(
-    actor: { id: string; departmentId: string | null; orgDepartmentId: string | null },
+    actor: { id: string; projectId: string | null; orgProjectId: string | null },
     actorPosition: { code: string; dataScope?: string },
     targetEmployeeId: string
   ): Promise<boolean> {
@@ -30,8 +30,8 @@ export class PermissionService {
     const target = await this.db
       .select({
         id: employees.id,
-        departmentId: employees.departmentId,
-        orgDepartmentId: employees.orgDepartmentId,
+        projectId: employees.projectId,
+        orgProjectId: employees.orgProjectId,
       })
       .from(employees)
       .where(eq(employees.id, targetEmployeeId))
@@ -41,12 +41,12 @@ export class PermissionService {
 
     // 3. DataScope.PROJECT
     if (dataScope === 'project') {
-      return target.departmentId === actor.departmentId
+      return target.projectId === actor.projectId
     }
 
     // 4. DataScope.GROUP
     if (dataScope === 'group') {
-      return target.orgDepartmentId === actor.orgDepartmentId
+      return target.orgProjectId === actor.orgProjectId
     }
 
     return false
@@ -56,7 +56,7 @@ export class PermissionService {
    * 检查是否可以审批指定员工的申请（请假/报销）
    */
   async canApproveApplication(
-    actor: { id: string; departmentId: string | null; orgDepartmentId: string | null },
+    actor: { id: string; projectId: string | null; orgProjectId: string | null },
     actorPosition: { code: string; canManageSubordinates: number; dataScope?: string },
     applicantEmployeeId: string
   ): Promise<boolean> {
@@ -74,8 +74,8 @@ export class PermissionService {
     const applicant = await this.db
       .select({
         id: employees.id,
-        departmentId: employees.departmentId,
-        orgDepartmentId: employees.orgDepartmentId,
+        projectId: employees.projectId,
+        orgProjectId: employees.orgProjectId,
         positionId: employees.positionId,
       })
       .from(employees)
@@ -86,12 +86,12 @@ export class PermissionService {
 
     // 2. DataScope.PROJECT
     if (dataScope === 'project') {
-      return applicant.departmentId === actor.departmentId
+      return applicant.projectId === actor.projectId
     }
 
     // 3. DataScope.GROUP
     if (dataScope === 'group') {
-      return applicant.orgDepartmentId === actor.orgDepartmentId
+      return applicant.orgProjectId === actor.orgProjectId
     }
 
     return false
@@ -104,8 +104,8 @@ export class PermissionService {
     const actor = await this.db
       .select({
         id: employees.id,
-        departmentId: employees.departmentId,
-        orgDepartmentId: employees.orgDepartmentId,
+        projectId: employees.projectId,
+        orgProjectId: employees.orgProjectId,
         positionId: employees.positionId,
       })
       .from(employees)

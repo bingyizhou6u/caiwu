@@ -79,7 +79,7 @@ export class FixedAssetAllocationService {
 
     // 获取员工的部门 - 使用批量查询优化
     const deptIds = new Set(
-      relatedData.employees.map(e => e.departmentId).filter(Boolean) as string[]
+      relatedData.employees.map(e => e.projectId).filter(Boolean) as string[]
     )
     const depts =
       deptIds.size > 0
@@ -97,13 +97,13 @@ export class FixedAssetAllocationService {
     return allocations.map(allocation => {
       const asset = assetMap.get(allocation.assetId)
       const employee = empMap.get(allocation.employeeId)
-      const dept = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+      const dept = employee?.projectId ? deptMap.get(employee.projectId) : null
       return {
         allocation,
         assetCode: asset?.assetCode || null,
         assetName: asset?.name || null,
         employeeName: employee?.name || null,
-        employeeDepartmentId: employee?.departmentId || null,
+        employeeProjectId: employee?.projectId || null,
         employeeDepartmentName: dept?.name || null,
         createdByName: allocation.createdBy
           ? userMap.get(allocation.createdBy)?.email || null
@@ -195,7 +195,7 @@ export class FixedAssetAllocationService {
         .set({
           status: 'in_use',
           custodian: employee.name,
-          departmentId: employee.departmentId || asset.departmentId,
+          projectId: employee.projectId || asset.projectId,
           updatedAt: now,
         })
         .where(eq(fixedAssets.id, id))

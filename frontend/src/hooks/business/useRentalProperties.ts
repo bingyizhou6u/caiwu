@@ -7,14 +7,14 @@ import type { RentalProperty } from '../../types/rental'
 export interface RentalPropertyFilters {
     propertyType?: string
     status?: string
-    departmentId?: string
+    projectId?: string
 }
 
 export function useRentalProperties(filters?: RentalPropertyFilters) {
     const queryParams = new URLSearchParams()
     if (filters?.propertyType) queryParams.append('propertyType', filters.propertyType)
     if (filters?.status) queryParams.append('status', filters.status)
-    if (filters?.departmentId) queryParams.append('departmentId', filters.departmentId)
+    if (filters?.projectId) queryParams.append('projectId', filters.projectId)
 
     return useApiQuery<RentalProperty[]>(
         ['rentalProperties', filters],

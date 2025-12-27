@@ -4,9 +4,9 @@ export const EmployeeSchema = z.object({
   id: z.string().openapi({ example: '123' }),
   name: z.string().openapi({ example: 'John Doe' }),
   email: z.string().email().openapi({ example: 'john@example.com' }),
-  departmentId: z.string().nullable().openapi({ example: 'dept-1' }),
+  projectId: z.string().nullable().openapi({ example: 'dept-1' }),
   departmentName: z.string().nullable().optional(),
-  orgDepartmentId: z.string().nullable().openapi({ example: 'org-dept-1' }),
+  orgProjectId: z.string().nullable().openapi({ example: 'org-dept-1' }),
   orgDepartmentName: z.string().nullable().optional(),
   positionId: z.string().nullable().openapi({ example: 'pos-1' }),
   positionName: z.string().nullable().optional(),
@@ -23,8 +23,8 @@ export const EmployeeListSchema = z.object({
 
 export const EmployeeQuerySchema = z.object({
   status: z.string().optional(),
-  departmentId: z.string().optional(),
-  orgDepartmentId: z.string().optional(),
+  projectId: z.string().optional(),
+  orgProjectId: z.string().optional(),
   name: z.string().optional(),
   email: z.string().optional(),
   positionId: z.string().optional(),
@@ -36,8 +36,8 @@ export const EmployeeQuerySchema = z.object({
 
 export const UpdateEmployeeSchema = z.object({
   name: z.string().optional(),
-  departmentId: z.string().optional(),
-  orgDepartmentId: z.string().optional(),
+  projectId: z.string().optional(),
+  orgProjectId: z.string().optional(),
   positionId: z.string().optional(),
   joinDate: z.string().optional(),
   // Salary/allowance data now managed via employee_salaries and employee_allowances tables
@@ -74,8 +74,8 @@ export const CreateEmployeeSchema = z.object({
     .string()
     .email()
     .openapi({ example: 'zhangsan@gmail.com', description: '员工真实邮箱，用于接收转发的邮件' }),
-  orgDepartmentId: z.string().openapi({ example: 'org-dept-1' }),
-  departmentId: z.string().optional().openapi({ example: 'dept-1' }),
+  orgProjectId: z.string().openapi({ example: 'org-dept-1' }),
+  projectId: z.string().optional().openapi({ example: 'dept-1' }),
   positionId: z.string().openapi({ example: 'pos-1' }),
   joinDate: z.string().openapi({ example: '2024-01-01' }),
   birthday: z.string().optional().openapi({ example: '1990-01-01' }),

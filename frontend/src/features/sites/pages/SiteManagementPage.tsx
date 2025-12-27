@@ -71,7 +71,7 @@ export function SiteManagement() {
   const handleEdit = useCallback((record: Site) => {
     modal.openEdit(record)
     form.setFieldsValue({
-      departmentId: record.departmentId,
+      projectId: record.projectId,
       name: record.name,
       siteCode: record.siteCode,
       themeStyle: record.themeStyle,
@@ -132,7 +132,7 @@ export function SiteManagement() {
               ) : <EmptyText value={v} />
             },
             {
-              title: '所属项目', dataIndex: 'departmentId', key: 'departmentId', width: 120, render: (v: string) => {
+              title: '所属项目', dataIndex: 'projectId', key: 'projectId', width: 120, render: (v: string) => {
                 const dept = deptOptions.find((d: any) => d.value === v)
                 return <EmptyText value={dept ? dept.label : null} />
               }
@@ -179,7 +179,7 @@ export function SiteManagement() {
           onCancel={handleCancel}
           width={600}
         >
-          <Form.Item name="departmentId" label="所属项目" rules={[{ required: true, message: '请选择所属项目' }]}>
+          <Form.Item name="projectId" label="所属项目" rules={[{ required: true, message: '请选择所属项目' }]}>
             <Select
               showSearch
               placeholder="请选择所属项目"

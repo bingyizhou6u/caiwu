@@ -201,13 +201,13 @@ export class KVCachedMasterDataService extends MasterDataService {
 
   // ========== Sites ==========
 
-  async createSite(data: { name: string; departmentId: string }) {
+  async createSite(data: { name: string; projectId: string }) {
     const result = await super.createSite(data)
     await this.invalidateMasterDataCache()
     return result
   }
 
-  async updateSite(id: string, data: { name?: string; departmentId?: string; active?: number }) {
+  async updateSite(id: string, data: { name?: string; projectId?: string; active?: number }) {
     const result = await super.updateSite(id, data)
     await this.invalidateMasterDataCache()
     return result

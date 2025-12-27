@@ -59,8 +59,8 @@ export async function getSessionWithUserAndPosition(
   } | null
   employee: {
     id: string
-    orgDepartmentId: string | null
-    departmentId: string | null
+    orgProjectId: string | null
+    projectId: string | null
   } | null
   departmentModules: string[] // 部门允许的模块列表
 } | null> {
@@ -108,11 +108,11 @@ export async function getSessionWithUserAndPosition(
 
   // 4. 查询 org department modules
   let departmentModules: string[] = ['*']
-  if (employee.orgDepartmentId) {
+  if (employee.orgProjectId) {
     const dept = await db
       .select()
       .from(orgDepartments)
-      .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
+      .where(and(eq(orgDepartments.id, employee.orgProjectId), eq(orgDepartments.active, 1)))
       .get()
 
     if (dept && dept.allowedModules) {
@@ -138,8 +138,8 @@ export async function getSessionWithUserAndPosition(
     position,
     employee: {
       id: employee.id,
-      orgDepartmentId: employee.orgDepartmentId,
-      departmentId: employee.departmentId,
+      orgProjectId: employee.orgProjectId,
+      projectId: employee.projectId,
     },
     departmentModules,
   }
@@ -161,8 +161,8 @@ export async function getUserFullContext(
   } | null
   employee: {
     id: string
-    orgDepartmentId: string | null
-    departmentId: string | null
+    orgProjectId: string | null
+    projectId: string | null
   } | null
   departmentModules: string[]
 } | null> {
@@ -197,11 +197,11 @@ export async function getUserFullContext(
 
   // 2. 获取 Department Modules
   let departmentModules: string[] = ['*']
-  if (employee.orgDepartmentId) {
+  if (employee.orgProjectId) {
     const dept = await db
       .select()
       .from(orgDepartments)
-      .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
+      .where(and(eq(orgDepartments.id, employee.orgProjectId), eq(orgDepartments.active, 1)))
       .get()
 
     if (dept && dept.allowedModules) {
@@ -222,8 +222,8 @@ export async function getUserFullContext(
     position,
     employee: {
       id: employee.id,
-      orgDepartmentId: employee.orgDepartmentId,
-      departmentId: employee.departmentId,
+      orgProjectId: employee.orgProjectId,
+      projectId: employee.projectId,
     },
     departmentModules,
   }

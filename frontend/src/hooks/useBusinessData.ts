@@ -105,7 +105,7 @@ export function useSites() {
                     .map(r => ({
                         value: r.id,
                         label: r.name,
-                        departmentId: r.departmentId
+                        projectId: r.projectId
                     })),
             staleTime: CACHE_TIME.MASTER_DATA
         }

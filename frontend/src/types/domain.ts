@@ -17,7 +17,7 @@ export interface User {
     role: 'read' | 'write' | 'manage'
     active: ActiveStatus
     employeeId?: ID
-    departmentIds?: ID[]
+    projectIds?: ID[]
     totpEnabled?: boolean
     createdAt?: Timestamp
     updatedAt?: Timestamp
@@ -72,9 +72,9 @@ export interface Employee {
     leave_memo?: string
 
     // 部门和组织
-    departmentId: ID
+    projectId: ID
     departmentName?: string
-    orgDepartmentId?: ID
+    orgProjectId?: ID
     orgDepartmentName?: string
     orgDepartmentCode?: string
 
@@ -149,7 +149,7 @@ export interface Site {
     code?: string
     location?: string
     // Extended fields from API
-    departmentId?: ID
+    projectId?: ID
     siteCode?: string
     themeStyle?: string
     themeColor?: string
@@ -221,7 +221,7 @@ export interface CashFlow {
     accountName?: string
     categoryId?: ID
     categoryName?: string
-    departmentId?: ID
+    projectId?: ID
     departmentName?: string
     employeeId?: ID
     employeeName?: string
@@ -269,7 +269,7 @@ export interface FixedAsset {
     vendorName?: string
     siteId?: ID
     siteName?: string
-    departmentId?: ID
+    projectId?: ID
     departmentName?: string
     custodian?: string
     status: 'idle' | 'in_use' | 'maintenance' | 'sold' | 'scrapped'

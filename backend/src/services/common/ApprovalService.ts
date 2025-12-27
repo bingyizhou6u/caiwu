@@ -90,28 +90,28 @@ export class ApprovalService {
     })
 
     // 4. 批量查询员工信息（包含部门）
-    const employeeMap = new Map<string, { name: string | null; departmentId: string | null; orgDepartmentId: string | null }>()
+    const employeeMap = new Map<string, { name: string | null; projectId: string | null; orgProjectId: string | null }>()
     if (allEmployeeIds.size > 0) {
       const employees = await this.db
         .select({
           id: schema.employees.id,
           name: schema.employees.name,
-          departmentId: schema.employees.departmentId,
-          orgDepartmentId: schema.employees.orgDepartmentId,
+          projectId: schema.employees.projectId,
+          orgProjectId: schema.employees.orgProjectId,
         })
         .from(schema.employees)
         .where(inArray(schema.employees.id, Array.from(allEmployeeIds)))
         .execute()
 
-      employees.forEach(e => employeeMap.set(e.id, { name: e.name, departmentId: e.departmentId, orgDepartmentId: e.orgDepartmentId }))
+      employees.forEach(e => employeeMap.set(e.id, { name: e.name, projectId: e.projectId, orgProjectId: e.orgProjectId }))
     }
 
     // 5. 批量查询部门信息
     const allDeptIds = new Set<string>()
     const allOrgDeptIds = new Set<string>()
     employeeMap.forEach(e => {
-      if (e.departmentId) allDeptIds.add(e.departmentId)
-      if (e.orgDepartmentId) allOrgDeptIds.add(e.orgDepartmentId)
+      if (e.projectId) allDeptIds.add(e.projectId)
+      if (e.orgProjectId) allOrgDeptIds.add(e.orgProjectId)
     })
 
     const deptMap = new Map<string, string>()
@@ -152,8 +152,8 @@ export class ApprovalService {
       return {
         ...l,
         employeeName: emp?.name || null,
-        departmentName: emp?.departmentId ? deptMap.get(emp.departmentId) || null : null,
-        orgDepartmentName: emp?.orgDepartmentId ? orgDeptMap.get(emp.orgDepartmentId) || null : null,
+        departmentName: emp?.projectId ? deptMap.get(emp.projectId) || null : null,
+        orgDepartmentName: emp?.orgProjectId ? orgDeptMap.get(emp.orgProjectId) || null : null,
       }
     })
 
@@ -162,8 +162,8 @@ export class ApprovalService {
       return {
         ...r,
         employeeName: emp?.name || null,
-        departmentName: emp?.departmentId ? deptMap.get(emp.departmentId) || null : null,
-        orgDepartmentName: emp?.orgDepartmentId ? orgDeptMap.get(emp.orgDepartmentId) || null : null,
+        departmentName: emp?.projectId ? deptMap.get(emp.projectId) || null : null,
+        orgDepartmentName: emp?.orgProjectId ? orgDeptMap.get(emp.orgProjectId) || null : null,
         currencySymbol: r.currencyId ? currencyMap.get(r.currencyId) || null : null,
       }
     })
@@ -334,7 +334,7 @@ export class ApprovalService {
             .select({
               id: schema.employees.id,
               name: schema.employees.name,
-              departmentId: schema.employees.departmentId,
+              projectId: schema.employees.projectId,
             })
             .from(schema.employees)
             .where(inArray(schema.employees.id, allEmployeeIds))
@@ -344,7 +344,7 @@ export class ApprovalService {
       : []
 
     // 4. 批量查询部门信息
-    const deptIds = [...new Set(employeesList.map(e => e.departmentId).filter(Boolean) as string[])]
+    const deptIds = [...new Set(employeesList.map(e => e.projectId).filter(Boolean) as string[])]
     const departmentsList = deptIds.length > 0
       ? await query(
           this.db,
@@ -382,7 +382,7 @@ export class ApprovalService {
     return {
       leaves: approvedLeaves.map(leave => {
         const employee = leave.employeeId ? employeeMap.get(leave.employeeId) : null
-        const department = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+        const department = employee?.projectId ? deptMap.get(employee.projectId) : null
         return {
           ...leave,
           employeeName: employee?.name || null,
@@ -391,7 +391,7 @@ export class ApprovalService {
       }),
       reimbursements: approvedReimbursements.map(reimbursement => {
         const employee = reimbursement.employeeId ? employeeMap.get(reimbursement.employeeId) : null
-        const department = employee?.departmentId ? deptMap.get(employee.departmentId) : null
+        const department = employee?.projectId ? deptMap.get(employee.projectId) : null
         const currency = reimbursement.currencyId ? currencyMap.get(reimbursement.currencyId) : null
         return {
           ...reimbursement,

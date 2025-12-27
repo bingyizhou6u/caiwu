@@ -89,7 +89,7 @@ export const idQuerySchema = z.object({
     docId: uuidSchema.optional(),
     employeeId: uuidSchema.optional(),
     accountId: uuidSchema.optional(),
-    departmentId: uuidSchema.optional(),
+    projectId: uuidSchema.optional(),
 })
 
 /**

@@ -93,7 +93,7 @@ export class DepartmentService {
     // 如果 projectId 为 null，获取或创建总部的 department ID
     let actualProjectId = projectId
     if (!actualProjectId) {
-      actualProjectId = await this.projectDepartmentService.getOrCreateHQDepartmentId()
+      actualProjectId = await this.projectDepartmentService.getOrCreateHQProjectId()
     }
 
     for (const dept of PROJECT_DEPARTMENTS) {

@@ -53,7 +53,7 @@ export interface CreateFixedAssetDTO {
     accountId: string
     categoryId: string
     vendorId?: string
-    departmentId?: string
+    projectId?: string
     siteId?: string
     custodian?: string
     depreciationMethod?: string
@@ -68,7 +68,7 @@ export interface UpdateFixedAssetDTO extends Partial<CreateFixedAssetDTO> { }
 
 export interface TransferFixedAssetDTO {
     transferDate: string
-    toDepartmentId?: string
+    toProjectId?: string
     toSiteId?: string
     toCustodian?: string
     memo?: string

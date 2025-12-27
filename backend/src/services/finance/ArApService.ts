@@ -100,7 +100,7 @@ export class ArApService {
     dueDate?: string
     partyId?: string
     siteId?: string
-    departmentId?: string
+    projectId?: string
     memo?: string
     docNo?: string
   }) {
@@ -116,7 +116,7 @@ export class ArApService {
         docNo,
         partyId: data.partyId,
         siteId: data.siteId,
-        departmentId: data.departmentId,
+        projectId: data.projectId,
         issueDate,
         dueDate: data.dueDate,
         amountCents: data.amountCents,
@@ -238,7 +238,7 @@ export class ArApService {
           categoryId: data.categoryId,
           method: data.method,
           siteId: doc.siteId,
-          departmentId: doc.departmentId,
+          projectId: doc.projectId,
           counterparty: doc.partyId,
           memo: data.memo ?? doc.memo,
           voucherUrls: data.voucherUrl ? [data.voucherUrl] : [],

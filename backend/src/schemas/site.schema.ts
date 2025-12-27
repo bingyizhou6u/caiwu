@@ -9,7 +9,7 @@ import { uuidSchema, dateSchema } from './common.schema.js'
  * 创建站点Schema
  */
 export const createSiteSchema = z.object({
-    departmentId: uuidSchema,
+    projectId: uuidSchema,
     name: z.string().min(1, 'name参数必填'),
     siteCode: z.string().optional(),
 })
@@ -19,7 +19,7 @@ export const createSiteSchema = z.object({
  */
 export const updateSiteSchema = z.object({
     name: z.string().min(1).optional(),
-    departmentId: uuidSchema.optional(),
+    projectId: uuidSchema.optional(),
     active: z.number().int().min(0).max(1).optional(),
     siteCode: z.string().optional(),
 })

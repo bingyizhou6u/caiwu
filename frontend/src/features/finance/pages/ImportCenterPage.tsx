@@ -48,9 +48,9 @@ export function ImportCenter() {
 
   const getFieldDescription = () => {
     const descriptions: Record<string, string> = {
-      flows: '必填字段：bizDate（日期）, type（income/expense）, accountId（账户ID）, amount（金额）\n可选字段：siteId, departmentId, counterparty, memo, categoryId, voucher_no, method',
-      AR: '必填字段：issueDate（开票日期）, amount（金额）\n可选字段：dueDate（到期日期）, partyId, siteId, departmentId, memo',
-      AP: '必填字段：issueDate（开票日期）, amount（金额）\n可选字段：dueDate（到期日期）, partyId, siteId, departmentId, memo',
+      flows: '必填字段：bizDate（日期）, type（income/expense）, accountId（账户ID）, amount（金额）\n可选字段：siteId, projectId, counterparty, memo, categoryId, voucher_no, method',
+      AR: '必填字段：issueDate（开票日期）, amount（金额）\n可选字段：dueDate（到期日期）, partyId, siteId, projectId, memo',
+      AP: '必填字段：issueDate（开票日期）, amount（金额）\n可选字段：dueDate（到期日期）, partyId, siteId, projectId, memo',
       opening: '必填字段：type（类型）, ref_id（关联ID）, amount（金额）, as_of（日期）',
     }
     return descriptions[kind] || ''

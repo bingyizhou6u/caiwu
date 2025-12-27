@@ -11,7 +11,7 @@ import { DBPerformanceTracker } from '../../utils/db-performance.js'
 // 类型定义
 export interface ProjectFilter {
     status?: string
-    departmentId?: string
+    projectId?: string
     managerId?: string
     search?: string
 }
@@ -20,7 +20,7 @@ export interface CreateProjectInput {
     code: string
     name: string
     description?: string
-    departmentId: string
+    projectId: string
     managerId?: string
     status?: string
     startDate?: string
@@ -33,7 +33,7 @@ export interface CreateProjectInput {
 export interface UpdateProjectInput {
     name?: string
     description?: string
-    departmentId?: string
+    projectId?: string
     managerId?: string
     status?: string
     startDate?: string
@@ -65,17 +65,17 @@ export class ProjectService {
                 const projectList = await query.all()
 
                 // 批量获取关联的部门和项目经理信息
-                const departmentIds = [...new Set(projectList.map(p => p.departmentId).filter(Boolean))] as string[]
+                const projectIds = [...new Set(projectList.map(p => p.projectId).filter(Boolean))] as string[]
                 const managerIds = [...new Set(projectList.map(p => p.managerId).filter(Boolean))] as string[]
 
                 const departmentMap = new Map<string, { id: string; name: string }>()
                 const managerMap = new Map<string, { id: string; name: string | null }>()
 
-                if (departmentIds.length > 0) {
+                if (projectIds.length > 0) {
                     const depts = await this.db
                         .select({ id: projects.id, name: projects.name })
                         .from(projects)
-                        .where(inArray(projects.id, departmentIds))
+                        .where(inArray(projects.id, projectIds))
                         .all()
                     depts.forEach(d => departmentMap.set(d.id, d))
                 }
@@ -92,7 +92,7 @@ export class ProjectService {
                 // 组装结果
                 return projectList.map(p => ({
                     ...p,
-                    departmentName: p.departmentId ? departmentMap.get(p.departmentId)?.name : null,
+                    departmentName: p.projectId ? departmentMap.get(p.projectId)?.name : null,
                     managerName: p.managerId ? managerMap.get(p.managerId)?.name : null,
                 }))
             }
@@ -115,8 +115,8 @@ export class ProjectService {
                 if (!project) return null
 
                 // 顺序查询获取关联数据
-                const department = project.departmentId
-                    ? await this.db.select().from(projects).where(eq(projects.id, project.departmentId)).get()
+                const department = project.projectId
+                    ? await this.db.select().from(projects).where(eq(projects.id, project.projectId)).get()
                     : null
 
                 const manager = project.managerId
@@ -147,7 +147,7 @@ export class ProjectService {
                     code: data.code,
                     name: data.name,
                     description: data.description,
-                    departmentId: data.departmentId,
+                    projectId: data.projectId,
                     managerId: data.managerId,
                     status: data.status || 'active',
                     startDate: data.startDate,

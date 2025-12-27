@@ -36,7 +36,7 @@ export const updateDepartmentSchema = createDepartmentSchema.partial()
  */
 export const siteSchema = z.object({
   id: uuidSchema,
-  departmentId: uuidSchema,
+  projectId: uuidSchema,
   name: z.string().min(1, '名称不能为空'),
   siteCode: z.string().optional().nullable(),
   themeStyle: z.string().optional().nullable(),
@@ -174,7 +174,6 @@ export const availablePositionsResponseSchema = z.object({
   departmentInfo: z.object({
     projectId: z.string().nullable(),
     projectName: z.string().nullable(),
-    departmentId: z.string(),
     departmentName: z.string(),
     isHq: z.boolean(),
   }),

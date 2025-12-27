@@ -30,7 +30,7 @@ const cashFlowResponseSchema = z.object({
   method: z.string().nullable(),
   amountCents: z.number(),
   siteId: z.string().nullable(),
-  departmentId: z.string().nullable(),
+  projectId: z.string().nullable(),
   counterparty: z.string().nullable(),
   memo: z.string().nullable(),
   voucherUrls: z.array(z.string()),
@@ -129,11 +129,11 @@ flowsRoutes.openapi(
     const { page, limit } = parsePagination(c)
 
     // 使用 getDataAccessFilterSQL 获取数据访问过滤条件（返回 SQL 对象，更安全）
-    // cash_flows 表使用 'created_by' 和 'department_id' 列
-    // 它没有 org_department_id，所以我们跳过那一层
+    // cash_flows 表使用 'created_by' 和 'project_id' 列
+    // 它没有 org_project_id，所以我们跳过那一层
     const accessFilter = getDataAccessFilterSQL(c, 'cash_flows', {
       ownerColumn: 'created_by',
-      deptColumn: 'department_id',
+      deptColumn: 'project_id',
       skipOrgDept: true,
     })
 
@@ -167,7 +167,7 @@ flowsRoutes.openapi(
         method: f.method,
         amountCents: f.amountCents,
         siteId: f.siteId,
-        departmentId: f.departmentId,
+        projectId: f.projectId,
         counterparty: f.counterparty,
         memo: f.memo,
         voucherUrl: voucherUrls[0] || null,
@@ -341,18 +341,18 @@ flowsRoutes.openapi(
     }
     const body = c.req.valid('json')
 
-    // departmentId 的逻辑：从 siteId 或直接传入的 departmentId 获取
-    let departmentId = body.departmentId ?? null
+    // projectId 的逻辑：从 siteId 或直接传入的 projectId 获取
+    let projectId = body.projectId ?? null
 
-    if (!departmentId && body.siteId) {
-      // 从 siteId 查找 departmentId
-      const r = await (c.env.DB.prepare('select departmentId from sites where id=?')
+    if (!projectId && body.siteId) {
+      // 从 siteId 查找 projectId
+      const r = await (c.env.DB.prepare('select projectId from sites where id=?')
         .bind(body.siteId)
-        .first() as Promise<{ departmentId: string } | null>)
-      if (r?.departmentId) { departmentId = r.departmentId }
+        .first() as Promise<{ projectId: string } | null>)
+      if (r?.projectId) { projectId = r.projectId }
     }
 
-    // departmentId 现在是可选的，财务流水可以不关联部门
+    // projectId 现在是可选的，财务流水可以不关联部门
 
     const result = await c.var.services.finance.createCashFlow({
       accountId: body.accountId,
@@ -364,7 +364,7 @@ flowsRoutes.openapi(
       voucherNo: body.voucherNo,
       method: body.method,
       siteId: body.siteId,
-      departmentId: departmentId,
+      projectId: projectId,
       counterparty: body.counterparty,
       memo: body.memo,
       createdBy: c.get('employeeId'),

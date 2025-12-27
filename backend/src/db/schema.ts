@@ -17,8 +17,8 @@ export const employees = sqliteTable('employees', {
   personalEmail: text('personal_email'),
   name: text('name'),
   positionId: text('position_id'),
-  orgDepartmentId: text('org_department_id'),
-  departmentId: text('department_id'),
+  orgProjectId: text('org_project_id'),
+  projectId: text('project_id'),
   joinDate: text('join_date'),
   status: text('status'),
   active: integer('active').default(1),
@@ -68,7 +68,7 @@ export const projects = sqliteTable('projects', {
   name: text('name').notNull(),
   description: text('description'),
   hqId: text('hq_id'), // 所属总部
-  departmentId: text('department_id'), // 所属部门（可选）
+  projectId: text('project_id'), // 所属部门（可选）
   managerId: text('manager_id'), // 项目经理（员工ID）
   status: text('status').default('active'), // active, on_hold, completed, cancelled
   startDate: text('start_date'), // 计划开始日期
@@ -173,7 +173,7 @@ export const cashFlows = sqliteTable(
     method: text('method'),
     amountCents: integer('amount_cents').notNull(),
     siteId: text('site_id'),
-    departmentId: text('department_id'),
+    projectId: text('project_id'),
     counterparty: text('counterparty'),
     memo: text('memo'),
     voucherUrl: text('voucher_url'),
@@ -333,7 +333,7 @@ export const salaryPaymentAllocations = sqliteTable('salary_payment_allocations'
 
 export const sites = sqliteTable('sites', {
   id: text('id').primaryKey(),
-  departmentId: text('department_id').notNull(),
+  projectId: text('project_id').notNull(),
   name: text('name').notNull(),
   siteCode: text('site_code'),
   active: integer('active').default(1),
@@ -355,7 +355,7 @@ export const arApDocs = sqliteTable('ar_ap_docs', {
   kind: text('kind').notNull(), // AR, AP
   partyId: text('party_id'),
   siteId: text('site_id'),
-  departmentId: text('department_id'),
+  projectId: text('project_id'),
   issueDate: text('issue_date'),
   dueDate: text('due_date'),
   amountCents: integer('amount_cents').notNull(),
@@ -464,7 +464,7 @@ export const fixedAssets = sqliteTable('fixed_assets', {
   purchasePriceCents: integer('purchase_price_cents').notNull(),
   currency: text('currency').notNull(),
   vendorId: text('vendor_id'),
-  departmentId: text('department_id'),
+  projectId: text('project_id'),
   siteId: text('site_id'),
   custodian: text('custodian'),
   status: text('status').default('in_use'), // in_use, idle, maintenance, scrapped, sold
@@ -545,7 +545,7 @@ export const rentalProperties = sqliteTable('rental_properties', {
   paymentMethod: text('payment_method'),
   paymentAccountId: text('payment_account_id'),
   paymentDay: integer('payment_day').default(1),
-  departmentId: text('department_id'),
+  projectId: text('project_id'),
   status: text('status').default('active'), // active, inactive
   memo: text('memo'),
   contractFileUrl: text('contract_file_url'),
@@ -669,8 +669,7 @@ export const requirements = sqliteTable(
   {
     id: text('id').primaryKey(),
     code: text('code').notNull().unique(), // 需求编号，如 REQ-001
-    projectId: text('project_id'), // 所属项目（旧字段，逐步废弃）
-    departmentId: text('department_id'), // 所属项目（关联 departments 表）
+    projectId: text('project_id').notNull(), // 所属项目
     title: text('title').notNull(),
     description: text('description'), // 支持 Markdown
     type: text('type').notNull(), // feature, bug, improvement, task
@@ -691,7 +690,7 @@ export const requirements = sqliteTable(
   },
   t => ({
     idxProject: index('idx_requirements_project').on(t.projectId),
-    idxDepartment: index('idx_requirements_department').on(t.departmentId),
+    idxDepartment: index('idx_requirements_department').on(t.projectId),
     idxStatus: index('idx_requirements_status').on(t.status),
     idxAssignee: index('idx_requirements_assignee').on(t.assigneeId),
   })
@@ -704,8 +703,7 @@ export const tasks = sqliteTable(
     id: text('id').primaryKey(),
     code: text('code').notNull().unique(), // 任务编号，如 TASK-001
     requirementId: text('requirement_id'), // 关联需求（可选）
-    projectId: text('project_id'), // 所属项目（旧字段，逐步废弃）
-    departmentId: text('department_id'), // 所属项目（关联 departments 表）
+    projectId: text('project_id').notNull(), // 所属项目
     parentTaskId: text('parent_task_id'), // 父任务（支持子任务）
     title: text('title').notNull(),
     description: text('description'),
@@ -726,7 +724,7 @@ export const tasks = sqliteTable(
   },
   t => ({
     idxProject: index('idx_tasks_project').on(t.projectId),
-    idxDepartment: index('idx_tasks_department').on(t.departmentId),
+    idxDepartment: index('idx_tasks_department').on(t.projectId),
     idxRequirement: index('idx_tasks_requirement').on(t.requirementId),
     idxStatus: index('idx_tasks_status').on(t.status),
     idxAssignee: index('idx_tasks_assignee').on(t.assigneeId),
@@ -739,7 +737,7 @@ export const taskTimelogs = sqliteTable(
   {
     id: text('id').primaryKey(),
     taskId: text('task_id').notNull(), // 关联任务
-    departmentId: text('department_id'), // 所属项目（即查询优化）
+    projectId: text('project_id'), // 所属项目（即查询优化）
     employeeId: text('employee_id').notNull(), // 员工
     logDate: text('log_date').notNull(), // 日志日期
     hours: real('hours').notNull(), // 工时（支持 0.5 小时）
@@ -749,7 +747,7 @@ export const taskTimelogs = sqliteTable(
   },
   t => ({
     idxTask: index('idx_timelogs_task').on(t.taskId),
-    idxDepartment: index('idx_timelogs_department').on(t.departmentId),
+    idxDepartment: index('idx_timelogs_department').on(t.projectId),
     idxEmployeeDate: index('idx_timelogs_employee_date').on(t.employeeId, t.logDate),
   })
 )
@@ -759,8 +757,7 @@ export const milestones = sqliteTable(
   'milestones',
   {
     id: text('id').primaryKey(),
-    projectId: text('project_id'), // 所属项目（旧字段，逐步废弃）
-    departmentId: text('department_id'), // 所属项目（关联 departments 表）
+    projectId: text('project_id').notNull(), // 所属项目
     name: text('name').notNull(),
     description: text('description'),
     dueDate: text('due_date').notNull(), // 截止日期
@@ -773,7 +770,7 @@ export const milestones = sqliteTable(
   },
   t => ({
     idxProject: index('idx_milestones_project').on(t.projectId),
-    idxDepartment: index('idx_milestones_department').on(t.departmentId),
+    idxDepartment: index('idx_milestones_department').on(t.projectId),
   })
 )
 

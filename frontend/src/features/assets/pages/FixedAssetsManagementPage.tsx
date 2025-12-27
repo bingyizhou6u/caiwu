@@ -101,7 +101,7 @@ export function FixedAssetsManagement() {
   const { data: assets = [], isLoading, refetch } = useFixedAssets({
     search: searchParams.search,
     status: searchParams.status,
-    departmentId: searchParams.department,
+    projectId: searchParams.department,
     category: searchParams.category
   })
 
@@ -381,7 +381,7 @@ export function FixedAssetsManagement() {
             <Form.Item name="vendorId" label="供应商" className="form-no-margin-bottom">
               <VendorSelect placeholder="选择供应商" allowClear />
             </Form.Item>
-            <Form.Item name="departmentId" label="使用项目" className="form-no-margin-bottom">
+            <Form.Item name="projectId" label="使用项目" className="form-no-margin-bottom">
               <DepartmentSelect placeholder="选择项目" allowClear />
             </Form.Item>
             <Form.Item name="siteId" label="资产位置" className="form-no-margin-bottom">
@@ -432,7 +432,7 @@ export function FixedAssetsManagement() {
             <Form.Item name="vendorId" label="供应商" className="form-no-margin-bottom">
               <VendorSelect allowClear />
             </Form.Item>
-            <Form.Item name="departmentId" label="使用项目" className="form-no-margin-bottom">
+            <Form.Item name="projectId" label="使用项目" className="form-no-margin-bottom">
               <Select options={departments} showSearch optionFilterProp="label" allowClear />
             </Form.Item>
             <Form.Item name="siteId" label="资产位置" className="form-no-margin-bottom">
@@ -525,7 +525,7 @@ export function FixedAssetsManagement() {
             <Form.Item name="transferDate" label="调拨日期" required>
               <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
             </Form.Item>
-            <Form.Item name="toDepartmentId" label="调至项目">
+            <Form.Item name="toProjectId" label="调至项目">
               <DepartmentSelect placeholder="选择项目" allowClear />
             </Form.Item>
             <Form.Item name="toSiteId" label="调至位置">

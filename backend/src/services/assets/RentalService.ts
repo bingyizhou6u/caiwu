@@ -22,7 +22,7 @@ export class RentalService {
 
   // --- 物业管理 ---
 
-  async listProperties(query: { propertyType?: string; status?: string; departmentId?: string }) {
+  async listProperties(query: { propertyType?: string; status?: string; projectId?: string }) {
     return this.propertyService.listProperties(query)
   }
 
@@ -68,7 +68,7 @@ export class RentalService {
     paymentMethod?: string
     paymentAccountId?: string
     paymentDay?: number
-    departmentId?: string
+    projectId?: string
     status?: string
     memo?: string
     contractFileUrl?: string

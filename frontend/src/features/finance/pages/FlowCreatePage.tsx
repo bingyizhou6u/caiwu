@@ -28,7 +28,7 @@ export function FlowCreate() {
   // 本地状态
   const [categories, setCategories] = useState<{ value: string, label: string, kind: string }[]>([])
   const [selectedType, setSelectedType] = useState<string>('income')
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>()
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>()
   const [uploading, setUploading] = useState(false)
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [voucherUrls, setVoucherUrls] = useState<string[]>([])
@@ -94,7 +94,7 @@ export function FlowCreate() {
     form.resetFields()
     form.setFieldsValue({ type: 'income', bizDate: dayjs() })
     setSelectedType('income')
-    setSelectedDepartmentId(undefined)
+    setSelectedProjectId(undefined)
     setFileList([])
     setVoucherUrls([])
   }
@@ -107,7 +107,7 @@ export function FlowCreate() {
       }
       const values = await validateWithZod()
 
-      // 后端会根据 departmentId 自动判断是否为总部范围，无需传递 ownerScope
+      // 后端会根据 projectId 自动判断是否为总部范围，无需传递 ownerScope
       await createFlow({
         ...values,
         bizDate: values.bizDate.format('YYYY-MM-DD HH:mm:ss'),
@@ -171,11 +171,11 @@ export function FlowCreate() {
 
             {/* 右列 */}
             <Col xs={24} md={12}>
-              <Form.Item name="departmentId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>
+              <Form.Item name="projectId" label="归属项目" rules={[{ required: true, message: '请选择归属项目' }]}>
                 <DepartmentSelect
                   placeholder="请选择归属项目"
                   onChange={(value) => {
-                    setSelectedDepartmentId(value)
+                    setSelectedProjectId(value)
                     form.setFieldsValue({ siteId: undefined })
                   }}
                 />
@@ -184,15 +184,15 @@ export function FlowCreate() {
                 <Select
                   placeholder="请选择站点"
                   options={Array.isArray(sites) ? sites
-                    .filter((s: any) => !selectedDepartmentId || s.departmentId === selectedDepartmentId)
+                    .filter((s: any) => !selectedProjectId || s.projectId === selectedProjectId)
                     .map((s: any) => ({ value: s.value, label: s.label })) : []}
                   allowClear
                   onChange={(value) => {
                     if (value) {
                       const site = Array.isArray(sites) ? sites.find((s: any) => s.value === value) : undefined
                       if (site) {
-                        form.setFieldsValue({ departmentId: site.departmentId })
-                        setSelectedDepartmentId(site.departmentId)
+                        form.setFieldsValue({ projectId: site.projectId })
+                        setSelectedProjectId(site.projectId)
                       }
                     }
                   }}

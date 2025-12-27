@@ -19,7 +19,7 @@ export const createRentalPropertySchema = z.object({
     depositCents: z.number().min(0).optional(),
     paymentMethod: z.enum(['bank_transfer', 'cash', 'check']).optional(),
     paymentDay: z.number().int().min(1).max(31).optional(),
-    departmentId: z.string().optional(),
+    projectId: z.string().optional(),
     status: z.enum(['active', 'expired', 'terminated']).optional(),
     memo: z.string().optional(),
     contractFileUrl: z.string().optional(),

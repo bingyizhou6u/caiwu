@@ -25,32 +25,32 @@ export class ReportService {
     this.businessService = new BusinessReportService(db, annualLeaveService, kv)
   }
 
-  async getDashboardStats(departmentId?: string) {
-    return this.dashboardService.getDashboardStats(departmentId)
+  async getDashboardStats(projectId?: string) {
+    return this.dashboardService.getDashboardStats(projectId)
   }
 
-  async getDepartmentCashFlow(start: string, end: string, departmentIds?: string[]) {
-    return this.businessService.getDepartmentCashFlow(start, end, departmentIds)
+  async getDepartmentCashFlow(start: string, end: string, projectIds?: string[]) {
+    return this.businessService.getDepartmentCashFlow(start, end, projectIds)
   }
 
-  async getSiteGrowth(start: string, end: string, departmentId?: string) {
-    return this.businessService.getSiteGrowth(start, end, departmentId)
+  async getSiteGrowth(start: string, end: string, projectId?: string) {
+    return this.businessService.getSiteGrowth(start, end, projectId)
   }
 
-  async getArApSummary(kind: 'AR' | 'AP', start: string, end: string, departmentId?: string) {
-    return this.financialService.getArApSummary(kind, start, end, departmentId)
+  async getArApSummary(kind: 'AR' | 'AP', start: string, end: string, projectId?: string) {
+    return this.financialService.getArApSummary(kind, start, end, projectId)
   }
 
-  async getArApDetail(kind: 'AR' | 'AP', start: string, end: string, departmentId?: string) {
-    return this.financialService.getArApDetail(kind, start, end, departmentId)
+  async getArApDetail(kind: 'AR' | 'AP', start: string, end: string, projectId?: string) {
+    return this.financialService.getArApDetail(kind, start, end, projectId)
   }
 
-  async getExpenseSummary(start: string, end: string, departmentId?: string) {
-    return this.financialService.getExpenseSummary(start, end, departmentId)
+  async getExpenseSummary(start: string, end: string, projectId?: string) {
+    return this.financialService.getExpenseSummary(start, end, projectId)
   }
 
-  async getExpenseDetail(start: string, end: string, categoryId?: string, departmentId?: string) {
-    return this.financialService.getExpenseDetail(start, end, categoryId, departmentId)
+  async getExpenseDetail(start: string, end: string, categoryId?: string, projectId?: string) {
+    return this.financialService.getExpenseDetail(start, end, categoryId, projectId)
   }
 
   async getAccountBalance(asOf: string): Promise<{ rows: any[]; asOf: string }> {
@@ -59,20 +59,20 @@ export class ReportService {
 
   // Note: getBorrowingSummary and getBorrowingDetail removed - borrowing tracked via flows
 
-  async getNewSiteRevenue(start: string, end: string, days: number = 30, departmentId?: string) {
-    return this.businessService.getNewSiteRevenue(start, end, days, departmentId)
+  async getNewSiteRevenue(start: string, end: string, days: number = 30, projectId?: string) {
+    return this.businessService.getNewSiteRevenue(start, end, days, projectId)
   }
 
   async getEmployeeSalaryReport(
     year: number,
     month?: number,
-    departmentId?: string,
+    projectId?: string,
     useCache = true
   ) {
-    return this.businessService.getEmployeeSalaryReport(year, month, departmentId, useCache)
+    return this.businessService.getEmployeeSalaryReport(year, month, projectId, useCache)
   }
 
-  async getAnnualLeaveReport(departmentId?: string, orgDepartmentId?: string) {
-    return this.businessService.getAnnualLeaveReport(departmentId, orgDepartmentId)
+  async getAnnualLeaveReport(projectId?: string, orgProjectId?: string) {
+    return this.businessService.getAnnualLeaveReport(projectId, orgProjectId)
   }
 }

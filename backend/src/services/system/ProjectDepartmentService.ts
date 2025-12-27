@@ -15,7 +15,7 @@ export class ProjectDepartmentService {
   /**
    * 获取总部的 department ID
    */
-  async getHQDepartmentId(): Promise<string | null> {
+  async getHQProjectId(): Promise<string | null> {
     const hqDept = await this.db.query.projects.findFirst({
       where: eq(projects.name, '总部'),
     })
@@ -25,8 +25,8 @@ export class ProjectDepartmentService {
   /**
    * 获取或创建总部的 department ID
    */
-  async getOrCreateHQDepartmentId(): Promise<string> {
-    let hqDeptId = await this.getHQDepartmentId()
+  async getOrCreateHQProjectId(): Promise<string> {
+    let hqDeptId = await this.getHQProjectId()
     if (!hqDeptId) {
       // 如果不存在总部部门，创建一个
       hqDeptId = uuid()
@@ -139,14 +139,14 @@ export class ProjectDepartmentService {
     }
 
     // 检查依赖关系
-    const siteCount = await this.db.$count(sites, eq(sites.departmentId, id))
+    const siteCount = await this.db.$count(sites, eq(sites.projectId, id))
     if (siteCount > 0) {
       throw Errors.BUSINESS_ERROR('无法删除，该项目下还有站点')
     }
 
     const employeeCount = await this.db.$count(
       schema.employees,
-      eq(schema.employees.departmentId, id)
+      eq(schema.employees.projectId, id)
     )
     if (employeeCount > 0) {
       throw Errors.BUSINESS_ERROR('无法删除，该项目下还有员工')

@@ -325,7 +325,7 @@ departmentsRoutes.openapi(
 
     const result = await service.createSite({
       name: body.name,
-      departmentId: body.departmentId,
+      projectId: body.projectId,
     })
 
     logAuditAction(
@@ -333,12 +333,12 @@ departmentsRoutes.openapi(
       'create',
       'site',
       result.id,
-      JSON.stringify({ name: body.name, departmentId: body.departmentId })
+      JSON.stringify({ name: body.name, projectId: body.projectId })
     )
 
     return {
       id: result.id,
-      departmentId: result.departmentId,
+      projectId: result.projectId,
       name: result.name,
       active: 1,
     }
@@ -388,7 +388,7 @@ departmentsRoutes.openapi(
 
     await service.updateSite(id, {
       name: body.name,
-      departmentId: body.departmentId,
+      projectId: body.projectId,
       active: body.active ?? undefined,
     })
 

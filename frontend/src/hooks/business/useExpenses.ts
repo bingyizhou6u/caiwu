@@ -8,7 +8,7 @@ export interface ExpenseReimbursement {
     id: string
     employeeId: string
     employeeName?: string
-    departmentId?: string
+    projectId?: string
     departmentName?: string
     expenseType: string
     amountCents: number
