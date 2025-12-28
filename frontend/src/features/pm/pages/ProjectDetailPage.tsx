@@ -1,6 +1,6 @@
 /**
  * 项目详情页面
- * 包含项目基本信息、任务列表、工时统计
+ * 包含项目基本信息、任务列表、工时统计、甘特图
  */
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -11,7 +11,7 @@ import {
 import {
     ArrowLeftOutlined, EditOutlined, DeleteOutlined, PlusOutlined,
     ProjectOutlined, ClockCircleOutlined, TeamOutlined, CalendarOutlined,
-    MoreOutlined, CheckCircleOutlined
+    MoreOutlined, CheckCircleOutlined, BarChartOutlined
 } from '@ant-design/icons'
 import {
     useProject, useDeleteProject, useTasks, useTeamWorkloadSummary,
@@ -19,6 +19,7 @@ import {
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
 import { StatCard } from '../../../components/common'
+import { GanttChart } from '../components/GanttChart'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 
@@ -299,6 +300,14 @@ export default function ProjectDetailPage() {
                                 rowKey="employeeId"
                                 pagination={false}
                                 size="small"
+                            />
+                        </TabPane>
+
+                        <TabPane tab={<span><BarChartOutlined /> 甘特图</span>} key="gantt">
+                            <GanttChart
+                                tasks={tasks}
+                                projectStartDate={project?.startDate}
+                                projectEndDate={project?.endDate}
                             />
                         </TabPane>
                     </Tabs>
