@@ -93,7 +93,8 @@ export function MainLayout() {
             }
         }
         logout()
-        navigate('/login')
+        // 同时注销 Cloudflare Access，避免自动重新登录
+        window.location.href = 'https://bingyizhou6u.cloudflareaccess.com/cdn-cgi/access/logout'
     }
 
     const userMenu: MenuProps['items'] = [
