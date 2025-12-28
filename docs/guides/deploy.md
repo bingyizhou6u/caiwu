@@ -1,5 +1,41 @@
 # 部署到 Cloudflare
 
+## 部署架构概览
+
+| 服务 | 类型 | 项目名称 | Git 自动部署 |
+|------|------|----------|-------------|
+| **前端** | Cloudflare Pages | `manager` | ✅ main 分支 |
+| **后端 API** | Cloudflare Workers | `caiwu-backend` | ✅ main 分支 |
+| **邮件服务** | Cloudflare Workers | `caiwu-email` | ✅ main 分支 |
+
+### 访问地址
+
+- **前端**: https://manager.pages.dev (或自定义域名)
+- **后端 API**: https://caiwu-backend.bingyizhou6u.workers.dev
+- **邮件服务**: 通过 Service Binding 内部调用（不对外暴露）
+
+### CI/CD 流程
+
+推送到 `main` 分支后，Cloudflare 自动：
+1. 拉取代码
+2. 安装依赖
+3. 构建部署
+
+**前端构建配置** (Pages: manager):
+- 根目录: `frontend`
+- 构建命令: `npm install && npm run build`
+- 输出目录: `dist`
+
+**后端部署配置** (Workers: caiwu-backend):
+- 根目录: `/backend`
+- 部署命令: `npx wrangler deploy src/index.ts`
+
+**邮件服务配置** (Workers: caiwu-email):
+- 根目录: `/email-worker`
+- 配置文件: `wrangler.jsonc`
+
+---
+
 ## 数据库迁移管理
 
 ### 迁移流程概述
