@@ -14,6 +14,8 @@ export type Env = {
   CF_ACCOUNT_ID?: string // Cloudflare Account ID
   CF_ZONE_ID?: string // Zone ID（创建自定义规则需要）
   CF_IP_LIST_ID?: string // IP List ID（如果已创建，可指定）
+  CF_ACCESS_TOKEN?: string // Access Policy 同步 Token
+  CF_ACCESS_APP_ID?: string // Access Application ID
   AUTH_JWT_SECRET: string
   INIT_ADMIN_PASSWORD_HASH: string // 初始化管理员密码哈希（必需，用于数据库初始化）
 }

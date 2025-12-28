@@ -49,7 +49,8 @@ systemConfigRoutes.openapi(
   createRouteHandler(async (c: any) => {
     const service = c.var.services.systemConfig
     if (!service) {
-      throw Errors.INTERNAL_ERROR('Service not initialized')}
+      throw Errors.INTERNAL_ERROR('Service not initialized')
+    }
 
     const config = await service.get('email_notification_enabled')
     const enabled = config?.value === true || config?.value === 'true'
@@ -166,7 +167,8 @@ systemConfigRoutes.openapi(
 
     const key = c.req.param('key')
     if (!key) {
-      throw Errors.VALIDATION_ERROR('Config key is required')}
+      throw Errors.VALIDATION_ERROR('Config key is required')
+    }
     const body = c.req.valid('json') as { value: any; description?: string | null }
 
     const userId = c.get('employeeId') as string | undefined
@@ -229,7 +231,8 @@ systemConfigRoutes.openapi(
 
     const key = c.req.param('key')
     if (!key) {
-      throw Errors.VALIDATION_ERROR('Config key is required')}
+      throw Errors.VALIDATION_ERROR('Config key is required')
+    }
     const service = c.var.services.systemConfig
     const config = await service.get(key)
 
@@ -240,3 +243,58 @@ systemConfigRoutes.openapi(
     return { key: config.key, value: config.value, description: config.description }
   }) as any
 )
+
+// ==================== Access Policy Sync ====================
+
+import { AccessPolicySyncService } from '../../services/system/AccessPolicySyncService.js'
+
+/**
+ * 同步员工邮箱到 Cloudflare Access 策略
+ * 仅 hq_admin 可操作
+ */
+const syncAccessPolicyRoute = createRoute({
+  method: 'post',
+  path: '/system-config/sync-access-policy',
+  summary: 'Sync employee emails to Cloudflare Access policy',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              synced: z.number(),
+            }).optional(),
+            error: z.string().optional(),
+          }),
+        },
+      },
+      description: 'Sync result',
+    },
+  },
+})
+
+systemConfigRoutes.openapi(
+  syncAccessPolicyRoute,
+  createRouteHandler(async (c: any) => {
+    // 仅 hq_admin 可操作
+    if (!hasPermission(c, 'system', 'config', 'manage')) {
+      throw Errors.FORBIDDEN('需要系统管理权限')
+    }
+
+    const db = c.var.db
+    const syncService = new AccessPolicySyncService(db, c.env.CF_ACCESS_TOKEN)
+
+    const result = await syncService.syncAllEmployeeEmails()
+
+    if (!result.success) {
+      return { success: false, error: result.error }
+    }
+
+    // 记录审计日志
+    logAuditAction(c, 'access_policy_sync', 'sync', undefined, { synced: result.synced })
+
+    return { synced: result.synced }
+  }) as any
+)
+
