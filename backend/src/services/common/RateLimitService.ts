@@ -17,33 +17,39 @@ export class RateLimitService {
     limit: number,
     windowMs: number
   ): Promise<{ allowed: boolean; remaining: number; retryAfterMs?: number }> {
-    const now = Date.now()
-    const windowKey = `ratelimit:${key}`
+    try {
+      const now = Date.now()
+      const windowKey = `ratelimit:${key}`
 
-    // 获取当前窗口的请求记录
-    const data = await this.kv.get<{ timestamps: number[] }>(windowKey, 'json')
-    const timestamps = data?.timestamps || []
+      // 获取当前窗口的请求记录
+      const data = await this.kv.get<{ timestamps: number[] }>(windowKey, 'json')
+      const timestamps = data?.timestamps || []
 
-    // 过滤掉窗口外的旧请求
-    const windowStart = now - windowMs
-    const validTimestamps = timestamps.filter(ts => ts > windowStart)
+      // 过滤掉窗口外的旧请求
+      const windowStart = now - windowMs
+      const validTimestamps = timestamps.filter(ts => ts > windowStart)
 
-    // 检查是否超过限制
-    if (validTimestamps.length >= limit) {
-      // 计算需要等待的时间
-      const oldestInWindow = Math.min(...validTimestamps)
-      const retryAfterMs = oldestInWindow + windowMs - now
+      // 检查是否超过限制
+      if (validTimestamps.length >= limit) {
+        // 计算需要等待的时间
+        const oldestInWindow = Math.min(...validTimestamps)
+        const retryAfterMs = oldestInWindow + windowMs - now
+
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfterMs: Math.max(0, retryAfterMs),
+        }
+      }
 
       return {
-        allowed: false,
-        remaining: 0,
-        retryAfterMs: Math.max(0, retryAfterMs),
+        allowed: true,
+        remaining: limit - validTimestamps.length - 1,
       }
-    }
-
-    return {
-      allowed: true,
-      remaining: limit - validTimestamps.length - 1,
+    } catch (error) {
+      // 故障开放原则：KV 错误时允许通过
+      console.warn(`[RateLimit] Access check failed for ${key}, allowing request:`, error)
+      return { allowed: true, remaining: 1 }
     }
   }
 
@@ -53,23 +59,28 @@ export class RateLimitService {
    * @param windowMs 时间窗口(毫秒)
    */
   async recordRequest(key: string, windowMs: number): Promise<void> {
-    const now = Date.now()
-    const windowKey = `ratelimit:${key}`
+    try {
+      const now = Date.now()
+      const windowKey = `ratelimit:${key}`
 
-    // 获取当前记录
-    const data = await this.kv.get<{ timestamps: number[] }>(windowKey, 'json')
-    const timestamps = data?.timestamps || []
+      // 获取当前记录
+      const data = await this.kv.get<{ timestamps: number[] }>(windowKey, 'json')
+      const timestamps = data?.timestamps || []
 
-    // 过滤旧记录并添加新记录
-    const windowStart = now - windowMs
-    const validTimestamps = timestamps.filter(ts => ts > windowStart)
-    validTimestamps.push(now)
+      // 过滤旧记录并添加新记录
+      const windowStart = now - windowMs
+      const validTimestamps = timestamps.filter(ts => ts > windowStart)
+      validTimestamps.push(now)
 
-    // 保存更新后的记录，TTL 设为窗口时间的 2 倍
-    const ttlSeconds = Math.ceil((windowMs * 2) / 1000)
-    await this.kv.put(windowKey, JSON.stringify({ timestamps: validTimestamps }), {
-      expirationTtl: ttlSeconds,
-    })
+      // 保存更新后的记录，TTL 设为窗口时间的 2 倍
+      const ttlSeconds = Math.ceil((windowMs * 2) / 1000)
+      await this.kv.put(windowKey, JSON.stringify({ timestamps: validTimestamps }), {
+        expirationTtl: ttlSeconds,
+      })
+    } catch (error) {
+      // 忽略写入错误（如 429 限流）
+      console.warn(`[RateLimit] Record failed for ${key}:`, error)
+    }
   }
 
   /**
@@ -84,9 +95,11 @@ export class RateLimitService {
     limit: number,
     windowMs: number
   ): Promise<{ allowed: boolean; remaining: number; retryAfterMs?: number }> {
+    // checkLimit 内部已处理异常
     const result = await this.checkLimit(key, limit, windowMs)
 
     if (result.allowed) {
+      // recordRequest 内部已处理异常
       await this.recordRequest(key, windowMs)
     }
 
@@ -98,8 +111,12 @@ export class RateLimitService {
    * @param key 限流键
    */
   async reset(key: string): Promise<void> {
-    const windowKey = `ratelimit:${key}`
-    await this.kv.delete(windowKey)
+    try {
+      const windowKey = `ratelimit:${key}`
+      await this.kv.delete(windowKey)
+    } catch (error) {
+      console.warn(`[RateLimit] Reset failed for ${key}:`, error)
+    }
   }
 }
 
