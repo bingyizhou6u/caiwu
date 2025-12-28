@@ -56,6 +56,7 @@ export const pageTitles: Record<string, string> = {
     'change-password': '修改密码',
     // 项目管理(PM)
     'pm-config': '项目配置',
+    'org-departments': '部门管理',
     'pm-projects': '进度列表',
     'pm-kanban': '任务看板',
     'pm-timelogs': '工时管理',
@@ -243,6 +244,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     const system: MenuProps['items'] = []
     // 系统管理：只有总部主管 (DataScope='all') 可见
     if (userInfo?.position?.dataScope === 'all') {
+        system.push({ key: 'org-departments', label: '部门管理', icon: getMenuIcon('org-departments') })
         system.push({ key: 'position-permissions', label: '权限管理', icon: getMenuIcon('position-permissions') })
         system.push({ key: 'email-notification', label: '邮件提醒设置', icon: getMenuIcon('email-notification') })
         system.push({ key: 'ip-whitelist', label: 'IP白名单', icon: getMenuIcon('ip-whitelist') })
@@ -304,6 +306,7 @@ export const KEY_TO_PATH: Record<string, string> = {
     'ip-whitelist': '/system/ip-whitelist',
     'audit': '/system/audit',
     'change-password': '/change-password',
+    'org-departments': '/system/org-departments',
 
     // PM
     'pm-config': '/pm/config',

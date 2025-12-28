@@ -123,3 +123,152 @@ orgDepartmentsRoutes.openapi(
     }
   }) as any
 )
+
+// 创建组织部门
+const createOrgDepartmentRoute = createRoute({
+  method: 'post',
+  path: '/',
+  summary: '创建组织部门',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            projectId: z.string(),
+            parentId: z.string().optional().nullable(),
+            name: z.string().min(1),
+            code: z.string().optional().nullable(),
+            description: z.string().optional().nullable(),
+            allowedModules: z.array(z.string()).optional().nullable(),
+            allowedPositions: z.array(z.string()).optional().nullable(),
+            defaultPositionId: z.string().optional().nullable(),
+            sortOrder: z.number().int().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: orgDepartmentSchema,
+          }),
+        },
+      },
+      description: '创建成功',
+    },
+  },
+})
+
+orgDepartmentsRoutes.openapi(
+  createOrgDepartmentRoute,
+  createRouteHandler(async (c: any) => {
+    const position = getUserPosition(c)
+    if (!position || position.dataScope !== 'all') {
+      throw Errors.FORBIDDEN('无权限创建组织部门')
+    }
+    const body = await c.req.json()
+    const service = c.var.services.orgDepartment
+    const result = await service.createOrgDepartment(body)
+    return result
+  }) as any
+)
+
+// 更新组织部门
+const updateOrgDepartmentRoute = createRoute({
+  method: 'put',
+  path: '/{id}',
+  summary: '更新组织部门',
+  request: {
+    params: z.object({
+      id: z.string(),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            parentId: z.string().optional().nullable(),
+            name: z.string().min(1).optional(),
+            code: z.string().optional().nullable(),
+            description: z.string().optional().nullable(),
+            allowedModules: z.array(z.string()).optional().nullable(),
+            allowedPositions: z.array(z.string()).optional().nullable(),
+            defaultPositionId: z.string().optional().nullable(),
+            sortOrder: z.number().int().optional(),
+            active: z.number().int().min(0).max(1).optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: orgDepartmentSchema,
+          }),
+        },
+      },
+      description: '更新成功',
+    },
+  },
+})
+
+orgDepartmentsRoutes.openapi(
+  updateOrgDepartmentRoute,
+  createRouteHandler(async (c: any) => {
+    const position = getUserPosition(c)
+    if (!position || position.dataScope !== 'all') {
+      throw Errors.FORBIDDEN('无权限更新组织部门')
+    }
+    const id = c.req.param('id')
+    const body = await c.req.json()
+    const service = c.var.services.orgDepartment
+    const result = await service.updateOrgDepartment(id, body)
+    return result
+  }) as any
+)
+
+// 删除组织部门
+const deleteOrgDepartmentRoute = createRoute({
+  method: 'delete',
+  path: '/{id}',
+  summary: '删除组织部门',
+  request: {
+    params: z.object({
+      id: z.string(),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+          }),
+        },
+      },
+      description: '删除成功',
+    },
+  },
+})
+
+orgDepartmentsRoutes.openapi(
+  deleteOrgDepartmentRoute,
+  createRouteHandler(async (c: any) => {
+    const position = getUserPosition(c)
+    if (!position || position.dataScope !== 'all') {
+      throw Errors.FORBIDDEN('无权限删除组织部门')
+    }
+    const id = c.req.param('id')
+    const service = c.var.services.orgDepartment
+    await service.deleteOrgDepartment(id)
+    return { success: true }
+  }) as any
+)
+

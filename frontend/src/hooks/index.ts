@@ -31,6 +31,7 @@ export { useMyPendingApprovals, useMyApprovalHistory, useApproveLeave as useAppr
 export { useFixedAssets, useFixedAsset, useCreateFixedAsset, useUpdateFixedAsset, useDeleteFixedAsset, useBatchDeleteFixedAsset, useTransferFixedAsset, useDepreciateFixedAsset, useAllocateFixedAsset, useReturnFixedAsset, useFixedAssetPurchase, useFixedAssetSale, useFixedAssetAllocations } from './business/useFixedAssets'
 export { useHealth, useLogin, useRequestTotpReset, useVerifyTotpResetToken, useConfirmTotpReset, useGenerateTotpRebind, useConfirmTotpRebind } from './business/useAuth'
 export { usePermissionConfig } from './usePermissionConfig'
+export { useOrgDepartments, useOrgDepartmentOptions, useCreateOrgDepartment, useUpdateOrgDepartment, useDeleteOrgDepartment, type OrgDepartment } from './business/useOrgDepartments'
 
 // Form Hooks
 export { useFormModal, useMultipleModals } from './forms/useFormModal'

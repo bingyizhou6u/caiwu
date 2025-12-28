@@ -76,24 +76,24 @@ export class OrgDepartmentService {
     const [positionsList, parentsList, projectsList] = await Promise.all([
       positionIds.length > 0
         ? this.db
-            .select({ id: p.id, name: p.name })
-            .from(p)
-            .where(inArray(p.id, positionIds))
-            .all()
+          .select({ id: p.id, name: p.name })
+          .from(p)
+          .where(inArray(p.id, positionIds))
+          .all()
         : Promise.resolve([]),
       parentIds.length > 0
         ? this.db
-            .select({ id: parent.id, name: parent.name })
-            .from(parent)
-            .where(inArray(parent.id, parentIds))
-            .all()
+          .select({ id: parent.id, name: parent.name })
+          .from(parent)
+          .where(inArray(parent.id, parentIds))
+          .all()
         : Promise.resolve([]),
       projectIds.length > 0
         ? this.db
-            .select({ id: d.id, name: d.name })
-            .from(d)
-            .where(inArray(d.id, projectIds))
-            .all()
+          .select({ id: d.id, name: d.name })
+          .from(d)
+          .where(inArray(d.id, projectIds))
+          .all()
         : Promise.resolve([]),
     ])
 
@@ -152,6 +152,128 @@ export class OrgDepartmentService {
       allowedModules: row.allowedModules ? JSON.parse(row.allowedModules) : ['*'],
       allowedPositions: row.allowedPositions ? JSON.parse(row.allowedPositions) : null,
     }
+  }
+
+  /**
+   * 创建组织部门
+   */
+  async createOrgDepartment(data: {
+    projectId: string
+    parentId?: string | null
+    name: string
+    code?: string | null
+    description?: string | null
+    allowedModules?: string[] | null
+    allowedPositions?: string[] | null
+    defaultPositionId?: string | null
+    sortOrder?: number
+  }) {
+    const id = crypto.randomUUID()
+    const now = Date.now()
+
+    await this.db.insert(orgDepartments).values({
+      id,
+      projectId: data.projectId,
+      parentId: data.parentId || null,
+      name: data.name,
+      code: data.code || null,
+      description: data.description || null,
+      allowedModules: data.allowedModules ? JSON.stringify(data.allowedModules) : null,
+      allowedPositions: data.allowedPositions ? JSON.stringify(data.allowedPositions) : null,
+      defaultPositionId: data.defaultPositionId || null,
+      sortOrder: data.sortOrder ?? 0,
+      active: 1,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return this.getOrgDepartment(id)
+  }
+
+  /**
+   * 更新组织部门
+   */
+  async updateOrgDepartment(
+    id: string,
+    data: {
+      parentId?: string | null
+      name?: string
+      code?: string | null
+      description?: string | null
+      allowedModules?: string[] | null
+      allowedPositions?: string[] | null
+      defaultPositionId?: string | null
+      sortOrder?: number
+      active?: number
+    }
+  ) {
+    const existing = await this.getOrgDepartment(id)
+    if (!existing) {
+      throw Errors.NOT_FOUND('部门不存在')
+    }
+
+    const updateData: Record<string, any> = {
+      updatedAt: Date.now(),
+    }
+
+    if (data.parentId !== undefined) updateData.parentId = data.parentId
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.code !== undefined) updateData.code = data.code
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.allowedModules !== undefined) {
+      updateData.allowedModules = data.allowedModules ? JSON.stringify(data.allowedModules) : null
+    }
+    if (data.allowedPositions !== undefined) {
+      updateData.allowedPositions = data.allowedPositions ? JSON.stringify(data.allowedPositions) : null
+    }
+    if (data.defaultPositionId !== undefined) updateData.defaultPositionId = data.defaultPositionId
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder
+    if (data.active !== undefined) updateData.active = data.active
+
+    await this.db.update(orgDepartments).set(updateData).where(eq(orgDepartments.id, id))
+
+    return this.getOrgDepartment(id)
+  }
+
+  /**
+   * 删除组织部门（软删除）
+   */
+  async deleteOrgDepartment(id: string) {
+    const existing = await this.getOrgDepartment(id)
+    if (!existing) {
+      throw Errors.NOT_FOUND('部门不存在')
+    }
+
+    // 检查是否有子部门
+    const children = await this.db
+      .select({ id: orgDepartments.id })
+      .from(orgDepartments)
+      .where(and(eq(orgDepartments.parentId, id), eq(orgDepartments.active, 1)))
+      .all()
+
+    if (children.length > 0) {
+      throw Errors.VALIDATION_ERROR('该部门下还有子部门，无法删除')
+    }
+
+    // 检查是否有员工
+    const { employees } = await import('../../db/schema.js')
+    const employeeCount = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(employees)
+      .where(and(eq(employees.orgDepartmentId, id), eq(employees.active, 1)))
+      .get()
+
+    if (employeeCount && employeeCount.count > 0) {
+      throw Errors.VALIDATION_ERROR('该部门下还有员工，无法删除')
+    }
+
+    // 软删除
+    await this.db
+      .update(orgDepartments)
+      .set({ active: 0, updatedAt: Date.now() })
+      .where(eq(orgDepartments.id, id))
+
+    return { success: true }
   }
 }
 

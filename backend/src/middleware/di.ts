@@ -7,6 +7,7 @@ import { KVCachedMasterDataService } from '../services/system/KVCachedMasterData
 import { AuditService } from '../services/system/AuditService.js'
 import { OperationHistoryService } from '../services/system/OperationHistoryService.js'
 import { IPWhitelistService } from '../services/system/IPWhitelistService.js'
+import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
 // HR services
 import { EmployeeService } from '../services/hr/EmployeeService.js'
 import { PositionService } from '../services/hr/PositionService.js'
@@ -112,6 +113,9 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     const taskService = new TaskService(db)
     const taskTimelogService = new TaskTimelogService(db)
 
+    // Org department service
+    const orgDepartmentService = new OrgDepartmentService(db)
+
     const myService = new MyService(
       db,
       employeeLeaveService,
@@ -167,6 +171,8 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
       project: projectService,
       task: taskService,
       taskTimelog: taskTimelogService,
+      // System services
+      orgDepartment: orgDepartmentService,
     })
 
     await next()

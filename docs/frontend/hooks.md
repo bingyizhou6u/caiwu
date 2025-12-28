@@ -62,6 +62,14 @@ hooks/
 - `useMyReimbursements` - 我的报销
 - `useMyProfile` - 我的资料
 
+### 项目管理 (PM)
+- `useProjects` - 项目列表
+- `useTasks`, `useTask` - 任务列表/单个任务
+- `useKanbanTasks` - 看板数据
+- `useCreateTask`, `useUpdateTask`, `useDeleteTask` - 任务 CRUD
+- `useUpdateTaskStatus` - 更新任务状态
+- `useTimelogs`, `useCreateTimelog` - 工时记录
+
 ---
 
 ## 🎨 表单 Hooks
@@ -92,4 +100,4 @@ function EmployeePage() {
 
 ---
 
-**最后更新**：2025-12-27
+**最后更新**：2025-12-28

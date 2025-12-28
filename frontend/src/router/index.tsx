@@ -8,6 +8,7 @@ import { Spin } from 'antd'
 const loaders: Record<string, () => Promise<any>> = {
     // System
     'system/departments': () => import('../features/system/pages/DepartmentManagementPage').then(m => ({ default: m.DepartmentManagement })),
+    'system/org-departments': () => import('../features/system/pages/OrgDepartmentManagementPage').then(m => ({ default: m.OrgDepartmentManagement })),
     'system/categories': () => import('../features/system/pages/CategoryManagementPage').then(m => ({ default: m.CategoryManagement })),
     'system/accounts': () => import('../features/system/pages/AccountManagementPage').then(m => ({ default: m.AccountManagement })),
     'system/currencies': () => import('../features/system/pages/CurrencyManagementPage').then(m => ({ default: m.CurrencyManagement })),
@@ -81,6 +82,7 @@ const loaders: Record<string, () => Promise<any>> = {
 
 // System
 const DepartmentManagement = lazy(loaders['system/departments'])
+const OrgDepartmentManagement = lazy(loaders['system/org-departments'])
 const CategoryManagement = lazy(loaders['system/categories'])
 const AccountManagement = lazy(loaders['system/accounts'])
 const CurrencyManagement = lazy(loaders['system/currencies'])
@@ -244,6 +246,7 @@ export const router = createBrowserRouter([
 
             // System
             { path: 'system/departments', element: <Suspense fallback={<Loading />}><DepartmentManagement /></Suspense> },
+            { path: 'system/org-departments', element: <Suspense fallback={<Loading />}><OrgDepartmentManagement /></Suspense> },
             { path: 'system/categories', element: <Suspense fallback={<Loading />}><CategoryManagement /></Suspense> },
             { path: 'system/accounts', element: <Suspense fallback={<Loading />}><AccountManagement /></Suspense> },
             { path: 'system/currencies', element: <Suspense fallback={<Loading />}><CurrencyManagement /></Suspense> },

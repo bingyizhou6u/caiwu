@@ -49,6 +49,10 @@
 | | `rental_payable_bills` | 应付租金 |
 | | `dormitory_allocations` | 宿舍分配 |
 | **站点** | `site_bills` | 站点账单（水电网） |
+| **项目管理** | `projects` | 项目（原 departments） |
+| | `requirements` | 需求 |
+| | `tasks` | 任务（支持多人员分配） |
+| | `task_timelogs` | 工时记录 |
 
 ---
 
@@ -142,4 +146,4 @@ erDiagram
 
 ---
 
-**最后更新**：2025-12-27
+**最后更新**：2025-12-28
