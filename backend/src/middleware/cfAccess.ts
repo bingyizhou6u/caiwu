@@ -33,7 +33,7 @@ interface JwksResponse {
 }
 
 // Access 配置
-const ACCESS_TEAM_DOMAIN = 'bingyizhou6u.cloudflareaccess.com'
+const ACCESS_TEAM_DOMAIN = 'ar-teams.cloudflareaccess.com'
 const ACCESS_AUD = '391a8ccf810437fb09d8216696063ae175eaf8b7eeea72ccb873d658b6aa058d'
 
 // 缓存 JWKS 公钥
