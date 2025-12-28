@@ -5,6 +5,7 @@ import { getMenuIcon } from './menuIcons'
 export const pageTitles: Record<string, string> = {
     // 我的工作台
     'my-center': '个人中心',
+    'my-tasks': '我的任务',
     'my-leaves': '我的请假',
     'my-reimbursements': '我的报销',
     'my-assets': '我的资产',
@@ -68,6 +69,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
     // 1. 我的工作台（所有人可见）
     const myCenter: MenuProps['items'] = []
     myCenter.push({ key: 'my-center', label: '个人中心', icon: getMenuIcon('my-center') })
+    myCenter.push({ key: 'my-tasks', label: '我的任务', icon: getMenuIcon('my-tasks') })
     myCenter.push({ key: 'my-leaves', label: '我的请假', icon: getMenuIcon('my-leaves') })
     myCenter.push({ key: 'my-reimbursements', label: '我的报销', icon: getMenuIcon('my-reimbursements') })
     myCenter.push({ key: 'my-assets', label: '我的资产', icon: getMenuIcon('my-assets') })
@@ -260,6 +262,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
 // Map menu key to path
 export const KEY_TO_PATH: Record<string, string> = {
     'my-center': '/my/center',
+    'my-tasks': '/my/tasks',
     'my-leaves': '/my/leaves',
     'my-reimbursements': '/my/reimbursements',
     'my-assets': '/my/assets',

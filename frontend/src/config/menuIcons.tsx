@@ -38,6 +38,7 @@ import {
     ThunderboltFilled,
     ProjectOutlined,
     ClockCircleOutlined,
+    CheckSquareOutlined,
 } from '@ant-design/icons'
 import React from 'react'
 
@@ -54,6 +55,7 @@ export const menuIcons: Record<string, React.ReactNode> = {
 
     // 我的工作台
     'my-center': <UserOutlined />,
+    'my-tasks': <CheckSquareOutlined />,
     'my-leaves': <CalendarOutlined />,
     'my-reimbursements': <FileTextOutlined />,
     'my-borrowings': <CreditCardOutlined />,

@@ -56,6 +56,7 @@ const loaders: Record<string, () => Promise<any>> = {
 
     // My
     'my/center': () => import('../features/my/pages/MyCenterPage').then(m => ({ default: m.MyCenter })),
+    'my/tasks': () => import('../features/my/pages/MyTasksPage').then(m => ({ default: m.MyTasksPage })),
     'my/leaves': () => import('../features/my/pages/MyLeavesPage').then(m => ({ default: m.MyLeaves })),
     'my/reimbursements': () => import('../features/my/pages/MyReimbursementsPage').then(m => ({ default: m.MyReimbursements })),
     'my/assets': () => import('../features/my/pages/MyAssetsPage').then(m => ({ default: m.MyAssets })),
@@ -130,6 +131,7 @@ const ReportAccountBalance = lazy(loaders['reports/account-balance'])
 
 // My
 const MyCenter = lazy(loaders['my/center'])
+const MyTasks = lazy(loaders['my/tasks'])
 const MyLeaves = lazy(loaders['my/leaves'])
 const MyReimbursements = lazy(loaders['my/reimbursements'])
 const MyAssets = lazy(loaders['my/assets'])
@@ -202,6 +204,7 @@ export const router = createBrowserRouter([
 
             // My
             { path: 'my/center', element: <Suspense fallback={<Loading />}><MyCenter /></Suspense> },
+            { path: 'my/tasks', element: <Suspense fallback={<Loading />}><MyTasks /></Suspense> },
             { path: 'my/leaves', element: <Suspense fallback={<Loading />}><MyLeaves /></Suspense> },
             { path: 'my/reimbursements', element: <Suspense fallback={<Loading />}><MyReimbursements /></Suspense> },
             { path: 'my/assets', element: <Suspense fallback={<Loading />}><MyAssets /></Suspense> },
