@@ -23,6 +23,8 @@ export type AppVariables = {
   apiVersion?: string // API 版本（v1/v2/v3）
   employeeId?: string
   sessionId?: string
+  cfAccessEmail?: string // Cloudflare Access 验证的邮箱
+  cfAccessSub?: string // Cloudflare Access 用户 ID
   userPosition?: {
     id: string
     code: string
