@@ -1,4 +1,20 @@
 {
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "caiwu-email",
+    "main": "src/index.ts",
+    "compatibility_date": "2024-11-21",
+    "compatibility_flags": [
+        "nodejs_compat"
+    ],
+    "account_id": "611d1a2e53f6c6d0922ff231e6a63211",
+    "send_email": [
+        {
+            "name": "EMAIL"
+        }
+    ],
+    "vars": {
+        "EMAIL_FROM": "noreply@cloudflarets.com"
+    },
     "observability": {
         "enabled": false,
         "head_sampling_rate": 1,
