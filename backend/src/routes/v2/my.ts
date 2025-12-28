@@ -695,3 +695,44 @@ myRoutes.openapi(clockOutRoute, createProtectedHandler(async (c, employeeId) => 
     status: result.status,
   }
 }))
+
+// 个人日历
+const calendarEventSchema = z.object({
+  date: z.string(),
+  type: z.enum(['task', 'leave', 'reminder']),
+  title: z.string(),
+  color: z.string(),
+  meta: z.record(z.any()).optional(),
+})
+
+const getCalendarRoute = createRoute({
+  method: 'get',
+  path: '/my/calendar',
+  tags: ['My'],
+  summary: 'Get personal calendar events',
+  request: {
+    query: z.object({
+      month: z.string().regex(/^\d{4}-\d{2}$/, '格式: YYYY-MM'),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              events: z.array(calendarEventSchema),
+            }),
+          }),
+        },
+      },
+      description: 'Calendar events',
+    },
+  },
+})
+
+myRoutes.openapi(getCalendarRoute, createProtectedHandler(async (c, employeeId) => {
+  const month = c.req.query('month') || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  return await c.var.services.my.getCalendarEvents(employeeId, month)
+}))

@@ -1,4 +1,5 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
+import { eq, and, gte, lt, lte, ne, or } from 'drizzle-orm'
 import * as schema from '../../db/schema.js'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'
@@ -336,5 +337,146 @@ export class MyService {
       throw Errors.NOT_FOUND('未找到员工记录')
     }
     return await this.attendanceService.clockOut(employeeId)
+  }
+
+  /**
+   * 获取日历事件
+   * @param userId 用户ID
+   * @param month 月份 (YYYY-MM 格式)
+   */
+  async getCalendarEvents(userId: string, month: string) {
+    const employeeId = await this.getMyEmployeeId(userId)
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
+
+    // 解析月份范围
+    const [year, mon] = month.split('-').map(Number)
+    const startDate = `${year}-${String(mon).padStart(2, '0')}-01`
+    const endDate = mon === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(mon + 1).padStart(2, '0')}-01`
+
+    const events: Array<{
+      date: string
+      type: 'task' | 'leave' | 'reminder'
+      title: string
+      color: string
+      meta?: Record<string, any>
+    }> = []
+
+    // 1. 查询任务截止日期
+    const taskList = await this.db
+      .select({
+        id: schema.tasks.id,
+        code: schema.tasks.code,
+        title: schema.tasks.title,
+        dueDate: schema.tasks.dueDate,
+        priority: schema.tasks.priority,
+        status: schema.tasks.status,
+      })
+      .from(schema.tasks)
+      .where(
+        and(
+          eq(schema.tasks.assigneeId, employeeId),
+          gte(schema.tasks.dueDate, startDate),
+          lt(schema.tasks.dueDate, endDate),
+          ne(schema.tasks.status, 'completed')
+        )
+      )
+
+    for (const task of taskList) {
+      if (task.dueDate) {
+        const priorityColors: Record<string, string> = {
+          high: '#ff4d4f',
+          medium: '#faad14',
+          low: '#52c41a',
+        }
+        events.push({
+          date: task.dueDate,
+          type: 'task',
+          title: `[${task.code}] ${task.title}`,
+          color: priorityColors[task.priority || 'medium'] || '#1890ff',
+          meta: { taskId: task.id, priority: task.priority, status: task.status },
+        })
+      }
+    }
+
+    // 2. 查询请假记录
+    const leaves = await this.db
+      .select({
+        id: schema.employeeLeaves.id,
+        leaveType: schema.employeeLeaves.leaveType,
+        startDate: schema.employeeLeaves.startDate,
+        endDate: schema.employeeLeaves.endDate,
+        status: schema.employeeLeaves.status,
+        days: schema.employeeLeaves.days,
+      })
+      .from(schema.employeeLeaves)
+      .where(
+        and(
+          eq(schema.employeeLeaves.employeeId, employeeId),
+          or(
+            and(gte(schema.employeeLeaves.startDate, startDate), lt(schema.employeeLeaves.startDate, endDate)),
+            and(gte(schema.employeeLeaves.endDate, startDate), lt(schema.employeeLeaves.endDate, endDate)),
+            and(lte(schema.employeeLeaves.startDate, startDate), gte(schema.employeeLeaves.endDate, endDate))
+          )
+        )
+      )
+
+    const leaveTypeLabels: Record<string, string> = {
+      annual: '年假',
+      sick: '病假',
+      personal: '事假',
+      other: '其他',
+    }
+
+    for (const leave of leaves) {
+      // 生成请假期间的每一天事件
+      const start = new Date(leave.startDate)
+      const end = new Date(leave.endDate)
+      const monthStart = new Date(startDate)
+      const monthEnd = new Date(endDate)
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        if (d >= monthStart && d < monthEnd) {
+          const dateStr = d.toISOString().split('T')[0]
+          events.push({
+            date: dateStr,
+            type: 'leave',
+            title: `${leaveTypeLabels[leave.leaveType] || leave.leaveType}`,
+            color: leave.status === 'approved' ? '#722ed1' : '#d9d9d9',
+            meta: { leaveId: leave.id, status: leave.status, days: leave.days },
+          })
+        }
+      }
+    }
+
+    // 3. 查询特殊提醒（入职周年）
+    const employee = await this.employeeService.getById(employeeId)
+    if (employee) {
+      // 入职周年提醒
+      if (employee.joinDate) {
+        const joinMonth = employee.joinDate.substring(5, 7)
+        const joinDay = employee.joinDate.substring(8, 10)
+        const anniversaryDate = `${year}-${joinMonth}-${joinDay}`
+
+        if (anniversaryDate >= startDate && anniversaryDate < endDate) {
+          const joinYear = parseInt(employee.joinDate.substring(0, 4))
+          const years = year - joinYear
+          if (years > 0) {
+            events.push({
+              date: anniversaryDate,
+              type: 'reminder',
+              title: `入职${years}周年`,
+              color: '#faad14',
+              meta: { reminderType: 'anniversary', years },
+            })
+          }
+        }
+      }
+    }
+
+    return { events }
   }
 }
