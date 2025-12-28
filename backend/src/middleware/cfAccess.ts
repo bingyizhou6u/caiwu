@@ -101,8 +101,11 @@ function base64UrlDecode(str: string): Uint8Array {
  * 验证 Cloudflare Access JWT
  */
 async function verifyCfAccessJwt(token: string): Promise<CfAccessJwtPayload> {
+    console.log('[CF Access] Starting JWT verification')
+
     const parts = token.split('.')
     if (parts.length !== 3) {
+        console.error('[CF Access] Invalid JWT format - parts:', parts.length)
         throw new Error('Invalid JWT format')
     }
 
@@ -111,23 +114,34 @@ async function verifyCfAccessJwt(token: string): Promise<CfAccessJwtPayload> {
     // 解析 header 获取 kid
     const headerJson = new TextDecoder().decode(base64UrlDecode(headerB64))
     const header = JSON.parse(headerJson) as { kid: string; alg: string }
+    console.log('[CF Access] Header kid:', header.kid, 'alg:', header.alg)
 
     // 解析 payload
     const payloadJson = new TextDecoder().decode(base64UrlDecode(payloadB64))
     const payload = JSON.parse(payloadJson) as CfAccessJwtPayload
+    console.log('[CF Access] Email:', payload.email, 'Issuer:', payload.iss)
+    console.log('[CF Access] AUD in token:', JSON.stringify(payload.aud))
+    console.log('[CF Access] Expected AUD:', ACCESS_AUD)
 
-    // 验证 aud
-    if (!payload.aud || !payload.aud.includes(ACCESS_AUD)) {
+    // 验证 aud (支持字符串或数组)
+    const audMatch = Array.isArray(payload.aud)
+        ? payload.aud.includes(ACCESS_AUD)
+        : payload.aud === ACCESS_AUD
+    if (!audMatch) {
+        console.error('[CF Access] AUD mismatch')
         throw new Error('Invalid audience')
     }
 
     // 验证 exp
     if (payload.exp * 1000 < Date.now()) {
+        console.error('[CF Access] Token expired at:', new Date(payload.exp * 1000))
         throw new Error('Token expired')
     }
 
     // 验证 iss
-    if (payload.iss !== `https://${ACCESS_TEAM_DOMAIN}`) {
+    const expectedIss = `https://${ACCESS_TEAM_DOMAIN}`
+    if (payload.iss !== expectedIss) {
+        console.error('[CF Access] Issuer mismatch. Got:', payload.iss, 'Expected:', expectedIss)
         throw new Error('Invalid issuer')
     }
 
@@ -135,6 +149,8 @@ async function verifyCfAccessJwt(token: string): Promise<CfAccessJwtPayload> {
     const jwks = await getJwks()
     const jwk = jwks.keys.find(k => k.kid === header.kid)
     if (!jwk) {
+        console.error('[CF Access] Public key not found for kid:', header.kid)
+        console.error('[CF Access] Available kids:', jwks.keys.map(k => k.kid))
         throw new Error('Public key not found')
     }
 
@@ -151,9 +167,11 @@ async function verifyCfAccessJwt(token: string): Promise<CfAccessJwtPayload> {
     )
 
     if (!valid) {
+        console.error('[CF Access] Signature verification failed')
         throw new Error('Invalid signature')
     }
 
+    console.log('[CF Access] JWT verification successful for:', payload.email)
     return payload
 }
 

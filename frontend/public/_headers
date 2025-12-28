@@ -1,6 +1,6 @@
 /*
   # 安全策略
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://cloudflarets.com https://*.cloudflare.com https://cloudflareinsights.com https://*.cloudflarets.com https://*.cloudflareaccess.com; frame-src 'self' https://*.cloudflareaccess.com; frame-ancestors 'self'; worker-src 'self' blob:; manifest-src 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://cloudflarets.com https://*.cloudflare.com https://cloudflareinsights.com https://*.cloudflarets.com https://*.cloudflareaccess.com; frame-src 'self' https://*.cloudflareaccess.com; frame-ancestors 'self'; worker-src 'self' blob:; manifest-src 'self' https://cloudflarets.com
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin

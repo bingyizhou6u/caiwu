@@ -32,6 +32,9 @@ export const PUBLIC_PATHS = new Set([
   '/api/v2/auth/totp-reset/generate-rebind',
   '/api/auth/totp-reset/confirm-rebind',
   '/api/v2/auth/totp-reset/confirm-rebind',
+  // Cloudflare Access 登录（使用 CF Access JWT 而非普通 JWT）
+  '/api/auth/cf-session',
+  '/api/v2/auth/cf-session',
 ])
 
 export function isPublicPath(path: string): boolean {
