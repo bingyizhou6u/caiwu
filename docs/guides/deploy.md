@@ -8,11 +8,13 @@
 | **后端 API** | Cloudflare Workers | `caiwu-backend` | ✅ main 分支 |
 | **邮件服务** | Cloudflare Workers | `caiwu-email` | ✅ main 分支 |
 
-### 访问地址
+### 服务调用方式
 
-- **前端**: https://manager.pages.dev (或自定义域名)
-- **后端 API**: https://caiwu-backend.bingyizhou6u.workers.dev
-- **邮件服务**: 通过 Service Binding 内部调用（不对外暴露）
+| 服务 | 调用方式 | 说明 |
+|------|----------|------|
+| **前端** | 外部访问 | https://manager.pages.dev (或自定义域名) |
+| **后端 API** | Service Binding | 前端通过 Pages Workers 内部调用 |
+| **邮件服务** | Service Binding | 后端内部调用（绑定名: `EMAIL_SERVICE`） |
 
 ### CI/CD 流程
 
