@@ -98,7 +98,7 @@ app.openapi(nextCodeRoute, createRouteHandler(async (c: any) => {
     }
     const { projectId } = c.req.valid('query')
     // Data Scope 验证
-    if (!validateProjectAccess(c, projectId)) {
+    if (!await validateProjectAccess(c, projectId)) {
         throw Errors.FORBIDDEN('无权访问该项目')
     }
     const code = await c.var.services.task.getNextCode(projectId)
@@ -134,7 +134,7 @@ app.openapi(kanbanRoute, createRouteHandler(async (c: any) => {
     }
     const { projectId } = c.req.valid('query')
     // Data Scope 验证
-    if (!validateProjectAccess(c, projectId)) {
+    if (!await validateProjectAccess(c, projectId)) {
         throw Errors.FORBIDDEN('无权访问该项目')
     }
     const kanban = await c.var.services.task.getKanbanData(projectId)
@@ -185,11 +185,11 @@ app.openapi(listRoute, createRouteHandler(async (c: any) => {
 
     // Data Scope 过滤：如果指定了 projectId，验证权限；否则限制为用户可访问的项目
     if (projectId) {
-        if (!validateProjectAccess(c, projectId)) {
+        if (!await validateProjectAccess(c, projectId)) {
             throw Errors.FORBIDDEN('无权访问该项目')
         }
     } else {
-        const accessibleIds = getAccessibleProjectIds(c)
+        const accessibleIds = await getAccessibleProjectIds(c)
         if (accessibleIds !== undefined && accessibleIds.length > 0) {
             projectId = accessibleIds[0] // 限制为用户所属项目
         } else if (accessibleIds !== undefined && accessibleIds.length === 0) {

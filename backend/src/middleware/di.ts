@@ -22,6 +22,7 @@ import { EmployeeLeaveService } from '../services/hr/EmployeeLeaveService.js'
 import { ExpenseReimbursementService } from '../services/hr/ExpenseReimbursementService.js'
 import { AttendanceService } from '../services/hr/AttendanceService.js'
 import { AnnualLeaveService } from '../services/hr/AnnualLeaveService.js'
+import { EmployeeProjectService } from '../services/hr/EmployeeProjectService.js'
 // Finance services
 import { FinanceService } from '../services/finance/FinanceService.js'
 import { ImportService } from '../services/finance/ImportService.js'
@@ -116,6 +117,9 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     // Org department service
     const orgDepartmentService = new OrgDepartmentService(db)
 
+    // Employee project service
+    const employeeProjectService = new EmployeeProjectService(db)
+
     const myService = new MyService(
       db,
       employeeLeaveService,
@@ -173,6 +177,8 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
       taskTimelog: taskTimelogService,
       // System services
       orgDepartment: orgDepartmentService,
+      // HR additional services
+      employeeProject: employeeProjectService,
     })
 
     await next()

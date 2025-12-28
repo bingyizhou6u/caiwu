@@ -12,6 +12,7 @@ import {
     PhoneOutlined,
     DollarOutlined,
     SettingOutlined,
+    ProjectOutlined,
     ArrowLeftOutlined,
     ArrowRightOutlined,
     CheckOutlined,
@@ -37,6 +38,7 @@ import { BasicInfoForm } from './forms/BasicInfoForm'
 import { ContactInfoForm } from './forms/ContactInfoForm'
 import { SalaryAllowanceForm } from './forms/SalaryAllowanceForm'
 import { EmployeeStatusSection } from './forms/EmployeeStatusSection'
+import { EmployeeProjectsSection } from './forms/EmployeeProjectsSection'
 
 import '../../../styles/features/employees/employee-drawer.css'
 
@@ -477,6 +479,15 @@ export function EmployeeFormDrawer({ open, onClose, onSuccess, employee }: Emplo
                     </span>
                 ),
                 children: <EmployeeStatusSection employee={employee} onSuccess={onSuccess} />,
+            },
+            {
+                key: 'projects',
+                label: (
+                    <span>
+                        <ProjectOutlined /> 项目关联
+                    </span>
+                ),
+                children: <EmployeeProjectsSection employeeId={employee?.id} />,
             },
         ]
 

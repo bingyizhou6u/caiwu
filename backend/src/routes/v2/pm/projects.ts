@@ -116,7 +116,7 @@ app.openapi(listRoute, createRouteHandler(async (c: any) => {
         throw Errors.FORBIDDEN()
     }
     // Data Scope 过滤：获取用户可访问的项目 IDs
-    const accessibleIds = getAccessibleProjectIds(c)
+    const accessibleIds = await getAccessibleProjectIds(c)
     const projects = await c.var.services.project.list()
 
     // 如果 accessibleIds 为 undefined，表示不限制；否则过滤
@@ -159,7 +159,7 @@ app.openapi(getRoute, createRouteHandler(async (c: any) => {
         throw Errors.NOT_FOUND('项目')
     }
     // Data Scope 验证：检查用户是否可以访问该项目所属的部门/项目
-    if (!validateProjectAccess(c, project.projectId)) {
+    if (!await validateProjectAccess(c, project.projectId)) {
         throw Errors.FORBIDDEN('无权访问该项目')
     }
     return project
@@ -255,7 +255,7 @@ app.openapi(updateRoute, createRouteHandler(async (c: any) => {
         throw Errors.NOT_FOUND('项目')
     }
     // Data Scope 验证
-    if (!validateProjectAccess(c, existingProject.projectId)) {
+    if (!await validateProjectAccess(c, existingProject.projectId)) {
         throw Errors.FORBIDDEN('无权修改该项目')
     }
 
@@ -298,7 +298,7 @@ app.openapi(deleteRoute, createRouteHandler(async (c: any) => {
         throw Errors.NOT_FOUND('项目')
     }
     // Data Scope 验证
-    if (!validateProjectAccess(c, existingProject.projectId)) {
+    if (!await validateProjectAccess(c, existingProject.projectId)) {
         throw Errors.FORBIDDEN('无权删除该项目')
     }
 

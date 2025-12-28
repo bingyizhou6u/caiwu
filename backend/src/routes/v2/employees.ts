@@ -570,3 +570,179 @@ employeesRoutes.openapi(
       message: `密码重置链接已发送至 ${emailTarget}，请员工查收邮件并在1小时内完成重置`,
     }
   }) as any)
+
+// ============================================
+// 员工-项目关联管理 API
+// ============================================
+
+// 获取员工的项目关联列表
+const getEmployeeProjectsRoute = createRoute({
+  method: 'get',
+  path: '/employees/{id}/projects',
+  summary: '获取员工的项目关联列表',
+  request: {
+    params: z.object({ id: z.string() }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.array(z.object({
+              id: z.string(),
+              employeeId: z.string(),
+              projectId: z.string(),
+              role: z.string().nullable(),
+              isPrimary: z.number().nullable(),
+              createdAt: z.number().nullable(),
+              projectName: z.string().nullable(),
+              projectCode: z.string().nullable(),
+            })),
+          }),
+        },
+      },
+      description: '项目关联列表',
+    },
+  },
+})
+
+employeesRoutes.openapi(
+  getEmployeeProjectsRoute,
+  createRouteHandler(async (c: any) => {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.VIEW)) {
+      throw Errors.FORBIDDEN()
+    }
+    const { id } = c.req.valid('param')
+    const projects = await c.var.services.employeeProject.getEmployeeProjects(id)
+    return projects
+  }) as any
+)
+
+// 添加员工的项目关联
+const addEmployeeProjectRoute = createRoute({
+  method: 'post',
+  path: '/employees/{id}/projects',
+  summary: '添加员工的项目关联',
+  request: {
+    params: z.object({ id: z.string() }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            projectId: z.string().min(1, '项目ID不能为空'),
+            role: z.string().optional(),
+            isPrimary: z.boolean().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            message: z.string().optional(),
+            id: z.string().optional(),
+          }),
+        },
+      },
+      description: '添加结果',
+    },
+  },
+})
+
+employeesRoutes.openapi(
+  addEmployeeProjectRoute,
+  createRouteHandler(async (c: any) => {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
+      throw Errors.FORBIDDEN()
+    }
+    const { id } = c.req.valid('param')
+    const body = c.req.valid('json')
+    const result = await c.var.services.employeeProject.addEmployeeProject({
+      employeeId: id,
+      projectId: body.projectId,
+      role: body.role,
+      isPrimary: body.isPrimary,
+    })
+    return result
+  }) as any
+)
+
+// 移除员工的项目关联
+const removeEmployeeProjectRoute = createRoute({
+  method: 'delete',
+  path: '/employees/{id}/projects/{projectId}',
+  summary: '移除员工的项目关联',
+  request: {
+    params: z.object({
+      id: z.string(),
+      projectId: z.string(),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            message: z.string().optional(),
+          }),
+        },
+      },
+      description: '移除结果',
+    },
+  },
+})
+
+employeesRoutes.openapi(
+  removeEmployeeProjectRoute,
+  createRouteHandler(async (c: any) => {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
+      throw Errors.FORBIDDEN()
+    }
+    const { id, projectId } = c.req.valid('param')
+    const result = await c.var.services.employeeProject.removeEmployeeProject(id, projectId)
+    return result
+  }) as any
+)
+
+// 设置员工的主项目
+const setEmployeePrimaryProjectRoute = createRoute({
+  method: 'patch',
+  path: '/employees/{id}/projects/{projectId}/primary',
+  summary: '设置员工的主项目',
+  request: {
+    params: z.object({
+      id: z.string(),
+      projectId: z.string(),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+          }),
+        },
+      },
+      description: '设置结果',
+    },
+  },
+})
+
+employeesRoutes.openapi(
+  setEmployeePrimaryProjectRoute,
+  createRouteHandler(async (c: any) => {
+    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
+      throw Errors.FORBIDDEN()
+    }
+    const { id, projectId } = c.req.valid('param')
+    const result = await c.var.services.employeeProject.setPrimaryProject(id, projectId)
+    return result
+  }) as any
+)

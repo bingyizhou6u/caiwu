@@ -84,7 +84,7 @@ app.openapi(teamSummaryRoute, createRouteHandler(async (c: any) => {
     }
     const { projectId, startDate, endDate } = c.req.valid('query')
     // Data Scope 验证
-    if (!validateProjectAccess(c, projectId)) {
+    if (!await validateProjectAccess(c, projectId)) {
         throw Errors.FORBIDDEN('无权访问该项目')
     }
     const summary = await c.var.services.taskTimelog.getTeamWorkloadSummary(projectId, startDate, endDate)

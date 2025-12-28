@@ -122,6 +122,24 @@ export const orgDepartments = sqliteTable('org_departments', {
   updatedAt: integer('updated_at'),
 })
 
+// 员工-项目关联表（支持员工跨多个项目）
+export const employeeProjects = sqliteTable(
+  'employee_projects',
+  {
+    id: text('id').primaryKey(),
+    employeeId: text('employee_id').notNull(),
+    projectId: text('project_id').notNull(),
+    role: text('role'), // 可选：在该项目中的角色描述
+    isPrimary: integer('is_primary').default(0), // 是否为主项目
+    createdAt: integer('created_at'),
+  },
+  t => ({
+    unqEmployeeProject: uniqueIndex('idx_unq_ep_employee_project').on(t.employeeId, t.projectId),
+    idxEmployee: index('idx_ep_employee').on(t.employeeId),
+    idxProject: index('idx_ep_project').on(t.projectId),
+  })
+)
+
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   employeeId: text('employee_id').notNull(),

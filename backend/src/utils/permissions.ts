@@ -310,14 +310,15 @@ export function getCurrentUserId(
 /**
  * 验证用户是否可以访问指定项目的数据
  * 用于 PM 模块的 Data Scope 隔离
+ * 支持多项目：检查 employee_projects 关联表
  * @param c Context
  * @param requestedProjectId 请求访问的项目ID
  * @returns 如果有权限返回 true，否则返回 false
  */
-export function validateProjectAccess(
+export async function validateProjectAccess(
   c: Context<{ Bindings: Env, Variables: AppVariables }>,
   requestedProjectId: string | undefined
-): boolean {
+): Promise<boolean> {
   const position = getUserPosition(c)
   const employee = getUserEmployee(c)
 
@@ -333,25 +334,29 @@ export function validateProjectAccess(
     return false
   }
 
-  // dataScope = 'project': 项目用户只能访问自己的项目
-  if (position.dataScope === DataScope.PROJECT) {
-    return employee.projectId === requestedProjectId
+  // 查询 employee_projects 关联表
+  const association = await c.env.DB.prepare(
+    'SELECT 1 FROM employee_projects WHERE employee_id = ? AND project_id = ? LIMIT 1'
+  ).bind(employee.id, requestedProjectId).first()
+
+  if (association) {
+    return true
   }
 
-  // dataScope = 'group' 或 'self': 只能访问自己所属项目的数据
-  // 但允许在同一项目内按组/个人进一步过滤
+  // 回退：检查 employees.project_id（向后兼容）
   return employee.projectId === requestedProjectId
 }
 
 /**
  * 获取用户可访问项目的列表
  * 用于列表查询时的隐式过滤
+ * 支持多项目：从 employee_projects 关联表获取
  * @param c Context
  * @returns 项目ID数组，如果是 ALL scope 则返回 undefined 表示不限制
  */
-export function getAccessibleProjectIds(
+export async function getAccessibleProjectIds(
   c: Context<{ Bindings: Env, Variables: AppVariables }>
-): string[] | undefined {
+): Promise<string[] | undefined> {
   const position = getUserPosition(c)
   const employee = getUserEmployee(c)
 
@@ -362,11 +367,17 @@ export function getAccessibleProjectIds(
     return undefined
   }
 
-  // 其他 scope: 返回用户所属项目
-  if (employee.projectId) {
+  // 从 employee_projects 表获取所有关联项目
+  const rows = await c.env.DB.prepare(
+    'SELECT project_id FROM employee_projects WHERE employee_id = ?'
+  ).bind(employee.id).all<{ project_id: string }>()
+
+  const projectIds = rows.results?.map(r => r.project_id) || []
+
+  // 如果关联表为空，回退到 employees.project_id（向后兼容）
+  if (projectIds.length === 0 && employee.projectId) {
     return [employee.projectId]
   }
 
-  return []
+  return projectIds
 }
-
