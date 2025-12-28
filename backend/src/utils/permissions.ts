@@ -297,11 +297,76 @@ export function getDataAccessFilterSQL(
   }
 }
 
-/**
- * 获取当前用户ID
- */
 export function getCurrentUserId(
   c: Context<{ Bindings: Env, Variables: AppVariables }>
 ): string | undefined {
   return getUserId(c)
 }
+
+// ============================================
+// PM 模块项目访问控制
+// ============================================
+
+/**
+ * 验证用户是否可以访问指定项目的数据
+ * 用于 PM 模块的 Data Scope 隔离
+ * @param c Context
+ * @param requestedProjectId 请求访问的项目ID
+ * @returns 如果有权限返回 true，否则返回 false
+ */
+export function validateProjectAccess(
+  c: Context<{ Bindings: Env, Variables: AppVariables }>,
+  requestedProjectId: string | undefined
+): boolean {
+  const position = getUserPosition(c)
+  const employee = getUserEmployee(c)
+
+  if (!position || !employee) return false
+
+  // dataScope = 'all': 总部用户可以访问所有项目
+  if (position.dataScope === DataScope.ALL) {
+    return true
+  }
+
+  // 如果没有请求的 projectId，无法验证
+  if (!requestedProjectId) {
+    return false
+  }
+
+  // dataScope = 'project': 项目用户只能访问自己的项目
+  if (position.dataScope === DataScope.PROJECT) {
+    return employee.projectId === requestedProjectId
+  }
+
+  // dataScope = 'group' 或 'self': 只能访问自己所属项目的数据
+  // 但允许在同一项目内按组/个人进一步过滤
+  return employee.projectId === requestedProjectId
+}
+
+/**
+ * 获取用户可访问项目的列表
+ * 用于列表查询时的隐式过滤
+ * @param c Context
+ * @returns 项目ID数组，如果是 ALL scope 则返回 undefined 表示不限制
+ */
+export function getAccessibleProjectIds(
+  c: Context<{ Bindings: Env, Variables: AppVariables }>
+): string[] | undefined {
+  const position = getUserPosition(c)
+  const employee = getUserEmployee(c)
+
+  if (!position || !employee) return []
+
+  // dataScope = 'all': 不限制
+  if (position.dataScope === DataScope.ALL) {
+    return undefined
+  }
+
+  // 其他 scope: 返回用户所属项目
+  if (employee.projectId) {
+    return [employee.projectId]
+  }
+
+  return []
+}
+

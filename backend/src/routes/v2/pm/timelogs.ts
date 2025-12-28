@@ -4,7 +4,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
 import { Errors } from '../../../utils/errors.js'
-import { hasPermission } from '../../../utils/permissions.js'
+import { hasPermission, validateProjectAccess } from '../../../utils/permissions.js'
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
@@ -83,6 +83,10 @@ app.openapi(teamSummaryRoute, createRouteHandler(async (c: any) => {
         throw Errors.FORBIDDEN()
     }
     const { projectId, startDate, endDate } = c.req.valid('query')
+    // Data Scope 验证
+    if (!validateProjectAccess(c, projectId)) {
+        throw Errors.FORBIDDEN('无权访问该项目')
+    }
     const summary = await c.var.services.taskTimelog.getTeamWorkloadSummary(projectId, startDate, endDate)
     return summary
 }) as any)

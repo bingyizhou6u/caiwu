@@ -5,8 +5,8 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
 import { apiSuccess } from '../../../utils/response.js'
 import { Errors } from '../../../utils/errors.js'
-import { hasPermission } from '../../../utils/permissions.js'
-import { PermissionModule, PermissionAction } from '../../../constants/permissions.js'
+import { hasPermission, validateProjectAccess, getAccessibleProjectIds, getUserPosition, getUserEmployee } from '../../../utils/permissions.js'
+import { PermissionModule, PermissionAction, DataScope } from '../../../constants/permissions.js'
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
@@ -115,7 +115,14 @@ app.openapi(listRoute, createRouteHandler(async (c: any) => {
     if (!hasPermission(c, 'pm', 'project', 'view')) {
         throw Errors.FORBIDDEN()
     }
+    // Data Scope 过滤：获取用户可访问的项目 IDs
+    const accessibleIds = getAccessibleProjectIds(c)
     const projects = await c.var.services.project.list()
+
+    // 如果 accessibleIds 为 undefined，表示不限制；否则过滤
+    if (accessibleIds !== undefined) {
+        return projects.filter((p: any) => accessibleIds.includes(p.projectId))
+    }
     return projects
 }) as any)
 
@@ -150,6 +157,10 @@ app.openapi(getRoute, createRouteHandler(async (c: any) => {
     const project = await c.var.services.project.getById(id)
     if (!project) {
         throw Errors.NOT_FOUND('项目')
+    }
+    // Data Scope 验证：检查用户是否可以访问该项目所属的部门/项目
+    if (!validateProjectAccess(c, project.projectId)) {
+        throw Errors.FORBIDDEN('无权访问该项目')
     }
     return project
 }) as any)
@@ -238,10 +249,17 @@ app.openapi(updateRoute, createRouteHandler(async (c: any) => {
     const { id } = c.req.valid('param')
     const data = c.req.valid('json')
 
-    const project = await c.var.services.project.update(id, data)
-    if (!project) {
+    // 先获取项目以验证权限
+    const existingProject = await c.var.services.project.getById(id)
+    if (!existingProject) {
         throw Errors.NOT_FOUND('项目')
     }
+    // Data Scope 验证
+    if (!validateProjectAccess(c, existingProject.projectId)) {
+        throw Errors.FORBIDDEN('无权修改该项目')
+    }
+
+    const project = await c.var.services.project.update(id, data)
     return project
 }) as any)
 
@@ -273,6 +291,16 @@ app.openapi(deleteRoute, createRouteHandler(async (c: any) => {
         throw Errors.FORBIDDEN()
     }
     const { id } = c.req.valid('param')
+
+    // 先获取项目以验证权限
+    const existingProject = await c.var.services.project.getById(id)
+    if (!existingProject) {
+        throw Errors.NOT_FOUND('项目')
+    }
+    // Data Scope 验证
+    if (!validateProjectAccess(c, existingProject.projectId)) {
+        throw Errors.FORBIDDEN('无权删除该项目')
+    }
 
     await c.var.services.project.delete(id)
     return null

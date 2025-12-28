@@ -36,6 +36,7 @@ const DEFAULT_PERMISSION_MODULES: Record<string, PermissionModuleConfig> = {
             salary: { label: '工资发放', actions: ['view', 'create', 'update'] },
             allowance: { label: '补贴发放', actions: ['view', 'create'] },
             site_bill: { label: '站点账单', actions: ['view', 'create', 'update'] },
+            borrowing: { label: '借款管理', actions: ['view', 'create', 'approve', 'reject'] },
         }
     },
     hr: {
@@ -64,8 +65,12 @@ const DEFAULT_PERMISSION_MODULES: Record<string, PermissionModuleConfig> = {
     report: {
         label: '报表模块',
         subModules: {
-            view: { label: '报表查看', actions: ['view'] },
-            export: { label: '报表导出', actions: ['export'] },
+            view: { label: '综合视图', actions: ['view'] },
+            finance: { label: '财务报表', actions: ['view', 'export'] },
+            salary: { label: '薪资报表', actions: ['view', 'export'] },
+            hr: { label: '人事报表', actions: ['view', 'export'] },
+            asset: { label: '资产报表', actions: ['view', 'export'] },
+            export: { label: '导出中心', actions: ['export'] }, // Legacy/Admin support
         }
     },
     system: {
@@ -73,9 +78,15 @@ const DEFAULT_PERMISSION_MODULES: Record<string, PermissionModuleConfig> = {
         subModules: {
             user: { label: '用户管理', actions: ['view', 'create', 'update', 'delete'] },
             position: { label: '职位管理', actions: ['view', 'create', 'update', 'delete'] },
-            department: { label: '项目管理', actions: ['view', 'create', 'update', 'delete'] },
-            audit: { label: '审计日志', actions: ['view'] },
+            department: { label: '部门管理', actions: ['view', 'create', 'update', 'delete'] },
+            account: { label: '账户管理', actions: ['view', 'create', 'update', 'delete'] },
+            category: { label: '分类管理', actions: ['view', 'create', 'update', 'delete'] },
+            currency: { label: '币种管理', actions: ['view', 'create', 'update', 'delete'] },
+            headquarters: { label: '总部管理', actions: ['view', 'create', 'update', 'delete'] },
+            vendor: { label: '供应商管理', actions: ['view', 'create', 'update', 'delete'] },
+            audit: { label: '审计日志', actions: ['view', 'export'] },
             config: { label: '系统配置', actions: ['view', 'update'] },
+            site_config: { label: '站点配置(旧)', actions: ['manage'] }, // Legacy
         }
     },
     self: {
@@ -123,13 +134,13 @@ const DEFAULT_DATA_SCOPES = [
  */
 export function usePermissionConfig() {
     const query = useQuery({
-        queryKey: ['permission-config'],
+        queryKey: ['permission-config', 'v20251228'], // Force cache invalidation
         queryFn: async (): Promise<PermissionConfigResponse> => {
             const response = await apiClient.get<PermissionConfigResponse>(api.permissionConfig)
             return response
         },
-        staleTime: 1000 * 60 * 60, // 1 小时内不重新请求
-        gcTime: 1000 * 60 * 60 * 24, // 缓存 24 小时
+        staleTime: 0, // Always fetch fresh
+        gcTime: 1000 * 60 * 60, // Cache for 1 hour
         retry: 1,
     })
 

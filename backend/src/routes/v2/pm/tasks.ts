@@ -4,7 +4,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
 import { Errors } from '../../../utils/errors.js'
-import { hasPermission } from '../../../utils/permissions.js'
+import { hasPermission, validateProjectAccess, getAccessibleProjectIds } from '../../../utils/permissions.js'
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
@@ -97,6 +97,10 @@ app.openapi(nextCodeRoute, createRouteHandler(async (c: any) => {
         throw Errors.FORBIDDEN()
     }
     const { projectId } = c.req.valid('query')
+    // Data Scope 验证
+    if (!validateProjectAccess(c, projectId)) {
+        throw Errors.FORBIDDEN('无权访问该项目')
+    }
     const code = await c.var.services.task.getNextCode(projectId)
     return { code }
 }) as any)
@@ -129,6 +133,10 @@ app.openapi(kanbanRoute, createRouteHandler(async (c: any) => {
         throw Errors.FORBIDDEN()
     }
     const { projectId } = c.req.valid('query')
+    // Data Scope 验证
+    if (!validateProjectAccess(c, projectId)) {
+        throw Errors.FORBIDDEN('无权访问该项目')
+    }
     const kanban = await c.var.services.task.getKanbanData(projectId)
     return kanban
 }) as any)
@@ -173,7 +181,22 @@ app.openapi(listRoute, createRouteHandler(async (c: any) => {
     if (!hasPermission(c, 'pm', 'task', 'view')) {
         throw Errors.FORBIDDEN()
     }
-    const { projectId, requirementId, status, assigneeId } = c.req.valid('query')
+    let { projectId, requirementId, status, assigneeId } = c.req.valid('query')
+
+    // Data Scope 过滤：如果指定了 projectId，验证权限；否则限制为用户可访问的项目
+    if (projectId) {
+        if (!validateProjectAccess(c, projectId)) {
+            throw Errors.FORBIDDEN('无权访问该项目')
+        }
+    } else {
+        const accessibleIds = getAccessibleProjectIds(c)
+        if (accessibleIds !== undefined && accessibleIds.length > 0) {
+            projectId = accessibleIds[0] // 限制为用户所属项目
+        } else if (accessibleIds !== undefined && accessibleIds.length === 0) {
+            return [] // 没有可访问的项目
+        }
+    }
+
     const tasks = await c.var.services.task.list({ projectId, requirementId, status, assigneeId })
     return tasks
 }) as any)

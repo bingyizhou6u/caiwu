@@ -18,7 +18,7 @@ export class PositionService {
       .from(positions)
       .where(eq(positions.active, 1))
       .all()
-    
+
     // 在内存中排序（D1 对多个字段的 ORDER BY 支持不稳定）
     positionsList.sort((a, b) => {
       const sortA = a.sortOrder || 0
@@ -28,53 +28,93 @@ export class PositionService {
       }
       return (a.name || '').localeCompare(b.name || '')
     })
-    
+
     return positionsList
   }
 
   async getAvailablePositions(orgDepartmentId?: string) {
-    // 返回所有可用职位，按 dataScope 分组，让调用方根据需要筛选
-    // D1 兼容性：使用单个 orderBy，然后在内存中排序
-
-    const positionsList = await this.db
+    // 1. 获取所有活跃职位
+    let positionsList = await this.db
       .select()
       .from(positions)
       .where(eq(positions.active, 1))
       .all()
-    
-    // 在内存中排序（D1 对多个字段的 ORDER BY 支持不稳定）
+
+    // 2. 如果指定了部门，获取该部门的 allowedPositions 并过滤
+    if (orgDepartmentId) {
+      const dept = await this.db
+        .select({ allowedPositions: orgDepartments.allowedPositions })
+        .from(orgDepartments)
+        .where(eq(orgDepartments.id, orgDepartmentId))
+        .get()
+
+      if (dept?.allowedPositions) {
+        try {
+          const allowedIds: string[] = JSON.parse(dept.allowedPositions)
+          if (Array.isArray(allowedIds) && allowedIds.length > 0) {
+            // 过滤：仅保留 allowedPositions 中的职位
+            positionsList = positionsList.filter(p => allowedIds.includes(p.id))
+          }
+        } catch (e) {
+          // JSON 解析失败，忽略过滤
+        }
+      }
+    }
+
+    // 3. 在内存中排序
     positionsList.sort((a, b) => {
-      // 首先按 dataScope 排序
+      // 按 level 排序 (1 -> 2 -> 3)
+      if (a.level !== b.level) {
+        return a.level - b.level
+      }
+      // 按 dataScope 排序 (all -> project -> group -> self)
       const scopeOrder = { 'all': 1, 'project': 2, 'group': 3, 'self': 4 }
       const scopeA = scopeOrder[a.dataScope as keyof typeof scopeOrder] || 99
       const scopeB = scopeOrder[b.dataScope as keyof typeof scopeOrder] || 99
       if (scopeA !== scopeB) {
         return scopeA - scopeB
       }
-      // 然后按 sortOrder 排序
+      // 按 sortOrder 排序
       const sortA = a.sortOrder || 0
       const sortB = b.sortOrder || 0
       if (sortA !== sortB) {
         return sortA - sortB
       }
-      // 最后按 name 排序
+      // 按 name 排序
       return (a.name || '').localeCompare(b.name || '')
     })
 
-    // 按 dataScope 分组
-    const SCOPE_LABELS: Record<string, string> = {
-      'all': '全公司职位',
-      'project': '项目职位',
-      'group': '组级职位',
-      'self': '个人职位',
-    }
+    // 4. 分组逻辑
     const groupedPositions: Record<string, typeof positionsList> = {}
+
+    // 初始化分组顺序
+    const ORDERED_GROUPS = ['总部职位', '项目职位', '组级职位', '个人职位', '其他职位']
+    ORDERED_GROUPS.forEach(key => groupedPositions[key] = [])
+
     for (const pos of positionsList) {
-      const groupKey = SCOPE_LABELS[pos.dataScope] || `其他(dataScope=${pos.dataScope})`
-      if (!groupedPositions[groupKey]) {
-        groupedPositions[groupKey] = []
+      let groupKey = '其他职位'
+
+      if (pos.level === 1) {
+        groupKey = '总部职位'
+      } else if (pos.level === 2) {
+        groupKey = '项目职位'
+      } else if (pos.level === 3) {
+        // Level 3 用于 组长(Group Scope) 和 组员(Self Scope)
+        if (pos.dataScope === 'group') {
+          groupKey = '组级职位'
+        } else {
+          groupKey = '个人职位'
+        }
       }
+
       groupedPositions[groupKey].push(pos)
+    }
+
+    // 清理空分组
+    for (const key of Object.keys(groupedPositions)) {
+      if (groupedPositions[key].length === 0) {
+        delete groupedPositions[key]
+      }
     }
 
     return {
