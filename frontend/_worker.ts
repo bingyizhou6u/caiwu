@@ -1,12 +1,10 @@
 // Pages Functions Advanced Mode: 代理所有 /api/* 请求到 Worker
-// 优先使用 Service Binding (env.workers) 以获得最佳性能
+// 通过 Service Binding (env.workers) 内部调用
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
-  workers?: { fetch: (request: Request) => Promise<Response> } // Service Binding
+  workers: { fetch: (request: Request) => Promise<Response> } // Service Binding (必须配置)
 }
-
-const BACKEND_URL = 'https://caiwu-backend.bingyizhou6u.workers.dev'
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -15,36 +13,8 @@ export default {
     // 处理 /api/* 请求
     if (url.pathname.startsWith('/api/')) {
       try {
-        let response: Response
-
-        // 1. 优先尝试 Service Binding (内部网络，零延迟)
-        if (env.workers) {
-          // Service Binding 会自动处理路由，忽略 Host，但为了保险我们克隆请求
-          // 注意：Service Binding 不需要修改 URL Host，它直接路由到 Worker
-          response = await env.workers.fetch(request)
-        }
-        // 2. 回退到公网 Fetch (当未配置绑定或在某些开发环境)
-        else {
-          const apiPath = url.pathname
-          const backendUrl = BACKEND_URL + apiPath + url.search
-
-          // 复制请求头
-          const headers = new Headers()
-          request.headers.forEach((value, key) => {
-            // 跳过一些不需要转发的头
-            if (!['host', 'cf-connecting-ip', 'cf-ray', 'cf-visitor'].includes(key.toLowerCase())) {
-              headers.set(key, value)
-            }
-          })
-          headers.set('X-Forwarded-Host', url.hostname)
-          headers.set('X-Forwarded-Proto', url.protocol.slice(0, -1))
-
-          response = await fetch(backendUrl, {
-            method: request.method,
-            headers,
-            body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
-          })
-        }
+        // 通过 Service Binding 内部调用后端 Worker
+        const response = await env.workers.fetch(request)
 
         // 复制响应头并处理 Cookie
         const responseHeaders = new Headers(response.headers)
@@ -81,3 +51,4 @@ export default {
     return env.ASSETS.fetch(request)
   }
 }
+
