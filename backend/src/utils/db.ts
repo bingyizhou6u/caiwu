@@ -146,6 +146,7 @@ export async function getSessionWithUserAndPosition(
 }
 
 // 获取用户完整的上下文信息（用于生成 Session 缓存）
+// 优化：并行化 position 和 department 查询
 export async function getUserFullContext(
   db: DrizzleD1Database<typeof schema>,
   userId: string
@@ -174,42 +175,44 @@ export async function getUserFullContext(
 
   if (!employee) return null
 
-  // 1. 获取 Position
-  let position = null
-  if (employee.positionId) {
-    const pos = await db
-      .select()
-      .from(positions)
-      .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
-      .get()
+  // 并行查询 position 和 department
+  const [posResult, deptResult] = await Promise.all([
+    employee.positionId
+      ? db
+        .select()
+        .from(positions)
+        .where(and(eq(positions.id, employee.positionId), eq(positions.active, 1)))
+        .get()
+      : Promise.resolve(null),
+    employee.orgDepartmentId
+      ? db
+        .select()
+        .from(orgDepartments)
+        .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
+        .get()
+      : Promise.resolve(null),
+  ])
 
-    if (pos) {
-      position = {
-        id: pos.id,
-        code: pos.code,
-        name: pos.name,
-        canManageSubordinates: pos.canManageSubordinates ?? 0,
-        dataScope: pos.dataScope,
-        permissions: JSON.parse(pos.permissions || '{}'),
-      }
+  // 处理 position
+  let position = null
+  if (posResult) {
+    position = {
+      id: posResult.id,
+      code: posResult.code,
+      name: posResult.name,
+      canManageSubordinates: posResult.canManageSubordinates ?? 0,
+      dataScope: posResult.dataScope,
+      permissions: JSON.parse(posResult.permissions || '{}'),
     }
   }
 
-  // 2. 获取 Department Modules
+  // 处理 department modules
   let departmentModules: string[] = ['*']
-  if (employee.orgDepartmentId) {
-    const dept = await db
-      .select()
-      .from(orgDepartments)
-      .where(and(eq(orgDepartments.id, employee.orgDepartmentId), eq(orgDepartments.active, 1)))
-      .get()
-
-    if (dept && dept.allowedModules) {
-      try {
-        departmentModules = JSON.parse(dept.allowedModules)
-      } catch {
-        departmentModules = ['*']
-      }
+  if (deptResult && deptResult.allowedModules) {
+    try {
+      departmentModules = JSON.parse(deptResult.allowedModules)
+    } catch {
+      departmentModules = ['*']
     }
   }
 

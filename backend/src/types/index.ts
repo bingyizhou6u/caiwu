@@ -79,6 +79,8 @@ export type AppVariables = {
     project: ProjectService
     task: TaskService
     taskTimelog: TaskTimelogService
+    // System services
+    orgDepartment: OrgDepartmentService
   }
 }
 
@@ -122,6 +124,8 @@ import { RateLimitService } from '../services/common/RateLimitService.js'
 import { ProjectService } from '../services/pm/ProjectService.js'
 import { TaskService } from '../services/pm/TaskService.js'
 import { TaskTimelogService } from '../services/pm/TaskTimelogService.js'
+// System services
+import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
 
 // 已移除固定超级管理员
 // 所有管理员权限现在基于员工记录的职位

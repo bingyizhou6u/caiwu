@@ -79,7 +79,7 @@ async function seedDatabase(db: any) {
   const insertionOrder: Array<{ name: string; table: keyof typeof schema; data: any[] }> = [
     { name: '币种', table: 'currencies', data: fixtures.currencies || [] },
     { name: '总部', table: 'headquarters', data: fixtures.headquarters || [] },
-    { name: '部门/项目', table: 'departments', data: fixtures.departments || [] },
+    { name: '部门/项目', table: 'projects', data: fixtures.departments || [] },
     { name: '组织部门', table: 'orgDepartments', data: fixtures.orgDepartments || [] },
     { name: '职位', table: 'positions', data: fixtures.positions || [] },
     { name: '账户', table: 'accounts', data: fixtures.accounts || [] },

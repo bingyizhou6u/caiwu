@@ -251,152 +251,148 @@ export class TaskService {
             }
         )
     }
-}
-        )
-    }
 
     /**
      * 创建任务
      */
     async create(data: CreateTaskInput, createdBy: string) {
-    return DBPerformanceTracker.track(
-        'TaskService.create',
-        async () => {
-            const id = crypto.randomUUID()
-            const now = Date.now()
+        return DBPerformanceTracker.track(
+            'TaskService.create',
+            async () => {
+                const id = crypto.randomUUID()
+                const now = Date.now()
 
-            await this.db.insert(tasks).values({
-                id,
-                code: data.code,
-                projectId: data.projectId,
-                requirementId: data.requirementId,
-                parentTaskId: data.parentTaskId,
-                title: data.title,
-                description: data.description,
-                type: data.type || 'dev',
-                priority: data.priority || 'medium',
-                status: 'todo',
-                estimatedHours: data.estimatedHours,
-                startDate: data.startDate,
-                dueDate: data.dueDate,
-                // 使用 JSON 数组存储多选人员
-                assigneeIds: data.assigneeIds?.length ? JSON.stringify(data.assigneeIds) : null,
-                reviewerIds: data.reviewerIds?.length ? JSON.stringify(data.reviewerIds) : null,
-                testerIds: data.testerIds?.length ? JSON.stringify(data.testerIds) : null,
-                sortOrder: 0,
-                version: 1,
-                createdBy,
-                createdAt: now,
-                updatedAt: now,
-            })
+                await this.db.insert(tasks).values({
+                    id,
+                    code: data.code,
+                    projectId: data.projectId,
+                    requirementId: data.requirementId,
+                    parentTaskId: data.parentTaskId,
+                    title: data.title,
+                    description: data.description,
+                    type: data.type || 'dev',
+                    priority: data.priority || 'medium',
+                    status: 'todo',
+                    estimatedHours: data.estimatedHours,
+                    startDate: data.startDate,
+                    dueDate: data.dueDate,
+                    // 使用 JSON 数组存储多选人员
+                    assigneeIds: data.assigneeIds?.length ? JSON.stringify(data.assigneeIds) : null,
+                    reviewerIds: data.reviewerIds?.length ? JSON.stringify(data.reviewerIds) : null,
+                    testerIds: data.testerIds?.length ? JSON.stringify(data.testerIds) : null,
+                    sortOrder: 0,
+                    version: 1,
+                    createdBy,
+                    createdAt: now,
+                    updatedAt: now,
+                })
 
-            return this.getById(id)
-        }
-    )
-}
+                return this.getById(id)
+            }
+        )
+    }
 
     /**
      * 更新任务
      */
-    async update(id: string, data: UpdateTaskInput, version ?: number) {
-    return DBPerformanceTracker.track(
-        'TaskService.update',
-        async () => {
-            const updateData: Record<string, unknown> = {
-                ...data,
-                updatedAt: Date.now(),
-            }
+    async update(id: string, data: UpdateTaskInput, version?: number) {
+        return DBPerformanceTracker.track(
+            'TaskService.update',
+            async () => {
+                const updateData: Record<string, unknown> = {
+                    ...data,
+                    updatedAt: Date.now(),
+                }
 
-            // 转换数组为 JSON 字符串
-            if (data.assigneeIds !== undefined) {
-                updateData.assigneeIds = data.assigneeIds?.length ? JSON.stringify(data.assigneeIds) : null
-                delete updateData.assigneeIds // 删除原始数组，使用转换后的
-            }
-            if (data.reviewerIds !== undefined) {
-                updateData.reviewerIds = data.reviewerIds?.length ? JSON.stringify(data.reviewerIds) : null
-            }
-            if (data.testerIds !== undefined) {
-                updateData.testerIds = data.testerIds?.length ? JSON.stringify(data.testerIds) : null
-            }
+                // 转换数组为 JSON 字符串
+                if (data.assigneeIds !== undefined) {
+                    updateData.assigneeIds = data.assigneeIds?.length ? JSON.stringify(data.assigneeIds) : null
+                }
+                if (data.reviewerIds !== undefined) {
+                    updateData.reviewerIds = data.reviewerIds?.length ? JSON.stringify(data.reviewerIds) : null
+                }
+                if (data.testerIds !== undefined) {
+                    updateData.testerIds = data.testerIds?.length ? JSON.stringify(data.testerIds) : null
+                }
 
-            // 如果状态变为 completed，记录完成时间
-            if (data.status === 'completed') {
-                updateData.completedAt = Date.now()
-            }
+                // 如果状态变为 completed，记录完成时间
+                if (data.status === 'completed') {
+                    updateData.completedAt = Date.now()
+                }
 
-            // 如果提供了 version，使用乐观锁
-            if (version !== undefined) {
-                updateData.version = version + 1
-                await this.db
-                    .update(tasks)
-                    .set(updateData)
-                    .where(and(eq(tasks.id, id), eq(tasks.version, version)))
-            } else {
-                await this.db.update(tasks).set(updateData).where(eq(tasks.id, id))
-            }
+                // 如果提供了 version，使用乐观锁
+                if (version !== undefined) {
+                    updateData.version = version + 1
+                    await this.db
+                        .update(tasks)
+                        .set(updateData)
+                        .where(and(eq(tasks.id, id), eq(tasks.version, version)))
+                } else {
+                    await this.db.update(tasks).set(updateData).where(eq(tasks.id, id))
+                }
 
-            return this.getById(id)
-        }
-    )
-}
+                return this.getById(id)
+            }
+        )
+    }
 
     /**
      * 更新任务状态（用于看板拖拽）
      */
     async updateStatus(id: string, status: string, sortOrder: number) {
-    return this.update(id, { status, sortOrder })
-}
+        return this.update(id, { status, sortOrder })
+    }
 
     /**
      * 删除任务
      */
-    async delete (id: string) {
-    return DBPerformanceTracker.track(
-        'TaskService.delete',
-        async () => {
-            await this.db.delete(tasks).where(eq(tasks.id, id))
-        }
-    )
-}
+    async delete(id: string) {
+        return DBPerformanceTracker.track(
+            'TaskService.delete',
+            async () => {
+                await this.db.delete(tasks).where(eq(tasks.id, id))
+            }
+        )
+    }
 
     /**
      * 生成下一个任务编号
      */
     async getNextCode(projectId: string) {
-    return DBPerformanceTracker.track(
-        'TaskService.getNextCode',
-        async () => {
-            // 获取项目前缀
-            const project = await this.db.select({ code: projects.code }).from(projects).where(eq(projects.id, projectId)).get()
-            const prefix = project?.code ? `TASK-${project.code}` : 'TASK'
+        return DBPerformanceTracker.track(
+            'TaskService.getNextCode',
+            async () => {
+                // 获取项目前缀
+                const project = await this.db.select({ code: projects.code }).from(projects).where(eq(projects.id, projectId)).get()
+                const prefix = project?.code ? `TASK-${project.code}` : 'TASK'
 
-            const lastTask = await this.db
-                .select({ code: tasks.code })
-                .from(tasks)
-                .where(eq(tasks.projectId, projectId))
-                .orderBy(desc(tasks.createdAt))
-                .limit(1)
-                .get()
+                const lastTask = await this.db
+                    .select({ code: tasks.code })
+                    .from(tasks)
+                    .where(eq(tasks.projectId, projectId))
+                    .orderBy(desc(tasks.createdAt))
+                    .limit(1)
+                    .get()
 
-            if (!lastTask || !lastTask.code) {
+                if (!lastTask || !lastTask.code) {
+                    return `${prefix}-001`
+                }
+
+                const match = lastTask.code.match(/(\d+)$/)
+                if (match) {
+                    const nextNum = parseInt(match[1], 10) + 1
+                    return `${prefix}-${String(nextNum).padStart(3, '0')}`
+                }
+
                 return `${prefix}-001`
             }
-
-            const match = lastTask.code.match(/-(\d+)$/)
-            if (match) {
-                const nextNum = parseInt(match[1], 10) + 1
-                return `${prefix}-${String(nextNum).padStart(3, '0')}`
-            }
-
-            return `${prefix}-001`
-        }
-    )
-}
+        )
+    }
 
     /**
      * 获取我的任务
      */
     async getMyTasks(employeeId: string) {
-    return this.list({ assigneeId: employeeId })
-}
+        return this.list({ assigneeId: employeeId })
+    }
 }

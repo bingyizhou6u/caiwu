@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs'
+import { hashPassword, verifyPassword } from '../../utils/crypto.js'
 import QRCode from 'qrcode-svg'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
@@ -41,24 +41,35 @@ export class AuthService {
     context?: any,
     deviceInfo?: { ip?: string; userAgent?: string }
   ) {
+    const runAsync = (promise: Promise<any>) => {
+      if (context?.executionCtx?.waitUntil) {
+        context.executionCtx.waitUntil(promise.catch((e: any) => console.error('Async task failed', e)))
+      } else {
+        promise.catch((e: any) => console.error('Async task failed', e))
+      }
+    }
     // 账号锁定检查
     const lockoutKey = `lockout:email:${email}`
-    const lockoutData = await this.kv.get(lockoutKey)
+
+    // 并行化：同时检查锁定状态、查询用户和员工
+    const [lockoutData, user, employee, twoFaConfig] = await Promise.all([
+      this.kv.get(lockoutKey),
+      this.employeeService.getUserByEmail(email),
+      this.db
+        .select({ id: employees.id, name: employees.name })
+        .from(employees)
+        .where(and(eq(employees.personalEmail, email), eq(employees.active, 1)))
+        .get(),
+      this.systemConfigService.get('2fa_enabled'),
+    ])
+
     if (lockoutData) {
       throw Errors.FORBIDDEN('账号已被锁定，请15分钟后再试')
     }
 
-    const user = await this.employeeService.getUserByEmail(email)
     if (!user) {
       throw Errors.UNAUTHORIZED('用户名或密码错误')
     }
-
-    // 检查员工记录并获取姓名（由于登录使用个人邮箱，所以需要通过个人邮箱查询）
-    const employee = await this.db
-      .select({ id: employees.id, name: employees.name })
-      .from(employees)
-      .where(and(eq(employees.personalEmail, email), eq(employees.active, 1)))
-      .get()
 
     if (!employee) {
       const inactive = await this.db
@@ -80,7 +91,7 @@ export class AuthService {
       throw Errors.FORBIDDEN('密码未设置')
     }
 
-    const ok = await bcrypt.compare(password, user.passwordHash!)
+    const ok = await verifyPassword(password, user.passwordHash!)
     if (!ok) {
       // 记录登录失败次数
       const failKey = `login_fail:${email}`
@@ -97,8 +108,7 @@ export class AuthService {
     // 密码正确，清除失败计数
     await this.kv.delete(`login_fail:${email}`)
 
-    // 检查 2FA 配置
-    const twoFaConfig = await this.systemConfigService.get('2fa_enabled')
+    // 2FA 配置检查（已在上面并行获取）
     const is2FaEnabled = twoFaConfig
       ? twoFaConfig.value === true || twoFaConfig.value === 'true'
       : true // 如果未设置，默认为开启
@@ -136,30 +146,34 @@ export class AuthService {
       // 如果是信任设备，跳过 TOTP 验证
     }
 
-    // 登录成功
-    await this.db
-      .update(employees)
-      .set({ lastLoginAt: Date.now() })
-      .where(eq(employees.id, user.id))
-      .run()
+    // 异步更新登录时间
+    runAsync(
+      this.db
+        .update(employees)
+        .set({ lastLoginAt: Date.now() })
+        .where(eq(employees.id, user.id))
+        .run()
+    )
 
     const position = await this.employeeService.getUserPosition(user.id)
     if (!position) {
       throw Errors.FORBIDDEN('未找到员工记录，请联系管理员')
     }
 
-    const session = await this.createSession(user.id, deviceInfo)
+    const session = await this.createSession(user.id, deviceInfo, context)
 
-    // 审计日志
+    // 异步审计日志
     if (context) {
-      await this.auditService.log(
-        user.id,
-        'login',
-        'user',
-        user.id,
-        JSON.stringify({ email: user.email }),
-        deviceInfo?.ip,
-        undefined
+      runAsync(
+        this.auditService.log(
+          user.id,
+          'login',
+          'user',
+          user.id,
+          JSON.stringify({ email: user.email }),
+          deviceInfo?.ip,
+          undefined
+        )
       )
     }
 
@@ -171,7 +185,11 @@ export class AuthService {
     }
   }
 
-  async createSession(employeeId: string, deviceInfo?: { ip?: string; userAgent?: string }) {
+  async createSession(
+    employeeId: string,
+    deviceInfo?: { ip?: string; userAgent?: string },
+    context?: any
+  ) {
     const id = uuid()
     const now = Date.now()
     const expires = now + 1000 * 60 * 60 * 24 * 7 // 7天过期
@@ -184,14 +202,15 @@ export class AuthService {
       .all()
 
     if (oldSessions.length > 0) {
-      for (const s of oldSessions) {
-        await this.kv.delete(`session:${s.id}`)
-      }
-      await this.db.delete(sessions).where(eq(sessions.employeeId, employeeId)).run()
+      // 并行删除所有旧会话的 KV 缓存
+      await Promise.all([
+        ...oldSessions.map(s => this.kv.delete(`session:${s.id}`)),
+        this.db.delete(sessions).where(eq(sessions.employeeId, employeeId)).run(),
+      ])
     }
 
-    // 1. 写入 D1 (作为持久化备份和审计)
-    await this.db
+    // 1. 异步写入 D1 (作为持久化备份和审计)
+    const d1Promise = this.db
       .insert(sessions)
       .values({
         id,
@@ -203,6 +222,12 @@ export class AuthService {
         lastActiveAt: now,
       })
       .run()
+
+    if (context?.executionCtx?.waitUntil) {
+      context.executionCtx.waitUntil(d1Promise.catch((e: any) => console.error('Session D1 write failed', e)))
+    } else {
+      d1Promise.catch((e: any) => console.error('Session D1 write failed', e))
+    }
 
     // 2. 写入 KV (作为高性能缓存)
     // 获取完整的上下文信息
@@ -334,7 +359,7 @@ export class AuthService {
       throw Errors.BUSINESS_ERROR('重置链接已过期')
     }
 
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = await hashPassword(password)
 
     await this.db
       .update(employees)
@@ -448,7 +473,7 @@ export class AuthService {
       }
     }
 
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = await hashPassword(password)
 
     // 激活用户并绑定 TOTP
     await this.db

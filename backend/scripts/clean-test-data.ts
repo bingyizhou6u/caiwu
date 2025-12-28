@@ -72,7 +72,7 @@ const MODULE_TABLES: Record<string, Array<keyof typeof schema>> = {
     'vendors',
     'orgDepartments',
     'positions',
-    'departments',
+    'projects',
     'headquarters',
     'currencies',
   ],

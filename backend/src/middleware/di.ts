@@ -53,7 +53,7 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     const db = createDb(c.env.DB)
 
     // Initialize services
-    const systemConfigService = new SystemConfigService(db)
+    const systemConfigService = new SystemConfigService(db, c.env.SESSIONS_KV)
     const annualLeaveService = new AnnualLeaveService(db)
 
     const permissionService = new PermissionService(db)
