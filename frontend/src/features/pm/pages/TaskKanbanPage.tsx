@@ -153,7 +153,7 @@ function KanbanColumn({
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, status)}
         >
-            <div style={{ minHeight: 400, maxHeight: 'calc(100vh - 320px)', overflowY: 'auto' }}>
+            <div style={{ minHeight: 400, maxHeight: 'calc(100vh - 320px)', overflowY: 'auto', paddingTop: 8 }}>
                 {tasks.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 24, color: '#bfbfbf' }}>
                         拖拽任务到此处
