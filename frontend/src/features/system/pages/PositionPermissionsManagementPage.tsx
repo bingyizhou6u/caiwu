@@ -17,12 +17,7 @@ import { PageContainer } from '../../../components/PageContainer'
 
 const { Panel } = Collapse
 
-// 层级选项 (保留用于显示，但主要使用 dataScope)
-const LEVEL_LABELS: Record<number, string> = {
-  1: '总部',
-  2: '项目',
-  3: '组',
-}
+
 
 // 权限摘要显示
 function PermissionSummary({
@@ -288,12 +283,7 @@ export function PositionPermissionsManagement() {
   const columns: DataTableColumn<Position>[] = [
     { title: '职位代码', dataIndex: 'code', width: 140 },
     { title: '职位名称', dataIndex: 'name', width: 120 },
-    {
-      title: '层级',
-      dataIndex: 'level',
-      width: 80,
-      render: (v: number) => <Tag>{LEVEL_LABELS[v] || v}</Tag>
-    },
+    // Level column removed as it is deprecated
     {
       title: '数据范围',
       dataIndex: 'dataScope',
