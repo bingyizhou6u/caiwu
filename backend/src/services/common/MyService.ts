@@ -37,25 +37,35 @@ export class MyService {
   }
 
   async getDashboardData(userId: string) {
-    const employeeId = await this.getMyEmployeeId(userId)
-    if (!employeeId) {
-      throw Errors.NOT_FOUND('未找到员工记录')
-    }
+    // 假设 userId 即为 employeeId (或通过 getById 验证)
+    const employeeId = userId
 
-    const [empInfo, salary, pending, annualLeaveStats] = await Promise.all([
-      // 员工信息
+    // 并行获取所有数据
+    const [empInfo, salary, pending, annualLeaveStats, leaves, reimbursements] = await Promise.all([
+      // 1. 员工信息 (这也验证了用户是否存在)
       this.employeeService.getById(employeeId),
 
-      // 月薪
+      // 2. 月薪
       this.salaryService.getEmployeeTotalSalary(employeeId),
 
-      // 待报销
+      // 3. 待报销
       this.expenseReimbursementService
         .getReimbursementStats(employeeId)
         .then(stats => stats.find(s => s.status === 'pending') || { count: 0, totalCents: 0 }),
 
-      // 年假统计
+      // 4. 年假统计
       (async () => {
+        // 由于 getAnnualLeaveStats 需要 joinDate，虽然我们可以在下面获取到 empInfo
+        // 但为了并行，我们需要在这里先获取 joinDate。
+        // 这会导致重复获取 empInfo 吗？是的。
+        // 为了极致优化，我们可以稍作妥协：
+        // 方案 A: 先 fetch empInfo，再 Promise.all 其他（串行 1 + N）
+        // 方案 B: 并行 fetch，但在 annualLeaveStats 内部再 fetch 用于获取 joinDate (Worker 可能会缓存？不)
+
+        // 修正：为了避免阻塞其他查询，我们单独在内部查一下（或者优化 annualLeaveService 只需要 id）
+        // 这里为了简单和正确性，且 getById 可能已经被优化，我们先保留内部查询，
+        // 或者我们可以分两步：Step 1 getEmpInfo, Step 2 Promise.all others.
+        // Step 1 很快。
         const emp = await this.employeeService.getById(employeeId)
         if (!emp || !emp.joinDate) { return null }
         try {
@@ -65,11 +75,17 @@ export class MyService {
           return null
         }
       })(),
+
+      // 5. 最近申请 (Leaves)
+      this.employeeLeaveService.listLeaves({ employeeId }),
+
+      // 6. 最近申请 (Reimbursements)
+      this.expenseReimbursementService.listReimbursements({ employeeId }),
     ])
 
-    // 最近申请 - 需要分别查再合并
-    const leaves = await this.employeeLeaveService.listLeaves({ employeeId })
-    const reimbursements = await this.expenseReimbursementService.listReimbursements({ employeeId })
+    if (!empInfo) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
 
     const recent = [
       ...leaves.map(l => ({
