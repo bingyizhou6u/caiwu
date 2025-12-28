@@ -24,7 +24,8 @@ docs/
 │   ├── hr.md              # 人力资源
 │   ├── assets.md          # 资产管理
 │   ├── sites.md           # 站点管理
-│   └── reports.md         # 报表模块
+│   ├── reports.md         # 报表模块
+│   └── pm.md              # 项目管理
 │
 ├── frontend/              # 前端文档
 │   ├── form-components.md # 表单组件
@@ -71,6 +72,7 @@ docs/
 - **[资产管理](modules/assets.md)** - 固定资产、租赁
 - **[站点管理](modules/sites.md)** - 站点、水电账单
 - **[报表模块](modules/reports.md)** - 财务/人事报表
+- **[项目管理](modules/pm.md)** - 任务看板、工时管理
 
 ### 前端开发
 - **[自定义 Hooks](frontend/hooks.md)** - 60+ 业务 Hooks
