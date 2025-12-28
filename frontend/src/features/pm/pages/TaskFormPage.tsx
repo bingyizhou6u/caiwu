@@ -34,11 +34,12 @@ const PRIORITY_OPTIONS = [
     { value: 'low', label: '低' },
 ]
 
-// 状态选项
+// 状态选项 - 工作流顺序：待办 → 需求评审 → 开发中 → 代码评审 → 测试中 → 已完成
 const STATUS_OPTIONS = [
     { value: 'todo', label: '待办' },
+    { value: 'design_review', label: '需求评审' },
     { value: 'in_progress', label: '开发中' },
-    { value: 'review', label: '评审中' },
+    { value: 'code_review', label: '代码评审' },
     { value: 'testing', label: '测试中' },
     { value: 'completed', label: '已完成' },
     { value: 'blocked', label: '已阻塞' },

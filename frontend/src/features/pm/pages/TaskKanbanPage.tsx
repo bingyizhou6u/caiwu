@@ -21,11 +21,12 @@ import dayjs from 'dayjs'
 
 const { Text } = Typography
 
-// 看板列配置
+// 看板列配置 - 工作流顺序：待办 → 需求评审 → 开发中 → 代码评审 → 测试中 → 已完成
 const KANBAN_COLUMNS = [
     { key: 'todo', title: '待办', color: '#8c8c8c' },
+    { key: 'design_review', title: '需求评审', color: '#fa8c16' },
     { key: 'in_progress', title: '开发中', color: '#1890ff' },
-    { key: 'review', title: '评审中', color: '#faad14' },
+    { key: 'code_review', title: '代码评审', color: '#faad14' },
     { key: 'testing', title: '测试中', color: '#722ed1' },
     { key: 'completed', title: '已完成', color: '#52c41a' },
 ] as const

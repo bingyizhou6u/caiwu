@@ -35,8 +35,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 const TASK_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     todo: { label: '待办', color: 'default' },
+    design_review: { label: '需求评审', color: 'orange' },
     in_progress: { label: '开发中', color: 'processing' },
-    review: { label: '评审中', color: 'warning' },
+    code_review: { label: '代码评审', color: 'warning' },
     testing: { label: '测试中', color: 'purple' },
     completed: { label: '已完成', color: 'success' },
     blocked: { label: '阻塞', color: 'error' },
