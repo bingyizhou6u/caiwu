@@ -1,5 +1,5 @@
-// Service Worker v4 - 支持 Cloudflare Access
-const SW_VERSION = 'v4'
+// Service Worker v5 - 修复 CF Access 重定向问题
+const SW_VERSION = 'v5'
 const CACHE_NAME = `ar-finance-cache-${SW_VERSION}`
 
 // 需要缓存的资源模式
@@ -67,6 +67,11 @@ self.addEventListener('fetch', (event) => {
         return
     }
 
+    // 导航请求（HTML 页面）让浏览器处理，避免 CF Access 重定向问题
+    if (event.request.mode === 'navigate') {
+        return
+    }
+
     // 只缓存 GET 请求
     if (event.request.method !== 'GET') {
         return
@@ -106,12 +111,7 @@ self.addEventListener('fetch', (event) => {
         return
     }
 
-    // 对于 HTML 页面，使用网络优先策略
-    event.respondWith(
-        fetch(event.request).catch(() => {
-            return caches.match(event.request)
-        })
-    )
+    // 其他请求直接 fetch
 })
 
 // 消息处理
