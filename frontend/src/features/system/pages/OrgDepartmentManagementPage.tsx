@@ -12,7 +12,7 @@ import {
     useCreateOrgDepartment,
     useUpdateOrgDepartment,
     useDeleteOrgDepartment,
-    useDepartmentOptions,
+    useProjectOptions,
     useFormModal,
     type OrgDepartment,
 } from '../../../hooks'
@@ -25,7 +25,7 @@ export function OrgDepartmentManagement() {
     const { mutateAsync: updateMutation } = useUpdateOrgDepartment()
     const { mutateAsync: deleteMutation } = useDeleteOrgDepartment()
 
-    const { options: projectOptions } = useDepartmentOptions()
+    const { data: projectOptions = [] } = useProjectOptions()
 
     const modal = useFormModal<OrgDepartment>()
     const [form] = Form.useForm()
@@ -56,8 +56,8 @@ export function OrgDepartmentManagement() {
     const parentOptions = useMemo(() => {
         const currentId = modal.data?.id
         return (orgDeptData?.results || [])
-            .filter((d) => d.active === 1 && d.id !== currentId)
-            .map((d) => ({ label: d.name, value: d.id }))
+            .filter((d: OrgDepartment) => d.active === 1 && d.id !== currentId)
+            .map((d: OrgDepartment) => ({ label: d.name, value: d.id }))
     }, [orgDeptData, modal.data?.id])
 
     const handleCreate = useMemo(

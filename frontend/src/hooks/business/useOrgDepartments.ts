@@ -1,8 +1,8 @@
 /**
  * 组织部门管理 Hook
  */
-import { useQueryClient } from '@tanstack/react-query'
-import { useApiQuery, useApiMutation } from '../useApiQuery'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useApiQuery } from '../../utils/useApiQuery'
 import { api } from '../../config/api'
 import type { SelectOption } from '../../types'
 
@@ -54,8 +54,8 @@ export function useOrgDepartmentOptions(projectId?: string) {
     const { data, isLoading, error } = useOrgDepartments(projectId)
 
     const options: SelectOption[] = (data?.results || [])
-        .filter((d) => d.active === 1)
-        .map((d) => ({
+        .filter((d: OrgDepartment) => d.active === 1)
+        .map((d: OrgDepartment) => ({
             label: d.name,
             value: d.id,
         }))
@@ -69,8 +69,8 @@ export function useOrgDepartmentOptions(projectId?: string) {
 export function useCreateOrgDepartment() {
     const queryClient = useQueryClient()
 
-    return useApiMutation<OrgDepartment, Partial<OrgDepartment>>(
-        async (data) => {
+    return useMutation({
+        mutationFn: async (data: Partial<OrgDepartment>) => {
             const response = await fetch(api.orgDepartments, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -82,14 +82,12 @@ export function useCreateOrgDepartment() {
                 throw new Error(error.message || '创建失败')
             }
             const result = await response.json()
-            return result.data
+            return result.data as OrgDepartment
         },
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: ['org-departments'] })
-            },
-        }
-    )
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['org-departments'] })
+        },
+    })
 }
 
 /**
@@ -98,8 +96,8 @@ export function useCreateOrgDepartment() {
 export function useUpdateOrgDepartment() {
     const queryClient = useQueryClient()
 
-    return useApiMutation<OrgDepartment, { id: string; data: Partial<OrgDepartment> }>(
-        async ({ id, data }) => {
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<OrgDepartment> }) => {
             const response = await fetch(api.orgDepartmentsById(id), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -111,14 +109,12 @@ export function useUpdateOrgDepartment() {
                 throw new Error(error.message || '更新失败')
             }
             const result = await response.json()
-            return result.data
+            return result.data as OrgDepartment
         },
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: ['org-departments'] })
-            },
-        }
-    )
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['org-departments'] })
+        },
+    })
 }
 
 /**
@@ -127,8 +123,8 @@ export function useUpdateOrgDepartment() {
 export function useDeleteOrgDepartment() {
     const queryClient = useQueryClient()
 
-    return useApiMutation<void, string>(
-        async (id) => {
+    return useMutation({
+        mutationFn: async (id: string) => {
             const response = await fetch(api.orgDepartmentsById(id), {
                 method: 'DELETE',
                 credentials: 'include',
@@ -138,10 +134,8 @@ export function useDeleteOrgDepartment() {
                 throw new Error(error.message || '删除失败')
             }
         },
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: ['org-departments'] })
-            },
-        }
-    )
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['org-departments'] })
+        },
+    })
 }

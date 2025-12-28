@@ -510,8 +510,104 @@ if (position.dataScope === 'project') { ... }
 
 ---
 
+## 🖥️ 前端开发规范 (Dec 2025)
+
+### 1. Hooks 规范
+
+#### 单实体查询使用专用 Hook
+
+**规则**: 列表查询和单个实体查询必须使用不同的 Hook，不要从列表中 find。
+
+```tsx
+// ❌ 错误：从列表中查找单个实体
+const { data: tasks = [] } = useTasks(projectId)
+const task = tasks.find(t => t.id === taskId)  // 列表可能未加载完
+
+// ✅ 正确：使用专用 Hook
+const { data: task, isLoading } = useTask(taskId)  // 专门获取单个任务
+```
+
+### 2. 页面标题规范
+
+#### PageContainer 必须设置 documentTitle
+
+**规则**: 动态页面必须设置 `documentTitle` 属性，确保 MultiTabs 和浏览器标签显示正确标题。
+
+```tsx
+// ❌ 错误：只设置 React 标题，浏览器标签显示"未命名页面"
+<PageContainer title={project?.name || '项目详情'}>
+
+// ✅ 正确：同时设置 documentTitle
+<PageContainer 
+  title={project?.name || '项目详情'}
+  documentTitle={project?.name || '项目详情'}
+>
+```
+
+### 3. 表单多选规范
+
+#### JSON 数组字段使用多选 Select
+
+**规则**: 后端存储为 JSON 数组的字段，前端表单必须使用 `mode="multiple"` 的 Select。
+
+```tsx
+// 支持多人选择
+<Form.Item name="assigneeIds" label="开发人员">
+  <Select
+    mode="multiple"
+    placeholder="选择开发人员（可多选）"
+    options={employeeOptions}
+  />
+</Form.Item>
+```
+
+### 4. 任务卡片交互规范
+
+#### 悬停和点击反馈
+
+**规则**: 可点击的卡片必须有明显的悬停效果。
+
+```css
+/* 任务卡片悬停效果 */
+.task-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.task-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -8px rgba(99, 102, 241, 0.25);
+  border-color: var(--color-primary);
+}
+```
+
+### 5. 状态配置规范
+
+#### 集中管理状态映射
+
+**规则**: 任务/审批等状态必须在页面顶部集中定义配置对象。
+
+```tsx
+// 集中定义状态配置
+const TASK_STATUS_CONFIG = {
+  todo: { label: '待办', color: 'default' },
+  design_review: { label: '需求评审', color: 'orange' },
+  in_progress: { label: '开发中', color: 'processing' },
+  code_review: { label: '代码评审', color: 'warning' },
+  testing: { label: '测试中', color: 'purple' },
+  completed: { label: '已完成', color: 'success' },
+}
+
+// 使用配置
+<Tag color={TASK_STATUS_CONFIG[status]?.color}>
+  {TASK_STATUS_CONFIG[status]?.label || status}
+</Tag>
+```
+
+---
+
 ## 🔄 更新记录
 
+- 2025-12-28: 添加前端开发规范（Hooks、页面标题、多选表单、卡片交互）
 - 2025-12-26: 添加 D1 顺序查询规范（禁止复杂 JOIN）
 - 2025-12-25: 添加权限与数据隔离规范 (DataScope)
 - 2025-01-27: 初始版本，建立开发规范
