@@ -43,8 +43,10 @@ export function Login() {
                 setError(null)
 
                 // 调用 CF session 端点
+                // credentials: 'include' 确保 CF Access cookie 被发送
                 const response = await fetch('/api/v2/auth/cf-session', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                     },
