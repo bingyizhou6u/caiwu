@@ -130,3 +130,43 @@
     font-size: 12px;
     color: var(--color-text-secondary);
 }
+
+/* Header Clock */
+.header-clock {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.06);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    transition: all 0.3s;
+}
+
+.header-clock:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.header-clock .clock-icon {
+    font-size: 14px;
+    color: var(--color-primary);
+}
+
+.header-clock .clock-content {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.header-clock .clock-time {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.header-clock .clock-date {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+}
