@@ -98,7 +98,8 @@ app.use(
   })
 )
 // 通用 API 速率限制（基于 IP）
-app.use('/api/*', apiRateLimitByIP)
+// 通用 API 速率限制（基于 IP）- 移至 v2 路由组中，确保在 DI 之后执行
+// app.use('/api/*', apiRateLimitByIP)
 
 // Log request start
 app.use('*', async (c, next) => {
@@ -394,9 +395,10 @@ v2.onError(errorHandlerV2)
 // Middleware for API routes
 const apiMiddleware = [
   createVersionMiddleware(), // 版本检测（最先执行）
+  di,                        // 依赖注入（必须在依赖服务的中间件之前）
   createIPWhitelistMiddleware(),
+  apiRateLimitByIP,          // 全局限流
   createAuthMiddleware(),
-  di,
 ]
 
 v2.use('*', ...apiMiddleware)
