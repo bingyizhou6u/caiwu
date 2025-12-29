@@ -13,7 +13,7 @@ import {
 } from '../../utils/jwt.js'
 import { Context } from 'hono'
 import { employees, sessions } from '../../db/schema.js'
-import { eq } from 'drizzle-orm'
+import { eq, or } from 'drizzle-orm'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 import { cloudflareAccessAuth } from '../../middleware/cfAccess.js'
@@ -214,7 +214,10 @@ authRoutes.openapi(cfSessionRoute, async (c: Context<{ Bindings: Env; Variables:
     const employee = await db
       .select()
       .from(employees)
-      .where(eq(employees.personalEmail, email))
+      .where(or(
+        eq(employees.email, email),
+        eq(employees.personalEmail, email)
+      ))
       .get()
 
     if (!employee) {

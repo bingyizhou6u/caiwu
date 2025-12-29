@@ -8,7 +8,7 @@ import type { Env, AppVariables } from './types/index.js'
 
 // Middleware imports
 import { createAuthMiddleware } from './middleware.js'
-import { createIPWhitelistMiddleware } from './middleware/ipWhitelist.js'
+
 import { di } from './middleware/di.js'
 import { createRequestIdMiddleware } from './middleware/requestId.js'
 import { securityHeaders } from './middleware/security.js'
@@ -32,7 +32,7 @@ import { arApRoutes as arApRoutesV2 } from './routes/v2/ar-ap.js'
 import reportsRoutesV2 from './routes/v2/reports.js'
 import { importRoutes as importRoutesV2 } from './routes/v2/import.js'
 import { employeesRoutes as employeesRoutesV2 } from './routes/v2/employees.js'
-import { ipWhitelistRoutes as ipWhitelistRoutesV2 } from './routes/v2/ip-whitelist.js'
+
 import { auditRoutes as auditRoutesV2 } from './routes/v2/audit.js'
 import { salaryPaymentsRoutes as salaryPaymentsRoutesV2 } from './routes/v2/salary-payments.js'
 import { fixedAssetsRoutes as fixedAssetsRoutesV2 } from './routes/v2/fixed-assets.js'
@@ -98,8 +98,7 @@ app.use(
   })
 )
 // 通用 API 速率限制（基于 IP）
-// 通用 API 速率限制（基于 IP）- 移至 v2 路由组中，确保在 DI 之后执行
-// app.use('/api/*', apiRateLimitByIP)
+
 
 // Log request start
 app.use('*', async (c, next) => {
@@ -289,21 +288,8 @@ app.post('/api/v2/init-if-empty', async c => {
     // 数据库为空，执行初始化
     const now = Date.now()
 
-    // 从环境变量读取初始化密码哈希
-    // 生产环境必须通过 wrangler secret put INIT_ADMIN_PASSWORD_HASH 设置
-    // 开发环境可以通过 env.dev.vars 设置
-    if (!c.env.INIT_ADMIN_PASSWORD_HASH) {
-      Logger.error(
-        'INIT_ADMIN_PASSWORD_HASH environment variable is required. Please set it via wrangler secret put INIT_ADMIN_PASSWORD_HASH',
-        {},
-        c
-      )
-      throw Errors.INTERNAL_ERROR(
-        '系统初始化失败：未设置 INIT_ADMIN_PASSWORD_HASH 环境变量。请通过 wrangler secret put INIT_ADMIN_PASSWORD_HASH 设置。'
-      )
-    }
-
-    const passwordHash = c.env.INIT_ADMIN_PASSWORD_HASH
+    // 从环境变量读取初始化管理员邮箱（可选，默认为 admin@example.com）
+    const adminEmail = c.env.INIT_ADMIN_EMAIL || 'admin@example.com'
 
     // 1. 创建总部（使用 UUID 格式）
     const hqId = 'default-hq-001' // 固定 ID 以便 INSERT OR IGNORE 幂等
@@ -352,18 +338,16 @@ app.post('/api/v2/init-if-empty', async c => {
     await c.env.DB.prepare(
       `
       INSERT OR IGNORE INTO employees (
-        id, email, name, position_id, project_id, join_date, status, active,
-        password_hash, must_change_password, password_changed,
+        id, email, personal_email, name, position_id, project_id, join_date, status, active,
         created_at, updated_at
       ) VALUES (
-        'admin_employee', 'admin@example.com', 'Admin', 'pos-hq-director', ?,
+        'admin_employee', ?, ?, 'Admin', 'pos-hq-director', ?,
         '2023-01-01', 'regular', 1,
-        ?, 0, 1,
         ?, ?
       )
     `
     )
-      .bind(deptId, passwordHash, now, now)
+      .bind(adminEmail, adminEmail, deptId, now, now)
       .run()
 
     return jsonResponse(
@@ -372,10 +356,8 @@ app.post('/api/v2/init-if-empty', async c => {
         initialized: true,
         message: '数据库初始化成功',
         adminAccount: {
-          email: 'admin@example.com',
-          password: c.env.INIT_ADMIN_PASSWORD_HASH
-            ? '请使用环境变量中配置的密码'
-            : 'password (默认密码，请尽快修改)',
+          email: adminEmail,
+          note: '该账号已配置为超级管理员，请确保 Cloudflare Access 允许该邮箱登录',
         },
       })
     )
@@ -396,7 +378,7 @@ v2.onError(errorHandlerV2)
 const apiMiddleware = [
   createVersionMiddleware(), // 版本检测（最先执行）
   di,                        // 依赖注入（必须在依赖服务的中间件之前）
-  createIPWhitelistMiddleware(),
+
   apiRateLimitByIP,          // 全局限流
   createAuthMiddleware(),
 ]
@@ -424,7 +406,7 @@ v2.route('/employee-leaves', employeesLeavesRoutesV2)
 v2.route('/expense-reimbursements', expenseReimbursementsRoutesV2)
 v2.route('/', importRoutesV2)
 v2.route('/', auditRoutesV2)
-v2.route('/', ipWhitelistRoutesV2)
+
 v2.route('/', systemConfigRoutesV2)
 v2.route('/', positionPermissionsRoutesV2)
 v2.route('/permission-config', permissionConfigRoutesV2)
