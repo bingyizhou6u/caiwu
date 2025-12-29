@@ -89,8 +89,7 @@
   - `positionId` → 职位（权限来源）
   - `orgDepartmentId` → 组织部门
   - `departmentId` → 项目/部门
-  - `passwordHash`, `totpSecret` → 认证
-  - `activationToken`, `resetToken` → 账户激活/重置
+
 
 ### positions（职位）
 - **权限核心**：

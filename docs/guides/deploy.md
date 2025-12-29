@@ -162,17 +162,13 @@ cd backend
 # JWT 密钥（如果尚未设置）
 wrangler secret put AUTH_JWT_SECRET
 
-# 初始化管理员密码哈希（必需）
-# 首先生成密码哈希
-npm run gen:password-hash "your-secure-password"
-# 然后设置 Secret
-wrangler secret put INIT_ADMIN_PASSWORD_HASH
+
 
 # 邮件服务 Token（如果使用）
 wrangler secret put EMAIL_TOKEN
 ```
 
-**重要**: `INIT_ADMIN_PASSWORD_HASH` 是必需的。如果未设置，系统初始化将失败。
+
 
 ### 3. 部署后端代码
 

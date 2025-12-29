@@ -31,7 +31,6 @@ invocation_logs = true
 [vars]
 CF_ACCOUNT_ID = "611d1a2e53f6c6d0922ff231e6a63211"
 CF_ZONE_ID = "18ecc2631881b0e9e03b3ab259d69249"
-CF_IP_LIST_ID = "d506362da37b45a2a510eb348d8f1ed2"
 
 # 邮件服务绑定（指向 email-worker）
 [[services]]
@@ -42,12 +41,7 @@ environment = "production"
 # 生产环境密钥通过 Cloudflare Secret 设置
 # 请运行以下命令设置必需的 Secret：
 # wrangler secret put AUTH_JWT_SECRET
-# wrangler secret put INIT_ADMIN_PASSWORD_HASH
 
 # 开发环境配置（仅用于本地测试）
 [env.dev.vars]
 AUTH_JWT_SECRET = "dev-jwt-secret-for-local-testing-only"
-# 初始化管理员密码哈希（必需）
-# 生成方式：运行 npm run gen:password-hash <your-password>
-# 或使用 Node.js: require('bcryptjs').hashSync('your-password', 10)
-INIT_ADMIN_PASSWORD_HASH = "$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve"

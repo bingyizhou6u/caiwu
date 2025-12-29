@@ -117,10 +117,4 @@ export const allowanceConfigSchema = z.object({
     })).optional(),
 })
 
-export const resetUserSchema = z.object({
-    password: z.string().min(6, '密码长度不能少于6位'),
-    confirm_password: z.string().min(6, '密码长度不能少于6位'),
-}).refine((data) => data.password === data.confirm_password, {
-    message: "两次输入的密码不一致",
-    path: ["confirm_password"],
-})
+
