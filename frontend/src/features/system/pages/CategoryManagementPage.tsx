@@ -12,6 +12,7 @@ import { withErrorHandler } from '../../../utils/errorHandler'
 import { categorySchema } from '../../../validations/category.schema'
 import type { Category } from '../../../types'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 const KIND_LABELS: Record<string, string> = {
   income: '收入',
@@ -128,7 +129,7 @@ export function CategoryManagement() {
               onClick: () => refetch()
             }
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<Category>

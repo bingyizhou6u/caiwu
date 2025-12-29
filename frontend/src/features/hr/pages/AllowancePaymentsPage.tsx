@@ -35,6 +35,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function AllowancePayments() {
   const { hasPermission } = usePermissions()
@@ -419,7 +420,7 @@ export function AllowancePayments() {
               loading: isLoading
             }
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<AllowancePayment>

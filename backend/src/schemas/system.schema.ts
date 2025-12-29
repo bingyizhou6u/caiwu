@@ -31,42 +31,6 @@ export const updatePositionSchema = z.object({
 })
 
 /**
- * IP白名单Schema
- */
-export const createIPWhitelistSchema = z.object({
-    ipAddress: z.string().min(1, 'ipAddress参数必填'),
-    description: z.string().optional(),
-})
-
-/**
- * 批量创建IP白名单Schema
- */
-export const batchCreateIPWhitelistSchema = z.object({
-    ips: z
-        .array(
-            z.object({
-                ip: z.string().min(1, 'ip地址不能为空'),
-                description: z.string().optional(),
-            })
-        )
-        .min(1, 'ips数组必填且不能为空'),
-})
-
-/**
- * 批量删除IP白名单Schema
- */
-export const batchDeleteIPWhitelistSchema = z.object({
-    ids: z.array(uuidSchema).min(1, 'ids数组必填且不能为空'),
-})
-
-/**
- * 切换IP白名单规则Schema
- */
-export const toggleIPWhitelistRuleSchema = z.object({
-    enabled: z.boolean(),
-})
-
-/**
  * 系统配置Schema
  */
 export const updateSystemConfigSchema = z.object({

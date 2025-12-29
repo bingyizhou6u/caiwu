@@ -17,6 +17,7 @@ import {
     type OrgDepartment,
 } from '../../../hooks'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function OrgDepartmentManagement() {
     const [searchParams, setSearchParams] = useState<{ projectId?: string; search?: string }>({})
@@ -195,7 +196,7 @@ export function OrgDepartmentManagement() {
                             ]
                             : []
                     }
-                    style={{ marginTop: 16 }}
+                    className={styles.mtMd}
                 />
 
                 <DataTable<OrgDepartment>

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../api/http'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 // 状态配置
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -168,7 +169,7 @@ export function MyTasksPage() {
             breadcrumb={[{ title: '个人中心' }, { title: '我的任务' }]}
         >
             <Card bordered className="page-card">
-                <Space style={{ marginBottom: 16 }}>
+                <Space className={styles.mbMd}>
                     <Select
                         placeholder="状态筛选"
                         allowClear

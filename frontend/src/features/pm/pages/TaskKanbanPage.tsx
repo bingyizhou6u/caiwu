@@ -19,6 +19,7 @@ import {
 import { PageContainer } from '../../../components/PageContainer'
 import dayjs from 'dayjs'
 import { KANBAN_COLUMNS, TASK_PRIORITY_CONFIG } from '../constants'
+import styles from '../../../components/common/common.module.css'
 
 const { Text } = Typography
 
@@ -286,7 +287,7 @@ export default function TaskKanbanPage() {
         >
             <Card bordered className="page-card page-card-outer">
                 {/* 工具栏 */}
-                <Card className="page-card-inner" style={{ marginBottom: 16 }}>
+                <Card className={`page-card-inner ${styles.mbMd}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Space>
                             <Input

@@ -23,6 +23,7 @@ const TYPE_OPTIONS = [
 ]
 
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function AccountManagement() {
   const { data: accounts = [], isLoading } = useAccounts()
@@ -256,7 +257,7 @@ export function AccountManagement() {
               )
             }] : [])
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<Account>

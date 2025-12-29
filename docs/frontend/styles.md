@@ -28,6 +28,25 @@
 - ✅ CSS Modules 已引入 (`common.module.css`)
 - ✅ 无障碍支持 (`aria-label`, `role`, `prefers-reduced-motion`)
 
+### 公共样式类清单 (`common.module.css`)
+
+> **更新于 2025-12-29**：内联样式统一迁移，26+ 文件使用公共类
+
+| 类别 | 类名 | 用途 |
+|------|------|------|
+| **间距** | `mtSm`, `mtMd`, `mtLg` | margin-top (8/16/24px) |
+|  | `mbSm`, `mbMd`, `mbLg` | margin-bottom (8/16/24px) |
+|  | `mlSm` | margin-left (8px) |
+| **区块** | `section`, `sectionLg` | 区块间距 (16/24px) |
+| **文本** | `textCenter`, `textRight` | 文本对齐 |
+| **Flex** | `flexBetween`, `flexCenter` | 常用 flex 布局 |
+| **加载** | `loadingContainer`, `loadingContainerSm` | 加载状态居中 |
+| **空状态** | `emptyContainer` | 空数据提示 |
+| **高亮** | `highlightBox`, `highlightBoxInfo` | 信息框样式 |
+| **列表** | `listItem` | 带底边框的列表项 |
+| **卡片** | `cardSpacing` | 卡片底部间距 |
+| **宽度** | `wFull` | 100% 宽度 |
+
 ---
 
 ## 📁 文件结构

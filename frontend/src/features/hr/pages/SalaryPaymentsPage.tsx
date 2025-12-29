@@ -21,6 +21,7 @@ import { SALARY_PAYMENT_STATUS, SALARY_ALLOCATION_STATUS } from '../../../utils/
 import { formatAmountWithCurrency } from '../../../utils/amount'
 import type { SalaryPayment } from '../../../hooks/business/useSalaryPayments'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function SalaryPayments() {
   const { hasPermission } = usePermissions()
@@ -444,7 +445,7 @@ export function SalaryPayments() {
               onClick: () => refetch()
             }
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<SalaryPayment>

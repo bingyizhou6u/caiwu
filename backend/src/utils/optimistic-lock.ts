@@ -14,9 +14,9 @@ import { ErrorCodes } from '../constants/errorCodes.js'
  * @throws 如果版本不匹配，抛出并发冲突错误
  */
 export function validateVersion(currentVersion: number | null, expectedVersion: number | null): void {
+  // 版本号必须提供，不再跳过
   if (currentVersion === null || expectedVersion === null) {
-    // 如果版本号为空，跳过验证（向后兼容）
-    return
+    throw Errors.VALIDATION_ERROR('缺少版本号，无法进行并发控制')
   }
 
   if (currentVersion !== expectedVersion) {

@@ -7,6 +7,7 @@ import { ARAP_STATUS } from '../../../utils/status'
 import { useAPSummary } from '../../../hooks'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function ReportAPSummary() {
   const [filters, setFilters] = useState<{ dateRangeStart?: string; dateRangeEnd?: string }>({
@@ -54,7 +55,7 @@ export function ReportAPSummary() {
             dateRangeEnd: dayjs().format('YYYY-MM-DD'),
           }}
         />
-        <Card bordered={false} className="page-card-inner" style={{ marginTop: 16, marginBottom: 16 }}>
+        <Card bordered={false} className={`page-card-inner ${styles.mtMd} ${styles.mbMd}`}>
           <Space style={{ marginTop: 12 }}>
             <Statistic title="期间总额" value={stats.total ? stats.total / 100 : 0} precision={2} suffix="CNY" />
             <Statistic title="期间已结" value={stats.settled ? stats.settled / 100 : 0} precision={2} suffix="CNY" />

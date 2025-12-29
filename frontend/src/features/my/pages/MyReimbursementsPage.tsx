@@ -42,6 +42,7 @@ const expenseTypeLabels: Record<string, string> = {
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn, AmountDisplay, StatusTag, EmptyText } from '../../../components/common'
 import { REIMBURSEMENT_STATUS } from '../../../utils/status'
+import styles from '../../../components/common/common.module.css'
 
 const createReimbursementSchema = z.object({
   expenseType: z.string().min(1, '请选择费用类型'),
@@ -58,7 +59,7 @@ export function MyReimbursements() {
   const { data, isLoading: loading } = useMyReimbursements()
   const { mutateAsync: createReimbursement } = useCreateMyReimbursement()
   const { form, validateWithZod: validateCreate } = useZodForm(createReimbursementSchema)
-  
+
   const {
     isOpen: modalVisible,
     openCreate,
@@ -85,9 +86,9 @@ export function MyReimbursements() {
       successMessage: '报销申请已提交',
       onSuccess: () => {
         closeModal()
-      form.resetFields()
+        form.resetFields()
+      }
     }
-  }
   )
 
   const getStatValue = (status: string) => {
@@ -126,7 +127,7 @@ export function MyReimbursements() {
     >
       <Card bordered className="page-card page-card-outer">
         {/* 报销统计 */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]} className={styles.sectionLg}>
           <Col xs={12} sm={6}>
             <Card className="page-card-inner">
               <Statistic
@@ -182,14 +183,14 @@ export function MyReimbursements() {
             </Button>
           }
         >
-        <DataTable<Reimbursement>
-          columns={columns}
-          data={reimbursements}
-          loading={loading}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-          tableProps={{ className: 'table-striped' }}
-        />
+          <DataTable<Reimbursement>
+            columns={columns}
+            data={reimbursements}
+            loading={loading}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            tableProps={{ className: 'table-striped' }}
+          />
         </Card>
       </Card>
 

@@ -21,6 +21,7 @@ interface Asset {
 
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn, AmountDisplay } from '../../../components/common'
+import styles from '../../../components/common/common.module.css'
 
 export function MyAssets() {
   const { data, isLoading: loading } = useMyAssets()
@@ -49,7 +50,7 @@ export function MyAssets() {
   ]
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>
+    return <div className={styles.loadingContainerSm}><Spin size="large" /></div>
   }
 
   return (

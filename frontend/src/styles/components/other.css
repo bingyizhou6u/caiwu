@@ -87,8 +87,51 @@
 .ant-collapse {
     border-radius: var(--radius-lg);
     overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.ant-collapse-item {
+    position: relative;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.ant-collapse-item:last-child {
+    border-bottom: none;
+}
+
+/* 左侧彩色条 */
+.ant-collapse-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.ant-collapse-item:hover::before,
+.ant-collapse-item-active::before {
+    opacity: 1;
 }
 
 .ant-collapse-header {
     font-weight: 500;
+    transition: background 0.2s ease, color 0.2s ease;
+    padding-left: 16px !important;
+}
+
+.ant-collapse-header:hover {
+    background: var(--color-bg-hover);
+}
+
+.ant-collapse-item-active>.ant-collapse-header {
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.ant-collapse-content {
+    border-top: 1px solid var(--color-border-light);
 }

@@ -19,6 +19,7 @@ import { SearchFilters } from '../../../components/common/SearchFilters'
 import { REIMBURSEMENT_STATUS } from '../../../utils/status'
 import type { ExpenseReimbursement } from '../../../hooks/business/useExpenses'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 import { EmployeeSelect, CurrencySelect, AmountInput } from '../../../components/form'
 
 const { Option } = Select
@@ -461,7 +462,7 @@ export function ExpenseReimbursement() {
               onClick: openCreate
             }] : [])
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<ExpenseReimbursement>

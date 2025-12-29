@@ -77,3 +77,131 @@
         transform: none;
     }
 }
+
+/* === 通用区块 === */
+.section {
+    margin-bottom: var(--spacing-md);
+}
+
+.sectionLg {
+    margin-bottom: var(--spacing-lg);
+}
+
+/* === 列表项样式 === */
+.listItem {
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+/* === 高亮信息框 === */
+.highlightBox {
+    background: var(--color-bg-hover);
+    border-radius: var(--radius-base);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+.highlightBoxInfo {
+    background: var(--color-info-bg);
+    border: 1px solid #91d5ff;
+    border-radius: var(--radius-base);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+/* === 图标文本组合 === */
+.iconText {
+    margin-right: var(--spacing-sm);
+}
+
+/* === 分隔线 === */
+.dividerCompact {
+    margin: var(--spacing-md) 0;
+}
+
+/* === 文本对齐 === */
+.textCenter {
+    text-align: center;
+}
+
+.textRight {
+    text-align: right;
+}
+
+/* === 加载状态容器 === */
+.loadingContainer {
+    text-align: center;
+    padding: 100px 0;
+}
+
+.loadingContainerSm {
+    text-align: center;
+    padding: 50px 0;
+}
+
+/* === 空数据容器 === */
+.emptyContainer {
+    text-align: center;
+    color: var(--color-text-tertiary);
+    padding: var(--spacing-xl);
+}
+
+/* === 卡片间距 === */
+.cardSpacing {
+    margin-bottom: var(--spacing-lg);
+}
+
+/* === Flex 布局工具 === */
+.flexBetween {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flexCenter {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* === 间距工具类 === */
+.mt0 {
+    margin-top: 0;
+}
+
+.mtSm {
+    margin-top: var(--spacing-sm);
+}
+
+.mtMd {
+    margin-top: var(--spacing-md);
+}
+
+.mtLg {
+    margin-top: var(--spacing-lg);
+}
+
+.mb0 {
+    margin-bottom: 0;
+}
+
+.mbSm {
+    margin-bottom: var(--spacing-sm);
+}
+
+.mbMd {
+    margin-bottom: var(--spacing-md);
+}
+
+.mbLg {
+    margin-bottom: var(--spacing-lg);
+}
+
+.mlSm {
+    margin-left: var(--spacing-sm);
+}
+
+/* === 宽度工具类 === */
+.wFull {
+    width: 100%;
+}

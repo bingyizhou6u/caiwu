@@ -33,12 +33,13 @@ const leaveTypeLabels: Record<string, string> = {
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn, StatusTag, EmptyText } from '../../../components/common'
 import { LEAVE_STATUS } from '../../../utils/status'
+import styles from '../../../components/common/common.module.css'
 
 export function MyLeaves() {
   const { data, isLoading: loading } = useMyLeaves()
   const { mutateAsync: createLeave } = useCreateMyLeave()
   const { form, validateWithZod: validateCreate } = useZodForm(createLeaveSchema)
-  
+
   const {
     isOpen: modalVisible,
     openCreate,
@@ -103,7 +104,7 @@ export function MyLeaves() {
     >
       <Card bordered className="page-card page-card-outer">
         {/* 假期统计 */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]} className={styles.sectionLg}>
           <Col xs={12} sm={6}>
             <Card className="page-card-inner">
               <Statistic title="年假已用" value={getUsedDays('annual')} suffix="天" prefix={<CalendarOutlined />} />
@@ -136,14 +137,14 @@ export function MyLeaves() {
             </Button>
           }
         >
-        <DataTable<any>
-          columns={columns}
-          data={leaves}
-          loading={loading}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-          tableProps={{ className: 'table-striped' }}
-        />
+          <DataTable<any>
+            columns={columns}
+            data={leaves}
+            loading={loading}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            tableProps={{ className: 'table-striped' }}
+          />
         </Card>
       </Card>
 

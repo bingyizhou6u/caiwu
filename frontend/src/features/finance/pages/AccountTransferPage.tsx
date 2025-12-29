@@ -15,6 +15,7 @@ import type { AccountTransfer as AccountTransferType } from '../../../types/busi
 
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn, PageToolbar, AmountDisplay, SearchFilters } from '../../../components/common'
+import styles from '../../../components/common/common.module.css'
 
 export function AccountTransfer() {
   const [open, setOpen] = useState(false)
@@ -267,7 +268,7 @@ export function AccountTransfer() {
             <Alert
               message="同币种转账，转出金额和转入金额必须相等"
               type="info"
-              style={{ marginBottom: 16 }}
+              className={styles.mbMd}
             />
           )}
 
@@ -275,7 +276,7 @@ export function AccountTransfer() {
             <Alert
               message="不同币种转账，需要提供实时汇率"
               type="warning"
-              style={{ marginBottom: 16 }}
+              className={styles.mbMd}
             />
           )}
 

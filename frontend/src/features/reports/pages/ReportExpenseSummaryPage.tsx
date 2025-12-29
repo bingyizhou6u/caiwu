@@ -5,6 +5,7 @@ import { SearchFilters } from '../../../components/common/SearchFilters'
 import { DataTable, AmountDisplay } from '../../../components/common'
 import { useExpenseSummary } from '../../../hooks'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function ReportExpenseSummary() {
   const [searchParams, setSearchParams] = useState<{ start: string; end: string }>({
@@ -47,7 +48,7 @@ export function ReportExpenseSummary() {
             dateRangeEnd: dayjs().format('YYYY-MM-DD'),
           }}
         />
-        <Card bordered={false} className="page-card-inner" style={{ marginTop: 16, marginBottom: 16 }}>
+        <Card bordered={false} className={`page-card-inner ${styles.mtMd} ${styles.mbMd}`}>
           <Space style={{ marginTop: 12 }}>
             <Statistic title="支出总额" value={stats.total ? stats.total / 100 : 0} precision={2} suffix="CNY" />
           </Space>

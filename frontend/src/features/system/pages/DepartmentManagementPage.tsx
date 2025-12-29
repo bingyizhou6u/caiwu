@@ -11,6 +11,7 @@ import { useProjects, useCreateProject, useUpdateProject, useDeleteProject, useF
 import { departmentSchema } from '../../../validations/department.schema'
 import type { Department } from '../../../types'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function DepartmentManagement() {
   const { data: departments = [], isLoading } = useProjects()
@@ -162,7 +163,7 @@ export function DepartmentManagement() {
               deptForm.resetFields()
             }
           }] : []}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<Department>

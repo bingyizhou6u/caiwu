@@ -11,6 +11,7 @@ import { Table, TableProps, Button, Space, Popconfirm } from 'antd'
 import { EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { ReactNode, useMemo } from 'react'
+import styles from './common.module.css'
 
 export type DataTableColumn<T> = ColumnsType<T>[number]
 
@@ -172,7 +173,7 @@ export function DataTable<T extends Record<string, any>>({
   return (
     <div role="region" aria-label={ariaLabel || '数据表格'}>
       {onRefresh && (
-        <div style={{ marginBottom: 12, textAlign: 'right' }}>
+        <div className={`${styles.mbSm} ${styles.textRight}`}>
           <Button icon={<ReloadOutlined aria-hidden="true" />} onClick={onRefresh} loading={loading} aria-label="刷新表格">
             刷新
           </Button>

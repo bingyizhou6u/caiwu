@@ -12,6 +12,7 @@ import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { currencySchema } from '../../../validations/currency.schema'
 import type { Currency } from '../../../types'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function CurrencyManagement() {
   const { data: currencies = [], isLoading, refetch } = useCurrencies()
@@ -33,23 +34,23 @@ export function CurrencyManagement() {
   // 过滤和排序数据
   const filteredAndSorted = useMemo(() => {
     let result = currencies.slice()
-    
+
     // 搜索过滤
     if (searchParams.search) {
       const search = searchParams.search.toLowerCase()
-      result = result.filter((c: Currency) => 
-        c.code.toLowerCase().includes(search) || 
+      result = result.filter((c: Currency) =>
+        c.code.toLowerCase().includes(search) ||
         c.name.toLowerCase().includes(search)
       )
     }
-    
+
     // 状态过滤
     if (searchParams.activeOnly === 'true') {
       result = result.filter((c: Currency) => c.active === 1)
     } else if (searchParams.activeOnly === 'false') {
       result = result.filter((c: Currency) => c.active === 0)
     }
-    
+
     // 排序
     return result.sort((a: Currency, b: Currency) => a.code.localeCompare(b.code))
   }, [currencies, searchParams])
@@ -155,7 +156,7 @@ export function CurrencyManagement() {
               loading: isLoading
             }
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<Currency>

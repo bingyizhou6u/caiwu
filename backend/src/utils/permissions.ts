@@ -339,12 +339,8 @@ export async function validateProjectAccess(
     'SELECT 1 FROM employee_projects WHERE employee_id = ? AND project_id = ? LIMIT 1'
   ).bind(employee.id, requestedProjectId).first()
 
-  if (association) {
-    return true
-  }
-
-  // 回退：检查 employees.project_id（向后兼容）
-  return employee.projectId === requestedProjectId
+  // 关联表中有记录则允许访问
+  return !!association
 }
 
 /**
@@ -372,12 +368,5 @@ export async function getAccessibleProjectIds(
     'SELECT project_id FROM employee_projects WHERE employee_id = ?'
   ).bind(employee.id).all<{ project_id: string }>()
 
-  const projectIds = rows.results?.map(r => r.project_id) || []
-
-  // 如果关联表为空，回退到 employees.project_id（向后兼容）
-  if (projectIds.length === 0 && employee.projectId) {
-    return [employee.projectId]
-  }
-
-  return projectIds
+  return rows.results?.map(r => r.project_id) || []
 }

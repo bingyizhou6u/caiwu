@@ -13,6 +13,7 @@ import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import type { Vendor } from '../../../types'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function VendorManagement() {
   const { data: vendors = [], isLoading } = useVendors()
@@ -155,7 +156,7 @@ export function VendorManagement() {
               )
             }] : [])
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<Vendor>

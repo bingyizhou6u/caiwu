@@ -25,6 +25,7 @@ type EmployeeSalaryRow = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 
 export function ReportEmployeeSalary() {
   const [year, setYear] = useState<number>(new Date().getFullYear())
@@ -45,7 +46,7 @@ export function ReportEmployeeSalary() {
       employeeIds: new Set<string>(),
     })
   }, [dataRows])
-  
+
   const employeeCount = summary.employeeIds.size
 
   const columns: ColumnsType<EmployeeSalaryRow> = [
@@ -113,12 +114,12 @@ export function ReportEmployeeSalary() {
       render: (cents: number, r: EmployeeSalaryRow) => {
         const amountStr = `${(cents / 100).toFixed(2)} CNY`
         return (
-          <SensitiveField 
-            value={amountStr} 
-            type="salary" 
-            permission="hr.salary.view" 
-            entityId={r.employeeId} 
-            entityType="employee" 
+          <SensitiveField
+            value={amountStr}
+            type="salary"
+            permission="hr.salary.view"
+            entityId={r.employeeId}
+            entityType="employee"
           />
         )
       },
@@ -154,12 +155,12 @@ export function ReportEmployeeSalary() {
       render: (cents: number, r: EmployeeSalaryRow) => {
         const amountStr = `${(cents / 100).toFixed(2)} CNY`
         return (
-          <SensitiveField 
-            value={amountStr} 
-            type="salary" 
-            permission="hr.salary.view" 
-            entityId={r.employeeId} 
-            entityType="employee" 
+          <SensitiveField
+            value={amountStr}
+            type="salary"
+            permission="hr.salary.view"
+            entityId={r.employeeId}
+            entityType="employee"
           />
         )
       },
@@ -185,7 +186,7 @@ export function ReportEmployeeSalary() {
       breadcrumb={[{ title: '报表中心' }, { title: '员工薪资报表' }]}
     >
       <Card bordered className="page-card page-card-outer">
-        <Card bordered={false} className="page-card-inner" style={{ marginBottom: 16 }}>
+        <Card bordered={false} className={`page-card-inner ${styles.mbMd}`}>
           <SearchFilters
             fields={[
               {

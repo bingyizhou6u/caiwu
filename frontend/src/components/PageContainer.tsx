@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { Breadcrumb, Spin } from 'antd'
 import { Link } from 'react-router-dom'
 import { ErrorBoundary } from './ErrorBoundary'
+import styles from './common/common.module.css'
 import '../styles/layouts/page-container.css'
 
 interface BreadcrumbItem {
@@ -69,7 +70,7 @@ export function PageContainer({
             )}
             <div className="page-content">
                 {loading ? (
-                    <div style={{ textAlign: 'center', padding: '50px 0' }}>
+                    <div className={styles.loadingContainerSm}>
                         <Spin size="large" />
                     </div>
                 ) : (

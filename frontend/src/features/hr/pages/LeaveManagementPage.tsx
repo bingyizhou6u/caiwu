@@ -15,6 +15,7 @@ import type { EmployeeLeave } from '../../../hooks/business/useLeaves'
 import React, { useState } from 'react'
 import { useEmployees } from '../../../hooks/useBusinessData'
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 import { DataTableColumn } from '../../../components/common/DataTable'
 
 const { Option } = Select
@@ -409,7 +410,7 @@ export function LeaveManagement() {
               onClick: openCreate
             }] : [])
           ]}
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<EmployeeLeave>

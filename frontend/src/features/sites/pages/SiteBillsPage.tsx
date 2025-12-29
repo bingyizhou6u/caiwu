@@ -17,6 +17,7 @@ const BILL_TYPE_LABELS: Record<string, string> = {
 }
 
 import { PageContainer } from '../../../components/PageContainer'
+import styles from '../../../components/common/common.module.css'
 import { DataTable, AmountDisplay, EmptyText, PageToolbar, StatusTag } from '../../../components/common'
 import { SITE_BILL_STATUS } from '../../../utils/status'
 import { SearchFilters } from '../../../components/common/SearchFilters'
@@ -261,7 +262,7 @@ export function SiteBills() {
             }
           }] : []}
           wrap
-          style={{ marginTop: 16 }}
+          className={styles.mtMd}
         />
 
         <DataTable<any>

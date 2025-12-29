@@ -88,10 +88,6 @@ export {
 export {
   createPositionSchema,
   updatePositionSchema,
-  createIPWhitelistSchema,
-  batchCreateIPWhitelistSchema,
-  batchDeleteIPWhitelistSchema,
-  toggleIPWhitelistRuleSchema,
   updateSystemConfigSchema,
   dateRangeQuerySchema,
   idQuerySchema,

@@ -260,7 +260,7 @@ export default function TimelogPage() {
                 </Row>
 
                 {/* 筛选工具栏 */}
-                <Card className={`page-card-inner ${commonStyles.toolbarCard}`} style={{ marginBottom: 16 }}>
+                <Card className={`page-card-inner ${commonStyles.toolbarCard} ${commonStyles.mbMd}`}>
                     <div className={commonStyles.toolbar}>
                         <Space>
                             <Select
