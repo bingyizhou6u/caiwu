@@ -21,6 +21,7 @@ import { useCurrencyOptions } from '../../../hooks'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { useFormModal } from '../../../hooks/forms/useFormModal'
 import { withErrorHandler } from '../../../utils/errorHandler'
+import { Logger } from '../../../utils/logger'
 import { createRentalPropertySchema, updateRentalPropertySchema, createRentalPaymentSchema, allocateDormitorySchema, type CreateRentalPropertyFormData, type UpdateRentalPropertyFormData, type CreateRentalPaymentFormData, type AllocateDormitoryFormData } from '../../../validations/rental.schema'
 
 // API 响应类型
@@ -291,7 +292,7 @@ export function RentalManagement() {
             })
           } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : '网络错误'
-            console.error(`分配员工失败 (${employeeId}):`, errorMessage)
+            Logger.error('分配员工失败', { employeeId, error: errorMessage })
           }
         }
       }

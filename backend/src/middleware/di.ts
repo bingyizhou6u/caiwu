@@ -1,5 +1,6 @@
 import { Context, Next } from 'hono'
 import { createDb } from '../db/index.js'
+import { Logger } from '../utils/logger.js'
 // System services
 import { SystemConfigService } from '../services/system/SystemConfigService.js'
 import { MasterDataService } from '../services/system/MasterDataService.js'
@@ -75,10 +76,7 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     const authService = new AuthService(
       db,
       c.env.SESSIONS_KV,
-      systemConfigService,
-      auditService,
-      emailService,
-      employeeService
+      auditService
     )
     // 使用 KV 缓存的主数据服务（提升性能）
     // 如需禁用缓存，可切换为: new MasterDataService(db)
@@ -183,7 +181,7 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
 
     await next()
   } catch (error) {
-    console.error('DI initialization error:', error)
+    Logger.error('DI initialization error', { error: error instanceof Error ? error.message : String(error) })
     throw error
   }
 }

@@ -1,110 +1,89 @@
 # 安全与认证文档
 
-> **核心文件**：`backend/src/services/auth/AuthService.ts`
+> **核心文件**：`backend/src/routes/v2/auth.ts`、`backend/src/middleware/cfAccess.ts`
 
 ---
 
-## 🔐 认证流程
+## 🔐 认证架构
+
+系统使用 **Cloudflare Access Zero Trust** 模式进行用户认证。
 
 ### 登录流程
 
 ```mermaid
 sequenceDiagram
     participant U as 用户
+    participant CF as Cloudflare Access
     participant S as 服务端
-    participant KV as Cloudflare KV
+    participant D1 as D1 数据库
     
-    U->>S: POST /auth/login (email, password)
-    S->>KV: 检查账号锁定
-    S->>S: 验证密码 (bcrypt)
-    S->>S: 检查2FA配置
-    alt 新设备
-        S->>U: {status: 'need_totp'}
-        U->>S: POST /auth/login (+ totp)
-        S->>S: 验证TOTP
-        S->>S: 添加信任设备
-    end
-    S->>KV: 创建会话
-    S->>U: {session, user, position}
+    U->>CF: 访问应用
+    CF->>CF: 验证身份 (SSO/Email)
+    CF->>U: 注入 CF-Access-JWT-Assertion
+    U->>S: POST /auth/cf-session
+    S->>S: 验证 CF Access JWT
+    S->>D1: 查询员工 (by personalEmail)
+    S->>D1: 创建会话
+    S->>U: {token, user, position}
 ```
 
-### 账号激活流程
+### 认证端点
 
-1. 管理员创建员工 → 发送激活邮件
-2. 用户点击链接 → 设置密码 + 绑定 TOTP
-3. 激活成功 → 自动登录
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/auth/cf-session` | CF Access 登录 |
+| POST | `/auth/logout` | 登出 |
+| GET | `/auth/me` | 获取当前用户 |
+| GET | `/my-permissions` | 获取权限 |
 
 ---
 
 ## 🛡️ 安全机制
 
-### 1. 账号锁定
+### 1. Zero Trust 边缘防护
 
-| 事件 | 处理 |
+- 未验证流量在 Cloudflare 边缘被拦截
+- 仅验证通过的请求携带 `CF-Access-JWT-Assertion` header
+- JWT 验证：aud、iss、exp、签名
+
+### 2. 环境变量配置
+
+| 变量 | 说明 |
 |------|------|
-| 连续 5 次密码错误 | 锁定 15 分钟 |
-| 锁定期间尝试登录 | 拒绝并提示 |
-| 密码正确 | 清除失败计数 |
+| `CF_ACCESS_AUD` | Access Application Audience Tag |
+| `CF_ACCESS_TEAM_DOMAIN` | Access Team Domain |
+| `AUTH_JWT_SECRET` | 应用内部 JWT 密钥 |
 
-```typescript
-// KV 存储
-lockout:email:xxx@xxx.com  // 锁定标记，15分钟TTL
-login_fail:xxx@xxx.com     // 失败计数
-```
+### 3. 会话管理
 
-### 2. TOTP 双因素认证
-
-- **算法**：TOTP (RFC 6238)
-- **窗口**：30 秒
-- **重放保护**：同一验证码 60 秒内不可重用
-
-```typescript
-// KV 重放保护
-totp_used:{userId}:{code}  // 60秒TTL
-```
-
-### 3. 信任设备
-
-- **指纹生成**：SHA-256(userId + UserAgent)
-- **有效期**：90 天
-- **信任设备**：跳过 TOTP 验证
-
-### 4. 会话管理
-
-- **存储**：KV（高速缓存）+ D1（持久化）
+- **存储**：D1 `sessions` 表
 - **有效期**：7 天
-- **刷新策略**：剩余 < 24h 时自动刷新
-- **单点登录**：新登录踢掉旧会话
+- **JWT 载荷**：sessionId, employeeId, email, position, cfSub
+
+### 4. 双重 JWT
+
+| JWT | 来源 | 用途 |
+|-----|------|------|
+| CF Access JWT | Cloudflare | 边缘身份验证 |
+| 应用 JWT | 后端签发 | 应用内授权 |
 
 ---
 
-## 🔑 JWT 配置
+## 🔑 权限控制
 
-| 参数 | 值 |
-|------|------|
-| 算法 | HS256 |
-| 载荷 | sessionId, employeeId |
-| 有效期 | 7 天 |
-| 刷新阈值 | 剩余 < 24h |
-
----
-
-## 📧 安全邮件
-
-| 场景 | 有效期 |
-|------|--------|
-| 账户激活 | 24 小时 |
-| 密码重置 | 1 小时 |
-| TOTP 重置 | 30 分钟 |
+- **RBAC**：基于职位 (position) 的权限
+- **DataScope**：数据范围控制 (all/project/group/self)
+- **权限配置**：存储在 `positions.permissions` JSON 字段
 
 ---
 
 ## 🌐 IP 白名单
 
-通过 Cloudflare WAF 规则限制访问：
-- 管理接口仅允许白名单 IP
-- 规则配置存储在 `ip_whitelist_rule` 表
+通过 Cloudflare Access 策略控制：
+- 可配置国家/地区限制
+- 可配置设备姿态策略
+- 规则在 Cloudflare Dashboard 管理
 
 ---
 
-**最后更新**：2025-12-27
+**最后更新**：2025-12-29

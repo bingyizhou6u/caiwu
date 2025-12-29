@@ -2,12 +2,11 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { Card, Button, Space, Tag, Descriptions, Dropdown } from 'antd'
 import { ReloadOutlined, SettingOutlined } from '@ant-design/icons'
 import type { Employee } from '../../../types'
-import { useEmployees, useFormModal, useToggleUserActive, useResendActivation, useResetTotp } from '../../../hooks'
+import { useEmployees, useFormModal, useToggleUserActive } from '../../../hooks'
 import { usePermissions } from '../../../utils/permissions'
 import { EMPLOYEE_STATUS, ACCOUNT_STATUS } from '../../../utils/status'
 import { StatusTag } from '../../../components/common/StatusTag'
 import { EmployeeFormDrawer } from '../../../features/employees/components/EmployeeFormDrawer'
-import { ResetUserPasswordModal } from '../../../features/employees/components/modals/ResetUserPasswordModal'
 import { SensitiveField } from '../../../components/SensitiveField'
 import { withErrorHandler } from '../../../utils/errorHandler'
 import { PageContainer } from '../../../components/PageContainer'
@@ -37,8 +36,6 @@ export function EmployeeManagement() {
     activeOnly: statusFilter === 'active'
   })
   const { mutateAsync: toggleActive } = useToggleUserActive()
-  const { mutateAsync: resendActivation } = useResendActivation()
-  const { mutateAsync: resetTotp } = useResetTotp()
 
 
 
@@ -48,20 +45,6 @@ export function EmployeeManagement() {
       await toggleActive({ id: record.id, active: record.userActive !== 1 })
     },
     { successMessage: '操作成功' }
-  )
-
-  const handleResendActivation = withErrorHandler(
-    async (record: Employee) => {
-      await resendActivation(record.id)
-    },
-    { successMessage: '激活邮件已发送' }
-  )
-
-  const handleResetTotp = withErrorHandler(
-    async (record: Employee) => {
-      await resetTotp(record.id)
-    },
-    { successMessage: '2FA 重置成功，员工下次登录将无需验证码' }
   )
 
   const columns: DataTableColumn<Employee>[] = useMemo(() => [
@@ -153,35 +136,15 @@ export function EmployeeManagement() {
     [statusFilter])
 
   const renderActions = useCallback((record: Employee) => {
-    // 账号管理菜单项
+    // 账号管理菜单项（仅保留启用/停用）
     const accountMenuItems: any[] = []
     if (record.userId) {
-      accountMenuItems.push({
-        key: 'resetPassword',
-        label: '重置密码',
-        onClick: () => { setCurrentEmployee(record); setResetUserOpen(true); },
-      })
       accountMenuItems.push({
         key: 'toggleActive',
         label: record.userActive === 1 ? '停用账号' : '启用账号',
         danger: record.userActive === 1,
         onClick: () => handleToggleActive(record),
       })
-      if (!record.isActivated && record.userActive === 1) {
-        accountMenuItems.push({
-          key: 'resendActivation',
-          label: '发送激活邮件',
-          onClick: () => handleResendActivation(record),
-        })
-      }
-      if (record.totpEnabled && record.userActive === 1) {
-        accountMenuItems.push({
-          key: 'resetTotp',
-          label: '重置2FA',
-          danger: true,
-          onClick: () => handleResetTotp(record),
-        })
-      }
     }
 
     return (
@@ -198,7 +161,8 @@ export function EmployeeManagement() {
         )}
       </Space>
     )
-  }, [canEdit, canManageSubordinates, handleToggleActive, modal, handleResendActivation, handleResetTotp])
+  }, [canEdit, canManageSubordinates, handleToggleActive, modal])
+
   return (
     <PageContainer
       title="人员管理"
@@ -346,19 +310,6 @@ export function EmployeeManagement() {
         onSuccess={() => {
           modal.close()
           queryClient.invalidateQueries({ queryKey: ['employees'] })
-        }}
-      />
-
-      <ResetUserPasswordModal
-        open={resetUserOpen}
-        employee={currentEmployee}
-        onCancel={() => {
-          setResetUserOpen(false)
-          setCurrentEmployee(null)
-        }}
-        onSuccess={() => {
-          setResetUserOpen(false)
-          setCurrentEmployee(null)
         }}
       />
     </PageContainer >

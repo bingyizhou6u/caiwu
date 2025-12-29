@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Layout, Card, Spin, message, Result, Button } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { ThunderboltFilled, CloudOutlined, LoadingOutlined } from '@ant-design/icons'
 import { useAppStore } from '../../../store/useAppStore'
 import { useHealth } from '../../../hooks'
+import { Logger } from '../../../utils/logger'
 import '../../../styles/features/auth/login.css'
 
 const { Header, Content } = Layout
@@ -24,6 +25,7 @@ export function Login() {
 
     const { data: healthData } = useHealth()
     const apiOk = !!healthData?.checks?.db
+    const hasAttempted = useRef(false)
 
     // 如果已登录，直接跳转
     useEffect(() => {
@@ -36,6 +38,8 @@ export function Login() {
     useEffect(() => {
         if (!apiOk) return
         if (isAuthenticated) return
+        if (hasAttempted.current) return
+        hasAttempted.current = true
 
         const establishCfSession = async () => {
             try {
@@ -65,14 +69,9 @@ export function Login() {
                     setError(data.error || '登录失败')
                     setErrorCode(data.code || null)
                 }
-            } catch (err: any) {
-                console.error('CF session error:', err)
-                if (err.message?.includes('CF_ACCESS_REQUIRED')) {
-                    // 未通过 CF Access 验证，刷新页面触发 Access 登录
-                    window.location.reload()
-                } else {
-                    setError(err.message || '网络错误')
-                }
+            } catch (err: unknown) {
+                Logger.error('CF session error', { error: err instanceof Error ? err.message : String(err) })
+                setError('网络错误，请刷新页面重试')
             } finally {
                 setLoading(false)
             }
@@ -106,7 +105,7 @@ export function Login() {
                             <Button key="retry" type="primary" onClick={() => window.location.reload()}>
                                 重试
                             </Button>,
-                            <Button key="contact" onClick={() => window.location.href = 'mailto:admin@example.com'}>
+                            <Button key="contact" onClick={() => window.location.href = 'mailto:admin@ar.ae'}>
                                 联系管理员
                             </Button>,
                         ]}
@@ -121,7 +120,7 @@ export function Login() {
                         title="账号已停用"
                         subTitle="您的员工记录已停用，请联系管理员"
                         extra={
-                            <Button type="primary" onClick={() => window.location.href = 'mailto:admin@example.com'}>
+                            <Button type="primary" onClick={() => window.location.href = 'mailto:admin@ar.ae'}>
                                 联系管理员
                             </Button>
                         }

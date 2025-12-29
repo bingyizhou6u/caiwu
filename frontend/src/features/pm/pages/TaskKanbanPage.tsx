@@ -91,8 +91,8 @@ function TaskCard({ task, onDragStart, onEdit, onDelete, onView }: TaskCardProps
             </div>
 
             {task.description && (
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }} ellipsis={{ rows: 2 }}>
-                    {task.description}
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }} ellipsis={{ tooltip: task.description }}>
+                    {task.description.length > 50 ? task.description.slice(0, 50) + '...' : task.description}
                 </Text>
             )}
 

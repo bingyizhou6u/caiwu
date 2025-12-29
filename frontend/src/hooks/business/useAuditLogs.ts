@@ -3,6 +3,7 @@ import { api } from '../../config/api'
 import { api as apiClient } from '../../api/http'
 import { useQuery, keepPreviousData, useMutation } from '@tanstack/react-query'
 import { CACHE_TIME } from '../../config/cache'
+import { Logger } from '../../utils/logger'
 
 export interface AuditLog {
     id: string
@@ -108,7 +109,7 @@ export function useCreateAuditLog() {
             try {
                 await apiClient.post(api.auditLogsCreate, data)
             } catch (error) {
-                console.warn('Failed to create audit log:', error)
+                Logger.warn('Failed to create audit log', { error })
             }
         }
     })

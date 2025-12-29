@@ -177,7 +177,6 @@ export function MyTasksPage() {
     return (
         <PageContainer
             title="我的任务"
-            icon={<CheckSquareOutlined />}
             breadcrumb={[{ title: '个人中心' }, { title: '我的任务' }]}
         >
             <Card bordered className="page-card">

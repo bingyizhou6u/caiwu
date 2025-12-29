@@ -3,6 +3,7 @@
  * 提供安装提示、更新检测、离线状态等功能
  */
 import { useState, useEffect, useCallback } from 'react'
+import { Logger } from '../utils/logger'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -69,28 +70,28 @@ export function usePWA() {
   // 安装 PWA
   const install = useCallback(async () => {
     if (!deferredPrompt) {
-      console.warn('安装提示不可用')
+      Logger.warn('安装提示不可用')
       return false
     }
 
     try {
       // 显示安装提示
       await deferredPrompt.prompt()
-      
+
       // 等待用户响应
       const { outcome } = await deferredPrompt.userChoice
-      
+
       if (outcome === 'accepted') {
-        console.log('✅ 用户同意安装 PWA')
+        Logger.info('✅ 用户同意安装 PWA')
         setState(prev => ({ ...prev, canInstall: false, isInstalled: true }))
         setDeferredPrompt(null)
         return true
       } else {
-        console.log('❌ 用户拒绝安装 PWA')
+        Logger.info('❌ 用户拒绝安装 PWA')
         return false
       }
     } catch (error) {
-      console.error('安装 PWA 失败:', error)
+      Logger.error('安装 PWA 失败', { error })
       return false
     }
   }, [deferredPrompt])
@@ -131,7 +132,7 @@ export function usePWA() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
       const event = e as BeforeInstallPromptEvent
-      
+
       if (shouldShowInstallPrompt()) {
         setDeferredPrompt(event)
         setState(prev => ({ ...prev, canInstall: true }))
@@ -140,7 +141,7 @@ export function usePWA() {
 
     // 监听应用安装成功
     const handleAppInstalled = () => {
-      console.log('✅ PWA 安装成功')
+      Logger.info('✅ PWA 安装成功')
       setState(prev => ({ ...prev, canInstall: false, isInstalled: true }))
       setDeferredPrompt(null)
     }

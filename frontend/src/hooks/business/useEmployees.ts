@@ -46,30 +46,6 @@ export function useCreateEmployee() {
     })
 }
 
-export function useResendActivation() {
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: async (employeeId: string) => {
-            await apiClient.post(api.employeesResendActivation(employeeId))
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['employees'] })
-        },
-    })
-}
-
-export function useResetTotp() {
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: async (employeeId: string) => {
-            await apiClient.post(api.employeesResetTotp(employeeId))
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['employees'] })
-        },
-    })
-}
-
 export function useEmployeeSalaries(params: { employeeId: string; salaryType: 'probation' | 'regular' }) {
     const queryParams = new URLSearchParams()
     queryParams.append('employeeId', params.employeeId)
@@ -177,18 +153,6 @@ export function useBatchDeleteEmployee() {
     return useMutation({
         mutationFn: async (ids: string[]) => {
             await apiClient.post(api.employeesBatch, { ids })
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['employees'] })
-        }
-    })
-}
-
-export function useResetUserPassword() {
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: async (id: string) => {
-            await apiClient.post(api.employeesResetPassword(id), {})
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['employees'] })

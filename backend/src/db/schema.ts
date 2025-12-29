@@ -35,16 +35,7 @@ export const employees = sqliteTable('employees', {
   annualLeaveDays: integer('annual_leave_days'),
   createdAt: integer('created_at'),
   updatedAt: integer('updated_at'),
-  // Auth fields (merged from users table)
-  passwordHash: text('password_hash'),
-  mustChangePassword: integer('must_change_password').default(0),
-  passwordChanged: integer('password_changed').default(0),
-  totpSecret: text('totp_secret'),
   lastLoginAt: integer('last_login_at'),
-  activationToken: text('activation_token'),
-  activationExpiresAt: integer('activation_expires_at'),
-  resetToken: text('reset_token'),
-  resetExpiresAt: integer('reset_expires_at'),
 })
 
 export const positions = sqliteTable('positions', {
@@ -148,17 +139,6 @@ export const sessions = sqliteTable('sessions', {
   userAgent: text('user_agent'),
   createdAt: integer('created_at'),
   lastActiveAt: integer('last_active_at'),
-})
-
-export const trustedDevices = sqliteTable('trusted_devices', {
-  id: text('id').primaryKey(),
-  employeeId: text('employee_id').notNull(),
-  deviceFingerprint: text('device_fingerprint').notNull(),
-  deviceName: text('device_name'),
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  lastUsedAt: integer('last_used_at'),
-  createdAt: integer('created_at'),
 })
 
 export const accounts = sqliteTable('accounts', {
@@ -461,16 +441,6 @@ export const siteBills = sqliteTable('site_bills', {
   paymentDate: text('payment_date'),
   memo: text('memo'),
   createdBy: text('created_by'),
-  createdAt: integer('created_at'),
-  updatedAt: integer('updated_at'),
-})
-
-export const ipWhitelistRule = sqliteTable('ip_whitelist_rule', {
-  id: text('id').primaryKey(),
-  cloudflareRuleId: text('cloudflare_rule_id').notNull(),
-  cloudflareRulesetId: text('cloudflare_ruleset_id').notNull(),
-  enabled: integer('enabled').default(0),
-  description: text('description'),
   createdAt: integer('created_at'),
   updatedAt: integer('updated_at'),
 })

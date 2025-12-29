@@ -156,12 +156,12 @@ export function PersonalCalendarModal({ open, onClose }: PersonalCalendarModalPr
                                                 </Tag>
                                                 <div style={{ fontSize: 13 }}>{event.title}</div>
                                                 {event.meta?.priority && (
-                                                    <Tag size="small" style={{ marginTop: 4 }}>
+                                                    <Tag style={{ marginTop: 4, fontSize: 11 }}>
                                                         {event.meta.priority === 'high' ? '高优先' : event.meta.priority === 'medium' ? '中优先' : '低优先'}
                                                     </Tag>
                                                 )}
                                                 {event.meta?.status && (
-                                                    <Tag size="small" style={{ marginTop: 4 }}>
+                                                    <Tag style={{ marginTop: 4, fontSize: 11 }}>
                                                         {event.meta.status}
                                                     </Tag>
                                                 )}

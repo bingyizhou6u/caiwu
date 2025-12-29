@@ -1,6 +1,7 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and, inArray, SQL } from 'drizzle-orm'
 import * as schema from '../db/schema.js'
+import { Logger } from './logger.js'
 import {
   employees,
   projects,
@@ -32,7 +33,7 @@ export class QueryBuilder {
   ) {
     // 警告：此方法使用多个 JOIN，在 D1 中可能不稳定
     // 建议使用 buildEmployeeRelatedData 代替
-    console.warn(
+    Logger.warn(
       '[QueryBuilder] buildEmployeeJoinQuery is deprecated. ' +
       'Use buildEmployeeRelatedData instead for D1 compatibility.'
     )
@@ -101,24 +102,24 @@ export class QueryBuilder {
     const [projectsList, orgDepartmentsList, positionsList] = await Promise.all([
       deptIds.length > 0
         ? db
-            .select({ id: projects.id, name: projects.name })
-            .from(projects)
-            .where(inArray(projects.id, deptIds))
-            .execute()
+          .select({ id: projects.id, name: projects.name })
+          .from(projects)
+          .where(inArray(projects.id, deptIds))
+          .execute()
         : Promise.resolve([]),
       orgDeptIds.length > 0
         ? db
-            .select({ id: orgDepartments.id, name: orgDepartments.name })
-            .from(orgDepartments)
-            .where(inArray(orgDepartments.id, orgDeptIds))
-            .execute()
+          .select({ id: orgDepartments.id, name: orgDepartments.name })
+          .from(orgDepartments)
+          .where(inArray(orgDepartments.id, orgDeptIds))
+          .execute()
         : Promise.resolve([]),
       positionIds.length > 0
         ? db
-            .select({ id: positions.id, name: positions.name })
-            .from(positions)
-            .where(inArray(positions.id, positionIds))
-            .execute()
+          .select({ id: positions.id, name: positions.name })
+          .from(positions)
+          .where(inArray(positions.id, positionIds))
+          .execute()
         : Promise.resolve([]),
     ])
 

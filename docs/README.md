@@ -16,7 +16,8 @@ docs/
 │   ├── permissions.md     # 权限系统
 │   ├── api-reference.md   # API 接口参考
 │   ├── services.md        # 服务层架构
-│   ├── security.md        # 安全与认证
+│   ├── security.md        # 安全架构 (CF Access)
+│   ├── authentication.md  # 认证流程
 │   └── timezone.md        # 业务时区
 │
 ├── modules/               # 业务模块文档
@@ -63,7 +64,8 @@ docs/
 - **[权限系统](backend/permissions.md)** - 5 层权限架构、DataScope
 - **[API 接口参考](backend/api-reference.md)** - 端点列表
 - **[服务层架构](backend/services.md)** - 服务模块说明
-- **[安全与认证](backend/security.md)** - JWT+TOTP、会话管理
+- **[安全与认证](backend/security.md)** - CF Access Zero Trust
+- **[认证架构](backend/authentication.md)** - 登录流程详解
 - **[业务时区](backend/timezone.md)** - UTC+4 规范
 
 ### 业务模块

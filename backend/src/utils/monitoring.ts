@@ -7,6 +7,7 @@ import type { Context } from 'hono'
 import type { Env, AppVariables } from '../types/index.js'
 import { AppError } from './errors.js'
 import { ErrorCodes } from '../constants/errorCodes.js'
+import { Logger } from './logger.js'
 
 /**
  * 错误级别
@@ -155,7 +156,7 @@ export class MonitoringService {
 
     // 输出到控制台（开发环境）
     if (process.env.NODE_ENV === 'development') {
-      console.error('[Monitoring] Error recorded:', {
+      Logger.error('[Monitoring] Error recorded', {
         id: errorId,
         code: record.code,
         message: record.message,
@@ -195,7 +196,7 @@ export class MonitoringService {
 
     // 输出到控制台（开发环境）
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Monitoring] Metric recorded:', metric)
+      Logger.debug('[Monitoring] Metric recorded', metric)
     }
   }
 

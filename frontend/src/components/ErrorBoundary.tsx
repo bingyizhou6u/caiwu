@@ -1,5 +1,6 @@
 import React from 'react'
 import { Result, Button, Space } from 'antd'
+import { Logger } from '../utils/logger'
 
 interface Props {
     children: React.ReactNode
@@ -27,18 +28,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         // 记录错误信息
         this.setState({ errorInfo })
-        
+
         // 开发环境下输出详细错误信息
         if (process.env.NODE_ENV === 'development') {
-            console.error('[ErrorBoundary] 错误详情:', error)
-            console.error('[ErrorBoundary] 错误信息:', errorInfo)
+            Logger.error('[ErrorBoundary] 错误详情', { error, errorInfo })
         }
-        
+
         // 调用自定义错误处理
         if (this.props.onError) {
             this.props.onError(error, errorInfo)
         }
-        
+
         // 生产环境可以发送到错误监控服务（如 Sentry）
         // if (process.env.NODE_ENV === 'production') {
         //   Sentry.captureException(error, { contexts: { react: errorInfo } })
@@ -75,9 +75,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
                                     <summary style={{ cursor: 'pointer', marginBottom: 8 }}>
                                         错误详情
                                     </summary>
-                                    <div style={{ 
-                                        background: '#f5f5f5', 
-                                        padding: 12, 
+                                    <div style={{
+                                        background: '#f5f5f5',
+                                        padding: 12,
                                         borderRadius: 4,
                                         fontSize: 12,
                                         maxHeight: 200,

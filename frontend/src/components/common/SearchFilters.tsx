@@ -8,6 +8,7 @@ import { SearchOutlined, ReloadOutlined, SaveOutlined, DeleteOutlined } from '@a
 import { ReactNode, useState, useEffect } from 'react'
 import dayjs, { Dayjs } from 'dayjs'
 import type { MenuProps } from 'antd'
+import { Logger } from '../../utils/logger'
 
 // 快捷日期范围选择器（内嵌版本）
 function QuickDateRangePicker({
@@ -154,7 +155,7 @@ export function SearchFilters({
           }
         }
       } catch (e) {
-        console.error('Failed to load saved searches:', e)
+        Logger.error('Failed to load saved searches', { error: e })
       }
     }
   }, [enableSaveSearch, saveSearchKey, form, initialValues])
@@ -162,21 +163,21 @@ export function SearchFilters({
   // 保存当前搜索条件
   const handleSaveSearch = () => {
     if (!enableSaveSearch || !saveSearchKey) return
-    
+
     const values = form.getFieldsValue()
     const name = prompt('请输入搜索条件名称：')
     if (!name) return
 
     const newSavedSearches = [...savedSearches, { name, values }]
     setSavedSearches(newSavedSearches)
-    
+
     try {
       localStorage.setItem(
         `searchFilters_${saveSearchKey}`,
         JSON.stringify({ savedSearches: newSavedSearches })
       )
     } catch (e) {
-      console.error('Failed to save search:', e)
+      Logger.error('Failed to save search', { error: e })
     }
   }
 
@@ -190,14 +191,14 @@ export function SearchFilters({
   const handleDeleteSearch = (index: number) => {
     const newSavedSearches = savedSearches.filter((_, i) => i !== index)
     setSavedSearches(newSavedSearches)
-    
+
     try {
       localStorage.setItem(
         `searchFilters_${saveSearchKey}`,
         JSON.stringify({ savedSearches: newSavedSearches })
       )
     } catch (e) {
-      console.error('Failed to delete search:', e)
+      Logger.error('Failed to delete search', { error: e })
     }
   }
 
@@ -205,21 +206,21 @@ export function SearchFilters({
     const values = form.getFieldsValue()
     // 清理空值
     const cleanedValues: Record<string, string | number | string[] | undefined> = {}
-    
+
     // 获取字段配置的 showTime
     const getFieldShowTime = (name: string) => {
       const field = fields.find(f => f.name === name)
       return field?.showTime
     }
-    
+
     Object.keys(values).forEach((key) => {
       const value = values[key]
-      
+
       // 跳过空值
       if (value === undefined || value === null || value === '') {
         return
       }
-      
+
       // 处理日期范围
       if (Array.isArray(value) && value.length === 2) {
         const [start, end] = value as [Dayjs, Dayjs]
@@ -230,24 +231,24 @@ export function SearchFilters({
           return
         }
       }
-      
+
       // 处理单个日期
       if (dayjs.isDayjs(value)) {
         const format = getFieldShowTime(key) ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD'
         cleanedValues[key] = value.format(format)
         return
       }
-      
+
       // 处理数组（多选）
       if (Array.isArray(value) && value.length > 0) {
         cleanedValues[key] = value
         return
       }
-      
+
       // 其他值直接保留
       cleanedValues[key] = value
     })
-    
+
     onSearch(cleanedValues)
   }
 
@@ -282,8 +283,8 @@ export function SearchFilters({
     const fieldId = field.type === 'dateRange' && field.showQuickSelect
       ? `date-range-${field.name}-${Math.random().toString(36).substring(2, 9)}`
       : field.type === 'numberRange'
-      ? `number-range-min-${field.name}-${Math.random().toString(36).substring(2, 9)}`
-      : undefined
+        ? `number-range-min-${field.name}-${Math.random().toString(36).substring(2, 9)}`
+        : undefined
 
     switch (field.type) {
       case 'input':
@@ -410,9 +411,9 @@ export function SearchFilters({
   }))
 
   const formContent = (
-    <Form 
-      form={form} 
-      layout={layout} 
+    <Form
+      form={form}
+      layout={layout}
       initialValues={initialValues}
       onValuesChange={handleValuesChange}
     >

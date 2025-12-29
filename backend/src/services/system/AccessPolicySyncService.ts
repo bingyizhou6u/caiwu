@@ -2,6 +2,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../../db/schema.js'
 import { employees } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
+import { Logger } from '../../utils/logger.js'
 
 /**
  * Cloudflare Access 策略同步服务
@@ -87,14 +88,14 @@ export class AccessPolicySyncService {
             const data = await response.json() as { success: boolean; errors?: any[] }
 
             if (!data.success) {
-                console.error('Access policy sync failed:', data.errors)
+                Logger.error('Access policy sync failed', { errors: data.errors })
                 return { success: false, synced: 0, error: 'API request failed' }
             }
 
             return { success: true, synced: emails.length }
-        } catch (error: any) {
-            console.error('Access policy sync error:', error)
-            return { success: false, synced: 0, error: error.message }
+        } catch (error: unknown) {
+            Logger.error('Access policy sync error', { error: error instanceof Error ? error.message : String(error) })
+            return { success: false, synced: 0, error: error instanceof Error ? error.message : String(error) }
         }
     }
 

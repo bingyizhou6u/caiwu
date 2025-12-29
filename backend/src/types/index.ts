@@ -16,6 +16,8 @@ export type Env = {
   CF_IP_LIST_ID?: string // IP List ID（如果已创建，可指定）
   CF_ACCESS_TOKEN?: string // Access Policy 同步 Token
   CF_ACCESS_APP_ID?: string // Access Application ID
+  CF_ACCESS_AUD?: string // Access Application Audience Tag
+  CF_ACCESS_TEAM_DOMAIN?: string // Access Team Domain (e.g. ar-teams.cloudflareaccess.com)
   AUTH_JWT_SECRET: string
   INIT_ADMIN_PASSWORD_HASH: string // 初始化管理员密码哈希（必需，用于数据库初始化）
 }

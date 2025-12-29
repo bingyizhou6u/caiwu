@@ -1,5 +1,6 @@
 import { Context, Next } from 'hono'
 import type { Env, AppVariables } from '../types/index.js'
+import { Logger } from '../utils/logger.js'
 
 /**
  * Cloudflare Access JWT 验证中间件
@@ -32,10 +33,6 @@ interface JwksResponse {
     keys: JwkKey[]
 }
 
-// Access 配置
-const ACCESS_TEAM_DOMAIN = 'ar-teams.cloudflareaccess.com'
-const ACCESS_AUD = '391a8ccf810437fb09d8216696063ae175eaf8b7eeea72ccb873d658b6aa058d'
-
 // 缓存 JWKS 公钥
 let jwksCache: JwksResponse | null = null
 let jwksCacheTime = 0
@@ -44,13 +41,13 @@ const JWKS_CACHE_TTL = 3600000 // 1 小时
 /**
  * 获取 Cloudflare Access 的 JWKS 公钥
  */
-async function getJwks(): Promise<JwksResponse> {
+async function getJwks(accessTeamDomain: string): Promise<JwksResponse> {
     const now = Date.now()
     if (jwksCache && now - jwksCacheTime < JWKS_CACHE_TTL) {
         return jwksCache
     }
 
-    const response = await fetch(`https://${ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`)
+    const response = await fetch(`https://${accessTeamDomain}/cdn-cgi/access/certs`)
     if (!response.ok) {
         throw new Error(`Failed to fetch JWKS: ${response.status}`)
     }
@@ -100,12 +97,16 @@ function base64UrlDecode(str: string): Uint8Array {
 /**
  * 验证 Cloudflare Access JWT
  */
-async function verifyCfAccessJwt(token: string): Promise<CfAccessJwtPayload> {
-    console.log('[CF Access] Starting JWT verification')
+async function verifyCfAccessJwt(
+    token: string,
+    accessTeamDomain: string,
+    accessAud: string
+): Promise<CfAccessJwtPayload> {
+    Logger.debug('[CF Access] Starting JWT verification')
 
     const parts = token.split('.')
     if (parts.length !== 3) {
-        console.error('[CF Access] Invalid JWT format - parts:', parts.length)
+        Logger.error('[CF Access] Invalid JWT format', { parts: parts.length })
         throw new Error('Invalid JWT format')
     }
 
@@ -114,43 +115,40 @@ async function verifyCfAccessJwt(token: string): Promise<CfAccessJwtPayload> {
     // 解析 header 获取 kid
     const headerJson = new TextDecoder().decode(base64UrlDecode(headerB64))
     const header = JSON.parse(headerJson) as { kid: string; alg: string }
-    console.log('[CF Access] Header kid:', header.kid, 'alg:', header.alg)
+    Logger.debug('[CF Access] Header parsed', { kid: header.kid, alg: header.alg })
 
     // 解析 payload
     const payloadJson = new TextDecoder().decode(base64UrlDecode(payloadB64))
     const payload = JSON.parse(payloadJson) as CfAccessJwtPayload
-    console.log('[CF Access] Email:', payload.email, 'Issuer:', payload.iss)
-    console.log('[CF Access] AUD in token:', JSON.stringify(payload.aud))
-    console.log('[CF Access] Expected AUD:', ACCESS_AUD)
+    Logger.debug('[CF Access] Payload parsed', { email: payload.email, iss: payload.iss, aud: payload.aud, expectedAud: accessAud })
 
     // 验证 aud (支持字符串或数组)
     const audMatch = Array.isArray(payload.aud)
-        ? payload.aud.includes(ACCESS_AUD)
-        : payload.aud === ACCESS_AUD
+        ? payload.aud.includes(accessAud)
+        : payload.aud === accessAud
     if (!audMatch) {
-        console.error('[CF Access] AUD mismatch')
+        Logger.error('[CF Access] AUD mismatch', { tokenAud: payload.aud, expectedAud: accessAud })
         throw new Error('Invalid audience')
     }
 
     // 验证 exp
     if (payload.exp * 1000 < Date.now()) {
-        console.error('[CF Access] Token expired at:', new Date(payload.exp * 1000))
+        Logger.error('[CF Access] Token expired', { expiredAt: new Date(payload.exp * 1000).toISOString() })
         throw new Error('Token expired')
     }
 
     // 验证 iss
-    const expectedIss = `https://${ACCESS_TEAM_DOMAIN}`
+    const expectedIss = `https://${accessTeamDomain}`
     if (payload.iss !== expectedIss) {
-        console.error('[CF Access] Issuer mismatch. Got:', payload.iss, 'Expected:', expectedIss)
+        Logger.error('[CF Access] Issuer mismatch', { got: payload.iss, expected: expectedIss })
         throw new Error('Invalid issuer')
     }
 
     // 获取公钥
-    const jwks = await getJwks()
+    const jwks = await getJwks(accessTeamDomain)
     const jwk = jwks.keys.find(k => k.kid === header.kid)
     if (!jwk) {
-        console.error('[CF Access] Public key not found for kid:', header.kid)
-        console.error('[CF Access] Available kids:', jwks.keys.map(k => k.kid))
+        Logger.error('[CF Access] Public key not found', { kid: header.kid, availableKids: jwks.keys.map(k => k.kid) })
         throw new Error('Public key not found')
     }
 
@@ -167,11 +165,11 @@ async function verifyCfAccessJwt(token: string): Promise<CfAccessJwtPayload> {
     )
 
     if (!valid) {
-        console.error('[CF Access] Signature verification failed')
+        Logger.error('[CF Access] Signature verification failed')
         throw new Error('Invalid signature')
     }
 
-    console.log('[CF Access] JWT verification successful for:', payload.email)
+    Logger.info('[CF Access] JWT verification successful', { email: payload.email })
     return payload
 }
 
@@ -193,13 +191,25 @@ export function cloudflareAccessAuth() {
             }, 401)
         }
 
+        // 从环境变量读取配置（必需）
+        const accessTeamDomain = c.env.CF_ACCESS_TEAM_DOMAIN
+        const accessAud = c.env.CF_ACCESS_AUD
+        if (!accessTeamDomain || !accessAud) {
+            Logger.error('CF Access config missing', { hasTeamDomain: !!accessTeamDomain, hasAud: !!accessAud })
+            return c.json({
+                success: false,
+                error: 'Server configuration error: CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD are required',
+                code: 'CF_ACCESS_CONFIG_MISSING'
+            }, 500)
+        }
+
         try {
-            const payload = await verifyCfAccessJwt(jwtToken)
+            const payload = await verifyCfAccessJwt(jwtToken, accessTeamDomain, accessAud)
             c.set('cfAccessEmail', payload.email)
             c.set('cfAccessSub', payload.sub)
             return next()
         } catch (error) {
-            console.error('CF Access JWT verification failed:', error)
+            Logger.error('CF Access JWT verification failed', { error: error instanceof Error ? error.message : String(error) }, c)
             return c.json({
                 success: false,
                 error: 'Invalid Cloudflare Access token',
@@ -217,12 +227,20 @@ export function optionalCfAccessAuth() {
         const jwtToken = c.req.header('CF-Access-JWT-Assertion')
 
         if (jwtToken) {
+            // 从环境变量读取配置（必需）
+            const accessTeamDomain = c.env.CF_ACCESS_TEAM_DOMAIN
+            const accessAud = c.env.CF_ACCESS_AUD
+            if (!accessTeamDomain || !accessAud) {
+                Logger.warn('CF Access config missing, skipping optional auth')
+                return next()
+            }
+
             try {
-                const payload = await verifyCfAccessJwt(jwtToken)
+                const payload = await verifyCfAccessJwt(jwtToken, accessTeamDomain, accessAud)
                 c.set('cfAccessEmail', payload.email)
                 c.set('cfAccessSub', payload.sub)
             } catch (error) {
-                console.warn('CF Access JWT verification failed:', error)
+                Logger.warn('CF Access JWT verification failed', { error: error instanceof Error ? error.message : String(error) }, c)
             }
         }
 

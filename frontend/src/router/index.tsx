@@ -3,7 +3,7 @@ import { MainLayout } from '../layouts/MainLayout'
 import { lazy, Suspense } from 'react'
 import { Spin } from 'antd'
 
-// Lazy Load Components
+
 // Lazy Load Components
 const loaders: Record<string, () => Promise<any>> = {
     // System
@@ -15,7 +15,6 @@ const loaders: Record<string, () => Promise<any>> = {
     'system/vendors': () => import('../features/system/pages/VendorManagementPage').then(m => ({ default: m.VendorManagement })),
     'system/permissions': () => import('../features/system/pages/PositionPermissionsManagementPage').then(m => ({ default: m.PositionPermissionsManagement })),
     'system/email': () => import('../features/system/pages/EmailNotificationSettingsPage').then(m => ({ default: m.EmailNotificationSettings })),
-    'system/ip-whitelist': () => import('../features/system/pages/IPWhitelistManagementPage'),
     'system/audit': () => import('../features/system/pages/AuditLogsPage').then(m => ({ default: m.AuditLogs })),
 
     // Finance
@@ -73,12 +72,7 @@ const loaders: Record<string, () => Promise<any>> = {
     'pm/timelogs': () => import('../features/pm/pages/TimelogPage'),
 
     // Auth
-    'change-password': () => import('../features/auth/pages/ChangePasswordPage').then(m => ({ default: m.ChangePassword })),
     'login': () => import('../features/auth/pages/LoginPage').then(m => ({ default: m.Login })),
-    'auth/activate': () => import('../features/auth/pages/ActivateAccountPage').then(m => ({ default: m.ActivateAccount })),
-    'auth/reset-password': () => import('../features/auth/pages/ResetPasswordPage').then(m => ({ default: m.ResetPassword })),
-    'auth/request-totp-reset': () => import('../features/auth/pages/RequestTotpResetPage').then(m => ({ default: m.RequestTotpReset })),
-    'auth/reset-totp': () => import('../features/auth/pages/ResetTotpConfirmPage').then(m => ({ default: m.ResetTotpConfirm })),
 }
 
 // System
@@ -90,7 +84,6 @@ const CurrencyManagement = lazy(loaders['system/currencies'])
 const VendorManagement = lazy(loaders['system/vendors'])
 const PositionPermissionsManagement = lazy(loaders['system/permissions'])
 const EmailNotificationSettings = lazy(loaders['system/email'])
-const IPWhitelistManagement = lazy(loaders['system/ip-whitelist'])
 const AuditLogs = lazy(loaders['system/audit'])
 
 // Finance
@@ -137,12 +130,7 @@ const MyReimbursements = lazy(loaders['my/reimbursements'])
 const MyAssets = lazy(loaders['my/assets'])
 const CompanyPolicies = lazy(loaders['my/policies'])
 const MyApprovals = lazy(loaders['my/approvals'])
-const ChangePassword = lazy(loaders['change-password'])
 const Login = lazy(loaders['login'])
-const ActivateAccount = lazy(loaders['auth/activate'])
-const ResetPassword = lazy(loaders['auth/reset-password'])
-const RequestTotpReset = lazy(loaders['auth/request-totp-reset'])
-const ResetTotpConfirm = lazy(loaders['auth/reset-totp'])
 
 // PM
 const ProjectConfigPage = lazy(loaders['pm/config'])
@@ -179,28 +167,10 @@ export const router = createBrowserRouter([
         element: <Suspense fallback={<Loading />}><Login /></Suspense>,
     },
     {
-        path: '/auth/activate',
-        element: <Suspense fallback={<Loading />}><ActivateAccount /></Suspense>,
-    },
-
-    {
-        path: '/auth/reset-password',
-        element: <Suspense fallback={<Loading />}><ResetPassword /></Suspense>,
-    },
-    {
-        path: '/auth/request-totp-reset',
-        element: <Suspense fallback={<Loading />}><RequestTotpReset /></Suspense>,
-    },
-    {
-        path: '/auth/reset-totp',
-        element: <Suspense fallback={<Loading />}><ResetTotpConfirm /></Suspense>,
-    },
-    {
         path: '/',
         element: <PrivateRoute><MainLayout /></PrivateRoute>,
         children: [
             { index: true, element: <Navigate to="/my/center" replace /> },
-            { path: 'change-password', element: <Suspense fallback={<Loading />}><ChangePassword /></Suspense> },
 
             // My
             { path: 'my/center', element: <Suspense fallback={<Loading />}><MyCenter /></Suspense> },
@@ -256,7 +226,6 @@ export const router = createBrowserRouter([
             { path: 'system/vendors', element: <Suspense fallback={<Loading />}><VendorManagement /></Suspense> },
             { path: 'system/permissions', element: <Suspense fallback={<Loading />}><PositionPermissionsManagement /></Suspense> },
             { path: 'system/email', element: <Suspense fallback={<Loading />}><EmailNotificationSettings /></Suspense> },
-            { path: 'system/ip-whitelist', element: <Suspense fallback={<Loading />}><IPWhitelistManagement /></Suspense> },
             { path: 'system/audit', element: <Suspense fallback={<Loading />}><AuditLogs /></Suspense> },
 
             // PM (项目管理)

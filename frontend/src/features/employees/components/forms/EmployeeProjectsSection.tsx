@@ -31,7 +31,7 @@ export function EmployeeProjectsSection({ employeeId }: EmployeeProjectsSectionP
     const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>()
 
     // 获取项目列表（用于选择）
-    const { departments: projects, loading: loadingProjects } = useDepartments()
+    const { data: projects = [], isLoading: loadingProjects } = useDepartments()
 
     // 获取员工的项目关联
     const { data: employeeProjects, isLoading } = useQuery({
@@ -87,9 +87,9 @@ export function EmployeeProjectsSection({ employeeId }: EmployeeProjectsSectionP
     })
 
     // 过滤已关联的项目
-    const availableProjects = projects?.filter(
-        (p) => !employeeProjects?.some((ep) => ep.projectId === p.id)
-    ) || []
+    const availableProjects = projects.filter(
+        (p: { id: string; name: string }) => !employeeProjects?.some((ep) => ep.projectId === p.id)
+    )
 
     const columns = [
         {
@@ -164,7 +164,7 @@ export function EmployeeProjectsSection({ employeeId }: EmployeeProjectsSectionP
                     loading={loadingProjects}
                     showSearch
                     optionFilterProp="label"
-                    options={availableProjects.map((p) => ({
+                    options={availableProjects.map((p: { id: string; name: string }) => ({
                         value: p.id,
                         label: p.name,
                     }))}

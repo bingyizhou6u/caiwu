@@ -1,5 +1,6 @@
 import { message } from 'antd'
 import { useCallback } from 'react'
+import { Logger } from './logger'
 
 /**
  * 处理API错误
@@ -10,7 +11,7 @@ import { useCallback } from 'react'
  * @returns 错误消息字符串
  */
 export function handleApiError(error: any, defaultMessage?: string): string {
-    console.error('[API Error]', error)
+    Logger.error('[API Error]', { error })
 
     // 提取错误消息
     const errorMessage =
@@ -25,7 +26,7 @@ export function handleApiError(error: any, defaultMessage?: string): string {
     // 生产环境可以发送到错误监控服务
     if (process.env.NODE_ENV === 'production') {
         // 例如: Sentry.captureException(error)
-        console.log('[Error Monitoring] Error logged:', error)
+        Logger.info('[Error Monitoring] Error logged', { error })
     }
 
     return errorMessage

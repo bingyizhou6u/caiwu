@@ -12,13 +12,10 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/auth/login` | 登录 |
+| POST | `/auth/cf-session` | CF Access 登录 |
 | POST | `/auth/logout` | 登出 |
-| POST | `/auth/totp/setup` | TOTP 设置 |
-| POST | `/auth/totp/verify` | TOTP 验证 |
-| POST | `/auth/password/change` | 修改密码 |
-| POST | `/auth/password/reset` | 重置密码 |
-| POST | `/auth/activate` | 账户激活 |
+| GET | `/auth/me` | 获取当前用户 |
+| GET | `/my-permissions` | 获取权限 |
 
 ### 👥 人事 (`employees.ts`, `employee-*.ts`)
 
