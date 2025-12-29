@@ -113,6 +113,20 @@ export const orgDepartments = sqliteTable('org_departments', {
   updatedAt: integer('updated_at'),
 })
 
+// 个人日历事件
+export const personalCalendarEvents = sqliteTable('personal_calendar_events', {
+  id: text('id').primaryKey(),
+  employeeId: text('employee_id').notNull(), // 关联 employees.id
+  title: text('title').notNull(),
+  description: text('description'),
+  startTime: integer('start_time').notNull(), // 时间戳
+  endTime: integer('end_time').notNull(),     // 时间戳
+  isAllDay: integer('is_all_day').default(0), // 0: No, 1: Yes
+  color: text('color'),
+  createdAt: integer('created_at'),
+  updatedAt: integer('updated_at'),
+})
+
 // 员工-项目关联表（支持员工跨多个项目）
 export const employeeProjects = sqliteTable(
   'employee_projects',

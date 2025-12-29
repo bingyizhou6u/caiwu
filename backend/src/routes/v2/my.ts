@@ -699,7 +699,7 @@ myRoutes.openapi(clockOutRoute, createProtectedHandler(async (c, employeeId) => 
 // 个人日历
 const calendarEventSchema = z.object({
   date: z.string(),
-  type: z.enum(['task', 'leave', 'reminder']),
+  type: z.enum(['task', 'leave', 'reminder', 'personal']),
   title: z.string(),
   color: z.string(),
   meta: z.record(z.any()).optional(),
@@ -735,4 +735,123 @@ const getCalendarRoute = createRoute({
 myRoutes.openapi(getCalendarRoute, createProtectedHandler(async (c, employeeId) => {
   const month = c.req.query('month') || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   return await c.var.services.my.getCalendarEvents(employeeId, month)
+}))
+
+// 个人日历事件 CRUD
+const createPersonalEventSchema = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  startTime: z.number(),
+  endTime: z.number(),
+  isAllDay: z.number().optional(),
+  color: z.string().optional(),
+})
+
+const createPersonalEventRoute = createRoute({
+  method: 'post',
+  path: '/my/calendar/events',
+  tags: ['My'],
+  summary: 'Create personal calendar event',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createPersonalEventSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              ok: z.boolean(),
+              id: z.string(),
+            }),
+          }),
+        },
+      },
+      description: 'Event created',
+    },
+  },
+})
+
+myRoutes.openapi(createPersonalEventRoute, createProtectedHandler(async (c, employeeId) => {
+  const body = c.req.valid('json')
+  return await c.var.services.my.createPersonalEvent(employeeId, body)
+}))
+
+const updatePersonalEventRoute = createRoute({
+  method: 'put',
+  path: '/my/calendar/events/:id',
+  tags: ['My'],
+  summary: 'Update personal calendar event',
+  request: {
+    params: z.object({
+      id: z.string(),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: createPersonalEventSchema.partial(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              ok: z.boolean(),
+            }),
+          }),
+        },
+      },
+      description: 'Event updated',
+    },
+  },
+})
+
+myRoutes.openapi(updatePersonalEventRoute, createProtectedHandler(async (c, employeeId) => {
+  const id = c.req.param('id')
+  const body = c.req.valid('json')
+  return await c.var.services.my.updatePersonalEvent(employeeId, id, body)
+}))
+
+const deletePersonalEventRoute = createRoute({
+  method: 'delete',
+  path: '/my/calendar/events/:id',
+  tags: ['My'],
+  summary: 'Delete personal calendar event',
+  request: {
+    params: z.object({
+      id: z.string(),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              ok: z.boolean(),
+            }),
+          }),
+        },
+      },
+      description: 'Event deleted',
+    },
+  },
+})
+
+myRoutes.openapi(deletePersonalEventRoute, createProtectedHandler(async (c, employeeId) => {
+  const id = c.req.param('id')
+  return await c.var.services.my.deletePersonalEvent(employeeId, id)
 }))

@@ -359,7 +359,7 @@ export class MyService {
 
     const events: Array<{
       date: string
-      type: 'task' | 'leave' | 'reminder'
+      type: 'task' | 'leave' | 'reminder' | 'personal'
       title: string
       color: string
       meta?: Record<string, any>
@@ -477,6 +477,106 @@ export class MyService {
       }
     }
 
+    // 4. 查询个人自定义事件
+    const personalEvents = await this.db
+      .select()
+      .from(schema.personalCalendarEvents)
+      .where(
+        and(
+          eq(schema.personalCalendarEvents.employeeId, employeeId),
+          or(
+            and(gte(schema.personalCalendarEvents.startTime, new Date(startDate).getTime()), lt(schema.personalCalendarEvents.startTime, new Date(endDate).getTime())),
+            and(gte(schema.personalCalendarEvents.endTime, new Date(startDate).getTime()), lt(schema.personalCalendarEvents.endTime, new Date(endDate).getTime()))
+          )
+        )
+      )
+
+    for (const evt of personalEvents) {
+      const dateStr = new Date(evt.startTime).toISOString().split('T')[0]
+      events.push({
+        date: dateStr,
+        type: 'personal',
+        title: evt.title,
+        color: evt.color || '#13c2c2',
+        meta: {
+          id: evt.id,
+          description: evt.description,
+          startTime: evt.startTime,
+          endTime: evt.endTime,
+          isAllDay: evt.isAllDay
+        },
+      })
+    }
+
     return { events }
+  }
+
+  // 4. 个人日历事件 CRUD
+
+  async createPersonalEvent(userId: string, data: { title: string, description?: string, startTime: number, endTime: number, isAllDay?: number, color?: string }) {
+    const employeeId = await this.getMyEmployeeId(userId)
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
+
+    const id = crypto.randomUUID()
+    const now = Date.now()
+
+    await this.db.insert(schema.personalCalendarEvents).values({
+      id,
+      employeeId,
+      title: data.title,
+      description: data.description,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      isAllDay: data.isAllDay || 0,
+      color: data.color,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return { id, ok: true }
+  }
+
+  async updatePersonalEvent(userId: string, eventId: string, data: { title?: string, description?: string, startTime?: number, endTime?: number, isAllDay?: number, color?: string }) {
+    const employeeId = await this.getMyEmployeeId(userId)
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
+
+    const event = await this.db.select().from(schema.personalCalendarEvents).where(eq(schema.personalCalendarEvents.id, eventId)).get()
+    if (!event) {
+      throw Errors.NOT_FOUND('事件不存在')
+    }
+    if (event.employeeId !== employeeId) {
+      throw Errors.FORBIDDEN('无权操作此事件')
+    }
+
+    await this.db.update(schema.personalCalendarEvents)
+      .set({
+        ...data,
+        updatedAt: Date.now(),
+      })
+      .where(eq(schema.personalCalendarEvents.id, eventId))
+
+    return { ok: true }
+  }
+
+  async deletePersonalEvent(userId: string, eventId: string) {
+    const employeeId = await this.getMyEmployeeId(userId)
+    if (!employeeId) {
+      throw Errors.NOT_FOUND('未找到员工记录')
+    }
+
+    const event = await this.db.select().from(schema.personalCalendarEvents).where(eq(schema.personalCalendarEvents.id, eventId)).get()
+    if (!event) {
+      throw Errors.NOT_FOUND('事件不存在')
+    }
+    if (event.employeeId !== employeeId) {
+      throw Errors.FORBIDDEN('无权操作此事件')
+    }
+
+    await this.db.delete(schema.personalCalendarEvents).where(eq(schema.personalCalendarEvents.id, eventId))
+    return { ok: true }
   }
 }
