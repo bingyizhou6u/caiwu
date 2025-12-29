@@ -3,23 +3,7 @@
  * 处理站内通知的查询和操作
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-
-// API 请求函数
-async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-    const baseUrl = '/api/v2'
-    const response = await fetch(`${baseUrl}${url}`, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options?.headers,
-        },
-        credentials: 'include',
-    })
-    if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`)
-    }
-    return response.json()
-}
+import { api } from '../../api/http'
 
 // 通知类型
 export interface Notification {
@@ -65,11 +49,12 @@ export function useNotifications(filters?: NotificationFilters) {
             if (filters?.offset) params.set('offset', String(filters.offset))
 
             const queryString = params.toString()
-            const url = `/notifications${queryString ? `?${queryString}` : ''}`
+            const url = `/api/v2/notifications${queryString ? `?${queryString}` : ''}`
 
-            const response = await apiRequest<{ success: boolean; data: Notification[] }>(url)
-            return response.data
+            return api.get<Notification[]>(url, { skipErrorHandle: true })
         },
+        // 静默失败，不影响主界面
+        retry: false,
     })
 }
 
@@ -80,15 +65,15 @@ export function useUnreadCount() {
     return useQuery({
         queryKey: NOTIFICATION_KEYS.unreadCount(),
         queryFn: async () => {
-            const response = await apiRequest<{ success: boolean; data: { count: number } }>(
-                '/notifications/unread-count'
-            )
-            return response.data.count
+            const result = await api.get<{ count: number }>('/api/v2/notifications/unread-count', { skipErrorHandle: true })
+            return result.count
         },
         // 每 30 秒自动刷新
         refetchInterval: 30000,
         // 窗口聚焦时刷新
         refetchOnWindowFocus: true,
+        // 静默失败
+        retry: false,
     })
 }
 
@@ -100,7 +85,7 @@ export function useMarkAsRead() {
 
     return useMutation({
         mutationFn: async (id: string) => {
-            await apiRequest(`/notifications/${id}/read`, { method: 'PUT' })
+            await api.put(`/api/v2/notifications/${id}/read`)
         },
         onSuccess: () => {
             // 刷新通知列表和未读数量
@@ -117,11 +102,8 @@ export function useMarkAllAsRead() {
 
     return useMutation({
         mutationFn: async () => {
-            const response = await apiRequest<{ success: boolean; data: { markedCount: number } }>(
-                '/notifications/read-all',
-                { method: 'PUT' }
-            )
-            return response.data.markedCount
+            const result = await api.put<{ markedCount: number }>('/api/v2/notifications/read-all')
+            return result.markedCount
         },
         onSuccess: () => {
             // 刷新通知列表和未读数量
@@ -138,7 +120,7 @@ export function useDeleteNotification() {
 
     return useMutation({
         mutationFn: async (id: string) => {
-            await apiRequest(`/notifications/${id}`, { method: 'DELETE' })
+            await api.delete(`/api/v2/notifications/${id}`)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.all })
