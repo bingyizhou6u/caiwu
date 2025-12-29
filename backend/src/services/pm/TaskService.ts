@@ -3,7 +3,7 @@
  * 负责任务的 CRUD、状态管理和看板排序
  */
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { eq, and, desc, inArray, sql } from 'drizzle-orm'
+import { eq, and, desc, inArray, sql, or, like } from 'drizzle-orm'
 import { tasks, employees, projects, requirements } from '../../db/schema.js'
 import { DBPerformanceTracker } from '../../utils/db-performance.js'
 
@@ -70,7 +70,7 @@ export class TaskService {
                     conditions.push(eq(tasks.status, filter.status))
                 }
                 if (filter?.assigneeId) {
-                    conditions.push(eq(tasks.assigneeId, filter.assigneeId))
+                    conditions.push(like(tasks.assigneeIds, `%"${filter.assigneeId}"%`))
                 }
 
                 const taskList = await this.db
@@ -99,10 +99,6 @@ export class TaskService {
                     parseIds(t.assigneeIds).forEach(id => allPersonIds.add(id))
                     parseIds(t.reviewerIds).forEach(id => allPersonIds.add(id))
                     parseIds(t.testerIds).forEach(id => allPersonIds.add(id))
-                    // 兼容旧数据
-                    if (t.assigneeId) allPersonIds.add(t.assigneeId)
-                    if (t.reviewerId) allPersonIds.add(t.reviewerId)
-                    if (t.testerId) allPersonIds.add(t.testerId)
                     if (t.projectId) projectIds.add(t.projectId)
                 })
 
@@ -133,9 +129,9 @@ export class TaskService {
                 }
 
                 return taskList.map(t => {
-                    const assigneeIdList = parseIds(t.assigneeIds) || (t.assigneeId ? [t.assigneeId] : [])
-                    const reviewerIdList = parseIds(t.reviewerIds) || (t.reviewerId ? [t.reviewerId] : [])
-                    const testerIdList = parseIds(t.testerIds) || (t.testerId ? [t.testerId] : [])
+                    const assigneeIdList = parseIds(t.assigneeIds)
+                    const reviewerIdList = parseIds(t.reviewerIds)
+                    const testerIdList = parseIds(t.testerIds)
 
                     return {
                         ...t,
@@ -210,10 +206,10 @@ export class TaskService {
                     }
                 }
 
-                // 解析人员 ID 数组（兼容旧数据）
-                const assigneeIdList = parseIds(task.assigneeIds).length > 0 ? parseIds(task.assigneeIds) : (task.assigneeId ? [task.assigneeId] : [])
-                const reviewerIdList = parseIds(task.reviewerIds).length > 0 ? parseIds(task.reviewerIds) : (task.reviewerId ? [task.reviewerId] : [])
-                const testerIdList = parseIds(task.testerIds).length > 0 ? parseIds(task.testerIds) : (task.testerId ? [task.testerId] : [])
+                // 解析人员 ID 数组
+                const assigneeIdList = parseIds(task.assigneeIds)
+                const reviewerIdList = parseIds(task.reviewerIds)
+                const testerIdList = parseIds(task.testerIds)
                 const allPersonIds = [...new Set([...assigneeIdList, ...reviewerIdList, ...testerIdList])]
 
                 // 顺序查询获取关联数据

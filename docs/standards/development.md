@@ -417,6 +417,86 @@ if (position?.code === 'hq_manager') { ... }   // 永远不要这样做
 
 ---
 
+### 7. 时间处理规范
+
+#### 必须使用统一业务时间
+
+**规则**: 后端禁止直接使用 `new Date()` 或 `Date.now()` 获取当前时间进行业务计算。必须使用 `getBusinessDate()` 工具函数。
+
+**原因**: 系统统一运行在迪拜时间 (UTC+4)，使用原生 Date 对象会受服务器容器时区（通常是 UTC+0）影响，导致跨日结算或报表错误。
+
+**模板**:
+```typescript
+import { getBusinessDate } from '../utils/date.js'
+
+// ❌ 禁止
+const today = new Date().toISOString().split('T')[0]
+const now = new Date()
+
+// ✅ 正确
+const today = getBusinessDate() // 返回 'YYYY-MM-DD' (UTC+4)
+// 如需完整时间对象，请参考 utils/date.js 中的具体实现
+```
+
+### 8. 金额处理规范
+
+#### 数据库存储最小单位
+
+**规则**: 涉及金额的字段，数据库**必须**存储整数（分/Cents），禁止存储小数。
+
+**前端显示**:
+- 后端返回数据保持整数（如 `10000` 表示 100元）。
+- 前端显示时统一除以 100。
+- 前端提交时统一乘以 100 转为整数。
+
+**变量命名**:
+- 推荐使用后缀明确单位，例如 `amountCents` 或 `priceCents`，避免歧义。
+
+**计算**:
+- 所有加减乘除必须在整数层面完成，最后一步再进行格式化。
+
+### 9. API 交互规范
+
+#### 严格的 Zod Schema 校验
+
+**规则**:
+1. 所有**写操作** (POST/PUT/PATCH) 的 Request Body 必须通过 `zodValidator` 中间件校验。
+2. 禁止在 Controller 内部手动判断 `if (!body.name) ...`。
+3. Schema 定义文件应放在 `src/schemas/` 目录下复用。
+
+**模板**:
+```typescript
+// ❌ 禁止：手动校验
+app.post('/create', async (c) => {
+  const body = await c.req.json()
+  if (!body.title) return c.json({ error: 'Title required' })
+})
+
+// ✅ 正确：Zod 中间件
+import { z } from 'zod'
+import { zValidator } from '@hono/zod-validator'
+
+const createSchema = z.object({
+  title: z.string().min(1),
+  amountCents: z.number().int().positive()
+})
+
+app.post('/create', zValidator('json', createSchema), async (c) => {
+  const data = c.req.valid('json') // 类型安全
+})
+```
+
+### 10. 代码整洁规范
+
+#### 明确的废弃流程
+
+**规则**:
+- **重构时**: 如果彻底替换了某个实现（如 SQL Join 改为顺序查询），旧代码应直接删除，**不要**注释保留（Git 历史已有记录）。
+- **暂时停用**: 如果是业务暂时下线但未来可能恢复，可以使用注释，但必须加上 `TODO: [DATE] [REASON]` 标记。
+- **YAGNI**: 不要预留“未来可能会用到”的接口参数或空方法。
+
+---
+
 ## ✅ 开发检查清单
 
 ### 新增功能时
@@ -428,6 +508,9 @@ if (position?.code === 'hq_manager') { ... }   // 永远不要这样做
 - [ ] 是否使用了统一的错误处理？
 - [ ] 是否更新了依赖注入？
 - [ ] **数据权限是否使用 `dataScope` 判断，而非硬编码职位代码？**
+- [ ] **时间处理是否使用了 `getBusinessDate()` (UTC+4)？**
+- [ ] **金额是否以整数(Cents)存储和计算？**
+- [ ] **写接口是否使用了 Zod Schema 校验？**
 
 ### 新增服务时
 
@@ -607,6 +690,7 @@ const TASK_STATUS_CONFIG = {
 
 ## 🔄 更新记录
 
+- 2025-12-29: 补充业务一致性规范（时间、金额、Zod校验、YAGNI）
 - 2025-12-28: 添加前端开发规范（Hooks、页面标题、多选表单、卡片交互）
 - 2025-12-26: 添加 D1 顺序查询规范（禁止复杂 JOIN）
 - 2025-12-25: 添加权限与数据隔离规范 (DataScope)

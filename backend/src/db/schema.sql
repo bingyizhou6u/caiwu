@@ -1,694 +1,715 @@
--- Reconstructed schema based on codebase analysis
-
--- Note: users table has been merged into employees table
--- All auth fields are now in employees table
-
--- Employees table (业务核心，包含员工所有信息)
-DROP TABLE IF EXISTS employees;
-CREATE TABLE IF NOT EXISTS employees (
-  id TEXT PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
-  personal_email TEXT,
-  name TEXT DEFAULT '',
-  position_id TEXT,
-  org_department_id TEXT,
-  department_id TEXT,
-  join_date TEXT,
-  probation_salary_cents INTEGER,
-  regular_salary_cents INTEGER,
-  living_allowance_cents INTEGER,
-  housing_allowance_cents INTEGER,
-  transportation_allowance_cents INTEGER,
-  meal_allowance_cents INTEGER,
-  status TEXT,
-  active INTEGER DEFAULT 1,
-  phone TEXT,
-  usdt_address TEXT,
-  emergency_contact TEXT,
-  emergency_phone TEXT,
-  address TEXT,
-  memo TEXT,
-  birthday TEXT,
-  regular_date TEXT,
-  work_schedule TEXT,
-  annual_leave_cycle_months INTEGER,
-  annual_leave_days INTEGER,
-  created_at INTEGER,
-  updated_at INTEGER,
-  created_at INTEGER,
-  updated_at INTEGER
+CREATE TABLE `account_transactions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`account_id` text NOT NULL,
+	`flow_id` text NOT NULL,
+	`transaction_date` text NOT NULL,
+	`transaction_type` text NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`balance_before_cents` integer NOT NULL,
+	`balance_after_cents` integer NOT NULL,
+	`created_at` integer
 );
-
--- Positions table
-CREATE TABLE IF NOT EXISTS positions (
-  id TEXT PRIMARY KEY,
-  code TEXT NOT NULL UNIQUE,
-  name TEXT NOT NULL,
-  level INTEGER NOT NULL, -- 1-总部 2-项目 3-组
-  function_role TEXT NOT NULL, -- director/hr/finance/admin/developer
-  can_manage_subordinates INTEGER DEFAULT 0,
-  data_scope TEXT DEFAULT 'self' NOT NULL, -- all, project, group, self
-  description TEXT,
-  permissions TEXT, -- JSON string
-  sort_order INTEGER DEFAULT 0,
-  active INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE INDEX `idx_acc_tx_account_date` ON `account_transactions` (`account_id`,`transaction_date`);--> statement-breakpoint
+CREATE TABLE `account_transfers` (
+	`id` text PRIMARY KEY NOT NULL,
+	`transfer_date` text NOT NULL,
+	`from_account_id` text NOT NULL,
+	`to_account_id` text NOT NULL,
+	`from_currency` text NOT NULL,
+	`to_currency` text NOT NULL,
+	`from_amount_cents` integer NOT NULL,
+	`to_amount_cents` integer NOT NULL,
+	`exchange_rate` real,
+	`memo` text,
+	`voucher_url` text,
+	`created_by` text,
+	`created_at` integer
 );
-
--- Departments (Projects) table
-CREATE TABLE IF NOT EXISTS departments (
-  id TEXT PRIMARY KEY,
-  hq_id TEXT,
-  sort_order INTEGER DEFAULT 100,
-  name TEXT NOT NULL,
-  code TEXT,
-  active INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `accounts` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`type` text NOT NULL,
+	`currency` text NOT NULL,
+	`alias` text,
+	`account_number` text,
+	`opening_cents` integer DEFAULT 0,
+	`active` integer DEFAULT 1,
+	`version` integer DEFAULT 1
 );
-
--- Org Departments table
-CREATE TABLE IF NOT EXISTS org_departments (
-  id TEXT PRIMARY KEY,
-  project_id TEXT,
-  parent_id TEXT,
-  name TEXT NOT NULL,
-  code TEXT,
-  description TEXT,
-  allowed_modules TEXT, -- JSON数组，配置该部门可访问的功能模块
-  allowed_positions TEXT, -- JSON数组，限制部门可用的职位ID
-  default_position_id TEXT, -- 新员工默认职位ID
-  active INTEGER DEFAULT 1,
-  sort_order INTEGER DEFAULT 0,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `allowance_payments` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`year` integer NOT NULL,
+	`month` integer NOT NULL,
+	`allowance_type` text NOT NULL,
+	`currency_id` text NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`payment_date` text NOT NULL,
+	`payment_method` text DEFAULT 'cash',
+	`voucher_url` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Sessions table
-CREATE TABLE IF NOT EXISTS sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  expires_at INTEGER NOT NULL,
-  ip_address TEXT,
-  user_agent TEXT,
-  created_at INTEGER,
-  last_active_at INTEGER
+--> statement-breakpoint
+CREATE UNIQUE INDEX `idx_unq_allowance_payments_emp_period_type` ON `allowance_payments` (`employee_id`,`year`,`month`,`allowance_type`);--> statement-breakpoint
+CREATE TABLE `ar_ap_docs` (
+	`id` text PRIMARY KEY NOT NULL,
+	`kind` text NOT NULL,
+	`party_id` text,
+	`site_id` text,
+	`project_id` text,
+	`issue_date` text,
+	`due_date` text,
+	`amount_cents` integer NOT NULL,
+	`doc_no` text,
+	`memo` text,
+	`status` text DEFAULT 'open',
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- System Config table
-DROP TABLE IF EXISTS system_config;
-CREATE TABLE IF NOT EXISTS system_config (
-  key TEXT PRIMARY KEY,
-  value TEXT,
-  description TEXT,
-  updated_at INTEGER,
-  updated_by TEXT
+--> statement-breakpoint
+CREATE TABLE `attendance_records` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`date` text NOT NULL,
+	`clock_in_time` integer,
+	`clock_out_time` integer,
+	`clock_in_location` text,
+	`clock_out_location` text,
+	`status` text,
+	`memo` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Trusted Devices table
-CREATE TABLE IF NOT EXISTS trusted_devices (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  device_fingerprint TEXT NOT NULL,
-  device_name TEXT,
-  ip_address TEXT,
-  user_agent TEXT,
-  last_used_at INTEGER,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `audit_logs` (
+	`id` text PRIMARY KEY NOT NULL,
+	`actor_id` text,
+	`action` text,
+	`entity` text,
+	`entity_id` text,
+	`at` integer NOT NULL,
+	`detail` text,
+	`ip` text,
+	`ip_location` text
 );
-
--- Audit Logs table
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id TEXT PRIMARY KEY,
-  actor_id TEXT,
-  action TEXT NOT NULL,
-  entity TEXT,
-  entity_id TEXT,
-  detail TEXT, -- JSON string
-  ip TEXT,
-  ip_location TEXT,
-  at INTEGER
+--> statement-breakpoint
+CREATE INDEX `idx_audit_logs_time` ON `audit_logs` (`at`);--> statement-breakpoint
+CREATE INDEX `idx_audit_logs_entity` ON `audit_logs` (`entity_id`);--> statement-breakpoint
+CREATE TABLE `business_operation_history` (
+	`id` text PRIMARY KEY NOT NULL,
+	`entity_type` text NOT NULL,
+	`entity_id` text NOT NULL,
+	`action` text NOT NULL,
+	`operator_id` text,
+	`operator_name` text,
+	`before_data` text,
+	`after_data` text,
+	`memo` text,
+	`created_at` integer NOT NULL
 );
-
--- Headquarters table
-CREATE TABLE IF NOT EXISTS headquarters (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  active INTEGER DEFAULT 1
+--> statement-breakpoint
+CREATE TABLE `cash_flows` (
+	`id` text PRIMARY KEY NOT NULL,
+	`voucher_no` text,
+	`biz_date` text NOT NULL,
+	`type` text NOT NULL,
+	`account_id` text NOT NULL,
+	`category_id` text,
+	`method` text,
+	`amount_cents` integer NOT NULL,
+	`site_id` text,
+	`project_id` text,
+	`counterparty` text,
+	`memo` text,
+	`voucher_url` text,
+	`created_by` text,
+	`created_at` integer,
+	`is_reversal` integer DEFAULT 0,
+	`reversal_of_flow_id` text,
+	`is_reversed` integer DEFAULT 0,
+	`reversed_by_flow_id` text
 );
-
--- Currencies table
-CREATE TABLE IF NOT EXISTS currencies (
-  code TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  symbol TEXT,
-  active INTEGER DEFAULT 1
+--> statement-breakpoint
+CREATE INDEX `idx_cash_flows_account_biz` ON `cash_flows` (`account_id`,`biz_date`);--> statement-breakpoint
+CREATE INDEX `idx_cash_flows_type` ON `cash_flows` (`type`);--> statement-breakpoint
+CREATE INDEX `idx_cash_flows_reversal` ON `cash_flows` (`reversal_of_flow_id`);--> statement-breakpoint
+CREATE TABLE `categories` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`kind` text NOT NULL,
+	`parent_id` text,
+	`sort_order` integer DEFAULT 0,
+	`active` integer DEFAULT 1
 );
-
--- User Departments (Many-to-Many)
-CREATE TABLE IF NOT EXISTS user_departments (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  department_id TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+--> statement-breakpoint
+CREATE TABLE `currencies` (
+	`code` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`symbol` text,
+	`active` integer DEFAULT 1
 );
-
--- Opening Balances table
-CREATE TABLE IF NOT EXISTS opening_balances (
-  id TEXT PRIMARY KEY,
-  type TEXT NOT NULL, -- 'account', etc.
-  ref_id TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `dormitory_allocations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`property_id` text NOT NULL,
+	`employee_id` text NOT NULL,
+	`room_number` text,
+	`bed_number` text,
+	`allocation_date` text NOT NULL,
+	`monthly_rent_cents` integer,
+	`return_date` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Accounts table
-CREATE TABLE IF NOT EXISTS accounts (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL,
-  currency TEXT NOT NULL,
-  alias TEXT,
-  account_number TEXT,
-  opening_cents INTEGER DEFAULT 0,
-  active INTEGER DEFAULT 1,
-  version INTEGER DEFAULT 1
+--> statement-breakpoint
+CREATE TABLE `employee_allowances` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`allowance_type` text NOT NULL,
+	`currency_id` text NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Cash Flows table
-CREATE TABLE IF NOT EXISTS cash_flows (
-  id TEXT PRIMARY KEY,
-  voucher_no TEXT,
-  biz_date TEXT NOT NULL,
-  type TEXT NOT NULL, -- 'income', 'expense'
-  account_id TEXT NOT NULL,
-  category_id TEXT,
-  method TEXT,
-  amount_cents INTEGER NOT NULL,
-  site_id TEXT,
-  department_id TEXT,
-  counterparty TEXT,
-  memo TEXT,
-  voucher_url TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  is_reversal INTEGER DEFAULT 0,
-  reversal_of_flow_id TEXT,
-  is_reversed INTEGER DEFAULT 0,
-  reversed_by_flow_id TEXT
+--> statement-breakpoint
+CREATE TABLE `employee_leaves` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`leave_type` text NOT NULL,
+	`start_date` text NOT NULL,
+	`end_date` text NOT NULL,
+	`days` integer NOT NULL,
+	`status` text DEFAULT 'pending',
+	`reason` text,
+	`memo` text,
+	`approved_by` text,
+	`approved_at` integer,
+	`version` integer DEFAULT 1,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Account Transactions table
-CREATE TABLE IF NOT EXISTS account_transactions (
-  id TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL,
-  flow_id TEXT NOT NULL,
-  transaction_date TEXT NOT NULL,
-  transaction_type TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  balance_before_cents INTEGER NOT NULL,
-  balance_after_cents INTEGER NOT NULL,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `employee_projects` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`project_id` text NOT NULL,
+	`role` text,
+	`is_primary` integer DEFAULT 0,
+	`created_at` integer
 );
-
--- Employee Salaries table
-CREATE TABLE IF NOT EXISTS employee_salaries (
-  id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
-  salary_type TEXT NOT NULL, -- 'probation', 'regular'
-  currency_id TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  effective_date TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE UNIQUE INDEX `idx_unq_ep_employee_project` ON `employee_projects` (`employee_id`,`project_id`);--> statement-breakpoint
+CREATE INDEX `idx_ep_employee` ON `employee_projects` (`employee_id`);--> statement-breakpoint
+CREATE INDEX `idx_ep_project` ON `employee_projects` (`project_id`);--> statement-breakpoint
+CREATE TABLE `employee_salaries` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`salary_type` text NOT NULL,
+	`currency_id` text NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`effective_date` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
-CREATE TABLE IF NOT EXISTS employee_allowances (
-  id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
-  allowance_type TEXT NOT NULL, -- 'living', 'housing', 'transportation', 'meal'
-  currency_id TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `employees` (
+	`id` text PRIMARY KEY NOT NULL,
+	`email` text NOT NULL,
+	`personal_email` text,
+	`name` text,
+	`position_id` text,
+	`org_department_id` text,
+	`project_id` text,
+	`join_date` text,
+	`status` text,
+	`active` integer DEFAULT 1,
+	`phone` text,
+	`usdt_address` text,
+	`emergency_contact` text,
+	`emergency_phone` text,
+	`address` text,
+	`memo` text,
+	`birthday` text,
+	`regular_date` text,
+	`work_schedule` text,
+	`annual_leave_cycle_months` integer,
+	`annual_leave_days` integer,
+	`created_at` integer,
+	`updated_at` integer,
+	`last_login_at` integer
 );
-
-CREATE TABLE IF NOT EXISTS allowance_payments (
-  id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  allowance_type TEXT NOT NULL,
-  currency_id TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  payment_date TEXT NOT NULL,
-  payment_method TEXT DEFAULT 'cash',
-  voucher_url TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE UNIQUE INDEX `employees_email_unique` ON `employees` (`email`);--> statement-breakpoint
+CREATE TABLE `expense_reimbursements` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`expense_type` text NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`currency_id` text DEFAULT 'CNY',
+	`expense_date` text NOT NULL,
+	`description` text NOT NULL,
+	`voucher_url` text,
+	`status` text DEFAULT 'pending',
+	`approved_by` text,
+	`approved_at` integer,
+	`memo` text,
+	`version` integer DEFAULT 1,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Employee Leaves table
-CREATE TABLE IF NOT EXISTS employee_leaves (
-  id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
-  leave_type TEXT NOT NULL,
-  start_date TEXT NOT NULL,
-  end_date TEXT NOT NULL,
-  days INTEGER NOT NULL,
-  status TEXT DEFAULT 'pending',
-  reason TEXT,
-  memo TEXT,
-  approved_by TEXT,
-  approved_at INTEGER,
-  version INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `fixed_asset_allocations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`asset_id` text NOT NULL,
+	`employee_id` text NOT NULL,
+	`allocation_date` text NOT NULL,
+	`allocation_type` text DEFAULT 'employee_onboarding',
+	`return_date` text,
+	`return_type` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Salary Payments table
-CREATE TABLE IF NOT EXISTS salary_payments (
-  id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  salary_cents INTEGER NOT NULL,
-  status TEXT NOT NULL, -- pending_employee_confirmation, pending_finance_approval, pending_payment, pending_payment_confirmation, completed
-  allocation_status TEXT DEFAULT 'pending', -- pending, requested, approved
-  employee_confirmed_by TEXT,
-  employee_confirmed_at INTEGER,
-  finance_approved_by TEXT,
-  finance_approved_at INTEGER,
-  account_id TEXT,
-  payment_transferred_by TEXT,
-  payment_transferred_at INTEGER,
-  payment_voucher_path TEXT,
-  payment_confirmed_by TEXT,
-  payment_confirmed_at INTEGER,
-  rollback_reason TEXT,
-  rollback_by TEXT,
-  rollback_at INTEGER,
-  version INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `fixed_asset_changes` (
+	`id` text PRIMARY KEY NOT NULL,
+	`asset_id` text NOT NULL,
+	`change_type` text NOT NULL,
+	`change_date` text NOT NULL,
+	`from_dept_id` text,
+	`to_dept_id` text,
+	`from_site_id` text,
+	`to_site_id` text,
+	`from_custodian` text,
+	`to_custodian` text,
+	`from_status` text,
+	`to_status` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer
 );
-
--- Salary Payment Allocations table
-CREATE TABLE IF NOT EXISTS salary_payment_allocations (
-  id TEXT PRIMARY KEY,
-  salary_payment_id TEXT NOT NULL,
-  currency_id TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  account_id TEXT,
-  status TEXT DEFAULT 'pending', -- pending, approved, rejected
-  requested_by TEXT,
-  requested_at INTEGER,
-  approved_by TEXT,
-  approved_at INTEGER,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `fixed_asset_depreciations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`asset_id` text NOT NULL,
+	`depreciation_date` text NOT NULL,
+	`depreciation_amount_cents` integer NOT NULL,
+	`accumulated_depreciation_cents` integer NOT NULL,
+	`remaining_value_cents` integer NOT NULL,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer
 );
-
--- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(email);
-CREATE INDEX IF NOT EXISTS idx_employees_department_id ON employees(department_id);
-CREATE INDEX IF NOT EXISTS idx_employees_org_department_id ON employees(org_department_id);
-CREATE INDEX IF NOT EXISTS idx_employees_active ON employees(active);
-CREATE INDEX IF NOT EXISTS idx_org_departments_parent_id ON org_departments(parent_id);
-CREATE INDEX IF NOT EXISTS idx_org_departments_project_id ON org_departments(project_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(actor_id);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(at);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_target_id ON audit_logs(entity_id);
-CREATE INDEX IF NOT EXISTS idx_user_departments_department_id ON user_departments(department_id);
-CREATE INDEX IF NOT EXISTS idx_cash_flows_account_id ON cash_flows(account_id);
-CREATE INDEX IF NOT EXISTS idx_cash_flows_biz_date ON cash_flows(biz_date);
-CREATE INDEX IF NOT EXISTS idx_cash_flows_type ON cash_flows(type);
-
--- Sites table
-CREATE TABLE IF NOT EXISTS sites (
-  id TEXT PRIMARY KEY,
-  department_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  site_code TEXT,
-  active INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `fixed_assets` (
+	`id` text PRIMARY KEY NOT NULL,
+	`asset_code` text NOT NULL,
+	`name` text NOT NULL,
+	`category` text,
+	`purchase_date` text,
+	`purchase_price_cents` integer NOT NULL,
+	`currency` text NOT NULL,
+	`vendor_id` text,
+	`project_id` text,
+	`site_id` text,
+	`custodian` text,
+	`status` text DEFAULT 'in_use',
+	`depreciation_method` text,
+	`useful_life_years` integer,
+	`current_value_cents` integer,
+	`memo` text,
+	`sale_date` text,
+	`sale_price_cents` integer,
+	`sale_buyer` text,
+	`sale_memo` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Categories table
-CREATE TABLE IF NOT EXISTS categories (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  kind TEXT NOT NULL, -- income, expense
-  parent_id TEXT,
-  sort_order INTEGER DEFAULT 0,
-  active INTEGER DEFAULT 1
+--> statement-breakpoint
+CREATE UNIQUE INDEX `fixed_assets_asset_code_unique` ON `fixed_assets` (`asset_code`);--> statement-breakpoint
+CREATE TABLE `headquarters` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`active` integer DEFAULT 1
 );
-
--- AR/AP Docs table
-CREATE TABLE IF NOT EXISTS ar_ap_docs (
-  id TEXT PRIMARY KEY,
-  kind TEXT NOT NULL, -- AR, AP
-  party_id TEXT,
-  site_id TEXT,
-  department_id TEXT,
-  issue_date TEXT,
-  due_date TEXT,
-  amount_cents INTEGER NOT NULL,
-  doc_no TEXT,
-  memo TEXT,
-  status TEXT DEFAULT 'open', -- open, partial, settled
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `milestones` (
+	`id` text PRIMARY KEY NOT NULL,
+	`project_id` text NOT NULL,
+	`name` text NOT NULL,
+	`description` text,
+	`due_date` text NOT NULL,
+	`status` text DEFAULT 'pending',
+	`completed_at` integer,
+	`sort_order` integer DEFAULT 0,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Borrowings table
-CREATE TABLE IF NOT EXISTS borrowings (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  borrower_id TEXT,
-  account_id TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  currency TEXT NOT NULL,
-  borrow_date TEXT NOT NULL,
-  memo TEXT,
-  status TEXT DEFAULT 'outstanding', -- outstanding, partial, repaid, pending, approved, rejected
-  approved_by TEXT,
-  approved_at INTEGER,
-  version INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE INDEX `idx_milestones_project` ON `milestones` (`project_id`);--> statement-breakpoint
+CREATE TABLE `opening_balances` (
+	`id` text PRIMARY KEY NOT NULL,
+	`type` text NOT NULL,
+	`ref_id` text NOT NULL,
+	`amount_cents` integer DEFAULT 0 NOT NULL,
+	`created_at` integer
 );
-
--- Repayments table
-CREATE TABLE IF NOT EXISTS repayments (
-  id TEXT PRIMARY KEY,
-  borrowing_id TEXT NOT NULL,
-  account_id TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  currency TEXT NOT NULL,
-  repay_date TEXT NOT NULL,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `org_departments` (
+	`id` text PRIMARY KEY NOT NULL,
+	`project_id` text,
+	`parent_id` text,
+	`name` text NOT NULL,
+	`code` text,
+	`description` text,
+	`allowed_modules` text,
+	`allowed_positions` text,
+	`default_position_id` text,
+	`active` integer DEFAULT 1,
+	`sort_order` integer DEFAULT 0,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Settlements table
-CREATE TABLE IF NOT EXISTS settlements (
-  id TEXT PRIMARY KEY,
-  doc_id TEXT NOT NULL,
-  flow_id TEXT NOT NULL,
-  settle_amount_cents INTEGER NOT NULL,
-  settle_date TEXT,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `personal_calendar_events` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`title` text NOT NULL,
+	`description` text,
+	`start_time` integer NOT NULL,
+	`end_time` integer NOT NULL,
+	`is_all_day` integer DEFAULT 0,
+	`color` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Vendors table
-CREATE TABLE IF NOT EXISTS vendors (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  contact TEXT,
-  phone TEXT,
-  email TEXT,
-  address TEXT,
-  memo TEXT,
-  active INTEGER DEFAULT 1,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `pm_comments` (
+	`id` text PRIMARY KEY NOT NULL,
+	`entity_type` text NOT NULL,
+	`entity_id` text NOT NULL,
+	`content` text NOT NULL,
+	`author_id` text NOT NULL,
+	`parent_comment_id` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Account Transfers table
-CREATE TABLE IF NOT EXISTS account_transfers (
-  id TEXT PRIMARY KEY,
-  transfer_date TEXT NOT NULL,
-  from_account_id TEXT NOT NULL,
-  to_account_id TEXT NOT NULL,
-  from_currency TEXT NOT NULL,
-  to_currency TEXT NOT NULL,
-  from_amount_cents INTEGER NOT NULL,
-  to_amount_cents INTEGER NOT NULL,
-  exchange_rate REAL,
-  memo TEXT,
-  voucher_url TEXT,
-  created_by TEXT,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE INDEX `idx_pm_comments_entity` ON `pm_comments` (`entity_type`,`entity_id`);--> statement-breakpoint
+CREATE TABLE `positions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`code` text NOT NULL,
+	`name` text NOT NULL,
+	`level` integer DEFAULT 3 NOT NULL,
+	`function_role` text DEFAULT 'member' NOT NULL,
+	`can_manage_subordinates` integer DEFAULT 0,
+	`data_scope` text DEFAULT 'self' NOT NULL,
+	`description` text,
+	`permissions` text,
+	`sort_order` integer DEFAULT 0,
+	`active` integer DEFAULT 1,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Site Bills table
-CREATE TABLE IF NOT EXISTS site_bills (
-  id TEXT PRIMARY KEY,
-  site_id TEXT NOT NULL,
-  bill_date TEXT NOT NULL,
-  bill_type TEXT NOT NULL, -- 'water', 'electricity', 'internet', 'other'
-  amount_cents INTEGER NOT NULL,
-  currency TEXT NOT NULL,
-  description TEXT,
-  account_id TEXT,
-  category_id TEXT,
-  status TEXT DEFAULT 'pending', -- 'pending', 'paid'
-  payment_date TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE UNIQUE INDEX `positions_code_unique` ON `positions` (`code`);--> statement-breakpoint
+CREATE TABLE `projects` (
+	`id` text PRIMARY KEY NOT NULL,
+	`code` text NOT NULL,
+	`name` text NOT NULL,
+	`description` text,
+	`hq_id` text,
+	`project_id` text,
+	`manager_id` text,
+	`status` text DEFAULT 'active',
+	`start_date` text,
+	`end_date` text,
+	`actual_start_date` text,
+	`actual_end_date` text,
+	`priority` text DEFAULT 'medium',
+	`budget_cents` integer,
+	`memo` text,
+	`sort_order` integer DEFAULT 100,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer,
+	`active` integer DEFAULT 1
 );
-
--- IP Whitelist Rule table
-CREATE TABLE IF NOT EXISTS ip_whitelist_rule (
-  id TEXT PRIMARY KEY,
-  cloudflare_rule_id TEXT NOT NULL,
-  cloudflare_ruleset_id TEXT NOT NULL,
-  enabled INTEGER DEFAULT 0,
-  description TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE UNIQUE INDEX `projects_code_unique` ON `projects` (`code`);--> statement-breakpoint
+CREATE TABLE `rental_changes` (
+	`id` text PRIMARY KEY NOT NULL,
+	`property_id` text NOT NULL,
+	`change_type` text NOT NULL,
+	`change_date` text NOT NULL,
+	`from_lease_start` text,
+	`to_lease_start` text,
+	`from_lease_end` text,
+	`to_lease_end` text,
+	`from_monthly_rent_cents` integer,
+	`to_monthly_rent_cents` integer,
+	`from_status` text,
+	`to_status` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer
 );
-
--- Fixed Assets table
-CREATE TABLE IF NOT EXISTS fixed_assets (
-  id TEXT PRIMARY KEY,
-  asset_code TEXT NOT NULL UNIQUE,
-  name TEXT NOT NULL,
-  category TEXT,
-  purchase_date TEXT,
-  purchase_price_cents INTEGER NOT NULL,
-  currency TEXT NOT NULL,
-  vendor_id TEXT,
-  department_id TEXT,
-  site_id TEXT,
-  custodian TEXT,
-  status TEXT DEFAULT 'in_use',
-  depreciation_method TEXT,
-  useful_life_years INTEGER,
-  current_value_cents INTEGER,
-  memo TEXT,
-  sale_date TEXT,
-  sale_price_cents INTEGER,
-  sale_buyer TEXT,
-  sale_memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `rental_payable_bills` (
+	`id` text PRIMARY KEY NOT NULL,
+	`property_id` text NOT NULL,
+	`bill_date` text NOT NULL,
+	`due_date` text NOT NULL,
+	`year` integer NOT NULL,
+	`month` integer NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`currency` text NOT NULL,
+	`payment_period_months` integer DEFAULT 1,
+	`status` text DEFAULT 'unpaid',
+	`paid_date` text,
+	`paid_payment_id` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Fixed Asset Depreciations table
-CREATE TABLE IF NOT EXISTS fixed_asset_depreciations (
-  id TEXT PRIMARY KEY,
-  asset_id TEXT NOT NULL,
-  depreciation_date TEXT NOT NULL,
-  depreciation_amount_cents INTEGER NOT NULL,
-  accumulated_depreciation_cents INTEGER NOT NULL,
-  remaining_value_cents INTEGER NOT NULL,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `rental_payments` (
+	`id` text PRIMARY KEY NOT NULL,
+	`property_id` text NOT NULL,
+	`payment_date` text NOT NULL,
+	`year` integer NOT NULL,
+	`month` integer NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`currency` text NOT NULL,
+	`account_id` text NOT NULL,
+	`category_id` text,
+	`payment_method` text,
+	`voucher_url` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Fixed Asset Changes table
-CREATE TABLE IF NOT EXISTS fixed_asset_changes (
-  id TEXT PRIMARY KEY,
-  asset_id TEXT NOT NULL,
-  change_type TEXT NOT NULL,
-  change_date TEXT NOT NULL,
-  from_dept_id TEXT,
-  to_dept_id TEXT,
-  from_site_id TEXT,
-  to_site_id TEXT,
-  from_custodian TEXT,
-  to_custodian TEXT,
-  from_status TEXT,
-  to_status TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `rental_properties` (
+	`id` text PRIMARY KEY NOT NULL,
+	`property_code` text NOT NULL,
+	`name` text NOT NULL,
+	`property_type` text NOT NULL,
+	`address` text,
+	`area_sqm` real,
+	`rent_type` text DEFAULT 'monthly',
+	`monthly_rent_cents` integer,
+	`yearly_rent_cents` integer,
+	`currency` text NOT NULL,
+	`payment_period_months` integer DEFAULT 1,
+	`landlord_name` text,
+	`landlord_contact` text,
+	`lease_start_date` text,
+	`lease_end_date` text,
+	`deposit_cents` integer,
+	`payment_method` text,
+	`payment_account_id` text,
+	`payment_day` integer DEFAULT 1,
+	`project_id` text,
+	`status` text DEFAULT 'active',
+	`memo` text,
+	`contract_file_url` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Fixed Asset Allocations table
-CREATE TABLE IF NOT EXISTS fixed_asset_allocations (
-  id TEXT PRIMARY KEY,
-  asset_id TEXT NOT NULL,
-  employee_id TEXT NOT NULL,
-  allocation_date TEXT NOT NULL,
-  allocation_type TEXT DEFAULT 'employee_onboarding',
-  return_date TEXT,
-  return_type TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `requirements` (
+	`id` text PRIMARY KEY NOT NULL,
+	`code` text NOT NULL,
+	`project_id` text NOT NULL,
+	`title` text NOT NULL,
+	`description` text,
+	`type` text NOT NULL,
+	`priority` text DEFAULT 'medium',
+	`status` text DEFAULT 'draft',
+	`estimated_hours` integer,
+	`actual_hours` integer,
+	`deadline` text,
+	`assignee_ids` text,
+	`reviewer_ids` text,
+	`reviewed_at` integer,
+	`review_memo` text,
+	`attachment_urls` text,
+	`version` integer DEFAULT 1,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Rental Properties table
-CREATE TABLE IF NOT EXISTS rental_properties (
-  id TEXT PRIMARY KEY,
-  property_code TEXT NOT NULL,
-  name TEXT NOT NULL,
-  property_type TEXT NOT NULL, -- office, dormitory, apartment, warehouse
-  address TEXT,
-  area_sqm REAL,
-  rent_type TEXT DEFAULT 'monthly', -- monthly, yearly
-  monthly_rent_cents INTEGER,
-  yearly_rent_cents INTEGER,
-  currency TEXT NOT NULL,
-  payment_period_months INTEGER DEFAULT 1,
-  landlord_name TEXT,
-  landlord_contact TEXT,
-  lease_start_date TEXT,
-  lease_end_date TEXT,
-  deposit_cents INTEGER,
-  payment_method TEXT,
-  payment_account_id TEXT,
-  payment_day INTEGER DEFAULT 1,
-  department_id TEXT,
-  status TEXT DEFAULT 'active', -- active, inactive
-  memo TEXT,
-  contract_file_url TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE UNIQUE INDEX `requirements_code_unique` ON `requirements` (`code`);--> statement-breakpoint
+CREATE INDEX `idx_requirements_project` ON `requirements` (`project_id`);--> statement-breakpoint
+CREATE INDEX `idx_requirements_status` ON `requirements` (`status`);--> statement-breakpoint
+CREATE TABLE `salary_payment_allocations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`salary_payment_id` text NOT NULL,
+	`currency_id` text NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`account_id` text,
+	`status` text DEFAULT 'pending',
+	`requested_by` text,
+	`requested_at` integer,
+	`approved_by` text,
+	`approved_at` integer,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Rental Payments table
-CREATE TABLE IF NOT EXISTS rental_payments (
-  id TEXT PRIMARY KEY,
-  property_id TEXT NOT NULL,
-  payment_date TEXT NOT NULL,
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  currency TEXT NOT NULL,
-  account_id TEXT NOT NULL,
-  category_id TEXT,
-  payment_method TEXT,
-  voucher_url TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `salary_payments` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`year` integer NOT NULL,
+	`month` integer NOT NULL,
+	`salary_cents` integer NOT NULL,
+	`status` text NOT NULL,
+	`allocation_status` text DEFAULT 'pending',
+	`employee_confirmed_by` text,
+	`employee_confirmed_at` integer,
+	`finance_approved_by` text,
+	`finance_approved_at` integer,
+	`account_id` text,
+	`payment_transferred_by` text,
+	`payment_transferred_at` integer,
+	`payment_voucher_path` text,
+	`payment_confirmed_by` text,
+	`payment_confirmed_at` integer,
+	`rollback_reason` text,
+	`rollback_by` text,
+	`rollback_at` integer,
+	`version` integer DEFAULT 1,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Rental Changes table
-CREATE TABLE IF NOT EXISTS rental_changes (
-  id TEXT PRIMARY KEY,
-  property_id TEXT NOT NULL,
-  change_type TEXT NOT NULL, -- modify, renew, terminate
-  change_date TEXT NOT NULL,
-  from_lease_start TEXT,
-  to_lease_start TEXT,
-  from_lease_end TEXT,
-  to_lease_end TEXT,
-  from_monthly_rent_cents INTEGER,
-  to_monthly_rent_cents INTEGER,
-  from_status TEXT,
-  to_status TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER
+--> statement-breakpoint
+CREATE UNIQUE INDEX `idx_unq_salary_payments_emp_period` ON `salary_payments` (`employee_id`,`year`,`month`);--> statement-breakpoint
+CREATE TABLE `sessions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`employee_id` text NOT NULL,
+	`expires_at` integer NOT NULL,
+	`ip_address` text,
+	`user_agent` text,
+	`created_at` integer,
+	`last_active_at` integer
 );
-
--- Dormitory Allocations table
-CREATE TABLE IF NOT EXISTS dormitory_allocations (
-  id TEXT PRIMARY KEY,
-  property_id TEXT NOT NULL,
-  employee_id TEXT NOT NULL,
-  room_number TEXT,
-  bed_number TEXT,
-  allocation_date TEXT NOT NULL,
-  monthly_rent_cents INTEGER,
-  return_date TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `settlements` (
+	`id` text PRIMARY KEY NOT NULL,
+	`doc_id` text NOT NULL,
+	`flow_id` text NOT NULL,
+	`settle_amount_cents` integer NOT NULL,
+	`settle_date` text,
+	`created_at` integer
 );
-
--- Rental Payable Bills table
-CREATE TABLE IF NOT EXISTS rental_payable_bills (
-  id TEXT PRIMARY KEY,
-  property_id TEXT NOT NULL,
-  bill_date TEXT NOT NULL,
-  due_date TEXT NOT NULL,
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  currency TEXT NOT NULL,
-  payment_period_months INTEGER DEFAULT 1,
-  status TEXT DEFAULT 'unpaid', -- unpaid, paid
-  paid_date TEXT,
-  paid_payment_id TEXT,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `site_bills` (
+	`id` text PRIMARY KEY NOT NULL,
+	`site_id` text NOT NULL,
+	`bill_date` text NOT NULL,
+	`bill_type` text NOT NULL,
+	`amount_cents` integer NOT NULL,
+	`currency` text NOT NULL,
+	`description` text,
+	`account_id` text,
+	`category_id` text,
+	`status` text DEFAULT 'pending',
+	`payment_date` text,
+	`memo` text,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Expense Reimbursements table
-CREATE TABLE IF NOT EXISTS expense_reimbursements (
-  id TEXT PRIMARY KEY,
-  employee_id TEXT NOT NULL,
-  expense_type TEXT NOT NULL, -- travel, office, meal, transport, other
-  amount_cents INTEGER NOT NULL,
-  currency_id TEXT DEFAULT 'CNY',
-  expense_date TEXT NOT NULL,
-  description TEXT NOT NULL,
-  voucher_url TEXT,
-  status TEXT DEFAULT 'pending', -- pending, approved, rejected
-  approved_by TEXT,
-  approved_at INTEGER,
-  memo TEXT,
-  created_by TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `sites` (
+	`id` text PRIMARY KEY NOT NULL,
+	`project_id` text NOT NULL,
+	`name` text NOT NULL,
+	`site_code` text,
+	`active` integer DEFAULT 1,
+	`created_at` integer,
+	`updated_at` integer
 );
-
--- Site Config table
-CREATE TABLE IF NOT EXISTS site_config (
-  id TEXT PRIMARY KEY,
-  config_key TEXT NOT NULL UNIQUE,
-  config_value TEXT,
-  description TEXT,
-  is_encrypted INTEGER DEFAULT 0,
-  created_at INTEGER,
-  updated_at INTEGER
+--> statement-breakpoint
+CREATE TABLE `system_config` (
+	`key` text PRIMARY KEY NOT NULL,
+	`value` text NOT NULL,
+	`description` text,
+	`updated_at` integer NOT NULL,
+	`updated_by` text NOT NULL
 );
-
--- Business Operation History table
-CREATE TABLE IF NOT EXISTS business_operation_history (
-  id TEXT PRIMARY KEY,
-  entity_type TEXT NOT NULL,
-  entity_id TEXT NOT NULL,
-  action TEXT NOT NULL,
-  operator_id TEXT,
-  operator_name TEXT,
-  before_data TEXT,
-  after_data TEXT,
-  memo TEXT,
-  created_at INTEGER NOT NULL
+--> statement-breakpoint
+CREATE TABLE `task_timelogs` (
+	`id` text PRIMARY KEY NOT NULL,
+	`task_id` text NOT NULL,
+	`project_id` text,
+	`employee_id` text NOT NULL,
+	`log_date` text NOT NULL,
+	`hours` real NOT NULL,
+	`description` text,
+	`created_at` integer,
+	`updated_at` integer
+);
+--> statement-breakpoint
+CREATE INDEX `idx_timelogs_task` ON `task_timelogs` (`task_id`);--> statement-breakpoint
+CREATE INDEX `idx_timelogs_project` ON `task_timelogs` (`project_id`);--> statement-breakpoint
+CREATE INDEX `idx_timelogs_employee_date` ON `task_timelogs` (`employee_id`,`log_date`);--> statement-breakpoint
+CREATE TABLE `tasks` (
+	`id` text PRIMARY KEY NOT NULL,
+	`code` text NOT NULL,
+	`requirement_id` text,
+	`project_id` text NOT NULL,
+	`parent_task_id` text,
+	`title` text NOT NULL,
+	`description` text,
+	`type` text DEFAULT 'dev',
+	`priority` text DEFAULT 'medium',
+	`status` text DEFAULT 'todo',
+	`estimated_hours` integer,
+	`actual_hours` integer,
+	`start_date` text,
+	`due_date` text,
+	`completed_at` integer,
+	`assignee_ids` text,
+	`reviewer_ids` text,
+	`tester_ids` text,
+	`sort_order` integer DEFAULT 0,
+	`version` integer DEFAULT 1,
+	`created_by` text,
+	`created_at` integer,
+	`updated_at` integer
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `tasks_code_unique` ON `tasks` (`code`);--> statement-breakpoint
+CREATE INDEX `idx_tasks_project` ON `tasks` (`project_id`);--> statement-breakpoint
+CREATE INDEX `idx_tasks_requirement` ON `tasks` (`requirement_id`);--> statement-breakpoint
+CREATE INDEX `idx_tasks_status` ON `tasks` (`status`);--> statement-breakpoint
+CREATE TABLE `vendors` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`contact` text,
+	`phone` text,
+	`email` text,
+	`address` text,
+	`memo` text,
+	`active` integer DEFAULT 1,
+	`created_at` integer,
+	`updated_at` integer
 );

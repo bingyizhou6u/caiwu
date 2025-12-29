@@ -14,6 +14,7 @@ import { Errors } from '../../utils/errors.js'
 import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 import { exportToCSV, createCSVResponse, formatAmountCents, formatDate } from '../../utils/export.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
@@ -585,7 +586,7 @@ app.openapi(
     const { year, month, projectId } = c.req.valid('query')
     const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
-    const y = year || new Date().getFullYear()
+    const y = year || getBusinessDate().slice(0, 4)
     const data = await reportService.getEmployeeSalaryReport(y, month, validId)
     return data
   }) as any
@@ -678,7 +679,7 @@ app.openapi(
     const { year, month, projectId } = c.req.valid('query')
     const validId = validateScope(c, projectId)
     const reportService = c.var.services.report
-    const y = year || new Date().getFullYear()
+    const y = year || parseInt(getBusinessDate().slice(0, 4))
     const data = await reportService.getEmployeeSalaryReport(y, month, validId, false) // 不使用缓存
 
     const csvContent = exportToCSV(

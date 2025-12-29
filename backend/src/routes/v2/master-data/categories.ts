@@ -38,24 +38,8 @@ const listCategoriesRoute = createRoute({
 categoriesRoutes.openapi(
   listCategoriesRoute,
   createRouteHandler(async c => {
-    const cache = createQueryCache()
-    const cacheKey = cacheKeys.masterData.categories()
-
-    // 尝试从缓存获取
-    const cached = await cache.get(cacheKey)
-    if (cached) {
-      return { results: cached }
-    }
-
-    // 缓存未命中，查询数据库
     const service = c.var.services.masterData
     const results = await service.getCategories()
-
-    // 异步更新缓存
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.set(cacheKey, results, cacheTTL.masterData))
-    }
-
     return { results }
   })
 )
@@ -102,12 +86,6 @@ categoriesRoutes.openapi(
       kind: body.kind,
       parentId: body.parentId || undefined,
     })
-
-    // 清除类别列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.delete(cacheKeys.masterData.categories()))
-    }
 
     logAuditAction(
       c,
@@ -173,12 +151,6 @@ categoriesRoutes.openapi(
       kind: body.kind,
     })
 
-    // 清除类别列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.delete(cacheKeys.masterData.categories()))
-    }
-
     logAuditAction(c, 'update', 'category', id, JSON.stringify(body))
     return {}
   }) as any
@@ -218,12 +190,6 @@ categoriesRoutes.openapi(
     const service = c.var.services.masterData
 
     const result = await service.deleteCategory(id)
-
-    // 清除类别列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.delete(cacheKeys.masterData.categories()))
-    }
 
     logAuditAction(c, 'delete', 'category', id, JSON.stringify({ name: result.name }))
     return {}

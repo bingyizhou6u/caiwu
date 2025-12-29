@@ -102,14 +102,4 @@ export function useDeleteProject() {
     })
 }
 
-// 向后兼容别名（deprecated，建议使用新名称）
-/** @deprecated Use useProjects instead */
-export const useDepartments = useProjects
-/** @deprecated Use useProjectOptions instead */
-export const useDepartmentOptions = useProjectOptions
-/** @deprecated Use useCreateProject instead */
-export const useCreateDepartment = useCreateProject
-/** @deprecated Use useUpdateProject instead */
-export const useUpdateDepartment = useUpdateProject
-/** @deprecated Use useDeleteProject instead */
-export const useDeleteDepartment = useDeleteProject
+

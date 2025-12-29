@@ -7,7 +7,7 @@ import { useFixedAssets, useCreateFixedAsset, useUpdateFixedAsset, useDeleteFixe
 import { useTableActions } from '../../../hooks/forms/useTableActions'
 import { useBatchOperation } from '../../../hooks/business/useBatchOperation'
 import { useMultipleModals } from '../../../hooks/forms/useFormModal'
-import { useDepartmentOptions, useSites, useVendors, useCurrencyOptions } from '../../../hooks'
+import { useProjectOptions, useSites, useVendors, useCurrencyOptions } from '../../../hooks'
 import { VirtualTable } from '../../../components/common/VirtualTable'
 import { PageContainer } from '../../../components/PageContainer'
 import { DataTable, type DataTableColumn, StatusTag, PageToolbar, BatchActionButton, AmountDisplay, EmptyText } from '../../../components/common'
@@ -74,7 +74,7 @@ export function FixedAssetsManagement() {
   const canDelete = canManageSubordinates
 
   // Hooks
-  const { data: departments = [] } = useDepartmentOptions()
+  const { data: departments = [], isLoading: isLoadingDepts } = useProjectOptions()
   const { data: sites = [] } = useSites()
   const { data: vendors = [] } = useVendors()
   const { data: currencyOptions = [] } = useCurrencyOptions()

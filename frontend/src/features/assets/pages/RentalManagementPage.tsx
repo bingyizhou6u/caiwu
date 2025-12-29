@@ -15,7 +15,7 @@ import { DataTable, type DataTableColumn, EmptyText, PageToolbar, StatusTag, Amo
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { RENTAL_STATUS } from '../../../utils/status'
 import { useRentalProperties, useRentalProperty, useCreateRentalProperty, useUpdateRentalProperty, useCreateRentalPayment, useAllocateDormitory } from '../../../hooks'
-import { useDepartmentOptions } from '../../../hooks'
+import { useProjectOptions } from '../../../hooks'
 import { useAccounts, useExpenseCategories, useEmployees } from '../../../hooks/useBusinessData'
 import { useCurrencyOptions } from '../../../hooks'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
@@ -115,7 +115,7 @@ export function RentalManagement() {
 
   // Business data hooks
   const { data: currencies = [] } = useCurrencyOptions()
-  const { data: departments = [] } = useDepartmentOptions()
+  const { data: departments = [] } = useProjectOptions()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useExpenseCategories()
   const { data: employees = [] } = useEmployees()

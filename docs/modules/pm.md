@@ -162,14 +162,7 @@
 2. 读取 `document.title`（由 PageContainer 设置）
 3. 路径模式匹配（如 `/pm/projects/:id` → "项目详情"）
 
-### 旧数据兼容
 
-人员字段从单选改为多选后，保留了旧字段：
-- `assigneeId` → `assigneeIds`（兼容）
-- `reviewerId` → `reviewerIds`（兼容）
-- `testerId` → `testerIds`（兼容）
-
-TaskService 会自动处理旧数据转换。
 
 ---
 

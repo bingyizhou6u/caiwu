@@ -14,20 +14,9 @@ import { DataTable, PageToolbar, StatusTag } from '../../../components/common'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
 import dayjs from 'dayjs'
+import { PROJECT_STATUS_CONFIG, TASK_PRIORITY_CONFIG, PROJECT_STATUS_OPTIONS } from '../constants'
 
-// 状态与优先级配置
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-    active: { label: '进行中', color: 'processing' },
-    on_hold: { label: '暂停', color: 'warning' },
-    completed: { label: '已完成', color: 'success' },
-    cancelled: { label: '已取消', color: 'default' },
-}
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-    high: { label: '高', color: 'red' },
-    medium: { label: '中', color: 'orange' },
-    low: { label: '低', color: 'green' },
-}
 
 export default function ProjectListPage() {
     const navigate = useNavigate()
@@ -106,7 +95,7 @@ export default function ProjectListPage() {
             key: 'status',
             width: 100,
             render: (status: string) => {
-                const config = STATUS_CONFIG[status] || { label: status, color: 'default' }
+                const config = PROJECT_STATUS_CONFIG[status] || { label: status, color: 'default' }
                 return <Badge status={config.color as any} text={config.label} />
             },
         },
@@ -116,7 +105,7 @@ export default function ProjectListPage() {
             key: 'priority',
             width: 80,
             render: (priority: string) => {
-                const config = PRIORITY_CONFIG[priority] || { label: priority, color: 'default' }
+                const config = TASK_PRIORITY_CONFIG[priority] || { label: priority, color: 'default' }
                 return <Tag color={config.color}>{config.label}</Tag>
             },
         },
@@ -154,13 +143,7 @@ export default function ProjectListPage() {
                             label: '状态',
                             type: 'select',
                             placeholder: '全部状态',
-                            options: [
-                                { label: '全部', value: '' },
-                                { label: '进行中', value: 'active' },
-                                { label: '暂停', value: 'on_hold' },
-                                { label: '已完成', value: 'completed' },
-                                { label: '已取消', value: 'cancelled' },
-                            ],
+                            options: PROJECT_STATUS_OPTIONS,
                         },
                     ]}
                     onSearch={setSearchParams}

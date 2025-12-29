@@ -7,16 +7,16 @@ import { DataTable, PageToolbar, StatusTag } from '../../../components/common'
 import { COMMON_STATUS } from '../../../utils/status'
 import { SearchFilters } from '../../../components/common/SearchFilters'
 import { usePermissions } from '../../../utils/permissions'
-import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment, useFormModal, useZodForm } from '../../../hooks'
+import { useProjects, useCreateProject, useUpdateProject, useDeleteProject, useFormModal, useZodForm } from '../../../hooks'
 import { departmentSchema } from '../../../validations/department.schema'
 import type { Department } from '../../../types'
 import { PageContainer } from '../../../components/PageContainer'
 
 export function DepartmentManagement() {
-  const { data: deptData = [], isLoading } = useDepartments()
-  const { mutateAsync: createDeptMutation } = useCreateDepartment()
-  const { mutateAsync: updateDeptMutation } = useUpdateDepartment()
-  const { mutateAsync: deleteDeptMutation } = useDeleteDepartment()
+  const { data: departments = [], isLoading } = useProjects()
+  const createMutation = useCreateProject()
+  const updateMutation = useUpdateProject()
+  const deleteMutation = useDeleteProject()
 
   const modal = useFormModal<Department>()
   const { form: deptForm, validateWithZod } = useZodForm(departmentSchema)
@@ -27,7 +27,7 @@ export function DepartmentManagement() {
 
   // 过滤和排序数据
   const filteredDepartments = useMemo(() => {
-    let result = deptData
+    let result = departments
     if (searchParams.search) {
       const search = searchParams.search.toLowerCase()
       result = result.filter((d: Department) => d.name.toLowerCase().includes(search))
@@ -47,12 +47,12 @@ export function DepartmentManagement() {
       return (a.name || '').localeCompare(b.name || '', 'zh-CN')
     })
     return result
-  }, [deptData, searchParams])
+  }, [departments, searchParams])
 
   const createDept = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateWithZod()
-      await createDeptMutation({ ...v, active: v.active as any, sortOrder: v.sortOrder ?? 100 })
+      await createMutation.mutateAsync({ ...v, active: v.active as any, sortOrder: v.sortOrder ?? 100 })
       modal.close()
       deptForm.resetFields()
     },
@@ -65,13 +65,13 @@ export function DepartmentManagement() {
         }
       }
     }
-  ), [deptForm, validateWithZod, modal, createDeptMutation])
+  ), [deptForm, validateWithZod, modal, createMutation])
 
   const updateDept = useMemo(() => withErrorHandler(
     async () => {
       const v = await validateWithZod()
       if (!modal.data?.id) return
-      await updateDeptMutation({ id: modal.data.id, data: { ...v, active: v.active as any } })
+      await updateMutation.mutateAsync({ id: modal.data.id, data: { ...v, active: v.active as any } })
       modal.close()
       deptForm.resetFields()
     },
@@ -84,21 +84,21 @@ export function DepartmentManagement() {
         }
       }
     }
-  ), [deptForm, validateWithZod, modal, updateDeptMutation])
+  ), [deptForm, validateWithZod, modal, updateMutation])
 
   const deleteDept = useMemo(() => withErrorHandler(
     async (id: string) => {
-      await deleteDeptMutation(id)
+      await deleteMutation.mutateAsync(id)
     },
     {
       successMessage: '删除成功',
       errorMessage: '删除失败'
     }
-  ), [deleteDeptMutation])
+  ), [deleteMutation])
 
   const handleToggleActive = useMemo(() => withErrorHandler(
     async (id: string, checked: boolean) => {
-      await updateDeptMutation({ id, data: { active: (checked ? 1 : 0) as any } })
+      await updateMutation.mutateAsync({ id, data: { active: (checked ? 1 : 0) as any } })
       return checked ? '已启用' : '已停用'
     },
     {
@@ -108,12 +108,12 @@ export function DepartmentManagement() {
         handleConflictError(error, '项目名称已存在，请使用其他名称')
       }
     }
-  ), [updateDeptMutation])
+  ), [updateMutation])
 
   const columns = [
-    { 
-      title: '排序', 
-      dataIndex: 'sortOrder', 
+    {
+      title: '排序',
+      dataIndex: 'sortOrder',
       key: 'sortOrder',
       width: 100,
       render: (sortOrder: number | undefined) => sortOrder ?? 100,

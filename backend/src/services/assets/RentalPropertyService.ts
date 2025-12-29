@@ -10,7 +10,7 @@ import {
   rentalChanges,
   dormitoryAllocations,
 } from '../../db/schema.js'
-import { eq, and, desc, sql, isNotNull } from 'drizzle-orm'
+import { eq, and, desc, sql, isNotNull, inArray } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import { Errors } from '../../utils/errors.js'
 import { getBusinessDate } from '../../utils/timezone.js'
@@ -43,44 +43,49 @@ export class RentalPropertyService {
     const propertyIds = properties.map(p => p.id)
 
     // 3. 批量查询关联数据
-    const departments: { id: string; name: string | null }[] = []
-    for (const id of deptIds) {
-      const d = await this.db.select({ id: schema.projects.id, name: schema.projects.name })
-        .from(schema.projects).where(eq(schema.projects.id, id)).get()
-      if (d) departments.push(d)
-    }
-
-    const accounts: { id: string; name: string | null }[] = []
-    for (const id of accountIds) {
-      const a = await this.db.select({ id: schema.accounts.id, name: schema.accounts.name })
-        .from(schema.accounts).where(eq(schema.accounts.id, id)).get()
-      if (a) accounts.push(a)
-    }
-
-    const currencies: { code: string; name: string | null }[] = []
-    for (const code of currencyCodes) {
-      const c = await this.db.select({ code: schema.currencies.code, name: schema.currencies.name })
-        .from(schema.currencies).where(eq(schema.currencies.code, code)).get()
-      if (c) currencies.push(c)
-    }
-
-    const creators: { id: string; name: string | null }[] = []
-    for (const id of creatorIds) {
-      const e = await this.db.select({ id: schema.employees.id, name: schema.employees.name })
-        .from(schema.employees).where(eq(schema.employees.id, id)).get()
-      if (e) creators.push(e)
-    }
+    const [departments, accounts, currencies, creators] = await Promise.all([
+      deptIds.length > 0
+        ? this.db.select({ id: schema.projects.id, name: schema.projects.name })
+          .from(schema.projects)
+          .where(inArray(schema.projects.id, deptIds))
+          .all()
+        : Promise.resolve([]),
+      accountIds.length > 0
+        ? this.db.select({ id: schema.accounts.id, name: schema.accounts.name })
+          .from(schema.accounts)
+          .where(inArray(schema.accounts.id, accountIds))
+          .all()
+        : Promise.resolve([]),
+      currencyCodes.length > 0
+        ? this.db.select({ code: schema.currencies.code, name: schema.currencies.name })
+          .from(schema.currencies)
+          .where(inArray(schema.currencies.code, currencyCodes))
+          .all()
+        : Promise.resolve([]),
+      creatorIds.length > 0
+        ? this.db.select({ id: schema.employees.id, name: schema.employees.name })
+          .from(schema.employees)
+          .where(inArray(schema.employees.id, creatorIds))
+          .all()
+        : Promise.resolve([]),
+    ])
 
     // 4. 查询分配数量
-    const allocCounts: { propertyId: string; count: number }[] = []
-    for (const pid of propertyIds) {
-      const result = await this.db
-        .select({ count: sql<number>`count(*)` })
+    // 4. 查询分配数量
+    const allocCounts = propertyIds.length > 0
+      ? await this.db
+        .select({
+          propertyId: dormitoryAllocations.propertyId,
+          count: sql<number>`count(*)`
+        })
         .from(dormitoryAllocations)
-        .where(and(eq(dormitoryAllocations.propertyId, pid), sql`${dormitoryAllocations.returnDate} IS NULL`))
-        .get()
-      allocCounts.push({ propertyId: pid, count: result?.count || 0 })
-    }
+        .where(and(
+          inArray(dormitoryAllocations.propertyId, propertyIds),
+          sql`${dormitoryAllocations.returnDate} IS NULL`
+        ))
+        .groupBy(dormitoryAllocations.propertyId)
+        .all()
+      : []
 
     // 5. 构建 Map
     const deptMap = new Map(departments.map(d => [d.id, d.name]))

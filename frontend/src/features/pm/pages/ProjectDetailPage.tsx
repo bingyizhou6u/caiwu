@@ -115,10 +115,10 @@ export default function ProjectDetailPage() {
         },
         {
             title: '负责人',
-            dataIndex: 'assigneeName',
-            key: 'assigneeName',
-            width: 100,
-            render: (name) => name || '-',
+            dataIndex: 'assigneeNames',
+            key: 'assigneeNames',
+            width: 150,
+            render: (names: string[] | null) => (names && names.length > 0) ? names.join(', ') : '-',
         },
         {
             title: '工时',

@@ -2,7 +2,7 @@ import { useMemo, useCallback } from 'react'
 import { Card, Button, Form, Input, Space, message, Select, Popconfirm, Switch, ColorPicker } from 'antd'
 import { handleConflictError } from '../../../utils/api'
 import { withErrorHandler } from '../../../utils/errorHandler'
-import { useSites, useCreateSite, useUpdateSite, useDeleteSite, useDepartmentOptions, useFormModal, useZodForm } from '../../../hooks'
+import { useSites, useCreateSite, useUpdateSite, useDeleteSite, useProjectOptions, useFormModal, useZodForm } from '../../../hooks'
 import { siteSchema } from '../../../validations/site.schema'
 import { FormModal } from '../../../components/FormModal'
 import { usePermissions } from '../../../utils/permissions'
@@ -14,7 +14,7 @@ import { PageContainer } from '../../../components/PageContainer'
 
 export function SiteManagement() {
   const { data: siteData = [], isLoading, refetch } = useSites()
-  const { data: deptOptions = [] } = useDepartmentOptions(false) // 不包含总部，因为站点必须属于某个具体项目
+  const { data: deptOptions = [] } = useProjectOptions(false) // 不包含总部，因为站点必须属于某个具体项目
   const { mutateAsync: createSite } = useCreateSite()
   const { mutateAsync: updateSite } = useUpdateSite()
   const { mutateAsync: deleteSiteMutation } = useDeleteSite()

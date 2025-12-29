@@ -193,7 +193,7 @@ export function GanttChart({ tasks, projectStartDate, projectEndDate }: GanttCha
                                             <span className="gantt-tooltip">
                                                 <div><strong>{task.code}</strong> {task.title}</div>
                                                 <div>{task.startDate || '?'} → {task.dueDate || '?'}</div>
-                                                <div>{task.assigneeName || '未分配'}</div>
+                                                <div>{task.assigneeNames?.join(', ') || '未分配'}</div>
                                             </span>
                                             {task.code}
                                         </div>

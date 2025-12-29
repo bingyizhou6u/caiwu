@@ -9,7 +9,7 @@ import { PlusOutlined, DeleteOutlined, StarOutlined, StarFilled } from '@ant-des
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api as httpClient } from '../../../../api/http'
 import { api as apiEndpoints } from '../../../../config/api'
-import { useDepartments } from '../../../../hooks/business/useDepartments'
+import { useProjects, useProjectOptions } from '../../../../hooks'
 
 interface EmployeeProjectsSectionProps {
     employeeId: string
@@ -31,7 +31,7 @@ export function EmployeeProjectsSection({ employeeId }: EmployeeProjectsSectionP
     const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>()
 
     // 获取项目列表（用于选择）
-    const { data: projects = [], isLoading: loadingProjects } = useDepartments()
+    const { data: projects = [], isLoading: loadingProjects } = useProjects()
 
     // 获取员工的项目关联
     const { data: employeeProjects, isLoading } = useQuery({

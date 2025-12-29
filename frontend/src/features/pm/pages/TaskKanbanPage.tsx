@@ -18,24 +18,9 @@ import {
 } from '../../../hooks/business/usePM'
 import { PageContainer } from '../../../components/PageContainer'
 import dayjs from 'dayjs'
+import { KANBAN_COLUMNS, TASK_PRIORITY_CONFIG } from '../constants'
 
 const { Text } = Typography
-
-// 看板列配置 - 工作流顺序：待办 → 需求评审 → 开发中 → 代码评审 → 测试中 → 已完成
-const KANBAN_COLUMNS = [
-    { key: 'todo', title: '待办', color: '#8c8c8c' },
-    { key: 'design_review', title: '需求评审', color: '#fa8c16' },
-    { key: 'in_progress', title: '开发中', color: '#1890ff' },
-    { key: 'code_review', title: '代码评审', color: '#faad14' },
-    { key: 'testing', title: '测试中', color: '#722ed1' },
-    { key: 'completed', title: '已完成', color: '#52c41a' },
-] as const
-
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-    high: { label: '高', color: 'red' },
-    medium: { label: '中', color: 'orange' },
-    low: { label: '低', color: 'green' },
-}
 
 // 任务卡片组件
 interface TaskCardProps {
@@ -55,7 +40,8 @@ function TaskCard({ task, onDragStart, onEdit, onDelete, onView }: TaskCardProps
     ]
 
     // 获取负责人列表
-    const assigneeList = task.assigneeNames?.length ? task.assigneeNames : (task.assigneeName ? [task.assigneeName] : [])
+    // 获取负责人列表
+    const assigneeList = task.assigneeNames || []
 
     return (
         <Card
@@ -102,8 +88,8 @@ function TaskCard({ task, onDragStart, onEdit, onDelete, onView }: TaskCardProps
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
                 <Space size={4} wrap>
-                    <Tag color={PRIORITY_CONFIG[task.priority]?.color} style={{ margin: 0, fontSize: 10 }}>
-                        {PRIORITY_CONFIG[task.priority]?.label || task.priority}
+                    <Tag color={TASK_PRIORITY_CONFIG[task.priority]?.color} style={{ margin: 0, fontSize: 10 }}>
+                        {TASK_PRIORITY_CONFIG[task.priority]?.label || task.priority}
                     </Tag>
                     {task.dueDate && (
                         <span style={{ color: dayjs(task.dueDate).isBefore(dayjs()) ? '#ff4d4f' : '#8c8c8c' }}>
@@ -395,8 +381,8 @@ export default function TaskKanbanPage() {
                             <Tag color={KANBAN_COLUMNS.find(c => c.key === selectedTask.status)?.color}>
                                 {KANBAN_COLUMNS.find(c => c.key === selectedTask.status)?.title || selectedTask.status}
                             </Tag>
-                            <Tag color={PRIORITY_CONFIG[selectedTask.priority]?.color}>
-                                优先级: {PRIORITY_CONFIG[selectedTask.priority]?.label || selectedTask.priority}
+                            <Tag color={TASK_PRIORITY_CONFIG[selectedTask.priority]?.color}>
+                                优先级: {TASK_PRIORITY_CONFIG[selectedTask.priority]?.label || selectedTask.priority}
                             </Tag>
                             {selectedTask.dueDate && (
                                 <Tag icon={<ClockCircleOutlined />} color={dayjs(selectedTask.dueDate).isBefore(dayjs()) ? 'error' : 'default'}>
@@ -421,7 +407,7 @@ export default function TaskKanbanPage() {
                                 <Text type="secondary" style={{ fontSize: 12 }}>开发人员</Text>
                                 <div style={{ marginTop: 4 }}>
                                     {selectedTask.assigneeNames?.length ? selectedTask.assigneeNames.join('、') :
-                                        selectedTask.assigneeName || <Text type="secondary">未指定</Text>}
+                                        <Text type="secondary">未指定</Text>}
                                 </div>
                             </div>
                             <div>

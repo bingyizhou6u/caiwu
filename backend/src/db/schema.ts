@@ -682,8 +682,8 @@ export const requirements = sqliteTable(
     estimatedHours: integer('estimated_hours'), // 预估工时
     actualHours: integer('actual_hours'), // 实际工时（汇总自 task_timelogs）
     deadline: text('deadline'), // 截止日期
-    assigneeId: text('assignee_id'), // 指派人
-    reviewerId: text('reviewer_id'), // 评审人
+    assigneeIds: text('assignee_ids'), // 指派人 (JSON 数组)
+    reviewerIds: text('reviewer_ids'), // 评审人 (JSON 数组)
     reviewedAt: integer('reviewed_at'),
     reviewMemo: text('review_memo'),
     attachmentUrls: text('attachment_urls'), // 附件URL列表（JSON）
@@ -694,9 +694,9 @@ export const requirements = sqliteTable(
   },
   t => ({
     idxProject: index('idx_requirements_project').on(t.projectId),
-    idxDepartment: index('idx_requirements_department').on(t.projectId),
+
     idxStatus: index('idx_requirements_status').on(t.status),
-    idxAssignee: index('idx_requirements_assignee').on(t.assigneeId),
+
   })
 )
 
@@ -723,10 +723,7 @@ export const tasks = sqliteTable(
     assigneeIds: text('assignee_ids'), // 开发人员 (JSON 数组)
     reviewerIds: text('reviewer_ids'), // 审核人员 (JSON 数组)
     testerIds: text('tester_ids'), // 测试人员 (JSON 数组)
-    // 保留旧字段用于兼容
-    assigneeId: text('assignee_id'), // 已废弃，兼容旧数据
-    reviewerId: text('reviewer_id'), // 已废弃，兼容旧数据
-    testerId: text('tester_id'), // 已废弃，兼容旧数据
+
     sortOrder: integer('sort_order').default(0), // 排序顺序（看板用）
     version: integer('version').default(1), // 乐观锁
     createdBy: text('created_by'),
@@ -735,7 +732,7 @@ export const tasks = sqliteTable(
   },
   t => ({
     idxProject: index('idx_tasks_project').on(t.projectId),
-    idxDepartment: index('idx_tasks_department').on(t.projectId),
+
     idxRequirement: index('idx_tasks_requirement').on(t.requirementId),
     idxStatus: index('idx_tasks_status').on(t.status),
   })
@@ -757,7 +754,7 @@ export const taskTimelogs = sqliteTable(
   },
   t => ({
     idxTask: index('idx_timelogs_task').on(t.taskId),
-    idxDepartment: index('idx_timelogs_department').on(t.projectId),
+    idxProject: index('idx_timelogs_project').on(t.projectId),
     idxEmployeeDate: index('idx_timelogs_employee_date').on(t.employeeId, t.logDate),
   })
 )
@@ -780,7 +777,7 @@ export const milestones = sqliteTable(
   },
   t => ({
     idxProject: index('idx_milestones_project').on(t.projectId),
-    idxDepartment: index('idx_milestones_department').on(t.projectId),
+
   })
 )
 

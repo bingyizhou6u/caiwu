@@ -1,5 +1,5 @@
 import { DrizzleD1Database } from 'drizzle-orm/d1'
-import { eq, and, gte, lt, lte, ne, or } from 'drizzle-orm'
+import { eq, and, gte, lt, lte, ne, or, like } from 'drizzle-orm'
 import * as schema from '../../db/schema.js'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'
@@ -378,7 +378,7 @@ export class MyService {
       .from(schema.tasks)
       .where(
         and(
-          eq(schema.tasks.assigneeId, employeeId),
+          like(schema.tasks.assigneeIds, `%"${employeeId}"%`),
           gte(schema.tasks.dueDate, startDate),
           lt(schema.tasks.dueDate, endDate),
           ne(schema.tasks.status, 'completed')

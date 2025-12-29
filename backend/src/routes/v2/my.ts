@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
+import { getBusinessDate } from '../../utils/timezone.js'
 import { createRouteHandler, createProtectedHandler } from '../../utils/route-helpers.js'
 
 export const myRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
@@ -259,7 +260,7 @@ const getLeavesRoute = createRoute({
 
 myRoutes.openapi(getLeavesRoute, createProtectedHandler(async (c, employeeId) => {
   const status = c.req.query('status')
-  const year = c.req.query('year') || new Date().getFullYear().toString()
+  const year = c.req.query('year') || getBusinessDate().slice(0, 4)
   return await c.var.services.my.getLeaves(employeeId, year, status)
 }))
 
@@ -411,7 +412,7 @@ const getAllowancesRoute = createRoute({
 })
 
 myRoutes.openapi(getAllowancesRoute, createProtectedHandler(async (c, employeeId) => {
-  const year = c.req.query('year') || new Date().getFullYear().toString()
+  const year = c.req.query('year') || getBusinessDate().slice(0, 4)
   return await c.var.services.my.getAllowances(employeeId, year)
 }))
 
@@ -561,8 +562,9 @@ const getAttendanceListRoute = createRoute({
 })
 
 myRoutes.openapi(getAttendanceListRoute, createProtectedHandler(async (c, employeeId) => {
-  const year = c.req.query('year') || new Date().getFullYear().toString()
-  const month = c.req.query('month') || (new Date().getMonth() + 1).toString().padStart(2, '0')
+  const today = getBusinessDate()
+  const year = c.req.query('year') || today.slice(0, 4)
+  const month = c.req.query('month') || today.slice(5, 7)
   return await c.var.services.my.getAttendanceList(employeeId, year, month)
 }))
 
@@ -733,7 +735,7 @@ const getCalendarRoute = createRoute({
 })
 
 myRoutes.openapi(getCalendarRoute, createProtectedHandler(async (c, employeeId) => {
-  const month = c.req.query('month') || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const month = c.req.query('month') || getBusinessDate().slice(0, 7)
   return await c.var.services.my.getCalendarEvents(employeeId, month)
 }))
 

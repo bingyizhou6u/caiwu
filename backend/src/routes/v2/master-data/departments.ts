@@ -43,24 +43,8 @@ const listDepartmentsRoute = createRoute({
 departmentsRoutes.openapi(
   listDepartmentsRoute,
   createRouteHandler(async c => {
-    const cache = createQueryCache()
-    const cacheKey = cacheKeys.masterData.departments()
-
-    // 尝试从缓存获取
-    const cached = await cache.get(cacheKey)
-    if (cached) {
-      return { results: cached }
-    }
-
-    // 缓存未命中，查询数据库
     const masterDataService = c.var.services.masterData
     const results = await masterDataService.getDepartments()
-
-    // 异步更新缓存
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.set(cacheKey, results, cacheTTL.masterData))
-    }
-
     return { results }
   })
 )
@@ -108,12 +92,6 @@ departmentsRoutes.openapi(
       code: body.code,
       sortOrder: body.sortOrder,
     })
-
-    // 清除部门列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.delete(cacheKeys.masterData.departments()))
-    }
 
     logAuditAction(
       c,
@@ -180,12 +158,6 @@ departmentsRoutes.openapi(
       sortOrder: body.sortOrder,
     })
 
-    // 清除部门列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.delete(cacheKeys.masterData.departments()))
-    }
-
     logAuditAction(c, 'update', 'department', id, JSON.stringify(body))
     return {}
   }) as any
@@ -225,12 +197,6 @@ departmentsRoutes.openapi(
     const service = c.var.services.masterData
 
     const result = await service.deleteDepartment(id)
-
-    // 清除部门列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.delete(cacheKeys.masterData.departments()))
-    }
 
     logAuditAction(c, 'delete', 'department', id, JSON.stringify({ name: result.name }))
     return {}

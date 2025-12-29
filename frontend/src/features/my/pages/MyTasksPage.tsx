@@ -28,19 +28,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
     low: { label: '低', color: 'green' },
 }
 
-interface Task {
-    id: string
-    code: string
-    title: string
-    projectId: string
-    projectName: string | null
-    status: string
-    priority: string
-    dueDate: string | null
-    assigneeId: string | null
-    assigneeName: string | null
-    createdAt: number | null
-}
+import { useTask, type Task } from '../../../hooks/business/usePM'
 
 export function MyTasksPage() {
     const navigate = useNavigate()

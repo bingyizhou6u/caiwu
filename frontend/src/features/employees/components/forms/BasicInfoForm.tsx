@@ -14,7 +14,7 @@ import {
     ClockCircleOutlined,
 } from '@ant-design/icons'
 import { WorkScheduleEditor } from '../WorkScheduleEditor'
-import { useDepartmentOptions } from '../../../../hooks'
+import { useProjectOptions } from '../../../../hooks'
 import { useApiQuery } from '../../../../utils/useApiQuery'
 import { api } from '../../../../config/api'
 import type { Position } from '../../../../types'
@@ -34,7 +34,7 @@ interface BasicInfoFormProps {
 }
 
 export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormProps) {
-    const { data: departmentOptions = [] } = useDepartmentOptions()
+    const { data: projects = [] } = useProjectOptions()
     const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>()
     const [selectedOrgProjectId, setSelectedOrgProjectId] = useState<string | undefined>()
 
@@ -186,7 +186,7 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
                                 setSelectedOrgProjectId(undefined)
                             }}
                         >
-                            {departmentOptions.map((dept: any) => (
+                            {projects.map((dept: any) => (
                                 <Option key={dept.value} value={dept.value}>
                                     {dept.label}
                                 </Option>
@@ -243,19 +243,19 @@ export function BasicInfoForm({ form, isEdit = false, employee }: BasicInfoFormP
                         >
                             {hasGroupedPositions
                                 ? Object.entries(groupedPositions).map(([groupName, groupPositions]) => (
-                                      <OptGroup key={groupName} label={groupName}>
-                                          {groupPositions.map((pos) => (
-                                              <Option key={pos.id} value={pos.id} label={pos.name || ''}>
-                                                  {pos.name || ''}
-                                              </Option>
-                                          ))}
-                                      </OptGroup>
-                                  ))
+                                    <OptGroup key={groupName} label={groupName}>
+                                        {groupPositions.map((pos) => (
+                                            <Option key={pos.id} value={pos.id} label={pos.name || ''}>
+                                                {pos.name || ''}
+                                            </Option>
+                                        ))}
+                                    </OptGroup>
+                                ))
                                 : positions.map((pos: any) => (
-                                      <Option key={pos.id} value={pos.id} label={pos.name || ''}>
-                                          {pos.name || ''}
-                                      </Option>
-                                  ))}
+                                    <Option key={pos.id} value={pos.id} label={pos.name || ''}>
+                                        {pos.name || ''}
+                                    </Option>
+                                ))}
                         </Select>
                     </Form.Item>
 

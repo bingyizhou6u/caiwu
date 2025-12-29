@@ -9,7 +9,7 @@ import type { ListResponse } from '../types/responses'
 // 请使用 useCurrencyOptions 获取 SelectOption[] 格式的币种选项
 
 // 注意: useDepartments 已移至 hooks/business/useDepartments.ts
-// 请使用 useDepartmentOptions 获取 SelectOption[] 格式的部门选项
+// 请使用 useProjectOptions 获取 SelectOption[] 格式的部门选项
 
 // API 响应类型（支持数组或 results 包装）
 type ApiListResponse<T> = T[] | ListResponse<T>

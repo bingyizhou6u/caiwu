@@ -28,8 +28,12 @@ const taskResponseSchema = z.object({
     startDate: z.string().nullable(),
     dueDate: z.string().nullable(),
     completedAt: z.number().nullable(),
-    assigneeId: z.string().nullable(),
-    assigneeName: z.string().nullable(),
+    assigneeIds: z.array(z.string()).default([]),
+    assigneeNames: z.array(z.string()).default([]),
+    reviewerIds: z.array(z.string()).default([]),
+    reviewerNames: z.array(z.string()).default([]),
+    testerIds: z.array(z.string()).default([]),
+    testerNames: z.array(z.string()).default([]),
     sortOrder: z.number(),
     createdBy: z.string().nullable(),
     createdAt: z.number().nullable(),
@@ -48,7 +52,9 @@ const createTaskSchema = z.object({
     estimatedHours: z.number().optional(),
     startDate: z.string().optional(),
     dueDate: z.string().optional(),
-    assigneeId: z.string().optional(),
+    assigneeIds: z.array(z.string()).optional(),
+    reviewerIds: z.array(z.string()).optional(),
+    testerIds: z.array(z.string()).optional(),
 })
 
 const updateTaskSchema = z.object({
@@ -60,7 +66,9 @@ const updateTaskSchema = z.object({
     estimatedHours: z.number().optional(),
     startDate: z.string().optional(),
     dueDate: z.string().optional(),
-    assigneeId: z.string().optional(),
+    assigneeIds: z.array(z.string()).optional(),
+    reviewerIds: z.array(z.string()).optional(),
+    testerIds: z.array(z.string()).optional(),
     sortOrder: z.number().optional(),
 })
 
@@ -367,7 +375,25 @@ app.openapi(updateStatusRoute, createRouteHandler(async (c: any) => {
         throw Errors.NOT_FOUND('任务')
     }
 
-    const canUpdate = hasPermission(c, 'pm', 'task', 'update') || task.assigneeId === userId
+    // 解析 assigneeIds JSON
+    let isAssignee = false
+    if (task.assigneeIds && typeof task.assigneeIds === 'string') {
+        try {
+            // TaskService.getById 返回的 assigneeIds 已经是数组了，但如果是 createRouteHandler 里的 getById
+            // 如果 getById 直接返回 pure DB object (unlikely for service), but TaskService.getById returns parsed arrays.
+            // Let's check TaskService.getById return type. It returns parsed object.
+            // So task.assigneeIds SHOULD be string[] if verified via TaskService.
+            // Let's assume TaskService return type.
+            const ids = task.assigneeIds as unknown as string[] // assert based on Service return
+            isAssignee = Array.isArray(ids) && ids.includes(userId)
+        } catch {
+            isAssignee = false
+        }
+    } else if (Array.isArray(task.assigneeIds)) {
+        isAssignee = task.assigneeIds.includes(userId)
+    }
+
+    const canUpdate = hasPermission(c, 'pm', 'task', 'update') || isAssignee
     if (!canUpdate) {
         throw Errors.FORBIDDEN('无权限更新此任务')
     }

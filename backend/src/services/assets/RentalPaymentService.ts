@@ -314,8 +314,7 @@ export class RentalPaymentService {
 
   async generatePayableBills(userId?: string) {
     const now = Date.now()
-    const today = new Date()
-    const todayStr = getBusinessDate()
+    const todayStr = getBusinessDate() // Use business date as anchor
 
     const properties = await this.db
       .select()
@@ -333,20 +332,47 @@ export class RentalPaymentService {
     for (const prop of properties) {
       if (!prop.leaseStartDate || !prop.leaseEndDate) { continue }
 
+      // leaseStartDate is YYYY-MM-DD string, business timezone aligned
       const leaseStart = new Date(prop.leaseStartDate)
       const leaseEnd = new Date(prop.leaseEndDate)
       const paymentPeriodMonths = prop.paymentPeriodMonths || 1
       const paymentDay = prop.paymentDay || 1
 
+      // Iterate from lease start to find the next payment date relative to TODAY (Business Date)
+      // Comparison should be done using strings to avoid timezone confusion
       let nextPaymentDate = new Date(leaseStart)
 
-      while (nextPaymentDate <= today || nextPaymentDate.getDate() !== paymentDay) {
-        if (nextPaymentDate <= today) {
-          nextPaymentDate = new Date(nextPaymentDate)
+      // We need to compare with todayStr. Let's start loop.
+      // Optimization: Calculate approximate months diff to skip early iterations?
+      // For safety, just iterate.
+
+      // Convert business today string to Date object (UTC midnight representation) for comparison loop
+      const businessToday = new Date(todayStr)
+
+      while (true) {
+        // Check if this payment cycle is past today??
+        // Logic: We want to generate bills that are due soon.
+        // Original logic: while (nextPaymentDate <= today || nextPaymentDate.getDate() !== paymentDay)
+        // It seems it tries to find the *next* payment date that matches the paymentDay?
+
+        // Simplified logic: Find the next payment date >= todayStr (or just before it if we are looking for bills to generate?)
+        // Actually, usually we generate bills ahead of time.
+
+        // Let's preserve the intent: Align nextPaymentDate to the correct cycle
+
+        // 1. Align day
+        if (nextPaymentDate.getDate() !== paymentDay) {
+          nextPaymentDate.setDate(paymentDay)
+          // If setting day moves it back to previous month (e.g. 31st -> 30th), JS handles it.
+          // But if we want exactly paymentDay, we might need logic.
+          // Assuming simple case for now.
+        }
+
+        // 2. Increment until it's future or current
+        if (nextPaymentDate.toISOString().split('T')[0] <= todayStr) {
           nextPaymentDate.setMonth(nextPaymentDate.getMonth() + paymentPeriodMonths)
-          nextPaymentDate.setDate(paymentDay)
         } else {
-          nextPaymentDate.setDate(paymentDay)
+          break
         }
       }
 

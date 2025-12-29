@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
 import { hasPermission } from '../../utils/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
+import { getBusinessDate, formatBusinessTime } from '../../utils/timezone.js'
 import { Errors } from '../../utils/errors.js'
 import { auditLogQuerySchema } from '../../schemas/common.schema.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
@@ -92,8 +93,8 @@ const getAuditLogOptionsRoute = createRoute({
 
 auditRoutes.openapi(getAuditLogOptionsRoute, createRouteHandler(async c => {
   if (!hasPermission(c, 'system', 'audit', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
 
   return await c.var.services.audit.getAuditLogOptions()
 }))
@@ -116,8 +117,8 @@ const exportAuditLogsRoute = createRoute({
 
 auditRoutes.openapi(exportAuditLogsRoute, async c => {
   if (!hasPermission(c, 'system', 'audit', 'export')) {
-      throw Errors.FORBIDDEN()
-    }
+    throw Errors.FORBIDDEN()
+  }
 
   const query = c.req.valid('query')
   const exportQuery = { ...query, limit: 10000, offset: 0 }
@@ -137,9 +138,9 @@ auditRoutes.openapi(exportAuditLogsRoute, async c => {
   const csvRows = [headers.join(',')]
 
   for (const row of results) {
-    const time = new Date(row.at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+    const time = formatBusinessTime(row.at)
     const escapeCsv = (val: any) => {
-      if (val === null || val === undefined) {return ''}
+      if (val === null || val === undefined) { return '' }
       const str = String(val)
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return `"${str.replace(/"/g, '""')}"`
@@ -168,7 +169,7 @@ auditRoutes.openapi(exportAuditLogsRoute, async c => {
   return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="audit-logs-${new Date().toISOString().slice(0, 10)}.csv"`,
+      'Content-Disposition': `attachment; filename="audit-logs-${getBusinessDate()}.csv"`,
     },
   })
 })
@@ -212,8 +213,8 @@ const createAuditLogRoute = createRoute({
 
 auditRoutes.openapi(createAuditLogRoute, createRouteHandler(async (c: any) => {
   if (!c.get('employeeId')) {
-      throw Errors.UNAUTHORIZED()
-    }
+    throw Errors.UNAUTHORIZED()
+  }
 
   const body = c.req.valid('json') as { action: string; entity: string; entityId?: string; detail?: string }
 

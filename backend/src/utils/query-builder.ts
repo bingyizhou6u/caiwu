@@ -17,41 +17,7 @@ import {
  * 封装常用的查询模式，减少重复代码
  */
 export class QueryBuilder {
-  /**
-   * 构建员工关联查询（已废弃）
-   * 
-   * @deprecated 此方法使用多个 LEFT JOIN，违反 D1 兼容性规范。
-   * 请使用 buildEmployeeRelatedData 方法进行顺序查询。
-   * 
-   * 自动关联员工、部门、组织部门、职位表
-   */
-  static buildEmployeeJoinQuery<T extends { employeeId: any }, TSelect extends Record<string, any>>(
-    db: DrizzleD1Database<typeof schema>,
-    baseTable: any,
-    employeeIdField: any,
-    selectFields: TSelect
-  ) {
-    // 警告：此方法使用多个 JOIN，在 D1 中可能不稳定
-    // 建议使用 buildEmployeeRelatedData 代替
-    Logger.warn(
-      '[QueryBuilder] buildEmployeeJoinQuery is deprecated. ' +
-      'Use buildEmployeeRelatedData instead for D1 compatibility.'
-    )
-    return db
-      .select({
-        ...selectFields,
-        employeeName: employees.name,
-        employeeEmail: employees.email,
-        departmentName: projects.name,
-        orgDepartmentName: orgDepartments.name,
-        positionName: positions.name,
-      })
-      .from(baseTable)
-      .leftJoin(employees, eq(employees.id, employeeIdField))
-      .leftJoin(projects, eq(projects.id, employees.projectId))
-      .leftJoin(orgDepartments, eq(orgDepartments.id, employees.orgDepartmentId))
-      .leftJoin(positions, eq(positions.id, employees.positionId))
-  }
+
 
   /**
    * 批量获取员工关联数据（D1 兼容）

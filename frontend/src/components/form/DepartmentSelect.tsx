@@ -4,12 +4,14 @@
  */
 
 import { Select, SelectProps } from 'antd'
-import { useDepartmentOptions } from '../../hooks'
+import { useProjectOptions } from '../../hooks'
 import type { SelectOption } from '../../types/business'
 
 export interface DepartmentSelectProps extends Omit<SelectProps, 'options' | 'loading'> {
   /** 自定义格式化部门标签 */
   formatLabel?: (department: { id: string; name: string }) => string
+  /** 是否包含总部选项 */
+  includeHQ?: boolean
 }
 
 /**
@@ -24,27 +26,28 @@ export interface DepartmentSelectProps extends Omit<SelectProps, 'options' | 'lo
  */
 export function DepartmentSelect({
   formatLabel,
+  includeHQ = false,
   ...props
 }: DepartmentSelectProps) {
-  const { data: departments = [], isLoading } = useDepartmentOptions()
+  const { data: options = [], isLoading } = useProjectOptions(includeHQ)
 
-  // 确保 departments 是数组
-  const safeDepartments = Array.isArray(departments) ? departments : []
+  // 确保 options 是数组
+  const safeOptions = Array.isArray(options) ? options : []
 
   // 格式化选项
-  const options: SelectOption[] = safeDepartments.map((dept) => {
+  const formattedOptions: SelectOption[] = safeOptions.map((opt: any) => {
     let label: string
     if (formatLabel) {
       label = formatLabel({
-        id: String(dept.value),
-        name: String(dept.label),
+        id: String(opt.value),
+        name: String(opt.label),
       })
     } else {
-      label = String(dept.label)
+      label = String(opt.label)
     }
 
     return {
-      value: dept.value,
+      value: opt.value,
       label,
     }
   })

@@ -56,9 +56,7 @@ export interface Task {
     assigneeNames?: string[]
     reviewerNames?: string[]
     testerNames?: string[]
-    // 兼容旧字段
-    assigneeId?: string
-    assigneeName?: string
+
     sortOrder: number
     createdBy?: string
     createdAt?: number
@@ -104,9 +102,10 @@ export interface CreateTaskInput {
     estimatedHours?: number
     startDate?: string
     dueDate?: string
-    assigneeId?: string
-    reviewerId?: string
-    testerId?: string
+    assigneeIds?: string[]
+    reviewerIds?: string[]
+    testerIds?: string[]
+
 }
 
 export interface CreateTimelogInput {

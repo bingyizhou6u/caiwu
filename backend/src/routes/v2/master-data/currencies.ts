@@ -45,28 +45,10 @@ currenciesRoutes.openapi(
   listCurrenciesRoute,
   createRouteHandler(async (c: any) => {
     const { activeOnly, search } = c.req.valid('query') as { activeOnly?: string; search?: string }
-    const cache = createQueryCache()
-    const cacheKey = cacheKeys.masterData.currencies(search)
 
-    // 尝试从缓存获取
-    const cached = await cache.get(cacheKey)
-    if (cached && Array.isArray(cached)) {
-      let results = cached
-      // 后端过滤
-      if (activeOnly === 'true') {
-        results = results.filter((r: any) => r.active === 1)
-      }
-      return { results }
-    }
-
-    // 缓存未命中，查询数据库
+    // 缓存由 Service 层 (KVCachedMasterDataService) 处理
     const service = c.var.services.masterData
     let results = await service.getCurrencies(search)
-
-    // 异步更新缓存（不阻塞响应）
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(cache.set(cacheKey, results, cacheTTL.masterData))
-    }
 
     // 后端过滤
     if (activeOnly === 'true') {
@@ -118,17 +100,6 @@ currenciesRoutes.openapi(
       code: body.code,
       name: body.name,
     })
-
-    // 清除币种列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(
-        Promise.all([
-          cache.delete(cacheKeys.masterData.currencies()),
-          cache.delete(cacheKeys.masterData.currencies(undefined)),
-        ])
-      )
-    }
 
     logAuditAction(c, 'create', 'currency', result.code, JSON.stringify({ name: body.name }))
 
@@ -186,17 +157,6 @@ currenciesRoutes.openapi(
       active: body.active ?? undefined,
     })
 
-    // 清除币种列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(
-        Promise.all([
-          cache.delete(cacheKeys.masterData.currencies()),
-          cache.delete(cacheKeys.masterData.currencies(undefined)),
-        ])
-      )
-    }
-
     logAuditAction(c, 'update', 'currency', code, JSON.stringify(body))
     return {}
   }) as any
@@ -236,17 +196,6 @@ currenciesRoutes.openapi(
     const service = c.var.services.masterData
 
     const result = await service.deleteCurrency(code)
-
-    // 清除币种列表缓存
-    const cache = createQueryCache()
-    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-      c.executionCtx.waitUntil(
-        Promise.all([
-          cache.delete(cacheKeys.masterData.currencies()),
-          cache.delete(cacheKeys.masterData.currencies(undefined)),
-        ])
-      )
-    }
 
     logAuditAction(c, 'delete', 'currency', code, JSON.stringify({ name: result.name }))
     return {}

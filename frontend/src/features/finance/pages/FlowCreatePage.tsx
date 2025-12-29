@@ -6,7 +6,7 @@ import dayjs from 'dayjs'
 import { api } from '../../../config/api'
 import { isSupportedImageType, uploadImageAsWebP } from '../../../utils/image'
 import { useCreateFlow } from '../../../hooks'
-import { useDepartmentOptions } from '../../../hooks'
+import { useProjectOptions } from '../../../hooks'
 import { useAccounts, useAllCategories, useSites } from '../../../hooks/useBusinessData'
 import { useZodForm } from '../../../hooks/forms/useZodForm'
 import { createFlowSchema } from '../../../validations/flow.schema'
@@ -18,7 +18,7 @@ export function FlowCreate() {
   const { form, validateWithZod } = useZodForm(createFlowSchema)
 
   // 数据 Hook
-  const { data: departments = [] } = useDepartmentOptions()
+  const { data: projects = [] } = useProjectOptions()
   const { data: accounts = [] } = useAccounts()
   const { data: allCategories = [] } = useAllCategories()
   const { data: sites = [] } = useSites()

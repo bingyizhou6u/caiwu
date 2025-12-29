@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import {
-    useDepartments,
+    useProjects,
 } from '../useDepartments'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { api as apiClient } from '../../../api/http'
@@ -36,12 +36,12 @@ describe('useDepartments', () => {
         vi.clearAllMocks()
     })
 
-    describe('useDepartments', () => {
-        it('should fetch departments', async () => {
+    describe('useProjects', () => {
+        it('should fetch projects', async () => {
             const mockData = [{ id: 1, name: 'Dept A', active: 1 }]
             vi.mocked(apiClient.get).mockResolvedValue(mockData)
 
-            const { result } = renderHook(() => useDepartments(), {
+            const { result } = renderHook(() => useProjects(), {
                 wrapper: createWrapper(),
             })
 
