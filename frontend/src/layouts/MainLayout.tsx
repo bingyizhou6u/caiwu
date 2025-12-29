@@ -107,14 +107,7 @@ export function MainLayout() {
                 </div>
             ),
         },
-        { type: 'divider' },
-        {
-            key: 'change-password',
-            icon: <KeyOutlined />,
-            label: '修改密码',
-            onClick: () => navigate('/change-password'),
-        },
-        { type: 'divider' as const },
+
         {
             key: 'logout',
             icon: <LogoutOutlined />,

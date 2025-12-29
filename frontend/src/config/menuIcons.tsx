@@ -114,9 +114,9 @@ export const menuIcons: Record<string, React.ReactNode> = {
     'department': <ApartmentOutlined />,
     'position-permissions': <SafetyOutlined />,
     'email-notification': <FileTextOutlined />,
-    'ip-whitelist': <SafetyOutlined />,
+
     'audit': <HistoryOutlined />,
-    'change-password': <KeyOutlined />,
+
 
     // 项目管理 (PM)
     'pm': <ProjectOutlined />,

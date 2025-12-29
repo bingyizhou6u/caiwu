@@ -52,9 +52,9 @@ export const pageTitles: Record<string, string> = {
     'vendor': '供应商管理',
     'position-permissions': '权限管理',
     'email-notification': '邮件提醒设置',
-    'ip-whitelist': 'IP白名单',
+
     'audit': '审计日志',
-    'change-password': '修改密码',
+
     // 项目管理(PM)
     'pm-config': '项目配置',
     'org-departments': '部门管理',
@@ -249,7 +249,7 @@ export const buildMenuItems = (userInfo: any): MenuProps['items'] => {
         system.push({ key: 'org-departments', label: '部门管理', icon: getMenuIcon('org-departments') })
         system.push({ key: 'position-permissions', label: '权限管理', icon: getMenuIcon('position-permissions') })
         system.push({ key: 'email-notification', label: '邮件提醒设置', icon: getMenuIcon('email-notification') })
-        system.push({ key: 'ip-whitelist', label: 'IP白名单', icon: getMenuIcon('ip-whitelist') })
+
         system.push({ key: 'audit', label: '审计日志', icon: getMenuIcon('audit') })
     }
     if (system.length > 0) {
@@ -306,9 +306,9 @@ export const KEY_TO_PATH: Record<string, string> = {
     'vendor': '/system/vendors',
     'position-permissions': '/system/permissions',
     'email-notification': '/system/email',
-    'ip-whitelist': '/system/ip-whitelist',
+
     'audit': '/system/audit',
-    'change-password': '/change-password',
+
     'org-departments': '/system/org-departments',
 
     // PM
