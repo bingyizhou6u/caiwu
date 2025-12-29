@@ -7,7 +7,7 @@ import { MasterDataService } from '../services/system/MasterDataService.js'
 import { KVCachedMasterDataService } from '../services/system/KVCachedMasterDataService.js'
 import { AuditService } from '../services/system/AuditService.js'
 import { OperationHistoryService } from '../services/system/OperationHistoryService.js'
-import { IPWhitelistService } from '../services/system/IPWhitelistService.js'
+
 import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
 // HR services
 import { EmployeeService } from '../services/hr/EmployeeService.js'
@@ -45,7 +45,7 @@ import { ApprovalService } from '../services/common/ApprovalService.js'
 import { NotificationService } from '../services/common/NotificationService.js'
 import { MyService } from '../services/common/MyService.js'
 import { EmailService } from '../services/common/EmailService.js'
-import { RateLimitService } from '../services/common/RateLimitService.js'
+
 // PM services
 import { ProjectService, TaskService, TaskTimelogService } from '../services/pm/index.js'
 import type { Env, AppVariables } from '../types/index.js'
@@ -97,8 +97,8 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
     )
     const allowancePaymentService = new AllowancePaymentService(db)
     // const auditService = new AuditService(db) // Moved up
-    const ipWhitelistService = new IPWhitelistService(c.env)
-    const rateLimitService = new RateLimitService(c.env.SESSIONS_KV)
+
+
     const positionService = new PositionService(db)
     const salaryService = new SalaryService(db)
     const allowanceService = new AllowanceService(db)
@@ -153,7 +153,7 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
       approval: approvalService,
       my: myService,
       audit: auditService,
-      ipWhitelist: ipWhitelistService,
+
       position: positionService,
       salary: salaryService,
       allowance: allowanceService,
@@ -167,7 +167,7 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
       arAp: arApService,
       accountTransfer: accountTransferService,
       siteBill: siteBillService,
-      rateLimit: rateLimitService,
+
       operationHistory: operationHistoryService,
       // PM services
       project: projectService,

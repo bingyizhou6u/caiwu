@@ -12,7 +12,7 @@ import { createAuthMiddleware } from './middleware.js'
 import { di } from './middleware/di.js'
 import { createRequestIdMiddleware } from './middleware/requestId.js'
 import { securityHeaders } from './middleware/security.js'
-import { apiRateLimitByIP } from './middleware/rateLimit.js'
+
 import { performanceMonitor } from './middleware/performance.js'
 import { createVersionMiddleware } from './middleware/version.js'
 
@@ -379,7 +379,7 @@ const apiMiddleware = [
   createVersionMiddleware(), // 版本检测（最先执行）
   di,                        // 依赖注入（必须在依赖服务的中间件之前）
 
-  apiRateLimitByIP,          // 全局限流
+
   createAuthMiddleware(),
 ]
 
