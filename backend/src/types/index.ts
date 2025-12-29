@@ -88,6 +88,8 @@ export type AppVariables = {
     // System services
     orgDepartment: OrgDepartmentService
     employeeProject: EmployeeProjectService
+    // Notification service
+    notification: NotificationService
   }
 }
 
@@ -135,6 +137,7 @@ import { TaskTimelogService } from '../services/pm/TaskTimelogService.js'
 // System services
 import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
 import { EmployeeProjectService } from '../services/hr/EmployeeProjectService.js'
+import { NotificationService } from '../services/common/NotificationService.js'
 
 // 已移除固定超级管理员
 // 所有管理员权限现在基于员工记录的职位

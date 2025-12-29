@@ -798,3 +798,30 @@ export const pmComments = sqliteTable(
     idxEntity: index('idx_pm_comments_entity').on(t.entityType, t.entityId),
   })
 )
+
+// ==========================================
+// 通知中心 (Notification Center)
+// ==========================================
+
+// 通知表
+export const notifications = sqliteTable(
+  'notifications',
+  {
+    id: text('id').primaryKey(),
+    recipientId: text('recipient_id').notNull(), // 接收人员工ID
+    type: text('type').notNull(), // system, approval, task, message
+    title: text('title').notNull(),
+    content: text('content'),
+    link: text('link'), // 点击跳转链接
+    relatedEntityType: text('related_entity_type'), // leave, reimbursement, task, salary 等
+    relatedEntityId: text('related_entity_id'), // 关联实体ID
+    isRead: integer('is_read').default(0),
+    createdAt: integer('created_at').notNull(),
+    readAt: integer('read_at'),
+  },
+  t => ({
+    idxRecipient: index('idx_notifications_recipient').on(t.recipientId),
+    idxRecipientRead: index('idx_notifications_recipient_read').on(t.recipientId, t.isRead),
+    idxCreatedAt: index('idx_notifications_created_at').on(t.createdAt),
+  })
+)

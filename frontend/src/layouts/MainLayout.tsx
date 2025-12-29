@@ -9,6 +9,7 @@ import { MultiTabs } from '../components/layout/MultiTabs'
 import { PWAInstallPrompt } from '../components/PWAInstallPrompt'
 import { preloadRoute } from '../router'
 import { HeaderClock } from '../components/layout/HeaderClock'
+import { NotificationDropdown } from '../components/layout/NotificationDropdown'
 import '../styles/layouts/main-layout.css'
 
 const { Header, Sider, Content } = Layout
@@ -254,6 +255,7 @@ export function MainLayout() {
                     </div>
                     <div className="header-right">
                         <HeaderClock />
+                        <NotificationDropdown />
                         <div
                             className="theme-toggle-btn"
                             onClick={toggleTheme}

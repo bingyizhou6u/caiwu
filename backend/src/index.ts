@@ -50,6 +50,7 @@ import { employeesLeavesRoutes as employeesLeavesRoutesV2 } from './routes/v2/em
 import { expenseReimbursementsRoutes as expenseReimbursementsRoutesV2 } from './routes/v2/expense-reimbursements.js'
 import permissionConfigRoutesV2 from './routes/v2/permission-config.js'
 import pmRoutesV2 from './routes/v2/pm/index.js'
+import notificationsRoutesV2 from './routes/v2/notifications.js'
 
 // App initialization
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
@@ -411,6 +412,7 @@ v2.route('/', systemConfigRoutesV2)
 v2.route('/', positionPermissionsRoutesV2)
 v2.route('/permission-config', permissionConfigRoutesV2)
 v2.route('/pm', pmRoutesV2)
+v2.route('/notifications', notificationsRoutesV2)
 
 // Mount versions to app
 // Default: /api/* -> v2

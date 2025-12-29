@@ -177,6 +177,8 @@ export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>,
       orgDepartment: orgDepartmentService,
       // HR additional services
       employeeProject: employeeProjectService,
+      // Notification service
+      notification: notificationService,
     })
 
     await next()
