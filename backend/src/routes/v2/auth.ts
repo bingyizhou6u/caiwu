@@ -19,6 +19,7 @@ import { createRouteHandler } from '../../utils/route-helpers.js'
 import { cloudflareAccessAuth } from '../../middleware/cfAccess.js'
 import { getUserFullContext } from '../../utils/db.js'
 import { v4 as uuid } from 'uuid'
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../../services/system/AuditService.js'
 
 const authRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
@@ -293,6 +294,23 @@ async function createCfSession(
     },
     c.env.AUTH_JWT_SECRET,
     AUTH_TOKEN_TTL
+  )
+
+  // 记录登录审计日志
+  const auditService = c.var.services.audit
+  const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')
+  const ipLocation = c.req.header('CF-IPCountry')
+
+  c.executionCtx.waitUntil(
+    auditService.log(
+      employee.id,
+      AUDIT_ACTIONS.LOGIN,
+      AUDIT_ENTITIES.USER,
+      employee.id,
+      JSON.stringify({ method: 'cloudflare_access', email }),
+      ip,
+      ipLocation
+    )
   )
 
   return jsonResponse(c, apiSuccess({
