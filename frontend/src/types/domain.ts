@@ -18,7 +18,7 @@ export interface User {
     active: ActiveStatus
     employeeId?: ID
     projectIds?: ID[]
-    totpEnabled?: boolean
+
     createdAt?: Timestamp
     updatedAt?: Timestamp
 }
@@ -116,7 +116,6 @@ export interface Employee {
     userActive?: number
     userLastLoginAt?: Timestamp
     isActivated?: boolean
-    totpEnabled?: boolean
 
     // 状态
     active: ActiveStatus

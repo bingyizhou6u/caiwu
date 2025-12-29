@@ -2,11 +2,10 @@ import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
-import { employees, departments, orgDepartments, positions } from '../../src/db/schema.js'
+import { employees, projects, orgDepartments, positions } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
-
 import * as schema from '../../src/db/schema.js'
 
 describe('EmployeeService', () => {
@@ -14,7 +13,6 @@ describe('EmployeeService', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>
 
   beforeAll(async () => {
-    // Apply schema
     // Apply schema
     const statements = schemaSql.split(';').filter(s => s.trim().length > 0)
     for (const statement of statements) {
@@ -39,15 +37,15 @@ describe('EmployeeService', () => {
     // Clean up tables
     await db.delete(employees).execute()
     await db.delete(orgDepartments).execute()
-    await db.delete(departments).execute()
+    await db.delete(projects).execute()
     await db.delete(positions).execute()
   })
 
   it('should create a new employee', async () => {
     const projectId = uuid()
     await db
-      .insert(departments)
-      .values({ id: projectId, name: 'Test Project', active: 1 })
+      .insert(projects)
+      .values({ id: projectId, code: 'PRJ1', name: 'Test Project', active: 1 })
       .execute()
 
     const orgDeptId = uuid()
@@ -81,13 +79,9 @@ describe('EmployeeService', () => {
     const result = await service.create(employeeData)
 
     expect(result.id).toBeDefined()
-    // expect(result.name).toBe(employeeData.name) // create does not return name
-    // Logic check: email (work email) is generated from name usually or passed?
-    // Service.create expects personalEmail. It generates work email?
-    // Let's check logic. Usually it might set email = personalEmail or generate one.
 
     const stored = await db.select().from(employees).where(eq(employees.id, result.id)).get()
-    expect(stored!.departmentId).toBe(projectId) // Derived from orgDept
+    expect(stored!.projectId).toBe(projectId) // Derived from orgDept
   })
 
   it('should update an existing employee', async () => {
@@ -99,7 +93,7 @@ describe('EmployeeService', () => {
         name: 'Old Name',
         email: 'test@example.com',
         personalEmail: 'test@example.com',
-      })
+      } as any)
       .execute()
 
     const updated = await service.update(id, { name: 'New Name' })
@@ -118,7 +112,7 @@ describe('EmployeeService', () => {
         name: 'John Doe',
         email: 'john@example.com',
         personalEmail: 'john@example.com',
-      })
+      } as any)
       .execute()
 
     const result = await service.getById(id)
@@ -137,7 +131,7 @@ describe('EmployeeService', () => {
         personalEmail: 'alice@example.com',
         status: 'regular',
         active: 1,
-      })
+      } as any)
       .execute()
 
     const id2 = uuid()
@@ -150,7 +144,7 @@ describe('EmployeeService', () => {
         personalEmail: 'bob@example.com',
         status: 'left',
         active: 0,
-      })
+      } as any)
       .execute()
 
     const results = await service.getAll({ status: 'regular' })
@@ -170,15 +164,16 @@ describe('EmployeeService', () => {
         email: userEmail,
         name: 'User One',
         active: 1,
-      })
+      } as any)
       .execute()
 
     const projectId = uuid()
     await db
-      .insert(departments)
+      .insert(projects)
       .values({
         id: projectId,
         name: 'Test Project',
+        code: 'PRJ1',
         active: 1,
       })
       .execute()
@@ -220,13 +215,13 @@ describe('EmployeeService', () => {
     const employee = await db.select().from(employees).where(eq(employees.id, result.id)).get()
     expect(employee).toBeDefined()
     expect(employee!.email).toBe(userEmail)
-    expect(employee!.departmentId).toBe(projectId)
+    expect(employee!.projectId).toBe(projectId)
     expect(employee!.positionId).toBe(positionId)
 
     // 4. Verify User Updated
     const updatedUser = await db.select().from(employees).where(eq(employees.id, userId)).get()
     expect(updatedUser!.positionId).toBe(positionId)
-    expect(updatedUser!.departmentId).toBe(projectId)
+    expect(updatedUser!.projectId).toBe(projectId)
     expect(updatedUser!.orgDepartmentId).toBe(orgDeptId)
   })
 })

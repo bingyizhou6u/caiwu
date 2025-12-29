@@ -35,16 +35,8 @@ CREATE TABLE IF NOT EXISTS employees (
   annual_leave_days INTEGER,
   created_at INTEGER,
   updated_at INTEGER,
-  -- Auth fields (users merged into employees)
-  password_hash TEXT,
-  must_change_password INTEGER DEFAULT 0,
-  password_changed INTEGER DEFAULT 0,
-  totp_secret TEXT,
-  last_login_at INTEGER,
-  activation_token TEXT,
-  activation_expires_at INTEGER,
-  reset_token TEXT,
-  reset_expires_at INTEGER
+  created_at INTEGER,
+  updated_at INTEGER
 );
 
 -- Positions table

@@ -5,7 +5,7 @@ import { SalaryPaymentProcessingService } from '../../src/services/hr/SalaryPaym
 import { createDb } from '../../src/db'
 import { env } from 'cloudflare:test'
 import { applySchema } from '../setup'
-import { employees, employeeSalaries, currencies, departments, orgDepartments, positions } from '../../src/db/schema'
+import { employees, employeeSalaries, currencies, projects, orgDepartments, positions } from '../../src/db/schema'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 

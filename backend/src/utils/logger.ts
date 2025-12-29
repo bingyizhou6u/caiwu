@@ -16,23 +16,18 @@ export class Logger {
   // List of keys to mask
   private static readonly SENSITIVE_KEYS = new Set([
     'password',
-    'password_confirmation',
-    'token',
     'access_token',
     'refresh_token',
     'secret',
     'api_key',
     'authorization',
     'cookie',
-    'totp',
-    'totpSecret',
-    'totpCode',
   ])
 
   private static sanitize(data: any): any {
-    if (!data) {return data}
-    if (typeof data === 'string') {return data}
-    if (typeof data !== 'object') {return data}
+    if (!data) { return data }
+    if (typeof data === 'string') { return data }
+    if (typeof data !== 'object') { return data }
 
     if (Array.isArray(data)) {
       return data.map(item => this.sanitize(item))
@@ -52,7 +47,7 @@ export class Logger {
   }
 
   static getContext(c?: Context): Partial<LogEntry> {
-    if (!c) {return {}}
+    if (!c) { return {} }
     return {
       requestId: c.get('requestId') || 'unknown',
       userId: c.get('userId'),

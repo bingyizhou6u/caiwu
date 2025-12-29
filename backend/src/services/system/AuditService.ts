@@ -10,10 +10,6 @@ export const AUDIT_ACTIONS = {
   // 认证相关
   LOGIN: 'login',
   LOGOUT: 'logout',
-  PASSWORD_CHANGE: 'password_change',
-  PASSWORD_RESET: 'password_reset',
-  TOTP_BIND: 'totp_bind',
-  TOTP_RESET: 'totp_reset',
 
   // CRUD 操作
   CREATE: 'create',
@@ -60,7 +56,7 @@ export const AUDIT_ENTITIES = {
 } as const
 
 export class AuditService {
-  constructor(private db: DrizzleD1Database<typeof schema>) {}
+  constructor(private db: DrizzleD1Database<typeof schema>) { }
 
   async log(
     actorId: string,

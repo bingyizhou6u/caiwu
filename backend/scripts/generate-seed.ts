@@ -1,10 +1,9 @@
 
-import bcrypt from 'bcryptjs'
 import { v4 as uuid } from 'uuid'
 
 async function generate() {
-    const salt = await bcrypt.genSalt(10)
-    const passwordHash = await bcrypt.hash('password123', salt)
+    // const salt = await bcrypt.genSalt(10)
+    // const passwordHash = await bcrypt.hash('password123', salt)
 
     const sql = []
 
@@ -28,10 +27,10 @@ async function generate() {
     // Note: employees.email is unique.
     sql.push(`INSERT OR IGNORE INTO employees (
         id, email, personal_email, name, position_id, department_id, 
-        join_date, status, active, password_hash, must_change_password, created_at
+        join_date, status, active, must_change_password, created_at
     ) VALUES (
         '${adminId}', 'admin@example.com', 'admin.personal@example.com', 'System Admin', 
-        'pos-admin', 'dept-eng', '2023-01-01', 'regular', 1, '${passwordHash}', 0, ${Date.now()}
+        'pos-admin', 'dept-eng', '2023-01-01', 'regular', 1, 0, ${Date.now()}
     );`)
 
     console.log(sql.join('\n'))

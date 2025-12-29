@@ -4,7 +4,6 @@
  */
 
 import { v4 as uuid } from 'uuid'
-import bcrypt from 'bcryptjs'
 import { FIXTURE_IDS } from './master-data'
 
 // 固定员工ID
@@ -21,7 +20,7 @@ export const EMPLOYEE_IDS = {
 }
 
 // 默认密码hash（密码：password123）
-const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('password123', 10)
+// const DEFAULT_PASSWORD_HASH = 'hashed_password_placeholder'
 
 /**
  * 员工基础数据
@@ -29,7 +28,7 @@ const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('password123', 10)
 export function getEmployeesFixtures() {
   const now = Date.now()
   const baseDate = '2024-01-01'
-  
+
   return [
     {
       id: EMPLOYEE_IDS.CEO,
@@ -55,15 +54,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 15,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: 'TESTSECRET001',
-      lastLoginAt: now - 3600000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.CFO,
@@ -89,15 +79,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 12,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: 'TESTSECRET002',
-      lastLoginAt: now - 7200000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.HR_MANAGER,
@@ -123,15 +104,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 10,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: null,
-      lastLoginAt: now - 10800000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.FINANCE_MANAGER,
@@ -157,15 +129,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 10,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: 'TESTSECRET004',
-      lastLoginAt: now - 14400000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.ACCOUNTANT_1,
@@ -191,15 +154,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 5,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: null,
-      lastLoginAt: now - 18000000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.ACCOUNTANT_2,
@@ -225,15 +179,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 5,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: null,
-      lastLoginAt: now - 21600000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.ENGINEER_1,
@@ -259,15 +204,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 8,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: null,
-      lastLoginAt: now - 25200000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.ENGINEER_2,
@@ -293,15 +229,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: 5,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 0,
-      passwordChanged: 1,
-      totpSecret: null,
-      lastLoginAt: now - 28800000,
-      activationToken: null,
-      activationExpiresAt: null,
-      resetToken: null,
-      resetExpiresAt: null,
     },
     {
       id: EMPLOYEE_IDS.PROBATION_EMP,
@@ -327,15 +254,6 @@ export function getEmployeesFixtures() {
       annualLeaveDays: null,
       createdAt: now,
       updatedAt: now,
-      passwordHash: DEFAULT_PASSWORD_HASH,
-      mustChangePassword: 1,
-      passwordChanged: 0,
-      totpSecret: null,
-      lastLoginAt: null,
-      activationToken: 'activation-token-probation',
-      activationExpiresAt: now + 86400000 * 7,
-      resetToken: null,
-      resetExpiresAt: null,
     },
   ]
 }
@@ -345,7 +263,7 @@ export function getEmployeesFixtures() {
  */
 export function getEmployeeSalariesFixtures() {
   const now = Date.now()
-  
+
   return [
     {
       id: uuid(),
@@ -445,7 +363,7 @@ export function getEmployeeSalariesFixtures() {
  */
 export function getEmployeeAllowancesFixtures() {
   const now = Date.now()
-  
+
   return [
     {
       id: uuid(),

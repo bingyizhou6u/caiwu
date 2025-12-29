@@ -6,12 +6,14 @@ import { createDb } from '../../src/utils/db'
 import { uuid } from '../../src/utils/db'
 import {
   accounts,
+  accountTransfers,
   categories,
   sites,
-  departments,
+  projects,
+  orgDepartments,
   employees,
   currencies,
-} from '../../src/db/schema'
+} from '../../src/db/schema.js'
 import schemaSql from '../../src/db/schema.sql?raw'
 
 async function applySchema(db: any) {
@@ -74,10 +76,11 @@ describe('AccountTransferService', () => {
 
     departmentId = uuid()
     await db
-      .insert(departments)
+      .insert(projects)
       .values({
         id: departmentId,
-        name: 'Test Department',
+        name: 'Test Project',
+        code: 'PRJ1',
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -91,7 +94,7 @@ describe('AccountTransferService', () => {
         id: siteId,
         name: 'Test Site',
         siteCode: 'TS001',
-        departmentId,
+        projectId: departmentId,
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),

@@ -2,7 +2,12 @@ import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { PositionService } from '../../src/services/hr/PositionService.js'
-import { positions, orgDepartments, departments, employees } from '../../src/db/schema.js'
+import {
+  positions,
+  employees,
+  projects,
+  orgDepartments,
+} from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
@@ -27,8 +32,8 @@ describe('PositionService', () => {
     // Clean up tables
     await db.delete(employees).execute()
     await db.delete(positions).execute()
+    await db.delete(projects).execute()
     await db.delete(orgDepartments).execute()
-    await db.delete(departments).execute()
   })
 
   describe('getPositions', () => {

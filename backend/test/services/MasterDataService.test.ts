@@ -23,7 +23,7 @@ describe('MasterDataService', () => {
     service = new MasterDataService(db)
 
     // Cleanup
-    await db.delete(schema.departments).execute()
+    await db.delete(schema.projects).execute()
     await db.delete(schema.sites).execute()
     await db.delete(schema.accounts).execute()
     await db.delete(schema.vendors).execute()
@@ -64,15 +64,15 @@ describe('MasterDataService', () => {
 
   describe('Sites', () => {
     it('should create and get sites', async () => {
-      const dept = await service.createDepartment({ name: 'Dept' })
-      const site = await service.createSite({ name: 'Site 1', departmentId: dept.id })
+      const project = await service.createDepartment({ name: 'Dept' })
+      const site = await service.createSite({ name: 'Site 1', projectId: project.id })
 
       expect(site.id).toBeDefined()
 
       const list = await service.getSites()
       expect(list.length).toBe(1)
       expect(list[0].name).toBe('Site 1')
-      expect(list[0].departmentName).toBe('Dept')
+      expect(list[0].projectName).toBe('Dept')
     })
   })
 
@@ -136,6 +136,8 @@ describe('MasterDataService', () => {
           code: 'P1',
           name: 'Dev',
           active: 1,
+          level: 1, // Added required field
+          functionRole: 'admin', // Added required field
         })
         .execute()
 

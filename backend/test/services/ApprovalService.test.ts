@@ -9,7 +9,7 @@ import { NotificationService } from '../../src/services/common/NotificationServi
 import { OperationHistoryService } from '../../src/services/system/OperationHistoryService.js'
 import {
   employees,
-  departments,
+  projects,
   orgDepartments,
   positions,
   employeeLeaves,
@@ -108,7 +108,7 @@ describe('ApprovalService', () => {
 
     // Seed Departments
     deptId = uuid()
-    await db.insert(departments).values({ id: deptId, name: 'Dept A', active: 1 }).execute()
+    await db.insert(projects).values({ id: deptId, name: 'Dept A', code: 'PRJ-A', active: 1 }).execute()
     orgDeptId = uuid()
     await db
       .insert(orgDepartments)
@@ -116,7 +116,7 @@ describe('ApprovalService', () => {
       .execute()
 
     otherDeptId = uuid()
-    await db.insert(departments).values({ id: otherDeptId, name: 'Dept B', active: 1 }).execute()
+    await db.insert(projects).values({ id: otherDeptId, name: 'Dept B', code: 'PRJ-B', active: 1 }).execute()
     otherOrgDeptId = uuid()
     await db
       .insert(orgDepartments)
@@ -138,11 +138,12 @@ describe('ApprovalService', () => {
     await db
       .insert(employees)
       .values({
+
         id: managerUserId,
         email: managerEmail,
         name: 'Manager',
         positionId: managerPosId,
-        departmentId: deptId,
+        projectId: deptId,
         orgDepartmentId: orgDeptId,
         active: 1,
       })
@@ -155,11 +156,12 @@ describe('ApprovalService', () => {
     await db
       .insert(employees)
       .values({
+
         id: subordinateUserId,
         email: subEmail,
         name: 'Subordinate',
         positionId: engineerPosId,
-        departmentId: deptId,
+        projectId: deptId,
         orgDepartmentId: orgDeptId,
         active: 1,
       })
@@ -172,11 +174,12 @@ describe('ApprovalService', () => {
     await db
       .insert(employees)
       .values({
+
         id: otherUserId,
         email: otherEmail,
         name: 'Other',
         positionId: engineerPosId,
-        departmentId: otherDeptId,
+        projectId: otherDeptId,
         orgDepartmentId: otherOrgDeptId,
         active: 1,
       })

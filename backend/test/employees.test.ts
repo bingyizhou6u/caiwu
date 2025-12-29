@@ -4,9 +4,9 @@ import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../src/db/schema.js'
 import {
   employees,
-  departments,
   orgDepartments,
   positions,
+  projects,
 } from '../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -27,11 +27,11 @@ const mockUserPosition = {
 const mockUserEmployee = {
   id: 'emp-1',
   orgDepartmentId: 'org-1',
-  departmentId: 'dept-1',
+  projectId: 'dept-1', // Changed departmentId to projectId
 }
 
 vi.mock('../src/middleware.js', async () => {
-  const actual = await vi.importActual('../src/middleware.js')
+  const actual = await vi.importActual<any>('../src/middleware.js')
   return {
     ...actual,
     createAuthMiddleware: () => async (c: any, next: any) => {
@@ -82,14 +82,15 @@ describe('Employees API', () => {
     // Clean up tables
     await db.delete(employees).execute()
     await db.delete(orgDepartments).execute()
-    await db.delete(departments).execute()
+    await db.delete(projects).execute() // Changed departments to projects
     await db.delete(positions).execute()
 
     // Seed initial data for the logged-in user
     await db
-      .insert(departments)
+      .insert(projects)
       .values({
         id: 'dept-1',
+        code: 'HQ-PROJ',
         name: 'HQ Project',
         active: 1,
       })
@@ -121,7 +122,7 @@ describe('Employees API', () => {
         id: 'emp-1',
         name: 'Admin',
         email: 'admin@example.com',
-        departmentId: 'dept-1',
+        projectId: 'dept-1', // Changed departmentId to projectId
         orgDepartmentId: 'org-1',
         positionId: 'pos-1',
         status: 'regular',
@@ -183,13 +184,13 @@ describe('Employees API', () => {
     // Verify employee created
     const emp = await db.select().from(employees).where(eq(employees.email, newUserEmail)).get()
     expect(emp).toBeDefined()
-    expect(emp!.departmentId).toBe('dept-1')
+    expect(emp!.projectId).toBe('dept-1') // Changed departmentId to projectId
   })
 
   it('PUT /api/employees/:id should update employee', async () => {
     const updateData = {
       name: 'Updated Name',
-      departmentId: 'dept-1', // Keep same department
+      projectId: 'dept-1', // Keep same department (departmentId -> projectId)
       positionId: 'pos-1',
     }
 

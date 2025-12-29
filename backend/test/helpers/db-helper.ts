@@ -88,7 +88,7 @@ export async function truncateAllTables(db: DbType): Promise<void> {
     'vendors',
     'orgDepartments',
     'positions',
-    'departments',
+    'projects',
     'headquarters',
     'currencies',
     'openingBalances',
@@ -160,11 +160,12 @@ export const createTestEntity = {
    */
   async department(
     db: DbType,
-    overrides: Partial<typeof schema.departments.$inferInsert> = {}
+    overrides: Partial<typeof schema.projects.$inferInsert> = {}
   ) {
     const now = Date.now()
     const deptData = {
       id: uuid(),
+      code: 'TEST-HELPER-' + uuid().substring(0, 8),
       name: 'Test Department',
       active: 1,
       createdAt: now,
@@ -172,7 +173,7 @@ export const createTestEntity = {
       ...overrides,
     }
 
-    await db.insert(schema.departments).values(deptData).execute()
+    await db.insert(schema.projects).values(deptData).execute()
     return deptData
   },
 

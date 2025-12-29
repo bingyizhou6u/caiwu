@@ -119,17 +119,7 @@ export function EmployeeManagement() {
           return <Tag color="red">停用</Tag>
         }
         // 账号正常：显示激活状态和2FA
-        const isActivated = record.isActivated
-        const has2FA = !!record.totpEnabled // 确保转换为布尔值
-
-        return (
-          <Space size={2}>
-            <Tag color={isActivated ? 'green' : 'orange'} style={{ margin: 0 }}>
-              {isActivated ? '已激活' : '待激活'}
-            </Tag>
-            {has2FA && <Tag color="purple" style={{ margin: 0 }}>2FA</Tag>}
-          </Space>
-        )
+        <Tag color="green" style={{ margin: 0 }}>正常</Tag>
       },
     },
   ],

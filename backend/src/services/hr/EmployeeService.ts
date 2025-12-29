@@ -54,7 +54,6 @@ export class EmployeeService {
     user_account_created: boolean
     email_sent: boolean
     email_routing_created: boolean
-    password?: string
   }> {
     // 注意：D1 不支持传统事务 (BEGIN/COMMIT/ROLLBACK)
     // 我们改用顺序查询。对于原子性，D1 提供 batch() API，但在复杂逻辑中较难应用。
@@ -196,46 +195,19 @@ export class EmployeeService {
         }
       }
 
-      // 8. 向员工记录添加认证字段（用于首次设置密码的激活令牌）
-      const activationToken = uuid().replace(/-/g, '') + uuid().replace(/-/g, '')
-      const activationExpiresAt = Date.now() + 24 * 60 * 60 * 1000 // 24 hours
-
-      // 更新员工记录以包含认证字段
-      await this.db
-        .update(employees)
-        .set({
-          passwordHash: null,
-          mustChangePassword: 0,
-          passwordChanged: 0,
-          activationToken: activationToken,
-          activationExpiresAt: activationExpiresAt,
-        })
-        .where(eq(employees.id, newEmployeeId))
-        .run()
-      userCreated = true // 标记已设置认证字段
-      newUserId = newEmployeeId // 使用员工 ID 作为用户 ID
-
-      const userAccountCreated = true
-
-      // 注意：不再自动发送激活邮件
-      // 原因：需要等待 Cloudflare 邮箱路由验证通过后，手动点击"发送激活邮件"
-
+      // 移除废弃的激活令牌、密码哈希逻辑
       return {
         id: newEmployeeId,
         email: companyEmail,
         personalEmail: data.personalEmail,
-        user_account_created: userAccountCreated,
-        email_sent: false, // 不再自动发送，需手动触发
+        user_account_created: true, // 保留字段兼容性
+        email_sent: false,
         email_routing_created: emailRoutingCreated,
-        password: undefined,
       }
     } catch (error) {
-      // 回滚：按相反顺序删除已创建的记录
+      // 回滚逻辑保持不变
       Logger.error('[Employee Create] Error occurred, rolling back', { error })
-
       try {
-        // userCreated 标志现在指的是设置了认证字段，而不是单独的记录
-        // 没有单独的 users 表需要回滚 - 删除 employee 记录会一并处理认证字段
         if (employeeCreated) {
           await this.db.delete(employees).where(eq(employees.id, newEmployeeId)).run()
           Logger.info('[Employee Create] Rolled back employees')
@@ -243,71 +215,11 @@ export class EmployeeService {
       } catch (rollbackError) {
         Logger.error('[Employee Create] Rollback failed', { error: rollbackError })
       }
-
-      // 重新抛出原始错误
       throw error
     }
   }
 
-  async resendActivationEmail(id: string, env: { EMAIL_SERVICE?: Fetcher; EMAIL_TOKEN?: string }, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
-    const employee = await query(
-      this.db,
-      'EmployeeService.resendActivationEmail.getEmployee',
-      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
-      c
-    )
-    if (!employee) {
-      throw Errors.NOT_FOUND('员工')
-    }
 
-    if (employee.active === 1 && employee.passwordHash) {
-      throw Errors.BUSINESS_ERROR('账号已激活，无需重新发送')
-    }
-
-    const activationToken = uuid().replace(/-/g, '') + uuid().replace(/-/g, '')
-    const activationExpiresAt = Date.now() + 24 * 60 * 60 * 1000 // 24 hours
-
-    await this.db
-      .update(employees)
-      .set({
-        activationToken,
-        activationExpiresAt,
-        updatedAt: Date.now(),
-      })
-      .where(eq(employees.id, id))
-      .run()
-
-    // 使用个人邮箱进行激活
-    const emailTarget = employee.personalEmail || employee.email || ''
-
-    try {
-      const result = await this.emailService.sendActivationEmail(
-        emailTarget,
-        employee.name || '',
-        activationToken
-      )
-      return result
-    } catch (error: any) {
-      Logger.error('[Employee Resend Activation] Email send error', { error })
-      return { success: false, error: error.message }
-    }
-  }
-
-  async resetTotp(id: string, c?: Context<{ Bindings: Env; Variables: AppVariables }>) {
-    const employee = await query(
-      this.db,
-      'EmployeeService.resetTotp.getEmployee',
-      () => this.db.select().from(employees).where(eq(employees.id, id)).get(),
-      c
-    )
-    if (!employee) {
-      throw Errors.NOT_FOUND('员工')
-    }
-
-    await this.db.update(employees).set({ totpSecret: null }).where(eq(employees.id, id)).run()
-
-    return { success: true }
-  }
 
   /**
    * 构建员工关联查询（提取公共逻辑）
@@ -347,11 +259,7 @@ export class EmployeeService {
         userId: employees.id,
         userActive: employees.active,
         userLastLoginAt: employees.lastLoginAt,
-        isActivated: sql<boolean>`CASE WHEN ${employees.passwordHash} IS NOT NULL AND ${employees.passwordHash} != '' THEN 1 ELSE 0 END`,
-        totpEnabled: sql<boolean>`CASE 
-          WHEN ${employees.totpSecret} IS NOT NULL AND ${employees.totpSecret} != '' THEN 1
-          ELSE 0
-        END`,
+        isActivated: sql<boolean>`1`, // Zero Trust 模式下默认激活
       })
       .from(employees)
       .leftJoin(projects, eq(employees.projectId, projects.id))
@@ -373,7 +281,7 @@ export class EmployeeService {
     accessFilter?: SQL
   ) {
     // D1 兼容性修复：使用顺序查询代替多个 LEFT JOIN
-    const conditions: ReturnType<typeof eq | typeof like | typeof SQL>[] = []
+    const conditions: SQL[] = []
 
     if (accessFilter) {
       conditions.push(accessFilter)
@@ -508,8 +416,7 @@ export class EmployeeService {
         userId: emp.id,
         userActive: emp.active,
         userLastLoginAt: emp.lastLoginAt,
-        isActivated: emp.passwordHash ? (emp.passwordHash !== '' ? true : false) : false,
-        totpEnabled: emp.totpSecret ? (emp.totpSecret !== '' ? true : false) : false,
+        isActivated: true,
       }
     })
   }
@@ -571,8 +478,7 @@ export class EmployeeService {
       userId: employee.id,
       userActive: employee.active,
       userLastLoginAt: employee.lastLoginAt,
-      isActivated: (employee.passwordHash && employee.passwordHash !== '') ? true : false,
-      totpEnabled: (employee.totpSecret && employee.totpSecret !== '') ? true : false,
+      isActivated: true,
     }
   }
 

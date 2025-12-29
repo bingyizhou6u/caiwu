@@ -25,7 +25,7 @@ describe('MasterData Routes', () => {
     service = new MasterDataService(db)
 
     // Cleanup
-    await db.delete(schema.departments).execute()
+    await db.delete(schema.projects).execute()
     await db.delete(schema.sites).execute()
     await db.delete(schema.accounts).execute()
     await db.delete(schema.vendors).execute()
@@ -88,7 +88,7 @@ describe('MasterData Routes', () => {
         waitUntil: (promise: Promise<any>) => {
           tasks.push(promise)
         },
-        passThroughOnException: () => {},
+        passThroughOnException: () => { },
       }
 
       const res = await app.request(
@@ -116,7 +116,7 @@ describe('MasterData Routes', () => {
         waitUntil: (promise: Promise<any>) => {
           tasks.push(promise)
         },
-        passThroughOnException: () => {},
+        passThroughOnException: () => { },
       }
 
       const res = await app.request(
@@ -150,7 +150,7 @@ describe('MasterData Routes', () => {
         waitUntil: (promise: Promise<any>) => {
           tasks.push(promise)
         },
-        passThroughOnException: () => {},
+        passThroughOnException: () => { },
       }
 
       const res = await app.request(

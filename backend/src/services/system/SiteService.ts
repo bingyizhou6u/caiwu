@@ -28,7 +28,7 @@ export class SiteService {
       active: site.active,
       createdAt: site.createdAt,
       updatedAt: site.updatedAt,
-      departmentName: deptMap.get(site.projectId) || null,
+      projectName: deptMap.get(site.projectId) || null,
     }))
   }
 

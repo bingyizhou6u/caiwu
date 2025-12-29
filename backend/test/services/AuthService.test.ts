@@ -2,10 +2,9 @@ import { env } from 'cloudflare:test'
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../../src/db/schema.js'
-import { employees, sessions, positions } from '../../src/db/schema.js'
+import { employees, sessions, positions, projects } from '../../src/db/schema.js'
 import { AuthService } from '../../src/services/auth/AuthService.js'
 import { AuditService } from '../../src/services/system/AuditService.js'
-import { EmployeeService } from '../../src/services/hr/EmployeeService.js'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../src/db/schema.sql?raw'
 
@@ -20,22 +19,13 @@ describe('AuthService', () => {
     }
     db = drizzle(env.DB, { schema })
 
-    // Mock dependencies
-    const mockSystemConfigService = { get: async () => ({ value: 'false' }) } as any
     const auditService = new AuditService(db)
-    const mockEmailService = {
-      sendEmail: () => Promise.resolve({ success: true }),
-      sendApprovalNotificationEmail: () => Promise.resolve({ success: true }),
-    } as any
-    const employeeService = new EmployeeService(db, mockEmailService)
 
+    // AuthService now takes 3 args: db, kv, auditService
     service = new AuthService(
       db,
       env.SESSIONS_KV,
-      mockSystemConfigService,
-      auditService,
-      mockEmailService,
-      employeeService
+      auditService
     )
   })
 
@@ -43,16 +33,23 @@ describe('AuthService', () => {
     await db.delete(employees).execute()
     await db.delete(sessions).execute()
     await db.delete(positions).execute()
+    await db.delete(projects).execute()
   })
 
   describe('Session Management', () => {
     it('should create and retrieve session', async () => {
       const userId = uuid()
       const positionId = uuid()
+      const projectId = uuid()
+
+      await db
+        .insert(projects)
+        .values({ id: projectId, code: 'TEST', name: 'Test Project', active: 1 })
+        .execute()
 
       await db
         .insert(positions)
-        .values({ id: positionId, code: 'P01', name: 'Dev' })
+        .values({ id: positionId, code: 'P01', name: 'Dev', active: 1 })
         .execute()
       await db
         .insert(employees)
@@ -62,35 +59,41 @@ describe('AuthService', () => {
           personalEmail: 'test@example.com',
           name: 'Test User',
           positionId,
+          projectId,
           active: 1,
         })
         .execute()
 
       // 创建会话
+      // createSession(employeeId, deviceInfo)
       const session = await service.createSession(userId, {
-        email: 'test@cloudflarets.com',
-        name: 'Test User',
-        positionId,
-        cfSub: 'cf-sub-123',
+        ip: '127.0.0.1',
+        userAgent: 'TestAgent'
       })
 
       expect(session).toBeDefined()
       expect(session.id).toBeDefined()
-      expect(session.userId).toBe(userId)
+      // session object from createSession only has id, expires. It is NOT the full session record.
 
       // 获取会话
       const retrieved = await service.getSession(session.id)
       expect(retrieved).toBeDefined()
-      expect(retrieved?.userId).toBe(userId)
+      expect(retrieved?.employeeId).toBe(userId)
     })
 
     it('should logout and invalidate session', async () => {
       const userId = uuid()
       const positionId = uuid()
+      const projectId = uuid()
+
+      await db
+        .insert(projects)
+        .values({ id: projectId, code: 'TEST', name: 'Test Project', active: 1 })
+        .execute()
 
       await db
         .insert(positions)
-        .values({ id: positionId, code: 'P01', name: 'Dev' })
+        .values({ id: positionId, code: 'P01', name: 'Dev', active: 1 })
         .execute()
       await db
         .insert(employees)
@@ -100,16 +103,15 @@ describe('AuthService', () => {
           personalEmail: 'test@example.com',
           name: 'Test User',
           positionId,
+          projectId,
           active: 1,
         })
         .execute()
 
       // 创建会话
       const session = await service.createSession(userId, {
-        email: 'test@cloudflarets.com',
-        name: 'Test User',
-        positionId,
-        cfSub: 'cf-sub-123',
+        ip: '127.0.0.1',
+        userAgent: 'TestAgent'
       })
 
       // 登出

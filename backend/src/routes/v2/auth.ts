@@ -290,7 +290,6 @@ async function createCfSession(
       email: employee.personalEmail || email,
       name: employee.name || email.split('@')[0],
       position: userContext.position,
-      cfSub, // CF Access 用户 ID，用于审计追踪
     },
     c.env.AUTH_JWT_SECRET,
     AUTH_TOKEN_TTL

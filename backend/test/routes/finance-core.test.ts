@@ -7,7 +7,7 @@ import {
   accounts,
   categories,
   sites,
-  departments,
+  projects,
   employees,
   currencies,
 } from '../../src/db/schema'
@@ -104,10 +104,7 @@ describe('Finance Core Routes', () => {
     const authService = new AuthService(
       db,
       env.SESSIONS_KV,
-      mockSystemConfigService,
-      mockAuditService,
-      mockEmailService,
-      employeeService
+      mockAuditService
     )
     const masterDataService = new MasterDataService(db)
     const financeService = new FinanceService(db)
@@ -163,9 +160,10 @@ describe('Finance Core Routes', () => {
 
     departmentId = uuid()
     await db
-      .insert(departments)
+      .insert(projects)
       .values({
         id: departmentId,
+        code: 'TEST-DEPT',
         name: 'Test Department',
         active: 1,
         createdAt: Date.now(),
@@ -241,7 +239,7 @@ describe('Finance Core Routes', () => {
             amountCents: 1000,
             categoryId: categoryId,
             siteId: siteId,
-            departmentId: departmentId,
+            orgDepartmentId: departmentId,
             memo: 'Test Expense',
             voucherUrls: ['http://example.com/voucher.jpg'],
           }),
@@ -250,7 +248,6 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
-          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 
@@ -301,7 +298,6 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
-          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 
@@ -335,7 +331,6 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
-          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 
@@ -372,7 +367,6 @@ describe('Finance Core Routes', () => {
           DB: env.DB,
           SESSIONS_KV: env.SESSIONS_KV,
           AUTH_JWT_SECRET: 'secret',
-          INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
         } as any
       )
 

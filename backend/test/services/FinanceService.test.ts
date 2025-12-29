@@ -7,7 +7,7 @@ import {
   accounts,
   categories,
   sites,
-  departments,
+  projects,
   employees,
   currencies,
   accountTransactions,
@@ -36,7 +36,7 @@ describe('FinanceService', () => {
   let accountId: string
   let categoryId: string
   let siteId: string
-  let departmentId: string
+  let projectId: string
   let userId: string
 
   beforeAll(async () => {
@@ -77,12 +77,13 @@ describe('FinanceService', () => {
       })
       .execute()
 
-    departmentId = uuid()
+    projectId = uuid()
     await db
-      .insert(departments)
+      .insert(projects)
       .values({
-        id: departmentId,
-        name: 'Test Department',
+        id: projectId,
+        name: 'Test Project',
+        code: 'TEST-PRJ',
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -96,7 +97,7 @@ describe('FinanceService', () => {
         id: siteId,
         name: 'Test Site',
         siteCode: 'TS001',
-        departmentId,
+        projectId,
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -157,7 +158,7 @@ describe('FinanceService', () => {
         amountCents: 1000,
         categoryId,
         siteId,
-        departmentId,
+        projectId,
         memo: 'Test Expense',
         createdBy: userId,
       })
@@ -188,7 +189,7 @@ describe('FinanceService', () => {
     it('should create cash flow within transaction (atomicity)', async () => {
       // 测试事务的原子性：如果任何操作失败，整个事务应该回滚
       // 注意：在测试环境中，transaction mock 会直接执行回调，所以这里主要测试逻辑正确性
-      
+
       const result = await service.createCashFlow({
         bizDate: '2023-01-02',
         type: 'income',
@@ -213,7 +214,7 @@ describe('FinanceService', () => {
     it('should handle concurrent modification (optimistic lock)', async () => {
       // 注意：在测试环境中，transaction mock 会直接执行回调，所以乐观锁检查可能不会完全模拟真实并发
       // 这里主要测试乐观锁逻辑的存在和版本号更新机制
-      
+
       // 获取初始版本号
       const accountBefore = await db.select().from(accounts).where(eq(accounts.id, accountId)).get()
       const initialVersion = accountBefore?.version || 1
@@ -258,8 +259,8 @@ describe('FinanceService', () => {
     it('should support passing transaction parameter', async () => {
       // 测试传入 tx 参数的情况
       let txExecuted = false
-      
-      await db.transaction(async (tx) => {
+
+      await db.transaction(async (tx: any) => {
         txExecuted = true
         const result = await service.createCashFlow(
           {
@@ -273,7 +274,7 @@ describe('FinanceService', () => {
         )
 
         expect(result.id).toBeDefined()
-        
+
         // 在事务中验证数据
         const flow = await tx.select().from(cashFlows).where(eq(cashFlows.id, result.id)).get()
         expect(flow).toBeDefined()

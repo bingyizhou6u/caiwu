@@ -209,93 +209,9 @@ employeesRoutes.openapi(
   }) as any
 )
 
-// 重新发送激活邮件
-const resendActivationEmailRoute = createRoute({
-  method: 'post',
-  path: '/employees/{id}/resend-activation',
-  summary: 'Resend activation email',
-  request: {
-    params: z.object({ id: z.string() }),
-  },
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({
-              success: z.boolean(),
-              error: z.string().optional(),
-            }),
-          }),
-        },
-      },
-      description: 'Activation email resent',
-    },
-  },
-})
 
-employeesRoutes.openapi(
-  resendActivationEmailRoute,
-  createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
-    const id = c.req.param('id')
-    const service = c.var.services.employee
-    const result = await service.resendActivationEmail(id, c.env)
 
-    logAuditAction(c, 'resend_activation', 'employee', id, JSON.stringify({ result }))
 
-    // 如果邮件发送失败，返回错误给前端
-    if (!result.success) {
-      throw Errors.BUSINESS_ERROR(result.error || '邮件发送失败，请确认邮箱路由已验证')
-    }
-
-    return result
-  }) as any
-)
-
-// 重置 TOTP (管理员)
-const resetTotpRoute = createRoute({
-  method: 'post',
-  path: '/employees/{id}/reset-totp',
-  summary: 'Reset Employee TOTP (2FA)',
-  request: {
-    params: z.object({ id: z.string() }),
-  },
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({
-              success: z.boolean(),
-            }),
-          }),
-        },
-      },
-      description: 'TOTP reset success',
-    },
-  },
-})
-
-employeesRoutes.openapi(
-  resetTotpRoute,
-  createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
-    const id = c.req.param('id')
-    const service = c.var.services.employee
-    const result = await service.resetTotp(id)
-
-    logAuditAction(c, 'reset_totp', 'employee', id, JSON.stringify({ result }))
-
-    return result
-  }) as any
-)
 
 const updateEmployeeRoute = createRoute({
   method: 'put',
@@ -494,82 +410,7 @@ employeesRoutes.openapi(
   }) as any
 )
 
-// 重置用户密码并发送邮件（随机密码，首次登录强制修改）
-const resetEmployeePasswordRoute = createRoute({
-  method: 'post',
-  path: '/employees/{id}/reset-password',
-  summary: 'Reset employee account password and send email',
-  request: {
-    params: z.object({ id: z.string() }),
-  },
-  responses: {
-    200: {
-      content: {
-        'application/json': {
-          schema: z.object({
-            success: z.boolean(),
-            data: z.object({
-              success: z.boolean(),
-              message: z.string(),
-            }),
-          }),
-        },
-      },
-      description: 'Password reset and email sent',
-    },
-  },
-})
 
-employeesRoutes.openapi(
-  resetEmployeePasswordRoute,
-  createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
-
-    const id = c.req.param('id')
-    const db = c.get('db')
-    const authService = c.var.services.auth
-
-    const employee = await db
-      .select({
-        id: employees.id,
-        name: employees.name,
-        email: employees.email,
-        personalEmail: employees.personalEmail,
-      })
-      .from(employees)
-      .where(eq(employees.id, id))
-      .get()
-
-    if (!employee) {
-      throw Errors.NOT_FOUND('员工')
-    }
-    if (!employee.email) {
-      throw Errors.NOT_FOUND('用户账号')
-    }
-
-    const emailTarget = employee.personalEmail || employee.email
-
-    await authService.requestPasswordReset(emailTarget, c.env)
-
-    logAuditAction(
-      c,
-      'reset_password',
-      'employee',
-      id,
-      JSON.stringify({
-        name: employee.name,
-        sentTo: emailTarget,
-        type: 'link',
-      })
-    )
-
-    return {
-      success: true,
-      message: `密码重置链接已发送至 ${emailTarget}，请员工查收邮件并在1小时内完成重置`,
-    }
-  }) as any)
 
 // ============================================
 // 员工-项目关联管理 API

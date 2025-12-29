@@ -19,7 +19,7 @@ export type Env = {
   CF_ACCESS_AUD?: string // Access Application Audience Tag
   CF_ACCESS_TEAM_DOMAIN?: string // Access Team Domain (e.g. ar-teams.cloudflareaccess.com)
   AUTH_JWT_SECRET: string
-  INIT_ADMIN_PASSWORD_HASH: string // 初始化管理员密码哈希（必需，用于数据库初始化）
+  INIT_ADMIN_EMAIL?: string
 }
 
 export type AppVariables = {
@@ -60,7 +60,7 @@ export type AppVariables = {
     approval: ApprovalService
     my: MyService
     audit: AuditService
-    ipWhitelist: IPWhitelistService
+
     position: PositionService
     salary: SalaryService
     allowance: AllowanceService
@@ -74,7 +74,7 @@ export type AppVariables = {
     siteBill: SiteBillService
     arAp: ArApService
     accountTransfer: AccountTransferService
-    rateLimit: RateLimitService
+
     salaryPaymentGeneration: SalaryPaymentGenerationService
     salaryPaymentProcessing: SalaryPaymentProcessingService
     operationHistory: OperationHistoryService
@@ -87,6 +87,7 @@ export type AppVariables = {
     taskTimelog: TaskTimelogService
     // System services
     orgDepartment: OrgDepartmentService
+    employeeProject: EmployeeProjectService
   }
 }
 
@@ -111,7 +112,7 @@ import { RentalService } from '../services/assets/RentalService.js'
 import type { MyService } from '../services/common/MyService.js'
 import type { ApprovalService } from '../services/common/ApprovalService.js'
 import type { AuditService } from '../services/system/AuditService.js'
-import type { IPWhitelistService } from '../services/system/IPWhitelistService.js'
+
 import type { PositionService } from '../services/hr/PositionService.js'
 import type { SalaryService } from '../services/hr/SalaryService.js'
 import type { AllowanceService } from '../services/hr/AllowanceService.js'
@@ -125,13 +126,15 @@ import { EmailService } from '../services/common/EmailService.js'
 import { SiteBillService } from '../services/finance/SiteBillService.js'
 import { ArApService } from '../services/finance/ArApService.js'
 import { AccountTransferService } from '../services/finance/AccountTransferService.js'
-import { RateLimitService } from '../services/common/RateLimitService.js'
+
 // PM services
 import { ProjectService } from '../services/pm/ProjectService.js'
 import { TaskService } from '../services/pm/TaskService.js'
 import { TaskTimelogService } from '../services/pm/TaskTimelogService.js'
 // System services
+// System services
 import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
+import { EmployeeProjectService } from '../services/hr/EmployeeProjectService.js'
 
 // 已移除固定超级管理员
 // 所有管理员权限现在基于员工记录的职位

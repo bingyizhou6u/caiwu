@@ -1,13 +1,31 @@
 import { env } from 'cloudflare:test'
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../../../src/db/schema.js'
 import { employees, sessions, positions, currencies } from '../../../src/db/schema.js'
 import { v4 as uuid } from 'uuid'
 import schemaSql from '../../../src/db/schema.sql?raw'
-import bcrypt from 'bcryptjs'
 import app from '../../../src/index.js'
-import { authenticator } from 'otplib'
+
+// Mock middleware globally
+vi.mock('../../../src/middleware.js', async () => {
+  const actual = await vi.importActual<any>('../../../src/middleware.js')
+  return {
+    ...actual,
+    createAuthMiddleware: () => async (c: any, next: any) => {
+      c.set('userId', 'user-admin')
+      c.set('userPosition', {
+        id: 'pos-admin',
+        permissions: {
+          system: {
+            currency: ['create', 'read', 'update', 'delete'],
+          },
+        },
+      })
+      await next()
+    },
+  }
+})
 
 describe('MasterData API V2', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>
@@ -29,18 +47,8 @@ describe('MasterData API V2', () => {
 
   it('should allow creating and listing currencies with unified response format', async () => {
     // 1. Setup User with Permissions
-    const email = 'admin@example.com'
-    const password = 'password123'
-    const hash = await bcrypt.hash(password, 10)
-    const userId = uuid()
-    const positionId = uuid()
-    const totpSecret = 'secret'
-
-    const permissions = JSON.stringify({
-      system: {
-        currency: ['create', 'read', 'update', 'delete'],
-      },
-    })
+    const userId = 'user-admin'
+    const positionId = 'pos-admin'
 
     await db
       .insert(positions)
@@ -48,7 +56,7 @@ describe('MasterData API V2', () => {
         id: positionId,
         code: 'ADMIN',
         name: 'Admin',
-        permissions,
+        active: 1,
       })
       .execute()
 
@@ -56,20 +64,17 @@ describe('MasterData API V2', () => {
       .insert(employees)
       .values({
         id: userId,
-        email,
-        personalEmail: email,
+        email: 'admin@example.com',
+        personalEmail: 'admin@example.com',
         name: 'Admin User',
         positionId,
         active: 1,
-        passwordHash: hash,
-        totpSecret,
       })
       .execute()
 
     const testEnv = {
       ...env,
-      AUTH_JWT_SECRET: 'test-secret-key-min-32-chars-for-security-reasons',
-      INIT_ADMIN_PASSWORD_HASH: '$2b$10$8YHB2Aa4Kg6rUdl2GZcrNe67/Ux7Y3X84/RkWQoK94tIahkzgHJve',
+      AUTH_JWT_SECRET: 'test-secret-key',
     }
 
     const tasks: Promise<any>[] = []
@@ -77,37 +82,16 @@ describe('MasterData API V2', () => {
       waitUntil: (promise: Promise<any>) => {
         tasks.push(promise)
       },
-      passThroughOnException: () => {},
+      passThroughOnException: () => { },
     }
 
-    // 2. Login to get token
-    const totp = authenticator.generate(totpSecret)
-    const loginRes = await app.request(
-      '/api/v2/auth/login',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, totp }),
-      },
-      testEnv as any,
-      executionCtx as any
-    )
-
-    await Promise.all(tasks)
-
-    expect(loginRes.status).toBe(200)
-    const loginBody = (await loginRes.json()) as any
-    const token = loginBody.data.token
-    expect(token).toBeDefined()
-
-    // 3. Create Currency (V2)
+    // 2. Create Currency (V2)
     const createRes = await app.request(
       '/api/v2/currencies',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ code: 'CNY', name: 'Chinese Yuan' }),
       },
@@ -124,14 +108,12 @@ describe('MasterData API V2', () => {
     expect(createBody.data.code).toBe('CNY')
     expect(createBody.data.name).toBe('Chinese Yuan')
 
-    // 4. List Currencies (V2)
+    // 3. List Currencies (V2)
     const listRes = await app.request(
       '/api/v2/currencies',
       {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: {},
       },
       testEnv as any,
       executionCtx as any

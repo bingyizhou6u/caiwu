@@ -26,7 +26,7 @@ export class SystemConfigService {
       try {
         const cached = await this.kv.get(`config:${key}`, 'json')
         if (cached !== null) {
-          return cached as { key: string; value: any; description: string | null }
+          return cached as { key: string; value: any; description: string | null; updatedBy: string; updatedAt: number }
         }
       } catch {
         // KV 读取失败，降级到数据库
@@ -108,7 +108,7 @@ export class SystemConfigService {
     // 更新缓存
     if (this.kv) {
       try {
-        const cached = { key, value, description }
+        const cached = { key, value, description, updatedBy: userId, updatedAt: now }
         await this.kv.put(`config:${key}`, JSON.stringify(cached), { expirationTtl: 300 })
       } catch {
         // 缓存写入失败，忽略

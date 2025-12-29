@@ -27,7 +27,7 @@ vi.mock('../../src/utils/permissions.js', async () => {
     getUserEmployee: (c: any) => {
       return c.get('userEmployee') || {
         id: 'emp-admin',
-        departmentId: 'dept-1',
+        projectId: 'dept-1', // Changed departmentId to projectId
         orgDepartmentId: 'org-dept-1',
       }
     },
@@ -62,7 +62,7 @@ describe('Employees API Integration', () => {
 
   beforeEach(async () => {
     await db.delete(schema.employees).execute()
-    await db.delete(schema.departments).execute()
+    await db.delete(schema.projects).execute()
     await db.delete(schema.positions).execute()
     await db.delete(schema.orgDepartments).execute()
 
@@ -78,7 +78,7 @@ describe('Employees API Integration', () => {
       // Mock user employee and position in context for middlewares/handlers that check c.get() directly
       c.set('userEmployee', {
         id: 'emp-admin',
-        departmentId: 'dept-1',
+        projectId: 'dept-1',
         orgDepartmentId: 'org-dept-1',
       })
       c.set('userPosition', {
@@ -95,8 +95,8 @@ describe('Employees API Integration', () => {
     // Setup dependencies
     const projectId = uuid()
     await db
-      .insert(schema.departments)
-      .values({ id: projectId, name: 'Proj 1', active: 1 })
+      .insert(schema.projects)
+      .values({ id: projectId, code: 'PROJ-TEST-NEW', name: 'Proj 1', active: 1 })
       .execute()
     const orgDeptId = uuid()
     await db
@@ -121,7 +121,7 @@ describe('Employees API Integration', () => {
         name: 'Test New',
         personalEmail: 'new@test.com',
         orgDepartmentId: orgDeptId,
-        departmentId: projectId,
+        projectId: projectId, // changed to projectId
         positionId: positionId,
         joinDate: '2023-01-01',
         workSchedule: 'standard',
@@ -145,8 +145,8 @@ describe('Employees API Integration', () => {
     // Create an employee first
     const projectId = uuid()
     await db
-      .insert(schema.departments)
-      .values({ id: projectId, name: 'Proj 1', active: 1 })
+      .insert(schema.projects)
+      .values({ id: projectId, code: 'PROJ-TEST-LIST', name: 'Proj 1', active: 1 })
       .execute()
     const orgDeptId = uuid()
     await db
@@ -168,7 +168,7 @@ describe('Employees API Integration', () => {
       name: 'List Item',
       personalEmail: 'list@test.com',
       orgDepartmentId: orgDeptId,
-      departmentId: projectId,
+      projectId: projectId,
       positionId: positionId,
       joinDate: '2023-01-01',
     })
@@ -189,8 +189,8 @@ describe('Employees API Integration', () => {
   it('GET /employees/:id should return employee details', async () => {
     const projectId = uuid()
     await db
-      .insert(schema.departments)
-      .values({ id: projectId, name: 'Proj 1', active: 1 })
+      .insert(schema.projects)
+      .values({ id: projectId, code: 'PROJ-TEST-2', name: 'Proj 1', active: 1 })
       .execute()
     const orgDeptId = uuid()
     await db
@@ -212,7 +212,7 @@ describe('Employees API Integration', () => {
       name: 'Detail Item',
       personalEmail: 'detail@test.com',
       orgDepartmentId: orgDeptId,
-      departmentId: projectId,
+      projectId: projectId,
       positionId: positionId,
       joinDate: '2023-01-01',
     })
@@ -233,8 +233,8 @@ describe('Employees API Integration', () => {
   it('PUT /employees/:id should update employee', async () => {
     const projectId = uuid()
     await db
-      .insert(schema.departments)
-      .values({ id: projectId, name: 'Proj 1', active: 1 })
+      .insert(schema.projects)
+      .values({ id: projectId, code: 'PROJ-TEST', name: 'Proj 1', active: 1 })
       .execute()
     const orgDeptId = uuid()
     await db
@@ -256,7 +256,7 @@ describe('Employees API Integration', () => {
       name: 'Old Name',
       personalEmail: 'update@test.com',
       orgDepartmentId: orgDeptId,
-      departmentId: projectId,
+      projectId: projectId,
       positionId: positionId,
       joinDate: '2023-01-01',
     })

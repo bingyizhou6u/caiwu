@@ -6,13 +6,14 @@ import {
   fixedAssets,
   fixedAssetDepreciations,
   fixedAssetChanges,
-  departments,
   sites,
   vendors,
   currencies,
   employees,
   accounts,
   cashFlows,
+  categories,
+  projects,
 } from '../../src/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { v4 as uuid } from 'uuid'
@@ -45,8 +46,9 @@ describe('FixedAssetService', () => {
     await db.delete(employees).execute()
     await db.delete(sites).execute()
     await db.delete(vendors).execute()
-    await db.delete(departments).execute()
+    await db.delete(projects).execute()
     await db.delete(currencies).execute()
+    await db.delete(categories).execute()
   })
 
   describe('list', () => {
@@ -58,13 +60,14 @@ describe('FixedAssetService', () => {
       }
       await db.insert(currencies).values(currency).execute()
 
-      const dept = {
+      const project = {
         id: uuid(),
         hqId: 'hq',
-        name: '测试部门',
+        name: '测试项目',
+        code: 'PRJ-TEST-1',
         active: 1,
       }
-      await db.insert(departments).values(dept).execute()
+      await db.insert(projects).values(project).execute()
 
       const now = Date.now()
       const asset1 = {
@@ -75,7 +78,7 @@ describe('FixedAssetService', () => {
         purchaseDate: '2024-01-01',
         purchasePriceCents: 100000,
         currency: 'CNY',
-        departmentId: dept.id,
+        projectId: project.id,
         status: 'in_use',
         createdAt: now,
         updatedAt: now,
@@ -88,7 +91,7 @@ describe('FixedAssetService', () => {
         purchaseDate: '2024-01-02',
         purchasePriceCents: 200000,
         currency: 'CNY',
-        departmentId: dept.id,
+        projectId: project.id,
         status: 'in_use',
         createdAt: now + 1,
         updatedAt: now + 1,
@@ -183,7 +186,7 @@ describe('FixedAssetService', () => {
       expect(result[0].asset.status).toBe('in_use')
     })
 
-    it('应该支持按部门筛选', async () => {
+    it('应该支持按项目筛选', async () => {
       const currency = {
         code: 'CNY',
         name: '人民币',
@@ -191,19 +194,21 @@ describe('FixedAssetService', () => {
       }
       await db.insert(currencies).values(currency).execute()
 
-      const dept1 = {
+      const project1 = {
         id: uuid(),
         hqId: 'hq',
-        name: '部门1',
+        name: '项目1',
+        code: 'PRJ-1',
         active: 1,
       }
-      const dept2 = {
+      const project2 = {
         id: uuid(),
         hqId: 'hq',
-        name: '部门2',
+        name: '项目2',
+        code: 'PRJ-2',
         active: 1,
       }
-      await db.insert(departments).values([dept1, dept2]).execute()
+      await db.insert(projects).values([project1, project2]).execute()
 
       const asset1 = {
         id: uuid(),
@@ -213,7 +218,7 @@ describe('FixedAssetService', () => {
         purchaseDate: '2024-01-01',
         purchasePriceCents: 100000,
         currency: 'CNY',
-        departmentId: dept1.id,
+        projectId: project1.id,
         status: 'in_use',
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -226,17 +231,17 @@ describe('FixedAssetService', () => {
         purchaseDate: '2024-01-02',
         purchasePriceCents: 200000,
         currency: 'CNY',
-        departmentId: dept2.id,
+        projectId: project2.id,
         status: 'in_use',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }
       await db.insert(fixedAssets).values([asset1, asset2]).execute()
 
-      const result = await service.list({ departmentId: dept1.id })
+      const result = await service.list({ projectId: project1.id })
 
       expect(result).toHaveLength(1)
-      expect(result[0].asset.departmentId).toBe(dept1.id)
+      expect(result[0].asset.projectId).toBe(project1.id)
     })
 
     it('应该支持分页', async () => {
@@ -366,13 +371,14 @@ describe('FixedAssetService', () => {
       }
       await db.insert(currencies).values(currency).execute()
 
-      const dept = {
+      const project = {
         id: uuid(),
         hqId: 'hq',
         name: '测试部门',
+        code: 'PRJ-DEPT',
         active: 1,
       }
-      await db.insert(departments).values(dept).execute()
+      await db.insert(projects).values(project).execute()
 
       const asset = {
         id: uuid(),
@@ -382,7 +388,7 @@ describe('FixedAssetService', () => {
         purchaseDate: '2024-01-01',
         purchasePriceCents: 100000,
         currency: 'CNY',
-        departmentId: dept.id,
+        projectId: project.id,
         status: 'in_use',
         createdAt: Date.now(),
         updatedAt: Date.now(),

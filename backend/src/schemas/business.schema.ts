@@ -98,10 +98,4 @@ export {
   uploadVoucherSchema,
 } from './system.schema.js'
 
-// 认证相关
-export {
-  loginSchema,
-  changePasswordSchema,
-  resetPasswordSchema,
-  bindTotpSchema,
-} from './auth.schema.js'
+

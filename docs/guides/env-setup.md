@@ -50,7 +50,7 @@ cat backend/wrangler.toml | grep -A 5 "\[env.dev.vars\]"
 
 # 应该看到：
 # AUTH_JWT_SECRET = "..."
-# INIT_ADMIN_PASSWORD_HASH = "$2b$10$..."
+
 ```
 
 

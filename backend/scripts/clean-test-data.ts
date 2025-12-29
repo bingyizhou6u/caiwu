@@ -63,7 +63,6 @@ const MODULE_TABLES: Record<string, Array<keyof typeof schema>> = {
     'auditLogs',
     'businessOperationHistory',
     'sessions',
-    'trustedDevices',
   ],
   master: [
     'sites',

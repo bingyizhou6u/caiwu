@@ -7,7 +7,7 @@ import {
   cashFlows,
   accounts,
   categories,
-  departments,
+  projects,
   sites,
   arApDocs,
   employees,
@@ -36,8 +36,8 @@ describe('ReportService', () => {
 
   it('getDashboardStats should return correct stats', async () => {
     const today = new Date().toISOString().slice(0, 10)
-    const deptId = uuid()
-    await db.insert(departments).values({ id: deptId, name: 'Test Dept', active: 1 }).run()
+    const projectId = 'dept1'
+    await db.insert(projects).values({ id: projectId, name: 'Test Dept', code: 'DEPT1' }).run()
 
     await db
       .insert(cashFlows)
@@ -47,7 +47,7 @@ describe('ReportService', () => {
           bizDate: today,
           type: 'income',
           amountCents: 1000,
-          departmentId: deptId,
+          projectId: projectId,
           accountId: uuid(),
         },
         {
@@ -55,21 +55,21 @@ describe('ReportService', () => {
           bizDate: today,
           type: 'expense',
           amountCents: 500,
-          departmentId: deptId,
+          projectId: projectId,
           accountId: uuid(),
         },
       ])
       .run()
 
-    const stats = (await service.getDashboardStats(deptId)) as any
+    const stats = (await service.getDashboardStats(projectId)) as any
     expect(stats.today.incomeCents).toBe(1000)
     expect(stats.today.expenseCents).toBe(500)
     expect(stats.today.count).toBe(2)
   })
 
   it('getDepartmentCashFlow should return correct flow', async () => {
-    const deptId = uuid()
-    await db.insert(departments).values({ id: deptId, name: 'Test Dept', active: 1 }).run()
+    const projectId = 'dept1'
+    await db.insert(projects).values({ id: projectId, name: 'Test Dept', code: 'DEPT1' }).run()
 
     const today = new Date().toISOString().slice(0, 10)
     await db
@@ -80,20 +80,20 @@ describe('ReportService', () => {
           bizDate: today,
           type: 'income',
           amountCents: 2000,
-          departmentId: deptId,
+          projectId: projectId,
           accountId: uuid(),
         },
       ])
       .run()
 
-    const res = (await service.getDepartmentCashFlow(today, today, [deptId])) as any
+    const res = (await service.getDepartmentCashFlow(today, today, [projectId])) as any
     expect(res).toHaveLength(1)
     expect(res[0].incomeCents).toBe(2000)
     expect(res[0].netCents).toBe(2000)
   })
 
   it('getArApSummary should return correct summary', async () => {
-    const deptId = uuid()
+    const projectId = 'dept1'
     const today = new Date().toISOString().slice(0, 10)
 
     await db
@@ -105,7 +105,7 @@ describe('ReportService', () => {
           amountCents: 1000,
           status: 'open',
           issueDate: today,
-          departmentId: deptId,
+          projectId: projectId,
           partyId: uuid(),
         },
         {
@@ -114,13 +114,13 @@ describe('ReportService', () => {
           amountCents: 500,
           status: 'closed',
           issueDate: today,
-          departmentId: deptId,
+          projectId: projectId,
           partyId: uuid(),
         },
       ])
       .run()
-
-    const res = await service.getArApSummary('AR', today, today, deptId)
+    await db.insert(projects).values([{ id: 'dept1', name: 'Dept 1', code: 'DEPT1' }]).run()
+    const res = await service.getArApSummary('AR', today, today, projectId)
     expect(res.totalCents).toBe(1500)
     expect(res.byStatus['open']).toBe(1000)
     expect(res.byStatus['closed']).toBe(500)

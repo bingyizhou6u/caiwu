@@ -16,14 +16,14 @@ import { drizzle } from 'drizzle-orm/d1'
 const createMockContext = (
   position: Partial<Position>,
   employee: Partial<Employee>,
-  departmentModules: string[] = ['*'],
+  projectModules: string[] = ['*'],
   dbMock: any = null
 ) => {
   return {
     get: (key: string) => {
       if (key === 'userPosition') return position
       if (key === 'userEmployee') return employee
-      if (key === 'departmentModules') return departmentModules
+      if (key === 'projectModules') return projectModules
       return undefined
     },
     env: {
@@ -68,7 +68,7 @@ describe('RBAC (Role-Based Access Control)', () => {
     })
 
     it('Level 1 (HQ): can view anyone', async () => {
-      const actor = { id: 'hq', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
+      const actor = { id: 'hq', projectId: 'dept-a', orgDepartmentId: 'org-a' }
       const position = { level: 1, code: 'mock_hq_admin', dataScope: 'all' } as any
       const targetEmployeeId = 'target-id'
 
@@ -77,31 +77,31 @@ describe('RBAC (Role-Based Access Control)', () => {
     })
 
     it('Level 2 (Project): can view employee in same project', async () => {
-      const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
+      const actor = { id: 'pm', projectId: 'dept-a', orgDepartmentId: 'org-a' }
       const position = { level: 2, code: 'mock_pm', dataScope: 'project' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee in the same department
-      mockDb.get.mockResolvedValue({ id: targetEmployeeId, departmentId: 'dept-a' })
+      mockDb.get.mockResolvedValue({ id: targetEmployeeId, projectId: 'dept-a' })
 
       const result = await service.canViewEmployee(actor, position, targetEmployeeId)
       expect(result).toBe(true)
     })
 
     it('Level 2 (Project): cannot view employee in other project', async () => {
-      const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
+      const actor = { id: 'pm', projectId: 'dept-a', orgDepartmentId: 'org-a' }
       const position = { level: 2, code: 'mock_pm', dataScope: 'project' } as any
       const targetEmployeeId = 'target-id'
 
       // Mock DB to return employee in a different department
-      mockDb.get.mockResolvedValue({ id: targetEmployeeId, departmentId: 'dept-b' })
+      mockDb.get.mockResolvedValue({ id: targetEmployeeId, projectId: 'dept-b' })
 
       const result = await service.canViewEmployee(actor, position, targetEmployeeId)
       expect(result).toBe(false)
     })
 
     it('Level 3 (Team Leader): can view employee in same team', async () => {
-      const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
+      const actor = { id: 'tl', projectId: 'dept-a', orgDepartmentId: 'team-1' }
       const position = { level: 3, code: 'mock_tl', dataScope: 'group' } as any
       const targetEmployeeId = 'target-id'
 
@@ -113,7 +113,7 @@ describe('RBAC (Role-Based Access Control)', () => {
     })
 
     it('Level 3 (Team Leader): cannot view employee in other team', async () => {
-      const actor = { id: 'tl', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
+      const actor = { id: 'tl', projectId: 'dept-a', orgDepartmentId: 'team-1' }
       const position = { level: 3, code: 'mock_tl', dataScope: 'group' } as any
       const targetEmployeeId = 'target-id'
 
@@ -125,7 +125,7 @@ describe('RBAC (Role-Based Access Control)', () => {
     })
 
     it('Level 3 (Engineer): can only view self', async () => {
-      const actor = { id: 'emp-1', departmentId: 'dept-a', orgDepartmentId: 'team-1' }
+      const actor = { id: 'emp-1', projectId: 'dept-a', orgDepartmentId: 'team-1' }
       const position = { level: 3, code: 'mock_engineer', dataScope: 'self' } as any
 
       expect(await service.canViewEmployee(actor, position, 'emp-1')).toBe(true)
@@ -133,7 +133,7 @@ describe('RBAC (Role-Based Access Control)', () => {
     })
 
     it('should return false if target employee not found', async () => {
-      const actor = { id: 'pm', departmentId: 'dept-a', orgDepartmentId: 'org-a' }
+      const actor = { id: 'pm', projectId: 'dept-a', orgDepartmentId: 'org-a' }
       const position = { level: 2, code: 'mock_pm', dataScope: 'project' } as any
       const targetEmployeeId = 'non-existent-id'
 

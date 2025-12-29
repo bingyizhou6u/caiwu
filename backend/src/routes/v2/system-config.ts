@@ -292,7 +292,7 @@ systemConfigRoutes.openapi(
     }
 
     // 记录审计日志
-    logAuditAction(c, 'access_policy_sync', 'sync', undefined, { synced: result.synced })
+    logAuditAction(c, 'access_policy_sync', 'sync', undefined, JSON.stringify({ synced: result.synced }))
 
     return { synced: result.synced }
   }) as any

@@ -7,8 +7,7 @@ export enum ErrorCodes {
   AUTH_UNAUTHORIZED = 'AUTH_UNAUTHORIZED', // Not logged in or invalid token
   AUTH_TOKEN_EXPIRED = 'AUTH_TOKEN_EXPIRED', // Token expired
   AUTH_FORBIDDEN = 'AUTH_FORBIDDEN', // Logged in but no permission
-  AUTH_INVALID_CREDENTIALS = 'AUTH_INVALID_CREDENTIALS',
-  AUTH_TOTP_REQUIRED = 'AUTH_TOTP_REQUIRED',
+
 
   // Validation (VAL) -> VALIDATION
   VAL_BAD_REQUEST = 'VALIDATION_BAD_REQUEST', // Schema validation failed or bad input

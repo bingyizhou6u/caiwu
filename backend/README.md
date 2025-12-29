@@ -46,14 +46,14 @@ wrangler secret put AUTH_JWT_SECRET
 # 首先生成密码哈希
 npm run gen:password-hash "your-secure-password"
 # 然后设置 Secret（生产环境）
-wrangler secret put INIT_ADMIN_PASSWORD_HASH
+
 # 或者在 wrangler.toml 的 [env.dev.vars] 中设置（开发环境）
 
 # 邮件服务 Token（如果使用）
 wrangler secret put EMAIL_TOKEN
 ```
 
-**重要**: `INIT_ADMIN_PASSWORD_HASH` 是必需的，用于系统初始化时创建第一个管理员账户。如果未设置，系统初始化将失败。
+
 
 ### 本地开发
 
@@ -271,7 +271,7 @@ wrangler secret put AUTH_JWT_SECRET
 # 首先生成密码哈希
 npm run gen:password-hash "your-secure-password"
 # 然后设置 Secret
-wrangler secret put INIT_ADMIN_PASSWORD_HASH
+
 
 # 邮件服务 Token（可选）
 wrangler secret put EMAIL_TOKEN
@@ -279,10 +279,10 @@ wrangler secret put EMAIL_TOKEN
 
 **必需的环境变量**:
 - `AUTH_JWT_SECRET`: JWT 签名密钥
-- `INIT_ADMIN_PASSWORD_HASH`: 初始化管理员密码哈希（用于数据库初始化）
+
 
 **开发环境配置**:
-开发环境的环境变量在 `wrangler.toml` 的 `[env.dev.vars]` 中配置。请确保设置了 `INIT_ADMIN_PASSWORD_HASH`。
+
 
 ## 📖 更多文档
 

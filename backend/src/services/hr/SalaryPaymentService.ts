@@ -13,7 +13,7 @@ import {
   orgDepartments,
   positions,
 } from '../../db/schema.js'
-import { eq, and, sql, inArray, desc } from 'drizzle-orm'
+import { eq, and, sql, inArray, desc, SQL } from 'drizzle-orm'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'
 import { salaryPaymentStateMachine } from '../../utils/state-machine.js'
@@ -34,7 +34,7 @@ export class SalaryPaymentService {
     userId?: string,
     isTeamMember = false
   ) {
-    const conditions = []
+    const conditions: SQL[] = []
     if (query.year) {
       conditions.push(eq(salaryPayments.year, query.year))
     }
@@ -70,21 +70,22 @@ export class SalaryPaymentService {
     const employeeIds = [...new Set(payments.map(p => p.employeeId).filter(Boolean) as string[])]
     const employeesList = employeeIds.length > 0
       ? await dbQuery(
-          this.db,
-          'SalaryPaymentService.list.getEmployees',
-          () => this.db
-            .select({
-              id: employees.id,
-              name: employees.name,
-              projectId: employees.projectId,
-              orgDepartmentId: employees.orgDepartmentId,
-              positionId: employees.positionId,
-            })
-            .from(employees)
-            .where(inArray(employees.id, employeeIds))
-            .all(),
-          undefined
-        )
+        this.db,
+        'SalaryPaymentService.list.getEmployees',
+        () => this.db
+          .select({
+            id: employees.id,
+            name: employees.name,
+            email: employees.email,
+            projectId: employees.projectId,
+            orgDepartmentId: employees.orgDepartmentId,
+            positionId: employees.positionId,
+          })
+          .from(employees)
+          .where(inArray(employees.id, employeeIds))
+          .all(),
+        undefined
+      )
       : []
 
     // 3. 批量获取部门和职位信息
@@ -95,39 +96,39 @@ export class SalaryPaymentService {
     const [projectsList, orgDepartmentsList, positionsList] = await Promise.all([
       deptIds.length > 0
         ? dbQuery(
-            this.db,
-            'SalaryPaymentService.list.getDepartments',
-            () => this.db
-              .select({ id: projects.id, name: projects.name })
-              .from(projects)
-              .where(inArray(projects.id, deptIds))
-              .all(),
-            undefined
-          )
+          this.db,
+          'SalaryPaymentService.list.getDepartments',
+          () => this.db
+            .select({ id: projects.id, name: projects.name })
+            .from(projects)
+            .where(inArray(projects.id, deptIds))
+            .all(),
+          undefined
+        )
         : Promise.resolve([]),
       orgDeptIds.length > 0
         ? dbQuery(
-            this.db,
-            'SalaryPaymentService.list.getOrgDepartments',
-            () => this.db
-              .select({ id: orgDepartments.id, name: orgDepartments.name })
-              .from(orgDepartments)
-              .where(inArray(orgDepartments.id, orgDeptIds))
-              .all(),
-            undefined
-          )
+          this.db,
+          'SalaryPaymentService.list.getOrgDepartments',
+          () => this.db
+            .select({ id: orgDepartments.id, name: orgDepartments.name })
+            .from(orgDepartments)
+            .where(inArray(orgDepartments.id, orgDeptIds))
+            .all(),
+          undefined
+        )
         : Promise.resolve([]),
       positionIds.length > 0
         ? dbQuery(
-            this.db,
-            'SalaryPaymentService.list.getPositions',
-            () => this.db
-              .select({ id: positions.id, name: positions.name })
-              .from(positions)
-              .where(inArray(positions.id, positionIds))
-              .all(),
-            undefined
-          )
+          this.db,
+          'SalaryPaymentService.list.getPositions',
+          () => this.db
+            .select({ id: positions.id, name: positions.name })
+            .from(positions)
+            .where(inArray(positions.id, positionIds))
+            .all(),
+          undefined
+        )
         : Promise.resolve([]),
     ])
 
@@ -206,32 +207,33 @@ export class SalaryPaymentService {
     // 批量查询员工和部门信息
     const employee = payment.employeeId
       ? await dbQuery(
-          this.db,
-          'SalaryPaymentService.get.getEmployee',
-          () => this.db
-            .select({
-              id: employees.id,
-              name: employees.name,
-              projectId: employees.projectId,
-            })
-            .from(employees)
-            .where(eq(employees.id, payment.employeeId))
-            .get(),
-          undefined
-        )
+        this.db,
+        'SalaryPaymentService.get.getEmployee',
+        () => this.db
+          .select({
+            id: employees.id,
+            name: employees.name,
+            projectId: employees.projectId,
+          })
+          .from(employees)
+          .where(eq(employees.id, payment.employeeId))
+          .get(),
+        undefined
+      )
       : null
 
-    const department = employee?.projectId
+    const projectId = employee?.projectId
+    const department = projectId
       ? await dbQuery(
-          this.db,
-          'SalaryPaymentService.get.getDepartment',
-          () => this.db
-            .select({ id: projects.id, name: projects.name })
-            .from(projects)
-            .where(eq(projects.id, employee.projectId))
-            .get(),
-          undefined
-        )
+        this.db,
+        'SalaryPaymentService.get.getDepartment',
+        () => this.db
+          .select({ id: projects.id, name: projects.name })
+          .from(projects)
+          .where(eq(projects.id, projectId))
+          .get(),
+        undefined
+      )
       : null
 
     const allocations = await this.db
@@ -243,7 +245,7 @@ export class SalaryPaymentService {
     return {
       ...payment,
       employeeName: employee?.name || null,
-      departmentName: payment.departmentName,
+      departmentName: department?.name || null,
       allocations,
     }
   }

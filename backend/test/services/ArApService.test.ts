@@ -8,7 +8,7 @@ import {
   accounts,
   categories,
   sites,
-  departments,
+  projects,
   employees,
   currencies,
 } from '../../src/db/schema'
@@ -78,9 +78,10 @@ describe('ArApService', () => {
 
     departmentId = uuid()
     await db
-      .insert(departments)
+      .insert(projects)
       .values({
         id: departmentId,
+        code: 'DEPT_TEST',
         name: 'Test Department',
         active: 1,
         createdAt: Date.now(),
@@ -95,7 +96,7 @@ describe('ArApService', () => {
         id: siteId,
         name: 'Test Site',
         siteCode: 'TS001',
-        departmentId,
+        projectId: departmentId,
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),

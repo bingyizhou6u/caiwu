@@ -10,18 +10,18 @@ export const FIXTURE_IDS = {
   // 总部
   HQ_MAIN: 'hq-001',
   HQ_BRANCH: 'hq-002',
-  
+
   // 部门/项目
   DEPT_HQ: 'dept-001',
   DEPT_PROJECT_A: 'dept-002',
   DEPT_PROJECT_B: 'dept-003',
-  
+
   // 组织部门
   ORG_DEPT_ADMIN: 'org-dept-001',
   ORG_DEPT_FINANCE: 'org-dept-002',
   ORG_DEPT_HR: 'org-dept-003',
   ORG_DEPT_IT: 'org-dept-004',
-  
+
   // 职位
   POS_CEO: 'pos-001',
   POS_CFO: 'pos-002',
@@ -29,29 +29,29 @@ export const FIXTURE_IDS = {
   POS_FINANCE_MANAGER: 'pos-004',
   POS_ACCOUNTANT: 'pos-005',
   POS_ENGINEER: 'pos-006',
-  
+
   // 币种
   CURRENCY_CNY: 'CNY',
   CURRENCY_USD: 'USD',
   CURRENCY_USDT: 'USDT',
-  
+
   // 账户
   ACCOUNT_BANK_CNY: 'acc-001',
   ACCOUNT_BANK_USD: 'acc-002',
   ACCOUNT_CASH_CNY: 'acc-003',
   ACCOUNT_USDT: 'acc-004',
-  
+
   // 分类
   CAT_INCOME_SALES: 'cat-001',
   CAT_INCOME_SERVICE: 'cat-002',
   CAT_EXPENSE_SALARY: 'cat-003',
   CAT_EXPENSE_OFFICE: 'cat-004',
   CAT_EXPENSE_RENT: 'cat-005',
-  
+
   // 供应商
   VENDOR_A: 'vendor-001',
   VENDOR_B: 'vendor-002',
-  
+
   // 场地
   SITE_OFFICE_A: 'site-001',
   SITE_OFFICE_B: 'site-002',
@@ -444,7 +444,7 @@ export function getSitesFixtures() {
   return [
     {
       id: FIXTURE_IDS.SITE_OFFICE_A,
-      departmentId: FIXTURE_IDS.DEPT_HQ,
+      projectId: FIXTURE_IDS.DEPT_HQ,
       name: 'A办公室',
       siteCode: 'OFFICE-A',
       active: 1,
@@ -453,7 +453,7 @@ export function getSitesFixtures() {
     },
     {
       id: FIXTURE_IDS.SITE_OFFICE_B,
-      departmentId: FIXTURE_IDS.DEPT_PROJECT_A,
+      projectId: FIXTURE_IDS.DEPT_PROJECT_A,
       name: 'B办公室',
       siteCode: 'OFFICE-B',
       active: 1,

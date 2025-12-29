@@ -317,11 +317,11 @@ app.post('/api/v2/init-if-empty', async c => {
       .bind(now, now)
       .run()
 
-    // 3. 创建部门（使用正确的 UUID 格式）
-    const deptId = 'hq-proj-init-001' // 初始化专用的总部部门 ID
+    // 3. 创建项目（原部门表已合并至项目表）
+    const deptId = 'hq-proj-init-001' // 初始化专用的总部项目 ID
     await c.env.DB.prepare(
       `
-      INSERT OR IGNORE INTO departments (id, hq_id, name, code, active, sort_order, created_at, updated_at)
+      INSERT OR IGNORE INTO projects (id, hq_id, name, code, active, sort_order, created_at, updated_at)
       VALUES (?, ?, '总部', 'HQ', 1, 0, ?, ?)
     `
     )

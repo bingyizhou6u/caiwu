@@ -42,7 +42,7 @@ export enum PermissionAction {
   REVIEW = 'review',   // 评审
 }
 
-export type PermissionActionType = 'view' | 'create' | 'update' | 'delete' | 'approve' | 'reject' | 'export' | 'reverse' | 'pay' | 'allocate' | 'view_sensitive' | 'assign' | 'review'
+export type PermissionActionType = 'view' | 'create' | 'update' | 'delete' | 'approve' | 'reject' | 'export' | 'reverse' | 'pay' | 'allocate' | 'view_sensitive' | 'assign' | 'review' | 'manage'
 
 // 操作标签映射
 export const ACTION_LABELS: Record<string, string> = {
@@ -59,6 +59,7 @@ export const ACTION_LABELS: Record<string, string> = {
   view_sensitive: '敏感信息',
   assign: '指派',
   review: '评审',
+  manage: '管理',
 }
 
 // DataScope 标签映射
