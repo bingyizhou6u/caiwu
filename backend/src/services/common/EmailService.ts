@@ -66,36 +66,6 @@ const infoCard = (items: { label: string; value: string }[]) => `
     .join('')}
 </table>`
 
-// 警告卡片样式
-const warningCard = (message: string) => `
-<div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 20px 0;">
-  <div style="display: flex; align-items: flex-start;">
-    <span style="font-size: 18px; margin-right: 12px;">⚠️</span>
-    <div>
-      <div style="font-weight: 600; color: #92400e; margin-bottom: 4px;">安全提示</div>
-      <div style="color: #a16207; font-size: 14px;">${message}</div>
-    </div>
-  </div>
-</div>`
-
-// 成功卡片样式
-const successCard = (title: string, message: string) => `
-<div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin: 20px 0;">
-  <div style="display: flex; align-items: flex-start;">
-    <span style="font-size: 18px; margin-right: 12px;">✅</span>
-    <div>
-      <div style="font-weight: 600; color: #065f46; margin-bottom: 4px;">${title}</div>
-      <div style="color: #047857; font-size: 14px;">${message}</div>
-    </div>
-  </div>
-</div>`
-
-// 按钮样式
-const primaryButton = (text: string, url: string) => `
-<a href="${url}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; margin: 20px 0;">
-  ${text}
-</a>`
-
 import { Logger } from '../../utils/logger.js'
 
 export class EmailService {
