@@ -1,3 +1,8 @@
+import { DrizzleD1Database } from 'drizzle-orm/d1'
+import * as schema from '../db/schema.js'
+import { MonitoringService } from '../utils/monitoring.js'
+import type { ServiceContainer } from '../middleware/service-container.js'
+
 export type Env = {
   DB: D1Database
   SESSIONS_KV: KVNamespace
@@ -44,100 +49,13 @@ export type AppVariables = {
   }
   departmentModules?: string[] // 部门允许的功能模块列表
 
-  // Dependency Injection
+  // Monitoring service (initialized at startup)
+  monitoring: MonitoringService
+
+  // Dependency Injection - 使用懒加载的服务容器
   db: DrizzleD1Database<typeof schema>
-  services: {
-    systemConfig: SystemConfigService
-    finance: FinanceService
-    employee: EmployeeService
-    import: ImportService
-    salaryPayment: SalaryPaymentService
-    report: ReportService
-    auth: AuthService
-    masterData: MasterDataService
-    fixedAsset: FixedAssetService
-    rental: RentalService
-    approval: ApprovalService
-    my: MyService
-    audit: AuditService
-
-    position: PositionService
-    salary: SalaryService
-    allowance: AllowanceService
-    allowancePayment: AllowancePaymentService
-    employeeLeave: EmployeeLeaveService
-    expenseReimbursement: ExpenseReimbursementService
-    attendance: AttendanceService
-    annualLeave: AnnualLeaveService
-    permission: PermissionService
-    email: EmailService
-    siteBill: SiteBillService
-    arAp: ArApService
-    accountTransfer: AccountTransferService
-
-    salaryPaymentGeneration: SalaryPaymentGenerationService
-    salaryPaymentProcessing: SalaryPaymentProcessingService
-    operationHistory: OperationHistoryService
-    fixedAssetAllocation: FixedAssetAllocationService
-    fixedAssetChange: FixedAssetChangeService
-    fixedAssetDepreciation: FixedAssetDepreciationService
-    // PM services
-    project: ProjectService
-    task: TaskService
-    taskTimelog: TaskTimelogService
-    // System services
-    orgDepartment: OrgDepartmentService
-    employeeProject: EmployeeProjectService
-    // Notification service
-    notification: NotificationService
-  }
+  services: ServiceContainer
 }
-
-import { DrizzleD1Database } from 'drizzle-orm/d1'
-import * as schema from '../db/schema.js'
-import { SystemConfigService } from '../services/system/SystemConfigService.js'
-import { FinanceService } from '../services/finance/FinanceService.js'
-import { EmployeeService } from '../services/hr/EmployeeService.js'
-import { ImportService } from '../services/finance/ImportService.js'
-import { SalaryPaymentService } from '../services/hr/SalaryPaymentService.js'
-import { SalaryPaymentGenerationService } from '../services/hr/SalaryPaymentGenerationService.js'
-import { SalaryPaymentProcessingService } from '../services/hr/SalaryPaymentProcessingService.js'
-import { ReportService } from '../services/reports/ReportService.js'
-import { OperationHistoryService } from '../services/system/OperationHistoryService.js'
-import { AuthService } from '../services/auth/AuthService.js'
-import { MasterDataService } from '../services/system/MasterDataService.js'
-import { FixedAssetService } from '../services/assets/FixedAssetService.js'
-import { FixedAssetAllocationService } from '../services/assets/FixedAssetAllocationService.js'
-import { FixedAssetChangeService } from '../services/assets/FixedAssetChangeService.js'
-import { FixedAssetDepreciationService } from '../services/assets/FixedAssetDepreciationService.js'
-import { RentalService } from '../services/assets/RentalService.js'
-import type { MyService } from '../services/common/MyService.js'
-import type { ApprovalService } from '../services/common/ApprovalService.js'
-import type { AuditService } from '../services/system/AuditService.js'
-
-import type { PositionService } from '../services/hr/PositionService.js'
-import type { SalaryService } from '../services/hr/SalaryService.js'
-import type { AllowanceService } from '../services/hr/AllowanceService.js'
-import type { AllowancePaymentService } from '../services/hr/AllowancePaymentService.js'
-import type { EmployeeLeaveService } from '../services/hr/EmployeeLeaveService.js'
-import type { ExpenseReimbursementService } from '../services/hr/ExpenseReimbursementService.js'
-import type { AttendanceService } from '../services/hr/AttendanceService.js'
-import { AnnualLeaveService } from '../services/hr/AnnualLeaveService.js'
-import { PermissionService } from '../services/hr/PermissionService.js'
-import { EmailService } from '../services/common/EmailService.js'
-import { SiteBillService } from '../services/finance/SiteBillService.js'
-import { ArApService } from '../services/finance/ArApService.js'
-import { AccountTransferService } from '../services/finance/AccountTransferService.js'
-
-// PM services
-import { ProjectService } from '../services/pm/ProjectService.js'
-import { TaskService } from '../services/pm/TaskService.js'
-import { TaskTimelogService } from '../services/pm/TaskTimelogService.js'
-// System services
-// System services
-import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
-import { EmployeeProjectService } from '../services/hr/EmployeeProjectService.js'
-import { NotificationService } from '../services/common/NotificationService.js'
 
 // 已移除固定超级管理员
 // 所有管理员权限现在基于员工记录的职位

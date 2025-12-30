@@ -1,189 +1,45 @@
+/**
+ * 依赖注入中间件
+ * 
+ * 使用 ServiceContainer 实现懒加载的服务注入
+ * 服务只在首次访问时创建，减少不必要的初始化开销
+ */
+
 import { Context, Next } from 'hono'
 import { createDb } from '../db/index.js'
 import { Logger } from '../utils/logger.js'
-// System services
-import { SystemConfigService } from '../services/system/SystemConfigService.js'
-import { MasterDataService } from '../services/system/MasterDataService.js'
-import { KVCachedMasterDataService } from '../services/system/KVCachedMasterDataService.js'
-import { AuditService } from '../services/system/AuditService.js'
-import { OperationHistoryService } from '../services/system/OperationHistoryService.js'
-
-import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
-// HR services
-import { EmployeeService } from '../services/hr/EmployeeService.js'
-import { PositionService } from '../services/hr/PositionService.js'
-import { PermissionService } from '../services/hr/PermissionService.js'
-import { SalaryService } from '../services/hr/SalaryService.js'
-import { SalaryPaymentService } from '../services/hr/SalaryPaymentService.js'
-import { SalaryPaymentGenerationService } from '../services/hr/SalaryPaymentGenerationService.js'
-import { SalaryPaymentProcessingService } from '../services/hr/SalaryPaymentProcessingService.js'
-import { AllowanceService } from '../services/hr/AllowanceService.js'
-import { AllowancePaymentService } from '../services/hr/AllowancePaymentService.js'
-import { EmployeeLeaveService } from '../services/hr/EmployeeLeaveService.js'
-import { ExpenseReimbursementService } from '../services/hr/ExpenseReimbursementService.js'
-import { AttendanceService } from '../services/hr/AttendanceService.js'
-import { AnnualLeaveService } from '../services/hr/AnnualLeaveService.js'
-import { EmployeeProjectService } from '../services/hr/EmployeeProjectService.js'
-// Finance services
-import { FinanceService } from '../services/finance/FinanceService.js'
-import { ImportService } from '../services/finance/ImportService.js'
-import { SiteBillService } from '../services/finance/SiteBillService.js'
-import { ArApService } from '../services/finance/ArApService.js'
-import { AccountTransferService } from '../services/finance/AccountTransferService.js'
-// Assets services
-import { FixedAssetService } from '../services/assets/FixedAssetService.js'
-import { FixedAssetAllocationService } from '../services/assets/FixedAssetAllocationService.js'
-import { FixedAssetChangeService } from '../services/assets/FixedAssetChangeService.js'
-import { FixedAssetDepreciationService } from '../services/assets/FixedAssetDepreciationService.js'
-import { RentalService } from '../services/assets/RentalService.js'
-// Reports services
-import { ReportService } from '../services/reports/ReportService.js'
-// Auth services
-import { AuthService } from '../services/auth/AuthService.js'
-// Common services
-import { ApprovalService } from '../services/common/ApprovalService.js'
-import { NotificationService } from '../services/common/NotificationService.js'
-import { MyService } from '../services/common/MyService.js'
-import { EmailService } from '../services/common/EmailService.js'
-
-// PM services
-import { ProjectService, TaskService, TaskTimelogService } from '../services/pm/index.js'
+import { getMonitoringService } from '../utils/monitoring.js'
+import { createServiceContainer, ServiceContainer } from './service-container.js'
 import type { Env, AppVariables } from '../types/index.js'
 
 export const di = async (c: Context<{ Bindings: Env; Variables: AppVariables }>, next: Next) => {
   try {
     const db = createDb(c.env.DB)
+    
+    // 创建服务容器（懒加载模式）
+    const services = createServiceContainer(db, c.env)
 
-    // Initialize services
-    const systemConfigService = new SystemConfigService(db, c.env.SESSIONS_KV)
-    const annualLeaveService = new AnnualLeaveService(db)
-
-    const permissionService = new PermissionService(db)
-    const emailService = new EmailService(c.env as any)
-
-    const employeeService = new EmployeeService(db, emailService)
-    const financeService = new FinanceService(db)
-    const siteBillService = new SiteBillService(db)
-    const arApService = new ArApService(db, financeService)
-    const accountTransferService = new AccountTransferService(db, financeService)
-    const importService = new ImportService(db)
-    const auditService = new AuditService(db)
-    const operationHistoryService = new OperationHistoryService(db)
-    const salaryPaymentService = new SalaryPaymentService(db, operationHistoryService)
-    const salaryPaymentGenerationService = new SalaryPaymentGenerationService(db)
-    const salaryPaymentProcessingService = new SalaryPaymentProcessingService(db, operationHistoryService, salaryPaymentService)
-    const reportService = new ReportService(db, annualLeaveService, c.env.SESSIONS_KV)
-    const authService = new AuthService(
-      db,
-      c.env.SESSIONS_KV,
-      auditService
-    )
-    // 使用 KV 缓存的主数据服务（提升性能）
-    // 如需禁用缓存，可切换为: new MasterDataService(db)
-    const masterDataService = new KVCachedMasterDataService(db, c.env.SESSIONS_KV)
-    const fixedAssetService = new FixedAssetService(db)
-    const fixedAssetAllocationService = new FixedAssetAllocationService(db)
-    const fixedAssetChangeService = new FixedAssetChangeService(db)
-    const fixedAssetDepreciationService = new FixedAssetDepreciationService(db)
-    const rentalService = new RentalService(db)
-    const notificationService = new NotificationService(db, emailService, systemConfigService)
-    const approvalService = new ApprovalService(
-      db,
-      permissionService,
-      employeeService,
-      financeService,
-      notificationService,
-      operationHistoryService
-    )
-    const allowancePaymentService = new AllowancePaymentService(db)
-    // const auditService = new AuditService(db) // Moved up
-
-
-    const positionService = new PositionService(db)
-    const salaryService = new SalaryService(db)
-    const allowanceService = new AllowanceService(db)
-
-    const employeeLeaveService = new EmployeeLeaveService(db)
-    const expenseReimbursementService = new ExpenseReimbursementService(db)
-    const attendanceService = new AttendanceService(db)
-
-    // PM services
-    const projectService = new ProjectService(db)
-    const taskService = new TaskService(db)
-    const taskTimelogService = new TaskTimelogService(db)
-
-    // Org department service
-    const orgDepartmentService = new OrgDepartmentService(db)
-
-    // Employee project service
-    const employeeProjectService = new EmployeeProjectService(db)
-
-    const myService = new MyService(
-      db,
-      employeeLeaveService,
-      expenseReimbursementService,
-      attendanceService,
-      financeService,
-      allowancePaymentService,
-      fixedAssetService,
-      fixedAssetAllocationService,
-      employeeService,
-      annualLeaveService,
-      salaryService
-    )
-
-    // Inject into context
+    // 注入到上下文
     c.set('db', db)
-    c.set('services', {
-      systemConfig: systemConfigService,
-      finance: financeService,
-      employee: employeeService,
-      import: importService,
-      salaryPayment: salaryPaymentService,
-      salaryPaymentGeneration: salaryPaymentGenerationService,
-      salaryPaymentProcessing: salaryPaymentProcessingService,
-      report: reportService,
-      auth: authService,
-      masterData: masterDataService,
-      fixedAsset: fixedAssetService,
-      fixedAssetAllocation: fixedAssetAllocationService,
-      fixedAssetChange: fixedAssetChangeService,
-      fixedAssetDepreciation: fixedAssetDepreciationService,
-      rental: rentalService,
-      approval: approvalService,
-      my: myService,
-      audit: auditService,
-
-      position: positionService,
-      salary: salaryService,
-      allowance: allowanceService,
-      allowancePayment: allowancePaymentService,
-      employeeLeave: employeeLeaveService,
-      expenseReimbursement: expenseReimbursementService,
-      attendance: attendanceService,
-      annualLeave: annualLeaveService,
-      permission: permissionService,
-      email: emailService,
-      arAp: arApService,
-      accountTransfer: accountTransferService,
-      siteBill: siteBillService,
-
-      operationHistory: operationHistoryService,
-      // PM services
-      project: projectService,
-      task: taskService,
-      taskTimelog: taskTimelogService,
-      // System services
-      orgDepartment: orgDepartmentService,
-      // HR additional services
-      employeeProject: employeeProjectService,
-      // Notification service
-      notification: notificationService,
-    })
+    c.set('monitoring', getMonitoringService())
+    c.set('services', services)
 
     await next()
+
+    // 调试：记录本次请求实际使用的服务数量
+    if (process.env.NODE_ENV === 'development') {
+      Logger.debug('[DI] Services used in this request', {
+        count: services.createdServicesCount,
+        services: services.createdServiceNames,
+      })
+    }
   } catch (error) {
-    Logger.error('DI initialization error', { error: error instanceof Error ? error.message : String(error) })
+    Logger.error('DI initialization error', { 
+      error: error instanceof Error ? error.message : String(error) 
+    })
     throw error
   }
 }
+
+// 导出 ServiceContainer 类型供其他模块使用
+export type { ServiceContainer }

@@ -23,6 +23,11 @@ import { apiSuccess, jsonResponse } from './utils/response.js'
 import { createDb } from './db/index.js'
 import { DepartmentService } from './services/system/DepartmentService.js'
 import { AuditService } from './services/system/AuditService.js'
+import { initMonitoringService, getMonitoringService } from './utils/monitoring.js'
+
+// Initialize monitoring service at startup (singleton)
+initMonitoringService()
+Logger.info('[App] Monitoring service initialized at startup')
 
 // Route imports (V2 only)
 import { authRoutes as authRoutesV2 } from './routes/v2/auth.js'
@@ -163,8 +168,7 @@ app.get('/api/health', async c => {
 
   const healthy = checks.db && checks.kv && checks.r2
 
-  // 获取性能指标（如果可用）
-  const { getMonitoringService } = await import('./utils/monitoring.js')
+  // 获取性能指标（使用已初始化的监控服务）
   const monitoring = getMonitoringService()
 
   // 获取缓存统计（如果可用）

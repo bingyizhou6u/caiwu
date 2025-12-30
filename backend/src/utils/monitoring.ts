@@ -342,17 +342,30 @@ export class MonitoringService {
 }
 
 /**
- * 全局监控服务实例
- * 在生产环境中，可以考虑使用单例模式或依赖注入
+ * 全局监控服务实例（单例模式）
+ * 在应用启动时初始化，避免每次错误处理都创建新实例
  */
 let monitoringInstance: MonitoringService | null = null
 
 /**
+ * 初始化监控服务（应在应用启动时调用）
+ * @returns 监控服务实例
+ */
+export function initMonitoringService(): MonitoringService {
+  if (!monitoringInstance) {
+    monitoringInstance = new MonitoringService()
+    Logger.info('[Monitoring] Service initialized')
+  }
+  return monitoringInstance
+}
+
+/**
  * 获取监控服务实例
+ * 如果未初始化，会自动初始化（向后兼容）
  */
 export function getMonitoringService(): MonitoringService {
   if (!monitoringInstance) {
-    monitoringInstance = new MonitoringService()
+    return initMonitoringService()
   }
   return monitoringInstance
 }
@@ -362,4 +375,11 @@ export function getMonitoringService(): MonitoringService {
  */
 export function resetMonitoringService(): void {
   monitoringInstance = null
+}
+
+/**
+ * 检查监控服务是否已初始化
+ */
+export function isMonitoringInitialized(): boolean {
+  return monitoringInstance !== null
 }

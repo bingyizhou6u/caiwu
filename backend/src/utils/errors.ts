@@ -138,11 +138,22 @@ export async function errorHandler(err: Error, c: Context) {
 
 /**
  * V2 Unified Error Handler
+ * 使用预初始化的监控服务，避免每次错误处理都动态导入
  */
-export async function errorHandlerV2(err: Error, c: Context) {
-  // 导入监控服务（延迟导入避免循环依赖）
-  const { getMonitoringService } = await import('./monitoring.js')
-  const monitoring = getMonitoringService()
+import { getMonitoringService, type MonitoringService } from './monitoring.js'
+
+// 预加载监控服务引用（模块加载时初始化）
+let _monitoringService: MonitoringService | null = null
+
+function getMonitoring(): MonitoringService {
+  if (!_monitoringService) {
+    _monitoringService = getMonitoringService()
+  }
+  return _monitoringService
+}
+
+export function errorHandlerV2(err: Error, c: Context) {
+  const monitoring = getMonitoring()
 
   if (err instanceof AppError) {
     Logger.info(
@@ -217,13 +228,16 @@ export async function errorHandlerV2(err: Error, c: Context) {
   // 未预期的错误通常是高严重程度
   monitoring.recordError(err, monitoring.extractContext(c as any), ErrorSeverity.HIGH)
 
+  // 判断是否为生产环境
+  const isProduction = c.req.url.includes('https://') && !c.req.url.includes('localhost')
+
   return c.json(
     {
       success: false,
       error: {
         code: ErrorCodes.SYS_INTERNAL_ERROR,
         message: '系统内部错误',
-        details: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+        details: isProduction ? undefined : err.stack,
       },
     },
     500
