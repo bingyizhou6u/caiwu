@@ -79,8 +79,8 @@
   - 运行现有测试确保无回归
   - 手动检查关键页面视觉效果
 
-- [ ] 10. 创建样式编写规范文档
-  - [ ] 10.1 创建 `.kiro/steering/frontend-styles.md`
+- [x] 10. 创建样式编写规范文档
+  - [x] 10.1 创建 `.kiro/steering/frontend-styles.md`
     - 说明样式分层架构
     - 说明何时使用 CSS 类、CSS Modules、内联样式
     - 列出禁止的模式（硬编码颜色、过度使用内联样式）
