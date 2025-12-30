@@ -9,10 +9,8 @@ export const createAccountTransferSchema = z.object({
     toAmount: z.number().min(0.01, '转入金额必须大于0'),
     exchangeRate: z.number().optional(),
     memo: z.string().optional(),
-    voucherUrls: z.array(z.string()).min(1, '请至少上传一张凭证'), // Note: Component uses voucherUrls array for upload but API might take single url or array? 
-    // Checking AccountTransfer.tsx: body: { ... voucherUrl: voucherUrls[0] }
-    // So the form data has voucherUrls (array), but the API payload uses voucherUrl (string).
-    // I will keep the schema matching the form data structure.
+    // 表单使用 voucherUrls 数组，API 提交时取第一个元素
+    voucherUrls: z.array(z.string()).min(1, '请至少上传一张凭证'),
 })
 
 export type CreateAccountTransferFormData = z.infer<typeof createAccountTransferSchema>

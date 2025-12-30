@@ -4,17 +4,7 @@ import dayjs from 'dayjs'
 export const createFlowSchema = z.object({
     bizDate: z.any().refine((val) => val && dayjs(val).isValid(), '请选择有效的日期'),
     voucher_no: z.string().optional(),
-    // owner is handled by state, not form field directly usually, but let's see.
-    // In Flows.tsx, owner is a radio group outside the form or controlled state?
-    // It's a Radio.Group but not in Form.Item? No, it IS in Form.Item label="归属".
-    // Wait, <Form.Item label="归属"> <Radio.Group ... value={owner} onChange={...} /> </Form.Item>
-    // It seems it's controlled by `owner` state, not form field name.
-    // But let's check if we can make it part of the form.
-    // The payload uses `owner_scope: owner`.
-    // I will exclude it from schema if it's external state, or include it if I refactor to use form field.
-    // Refactoring to use form field is better.
-    // But for now, let's stick to the form fields that are actually inside <Form.Item name="...">.
-
+    // owner_scope 由外部状态控制，不在表单 schema 中
     projectId: z.string().optional(),
     siteId: z.string().optional(),
     type: z.string().min(1, '请选择类型'),

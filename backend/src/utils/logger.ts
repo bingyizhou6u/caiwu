@@ -16,6 +16,7 @@ export class Logger {
   // List of keys to mask
   private static readonly SENSITIVE_KEYS = new Set([
     'password',
+    'token',
     'access_token',
     'refresh_token',
     'secret',
