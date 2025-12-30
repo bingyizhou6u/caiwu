@@ -61,6 +61,10 @@ export const lightTheme: ThemeConfig = {
             siderBg: '#F2F2F7',
         },
         Menu: {
+            itemBg: 'transparent',
+            subMenuItemBg: 'transparent',
+            itemSelectedBg: 'rgba(120, 120, 128, 0.16)',
+            itemHoverBg: 'rgba(118, 118, 128, 0.12)',
             darkItemBg: 'transparent',
             darkSubMenuItemBg: 'transparent',
             darkItemSelectedBg: 'rgba(120, 120, 128, 0.16)',
@@ -207,6 +211,10 @@ export const darkTheme: ThemeConfig = {
             siderBg: '#1C1C1E',
         },
         Menu: {
+            itemBg: 'transparent',
+            subMenuItemBg: 'transparent',
+            itemSelectedBg: 'rgba(120, 120, 128, 0.32)',
+            itemHoverBg: 'rgba(118, 118, 128, 0.24)',
             darkItemBg: 'transparent',
             darkSubMenuItemBg: 'transparent',
             darkItemSelectedBg: 'rgba(120, 120, 128, 0.32)',
