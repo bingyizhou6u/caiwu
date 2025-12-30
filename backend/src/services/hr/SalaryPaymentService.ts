@@ -156,7 +156,7 @@ export class SalaryPaymentService {
     })
 
     // 获取分配情况 - 添加性能监控
-    const paymentIds = payments.map((p: any) => p.payment.id)
+    const paymentIds = paymentsWithEmployeeInfo.map((p: any) => p.payment.id)
     let allocations: any[] = []
     if (paymentIds.length > 0) {
       allocations = await dbQuery(
@@ -179,10 +179,12 @@ export class SalaryPaymentService {
       allocationsMap.get(a.salaryPaymentId).push(a)
     })
 
-    return payments.map((p: any) => ({
+    return paymentsWithEmployeeInfo.map((p: any) => ({
       ...p.payment,
       employeeName: p.employeeName,
       departmentName: p.departmentName,
+      orgDepartmentName: p.orgDepartmentName,
+      positionName: p.positionName,
       allocations: allocationsMap.get(p.payment.id) || [],
     }))
   }
