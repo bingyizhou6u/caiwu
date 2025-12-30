@@ -1,26 +1,30 @@
 /**
- * Ant Design 全局覆盖样式
- * 覆盖 Ant Design 组件的全局默认样式
+ * Apple Style Ant Design Overrides
+ * 全局覆盖 Ant Design 默认样式
  */
 
-/* Layout Overrides */
+/* ========== Layout ========== */
+.ant-layout {
+    background: var(--color-bg-base);
+}
+
 .ant-layout-sider {
-    box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.1);
+    box-shadow: none;
 }
 
 .ant-menu-dark {
     background: transparent;
 }
 
-/* ========== NProgress Customization ========== */
+/* ========== NProgress ========== */
 #nprogress .bar {
     background: var(--color-primary) !important;
-    height: 3px !important;
-    box-shadow: 0 0 10px var(--color-primary), 0 0 5px var(--color-primary);
+    height: 2px !important;
+    box-shadow: none;
 }
 
 #nprogress .peg {
-    box-shadow: 0 0 10px var(--color-primary), 0 0 5px var(--color-primary);
+    box-shadow: 0 0 8px var(--color-primary);
 }
 
 #nprogress .spinner-icon {
@@ -28,17 +32,452 @@
     border-left-color: var(--color-primary);
 }
 
-/* Dark Mode NProgress */
-[data-theme="dark"] #nprogress .bar {
-    background: var(--color-primary-hover) !important;
-    box-shadow: 0 0 10px var(--color-primary-hover), 0 0 5px var(--color-primary-hover);
+/* ========== Spin ========== */
+.ant-spin-dot-item {
+    background: var(--color-primary);
 }
 
-[data-theme="dark"] #nprogress .peg {
-    box-shadow: 0 0 10px var(--color-primary-hover), 0 0 5px var(--color-primary-hover);
+/* ========== Pagination ========== */
+.ant-pagination {
+    font-size: var(--font-size-base);
 }
 
-[data-theme="dark"] #nprogress .spinner-icon {
-    border-top-color: var(--color-primary-hover);
-    border-left-color: var(--color-primary-hover);
+.ant-pagination-item {
+    min-width: 32px;
+    height: 32px;
+    line-height: 30px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-base);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.ant-pagination-item a {
+    color: var(--color-text-primary);
+}
+
+.ant-pagination-item:hover {
+    border-color: var(--color-primary);
+}
+
+.ant-pagination-item:hover a {
+    color: var(--color-primary);
+}
+
+.ant-pagination-item-active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.ant-pagination-item-active a {
+    color: #fff;
+}
+
+.ant-pagination-item-active:hover a {
+    color: #fff;
+}
+
+.ant-pagination-prev,
+.ant-pagination-next {
+    min-width: 32px;
+    height: 32px;
+    line-height: 30px;
+    border-radius: var(--radius-sm);
+}
+
+.ant-pagination-prev .ant-pagination-item-link,
+.ant-pagination-next .ant-pagination-item-link {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-base);
+    color: var(--color-text-secondary);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.ant-pagination-prev:hover .ant-pagination-item-link,
+.ant-pagination-next:hover .ant-pagination-item-link {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* ========== Dropdown ========== */
+.ant-dropdown {
+    font-size: var(--font-size-base);
+}
+
+.ant-dropdown-menu {
+    padding: var(--spacing-1);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-separator);
+    box-shadow: var(--shadow-lg);
+    background: var(--color-bg-elevated);
+}
+
+.ant-dropdown-menu-item {
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-base);
+    transition: background var(--duration-fast) var(--ease-default);
+}
+
+.ant-dropdown-menu-item:hover {
+    background: var(--color-fill-tertiary);
+}
+
+.ant-dropdown-menu-item-danger {
+    color: var(--color-error);
+}
+
+.ant-dropdown-menu-item-danger:hover {
+    background: rgba(255, 59, 48, 0.1);
+    color: var(--color-error);
+}
+
+.ant-dropdown-menu-item-divider {
+    margin: var(--spacing-1) 0;
+    background: var(--color-separator);
+}
+
+/* ========== Tooltip ========== */
+.ant-tooltip {
+    font-size: var(--font-size-sm);
+}
+
+.ant-tooltip-inner {
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.ant-tooltip-arrow::before {
+    background: var(--color-bg-tertiary);
+}
+
+/* ========== Popover ========== */
+.ant-popover-inner {
+    padding: 0;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-separator);
+    box-shadow: var(--shadow-lg);
+    background: var(--color-bg-elevated);
+}
+
+.ant-popover-title {
+    padding: var(--spacing-3) var(--spacing-4);
+    border-bottom: 1px solid var(--color-separator);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.ant-popover-inner-content {
+    padding: var(--spacing-4);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+}
+
+/* ========== Message ========== */
+.ant-message-notice-content {
+    padding: var(--spacing-3) var(--spacing-4);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-elevated);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-separator);
+}
+
+/* ========== Notification ========== */
+.ant-notification-notice {
+    padding: var(--spacing-4);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-elevated);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--color-separator);
+}
+
+.ant-notification-notice-message {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-2);
+}
+
+.ant-notification-notice-description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+}
+
+.ant-notification-notice-close {
+    color: var(--color-text-tertiary);
+    transition: color var(--duration-fast) var(--ease-default);
+}
+
+.ant-notification-notice-close:hover {
+    color: var(--color-text-primary);
+}
+
+/* ========== Breadcrumb ========== */
+.ant-breadcrumb {
+    font-size: var(--font-size-sm);
+}
+
+.ant-breadcrumb a {
+    color: var(--color-text-tertiary);
+    transition: color var(--duration-fast) var(--ease-default);
+}
+
+.ant-breadcrumb a:hover {
+    color: var(--color-primary);
+}
+
+.ant-breadcrumb-separator {
+    color: var(--color-text-quaternary);
+}
+
+.ant-breadcrumb li:last-child {
+    color: var(--color-text-primary);
+}
+
+/* ========== Tag ========== */
+.ant-tag {
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    border: none;
+    background: var(--color-fill-tertiary);
+    color: var(--color-text-primary);
+}
+
+.ant-tag-blue {
+    background: rgba(0, 122, 255, 0.12);
+    color: var(--apple-blue);
+}
+
+.ant-tag-green {
+    background: rgba(52, 199, 89, 0.12);
+    color: var(--apple-green);
+}
+
+.ant-tag-red {
+    background: rgba(255, 59, 48, 0.12);
+    color: var(--apple-red);
+}
+
+.ant-tag-orange {
+    background: rgba(255, 149, 0, 0.12);
+    color: var(--apple-orange);
+}
+
+.ant-tag-purple {
+    background: rgba(175, 82, 222, 0.12);
+    color: var(--apple-purple);
+}
+
+/* ========== Badge ========== */
+.ant-badge-count {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    border-radius: var(--radius-full);
+    box-shadow: none;
+    background: var(--color-error);
+}
+
+.ant-badge-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--color-error);
+    box-shadow: none;
+}
+
+/* ========== Empty ========== */
+.ant-empty-description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-tertiary);
+}
+
+/* ========== Descriptions ========== */
+.ant-descriptions-bordered .ant-descriptions-view {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-separator);
+    overflow: hidden;
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-label {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-medium);
+    border-color: var(--color-separator);
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-content {
+    border-color: var(--color-separator);
+    color: var(--color-text-primary);
+}
+
+/* ========== Collapse ========== */
+.ant-collapse {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-separator);
+    background: var(--color-bg-base);
+}
+
+.ant-collapse-item {
+    border-bottom: 1px solid var(--color-separator);
+}
+
+.ant-collapse-item:last-child {
+    border-bottom: none;
+}
+
+.ant-collapse-header {
+    padding: var(--spacing-4) !important;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    transition: background var(--duration-fast) var(--ease-default);
+}
+
+.ant-collapse-header:hover {
+    background: var(--color-fill-tertiary);
+}
+
+.ant-collapse-content {
+    border-top: 1px solid var(--color-separator);
+    background: var(--color-bg-base);
+}
+
+.ant-collapse-content-box {
+    padding: var(--spacing-4);
+}
+
+/* ========== Alert ========== */
+.ant-alert {
+    padding: var(--spacing-3) var(--spacing-4);
+    border-radius: var(--radius-md);
+    border: none;
+}
+
+.ant-alert-info {
+    background: rgba(90, 200, 250, 0.12);
+}
+
+.ant-alert-info .ant-alert-icon {
+    color: var(--apple-teal);
+}
+
+.ant-alert-success {
+    background: rgba(52, 199, 89, 0.12);
+}
+
+.ant-alert-success .ant-alert-icon {
+    color: var(--apple-green);
+}
+
+.ant-alert-warning {
+    background: rgba(255, 149, 0, 0.12);
+}
+
+.ant-alert-warning .ant-alert-icon {
+    color: var(--apple-orange);
+}
+
+.ant-alert-error {
+    background: rgba(255, 59, 48, 0.12);
+}
+
+.ant-alert-error .ant-alert-icon {
+    color: var(--apple-red);
+}
+
+.ant-alert-message {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+}
+
+.ant-alert-description {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+/* ========== Progress ========== */
+.ant-progress-inner {
+    background: var(--color-fill-tertiary);
+}
+
+.ant-progress-bg {
+    background: var(--color-primary);
+}
+
+.ant-progress-success-bg {
+    background: var(--color-success);
+}
+
+/* ========== Avatar ========== */
+.ant-avatar {
+    background: var(--color-fill-secondary);
+    color: var(--color-text-primary);
+}
+
+/* ========== Segmented ========== */
+.ant-segmented {
+    padding: 2px;
+    border-radius: var(--radius-sm);
+    background: var(--color-fill-tertiary);
+}
+
+.ant-segmented-item {
+    border-radius: var(--radius-xs);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.ant-segmented-item-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+}
+
+.ant-segmented-item-selected {
+    background: var(--color-bg-base);
+    box-shadow: var(--shadow-sm);
+}
+
+.ant-segmented-item-selected .ant-segmented-item-label {
+    color: var(--color-text-primary);
+}
+
+/* ========== Steps ========== */
+.ant-steps-item-process .ant-steps-item-icon {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.ant-steps-item-finish .ant-steps-item-icon {
+    background: var(--color-bg-base);
+    border-color: var(--color-primary);
+}
+
+.ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon {
+    color: var(--color-primary);
+}
+
+.ant-steps-item-title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+}
+
+/* ========== Timeline ========== */
+.ant-timeline-item-head {
+    background: var(--color-bg-base);
+    border-color: var(--color-primary);
+}
+
+.ant-timeline-item-head-blue {
+    border-color: var(--color-primary);
+}
+
+.ant-timeline-item-tail {
+    border-color: var(--color-separator);
 }

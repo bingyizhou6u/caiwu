@@ -1,18 +1,232 @@
 /**
- * 模态框组件样式
- * Ant Design Modal 组件增强样式
+ * Apple Style Modal Components
+ * 模态框组件样式 - 极简主义设计
  */
 
+/* ========== Modal Mask ========== */
+.ant-modal-mask {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* ========== Modal Container ========== */
+.ant-modal {
+    top: 100px;
+}
+
 .ant-modal-content {
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    background: var(--color-bg-elevated);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--color-separator);
+}
+
+/* ========== Modal Header ========== */
+.ant-modal-header {
+    padding: var(--spacing-5) var(--spacing-6);
+    border-bottom: 1px solid var(--color-separator);
+    background: transparent;
+    margin-bottom: 0;
+}
+
+.ant-modal-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    line-height: var(--line-height-tight);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+/* ========== Modal Body ========== */
+.ant-modal-body {
+    padding: var(--spacing-6);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    line-height: var(--line-height-relaxed);
+}
+
+/* ========== Modal Footer ========== */
+.ant-modal-footer {
+    padding: var(--spacing-4) var(--spacing-6);
+    border-top: 1px solid var(--color-separator);
+    background: var(--color-bg-secondary);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+}
+
+.ant-modal-footer .ant-btn {
+    min-width: 80px;
+}
+
+/* ========== Modal Close Button ========== */
+.ant-modal-close {
+    top: var(--spacing-4);
+    right: var(--spacing-4);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-tertiary);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.ant-modal-close:hover {
+    background: var(--color-fill-tertiary);
+    color: var(--color-text-primary);
+}
+
+.ant-modal-close-x {
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* ========== Confirm Modal ========== */
+.ant-modal-confirm .ant-modal-content {
+    padding: 0;
+}
+
+.ant-modal-confirm-body-wrapper {
+    padding: var(--spacing-6);
+}
+
+.ant-modal-confirm-body {
+    display: flex;
+    gap: var(--spacing-4);
+}
+
+.ant-modal-confirm-body > .anticon {
+    font-size: 22px;
+    margin-top: 2px;
+}
+
+.ant-modal-confirm-body > .anticon-info-circle {
+    color: var(--color-info);
+}
+
+.ant-modal-confirm-body > .anticon-check-circle {
+    color: var(--color-success);
+}
+
+.ant-modal-confirm-body > .anticon-close-circle {
+    color: var(--color-error);
+}
+
+.ant-modal-confirm-body > .anticon-exclamation-circle {
+    color: var(--color-warning);
+}
+
+.ant-modal-confirm-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    line-height: var(--line-height-tight);
+}
+
+.ant-modal-confirm-content {
+    margin-top: var(--spacing-2);
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+}
+
+.ant-modal-confirm-btns {
+    margin-top: var(--spacing-6);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+}
+
+/* ========== Modal Animation ========== */
+.ant-modal-wrap {
     overflow: hidden;
 }
 
-.ant-modal-header {
-    border-bottom: 1px solid var(--color-border);
-    padding: 16px 24px;
+/* Zoom animation enhancement */
+.ant-zoom-enter,
+.ant-zoom-appear {
+    opacity: 0;
+    transform: scale(0.95);
+    animation-timing-function: var(--ease-out);
 }
 
-.ant-modal-body {
-    padding: 24px;
+.ant-zoom-enter-active,
+.ant-zoom-appear-active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.ant-zoom-leave {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.ant-zoom-leave-active {
+    opacity: 0;
+    transform: scale(0.95);
+    animation-timing-function: var(--ease-in);
+}
+
+/* ========== Drawer (Modal variant) ========== */
+.ant-drawer-content {
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+    background: var(--color-bg-elevated);
+}
+
+.ant-drawer-header {
+    padding: var(--spacing-5) var(--spacing-6);
+    border-bottom: 1px solid var(--color-separator);
+}
+
+.ant-drawer-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.ant-drawer-body {
+    padding: var(--spacing-6);
+}
+
+.ant-drawer-footer {
+    padding: var(--spacing-4) var(--spacing-6);
+    border-top: 1px solid var(--color-separator);
+}
+
+.ant-drawer-close {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-tertiary);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.ant-drawer-close:hover {
+    background: var(--color-fill-tertiary);
+    color: var(--color-text-primary);
+}
+
+/* ========== Modal Sizes ========== */
+.ant-modal-small .ant-modal-content {
+    max-width: 400px;
+}
+
+.ant-modal-large .ant-modal-content {
+    max-width: 800px;
+}
+
+/* ========== Centered Modal ========== */
+.ant-modal-centered .ant-modal {
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
 }

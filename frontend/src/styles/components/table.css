@@ -1,37 +1,178 @@
 /**
  * 表格组件样式
- * Ant Design Table 组件增强样式
+ * Apple 风格 - 简约设计
  */
 
+/* ========== 表格容器 ========== */
 .ant-table-wrapper .ant-table {
+    background: var(--color-bg-container);
     border-radius: var(--radius-lg);
     overflow: hidden;
 }
 
-.ant-table-wrapper .ant-table-thead>tr>th {
-    background: linear-gradient(180deg, var(--color-bg-container) 0%, var(--color-bg-layout) 100%);
-    font-weight: 600;
+/* ========== 表头 ========== */
+.ant-table-wrapper .ant-table-thead > tr > th {
+    background: var(--color-bg-secondary) !important;
+    border-bottom: 1px solid var(--color-separator);
+    padding: var(--spacing-3) var(--spacing-4);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th::before {
+    display: none !important;
+}
+
+/* ========== 表格内容 ========== */
+.ant-table-wrapper .ant-table-tbody > tr > td {
+    padding: var(--spacing-3) var(--spacing-4);
+    border-bottom: 1px solid var(--color-separator);
+    font-size: var(--font-size-base);
     color: var(--color-text-primary);
-    border-bottom: 2px solid var(--color-border);
-    padding: 14px 16px;
+    transition: background var(--duration-fast) var(--ease-default);
 }
 
-.ant-table-wrapper .ant-table-tbody>tr>td {
-    padding: 12px 16px;
-    transition: background 0.2s ease;
+.ant-table-wrapper .ant-table-tbody > tr:last-child > td {
+    border-bottom: none;
 }
 
-/* Striped Rows */
-.table-striped .ant-table-tbody>tr:nth-child(even) {
-    background: rgba(248, 250, 252, 0.5);
+/* ========== 行悬停 ========== */
+.ant-table-wrapper .ant-table-tbody > tr:hover > td {
+    background: var(--color-fill-quaternary) !important;
 }
 
-/* Row Hover */
-.ant-table-wrapper .ant-table-tbody>tr:hover>td {
-    background: rgba(99, 102, 241, 0.04) !important;
+/* ========== 选中行 ========== */
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+    background: var(--color-primary-bg);
 }
 
-/* Selected Row */
-.ant-table-wrapper .ant-table-tbody>tr.ant-table-row-selected>td {
-    background: rgba(99, 102, 241, 0.08);
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected:hover > td {
+    background: var(--color-primary-bg);
+}
+
+/* ========== 斑马纹 ========== */
+.table-striped .ant-table-tbody > tr:nth-child(even) > td {
+    background: var(--color-fill-quaternary);
+}
+
+.table-striped .ant-table-tbody > tr:nth-child(even):hover > td {
+    background: var(--color-fill-tertiary) !important;
+}
+
+/* ========== 排序图标 ========== */
+.ant-table-column-sorter {
+    color: var(--color-text-quaternary);
+}
+
+.ant-table-column-sorter-up.active,
+.ant-table-column-sorter-down.active {
+    color: var(--color-primary);
+}
+
+/* ========== 筛选图标 ========== */
+.ant-table-filter-trigger {
+    color: var(--color-text-quaternary);
+    transition: color var(--duration-fast) var(--ease-default);
+}
+
+.ant-table-filter-trigger:hover {
+    color: var(--color-text-secondary);
+}
+
+.ant-table-filter-trigger.active {
+    color: var(--color-primary);
+}
+
+/* ========== 展开行 ========== */
+.ant-table-expanded-row > td {
+    background: var(--color-bg-secondary) !important;
+}
+
+/* ========== 空状态 ========== */
+.ant-table-placeholder {
+    background: var(--color-bg-container);
+}
+
+.ant-empty-description {
+    color: var(--color-text-tertiary);
+}
+
+/* ========== 分页 ========== */
+.ant-table-pagination {
+    margin: var(--spacing-4) 0 0 !important;
+}
+
+/* ========== 固定列阴影 ========== */
+.ant-table-cell-fix-left-last::after,
+.ant-table-cell-fix-right-first::after {
+    box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.08);
+}
+
+/* ========== 可展开行图标 ========== */
+.ant-table-row-expand-icon {
+    border-color: var(--color-separator);
+    color: var(--color-text-tertiary);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.ant-table-row-expand-icon:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* ========== 表格边框样式 ========== */
+.ant-table-bordered .ant-table-container {
+    border: 1px solid var(--color-separator);
+    border-radius: var(--radius-lg);
+}
+
+.ant-table-bordered .ant-table-thead > tr > th,
+.ant-table-bordered .ant-table-tbody > tr > td {
+    border-right: 1px solid var(--color-separator);
+}
+
+/* ========== 暗色模式 ========== */
+[data-theme="dark"] .ant-table-wrapper .ant-table {
+    background: var(--color-bg-container);
+}
+
+[data-theme="dark"] .ant-table-wrapper .ant-table-thead > tr > th {
+    background: var(--color-bg-secondary) !important;
+    border-bottom-color: var(--color-separator);
+}
+
+[data-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr > td {
+    border-bottom-color: var(--color-separator);
+}
+
+[data-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr:hover > td {
+    background: var(--color-fill-quaternary) !important;
+}
+
+[data-theme="dark"] .ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+    background: var(--color-primary-bg);
+}
+
+[data-theme="dark"] .table-striped .ant-table-tbody > tr:nth-child(even) > td {
+    background: var(--color-fill-quaternary);
+}
+
+[data-theme="dark"] .ant-table-expanded-row > td {
+    background: var(--color-bg-secondary) !important;
+}
+
+[data-theme="dark"] .ant-table-placeholder {
+    background: var(--color-bg-container);
+}
+
+[data-theme="dark"] .ant-table-bordered .ant-table-container {
+    border-color: var(--color-separator);
+}
+
+[data-theme="dark"] .ant-table-bordered .ant-table-thead > tr > th,
+[data-theme="dark"] .ant-table-bordered .ant-table-tbody > tr > td {
+    border-right-color: var(--color-separator);
 }

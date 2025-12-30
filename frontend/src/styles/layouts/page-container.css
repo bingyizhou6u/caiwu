@@ -77,7 +77,7 @@
 
 /* 外层容器卡片样式（灰色背景） */
 .page-card-outer {
-    background: #fafafa !important;
+    background: var(--color-bg-secondary) !important;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
 }
@@ -89,21 +89,21 @@
 /* 内部卡片样式（白色背景 + 阴影） */
 .page-card-inner {
     background: var(--color-bg-container) !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+    box-shadow: var(--shadow-sm) !important;
 }
 
 .page-card-inner:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+    box-shadow: var(--shadow-md) !important;
 }
 
 .page-card:hover {
-    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
-    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-primary-bg);
 }
 
 [data-theme="dark"] .page-card:hover {
-    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.3);
-    border-color: rgba(129, 140, 248, 0.3);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-primary-bg);
 }
 
 /* Breadcrumb Enhancements */

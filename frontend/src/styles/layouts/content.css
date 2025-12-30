@@ -1,11 +1,12 @@
 /**
  * 内容区样式
- * 主布局内容区域的样式定义
+ * Apple 风格 - 极简主义，大量留白
  */
 
 .main-content-layout {
-    transition: var(--transition-base);
+    transition: margin-left var(--duration-normal) var(--ease-default);
     background: var(--color-bg-layout);
+    min-height: 100vh;
 }
 
 .main-content {
@@ -13,27 +14,147 @@
     overflow: initial;
     display: flex;
     flex-direction: column;
+    min-height: calc(100vh - var(--header-height) - 46px); /* header + tabs */
 }
 
 .content-wrapper {
-    padding: 24px;
+    padding: var(--spacing-6);
     min-height: 360px;
     background: var(--color-bg-container);
     border-radius: var(--radius-lg);
-    margin: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    border: 1px solid var(--color-border);
-    animation: contentFadeIn 0.3s ease-out;
+    margin: var(--spacing-4);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-separator);
+    animation: contentFadeIn var(--duration-normal) var(--ease-out);
+    flex: 1;
 }
 
 @keyframes contentFadeIn {
     from {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(4px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ========== Section Spacing ========== */
+.section {
+    margin-bottom: var(--spacing-8);
+}
+
+.section:last-child {
+    margin-bottom: 0;
+}
+
+.section-header {
+    margin-bottom: var(--spacing-5);
+}
+
+.section-title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-2);
+}
+
+.section-description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+}
+
+/* ========== Page Header ========== */
+.page-header {
+    margin-bottom: var(--spacing-6);
+}
+
+.page-title {
+    font-size: var(--font-size-xxxl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-2);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.page-description {
+    font-size: var(--font-size-md);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+}
+
+/* ========== Content Grid ========== */
+.content-grid {
+    display: grid;
+    gap: var(--spacing-5);
+}
+
+.content-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.content-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.content-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1024px) {
+    .content-grid-3,
+    .content-grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .content-grid-2,
+    .content-grid-3,
+    .content-grid-4 {
+        grid-template-columns: 1fr;
+    }
+    
+    .content-wrapper {
+        padding: var(--spacing-4);
+        margin: var(--spacing-3);
+        border-radius: var(--radius-md);
+    }
+}
+
+/* ========== Empty State ========== */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-12) var(--spacing-6);
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    color: var(--color-text-quaternary);
+    margin-bottom: var(--spacing-4);
+}
+
+.empty-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-2);
+}
+
+.empty-state-description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-tertiary);
+    max-width: 400px;
+}
+
+/* ========== Dark Mode ========== */
+[data-theme="dark"] .content-wrapper {
+    background: var(--color-bg-container);
+    border-color: var(--color-separator);
+    box-shadow: var(--shadow-card);
 }

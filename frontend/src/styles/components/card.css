@@ -1,42 +1,111 @@
 /**
  * 卡片组件样式
- * Ant Design Card 组件增强样式和通用卡片样式
+ * Apple 风格 - 简约设计
  */
 
-/* Card Styles */
+/* ========== Ant Design Card ========== */
+.ant-card {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-separator);
+    box-shadow: var(--shadow-card);
+    background: var(--color-bg-container);
+    transition: all var(--duration-normal) var(--ease-default);
+}
+
+.ant-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.ant-card-head {
+    border-bottom: 1px solid var(--color-separator);
+    padding: var(--spacing-4) var(--spacing-5);
+    min-height: auto;
+}
+
+.ant-card-head-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.ant-card-extra {
+    color: var(--color-text-secondary);
+}
+
+.ant-card-body {
+    padding: var(--spacing-5);
+}
+
+/* ========== 页面卡片 ========== */
 .page-card {
     background: var(--color-bg-container);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    transition: var(--transition-base);
+    border: 1px solid var(--color-separator);
+    box-shadow: var(--shadow-card);
+    transition: all var(--duration-normal) var(--ease-default);
 }
 
 .page-card:hover {
-    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
-    border-color: var(--color-primary-bg);
+    box-shadow: var(--shadow-md);
 }
 
 .page-card .ant-card-head {
-    border-bottom: 1px solid var(--color-border);
-    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-separator);
+    padding: var(--spacing-4) var(--spacing-5);
 }
 
 .page-card .ant-card-body {
-    padding: 20px;
+    padding: var(--spacing-5);
 }
 
-/* 任务卡片悬停效果 - 看板专用 */
+/* ========== 统计卡片 ========== */
+.stat-card {
+    background: var(--color-bg-container);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-separator);
+    padding: var(--spacing-5);
+    transition: all var(--duration-normal) var(--ease-default);
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.stat-card-title {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-tertiary);
+    margin-bottom: var(--spacing-2);
+}
+
+.stat-card-value {
+    font-size: var(--font-size-xxxl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.stat-card-suffix {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    margin-left: var(--spacing-1);
+}
+
+/* ========== 任务卡片 ========== */
 .task-card {
     position: relative;
-    border: 1px solid var(--color-border);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--color-bg-container);
+    border: 1px solid var(--color-separator);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-4);
+    transition: all var(--duration-fast) var(--ease-default);
+    cursor: pointer;
 }
 
 .task-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px -8px rgba(99, 102, 241, 0.25);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
     border-color: var(--color-primary);
-    background: linear-gradient(135deg, var(--color-bg-container) 0%, var(--color-primary-light) 100%);
 }
 
 .task-card:hover .task-card-menu {
@@ -44,12 +113,69 @@
 }
 
 .task-card:active {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px -4px rgba(99, 102, 241, 0.2);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 /* 拖拽时的样式 */
 .task-card[draggable="true"]:active {
     cursor: grabbing;
     opacity: 0.8;
+}
+
+/* ========== 空卡片 ========== */
+.empty-card {
+    background: var(--color-bg-secondary);
+    border: 2px dashed var(--color-separator);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-8);
+    text-align: center;
+}
+
+.empty-card-icon {
+    font-size: 48px;
+    color: var(--color-text-quaternary);
+    margin-bottom: var(--spacing-4);
+}
+
+.empty-card-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-2);
+}
+
+.empty-card-description {
+    font-size: var(--font-size-base);
+    color: var(--color-text-tertiary);
+}
+
+/* ========== 暗色模式 ========== */
+[data-theme="dark"] .ant-card {
+    background: var(--color-bg-container);
+    border-color: var(--color-separator);
+}
+
+[data-theme="dark"] .ant-card-head {
+    border-bottom-color: var(--color-separator);
+}
+
+[data-theme="dark"] .page-card {
+    background: var(--color-bg-container);
+    border-color: var(--color-separator);
+}
+
+[data-theme="dark"] .stat-card {
+    background: var(--color-bg-container);
+    border-color: var(--color-separator);
+}
+
+[data-theme="dark"] .task-card {
+    background: var(--color-bg-container);
+    border-color: var(--color-separator);
+}
+
+[data-theme="dark"] .empty-card {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-separator);
 }

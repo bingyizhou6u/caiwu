@@ -1,189 +1,203 @@
 /**
  * 多标签页样式
- * 多标签页组件的样式定义
+ * Apple 风格 - 简约设计
  */
 
+/* ========== 标签页容器 ========== */
 .multi-tabs-wrapper {
     position: sticky;
-    top: 64px; /* Header 高度 */
-    z-index: 999;
+    top: var(--header-height);
+    z-index: calc(var(--header-z-index) - 1);
     background: var(--color-bg-layout);
 }
 
 .multi-tabs-wrapper .ant-tabs-nav {
     margin: 0 !important;
     background: var(--color-bg-layout);
-    padding: 8px 16px 0;
-    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-2) var(--spacing-4) 0;
+    border-bottom: 1px solid var(--color-separator);
 }
 
+/* ========== 标签项 ========== */
 .multi-tabs-wrapper .ant-tabs-tab {
     background: transparent !important;
     border: none !important;
-    border-radius: 10px 10px 0 0 !important;
-    margin-right: 4px !important;
-    padding: 10px 18px !important;
-    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1) !important;
-    color: var(--color-text-secondary);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+    margin-right: var(--spacing-1) !important;
+    padding: var(--spacing-2) var(--spacing-4) !important;
+    color: var(--color-text-tertiary);
+    font-size: var(--font-size-sm);
+    transition: all var(--duration-fast) var(--ease-default);
     position: relative;
 }
 
-.multi-tabs-wrapper .ant-tabs-tab::before {
+.multi-tabs-wrapper .ant-tabs-tab::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%) scaleX(0);
-    width: 100%;
+    left: var(--spacing-4);
+    right: var(--spacing-4);
     height: 2px;
-    background: var(--gradient-primary);
-    border-radius: 2px 2px 0 0;
-    transition: transform 0.3s ease;
+    background: var(--color-primary);
+    border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+    transform: scaleX(0);
+    transition: transform var(--duration-fast) var(--ease-default);
 }
 
 .multi-tabs-wrapper .ant-tabs-tab:hover {
-    background: rgba(99, 102, 241, 0.04) !important;
+    background: var(--color-fill-quaternary) !important;
     color: var(--color-text-primary);
 }
 
-.multi-tabs-wrapper .ant-tabs-tab:hover::before {
-    transform: translateX(-50%) scaleX(0.5);
+.multi-tabs-wrapper .ant-tabs-tab:hover::after {
+    transform: scaleX(0.5);
 }
 
+/* ========== 选中态 ========== */
 .multi-tabs-wrapper .ant-tabs-tab-active {
     background: var(--color-bg-container) !important;
-    color: var(--color-primary) !important;
-    font-weight: 500;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+    color: var(--color-text-primary) !important;
+    font-weight: var(--font-weight-medium);
 }
 
-.multi-tabs-wrapper .ant-tabs-tab-active::before {
-    transform: translateX(-50%) scaleX(1);
+.multi-tabs-wrapper .ant-tabs-tab-active::after {
+    transform: scaleX(1);
 }
 
 .multi-tabs-wrapper .ant-tabs-tab-active .ant-tabs-tab-btn {
-    color: var(--color-primary) !important;
+    color: var(--color-text-primary) !important;
 }
 
+/* 隐藏默认指示线 */
 .multi-tabs-wrapper .ant-tabs-ink-bar {
     display: none !important;
 }
 
-/* Tab Content Wrapper */
+/* ========== 标签内容 ========== */
 .multi-tabs-wrapper .ant-tabs-content-holder {
     background: var(--color-bg-layout);
 }
 
-/* Tab Label & Icon */
+/* 标签文字容器 */
 .tab-label-container {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--spacing-1);
     width: 100%;
     height: 100%;
     user-select: none;
 }
 
-/* Tab Close Button */
+/* ========== 关闭按钮 ========== */
 .multi-tabs-wrapper .ant-tabs-tab-remove {
-    margin-left: 6px;
-    color: var(--color-text-tertiary);
-    transition: all 0.2s ease;
-    border-radius: 4px;
+    margin-left: var(--spacing-2);
+    color: var(--color-text-quaternary);
+    transition: all var(--duration-fast) var(--ease-default);
+    border-radius: var(--radius-xs);
     padding: 2px;
+    font-size: 10px;
 }
 
 .multi-tabs-wrapper .ant-tabs-tab-remove:hover {
     color: var(--color-error);
-    background: rgba(239, 68, 68, 0.1);
+    background: var(--color-error-bg);
 }
 
-/* Tab Add Button */
+/* ========== 添加按钮 ========== */
 .multi-tabs-wrapper .ant-tabs-nav-add {
-    border-radius: 8px !important;
-    transition: all 0.2s ease !important;
+    border-radius: var(--radius-sm) !important;
+    transition: all var(--duration-fast) var(--ease-default) !important;
 }
 
 .multi-tabs-wrapper .ant-tabs-nav-add:hover {
     color: var(--color-primary) !important;
-    background: rgba(99, 102, 241, 0.08) !important;
+    background: var(--color-fill-tertiary) !important;
 }
 
-/* Context Menu Dropdown */
-.ant-dropdown-menu {
-    padding: 4px;
-}
-
-.ant-dropdown-menu-item {
-    border-radius: 6px;
-    margin: 2px 0;
-    transition: all 0.2s ease;
-}
-
-.ant-dropdown-menu-item:hover {
-    background: rgba(99, 102, 241, 0.06);
-}
-
-/* Tab Overflow Dropdown */
+/* ========== 更多按钮 ========== */
 .multi-tabs-wrapper .ant-tabs-nav-more {
-    border-radius: 8px;
-    transition: all 0.2s ease;
+    border-radius: var(--radius-sm);
+    transition: all var(--duration-fast) var(--ease-default);
 }
 
 .multi-tabs-wrapper .ant-tabs-nav-more:hover {
-    background: rgba(0, 0, 0, 0.04);
+    background: var(--color-fill-tertiary);
     color: var(--color-primary);
 }
 
-/* Responsive Adjustments */
+/* ========== 右键菜单 ========== */
+.ant-dropdown-menu {
+    padding: var(--spacing-1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-separator);
+}
+
+.ant-dropdown-menu-item {
+    border-radius: var(--radius-sm);
+    margin: 2px 0;
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-sm);
+    transition: all var(--duration-fast) var(--ease-default);
+}
+
+.ant-dropdown-menu-item:hover {
+    background: var(--color-fill-tertiary);
+}
+
+.ant-dropdown-menu-item-disabled {
+    color: var(--color-text-disabled);
+}
+
+/* ========== 响应式 ========== */
 @media (max-width: 768px) {
     .multi-tabs-wrapper .ant-tabs-tab {
-        padding: 8px 12px !important;
-        font-size: 13px;
+        padding: var(--spacing-2) var(--spacing-3) !important;
+        font-size: var(--font-size-xs);
     }
 }
-/* Dark Mode Styles */
+
+/* ========== 暗色模式 ========== */
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-nav {
     background: var(--color-bg-layout);
-    border-bottom-color: var(--color-border);
+    border-bottom-color: var(--color-separator);
 }
 
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-tab {
-    color: var(--color-text-secondary);
+    color: var(--color-text-tertiary);
 }
 
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-tab:hover {
-    background: rgba(129, 140, 248, 0.1) !important;
+    background: var(--color-fill-quaternary) !important;
     color: var(--color-text-primary);
 }
 
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-tab-active {
     background: var(--color-bg-container) !important;
-    color: var(--color-primary) !important;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+    color: var(--color-text-primary) !important;
 }
 
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-tab-active .ant-tabs-tab-btn {
-    color: var(--color-primary) !important;
+    color: var(--color-text-primary) !important;
 }
 
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-tab-remove {
-    color: var(--color-text-tertiary);
+    color: var(--color-text-quaternary);
 }
 
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-tab-remove:hover {
     color: var(--color-error);
-    background: rgba(248, 113, 113, 0.15);
+    background: var(--color-error-bg);
 }
 
 [data-theme="dark"] .multi-tabs-wrapper .ant-tabs-nav-more:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--color-fill-tertiary);
     color: var(--color-primary);
 }
 
 [data-theme="dark"] .ant-dropdown-menu {
     background: var(--color-bg-elevated);
-    border-color: var(--color-border);
+    border-color: var(--color-separator);
 }
 
 [data-theme="dark"] .ant-dropdown-menu-item {
@@ -191,6 +205,5 @@
 }
 
 [data-theme="dark"] .ant-dropdown-menu-item:hover {
-    background: rgba(129, 140, 248, 0.15);
-    color: var(--color-text-primary);
+    background: var(--color-fill-tertiary);
 }

@@ -1,142 +1,205 @@
 /**
  * CSS 变量定义（设计令牌）
- * 定义全局颜色、间距、阴影等设计系统变量
+ * Apple 风格设计系统 - 极简主义
  */
 
 :root {
-    /* ========== Brand Colors ========== */
-    --color-primary: #6366f1;
-    --color-primary-hover: #818cf8;
-    --color-primary-active: #4f46e5;
-    --color-primary-bg: #e0e7ff;
-    --color-primary-light: #eef2ff;
-    --color-primary-dark: #4338ca;
+    /* ========== Apple System Colors (Light) ========== */
+    --apple-blue: #007AFF;
+    --apple-green: #34C759;
+    --apple-indigo: #5856D6;
+    --apple-orange: #FF9500;
+    --apple-pink: #FF2D55;
+    --apple-purple: #AF52DE;
+    --apple-red: #FF3B30;
+    --apple-teal: #5AC8FA;
+    --apple-yellow: #FFCC00;
+    --apple-gray: #8E8E93;
+    --apple-gray2: #AEAEB2;
+    --apple-gray3: #C7C7CC;
+    --apple-gray4: #D1D1D6;
+    --apple-gray5: #E5E5EA;
+    --apple-gray6: #F2F2F7;
+
+    /* ========== Semantic Colors (Light Theme) ========== */
+    --color-primary: var(--apple-blue);
+    --color-primary-hover: #0066CC;
+    --color-primary-active: #004999;
+    --color-primary-bg: rgba(0, 122, 255, 0.1);
+    --color-primary-light: rgba(0, 122, 255, 0.05);
 
     /* ========== Functional Colors ========== */
-    --color-success: #10b981;
-    --color-success-hover: #059669;
-    --color-success-bg: #d1fae5;
-    --color-warning: #f59e0b;
-    --color-warning-hover: #d97706;
-    --color-warning-bg: #fef3c7;
-    --color-error: #ef4444;
-    --color-error-hover: #dc2626;
-    --color-error-bg: #fee2e2;
-    --color-info: #3b82f6;
-    --color-info-hover: #2563eb;
-    --color-info-bg: #dbeafe;
+    --color-success: var(--apple-green);
+    --color-success-hover: #2DB14E;
+    --color-success-bg: rgba(52, 199, 89, 0.1);
+    --color-warning: var(--apple-orange);
+    --color-warning-hover: #E68600;
+    --color-warning-bg: rgba(255, 149, 0, 0.1);
+    --color-error: var(--apple-red);
+    --color-error-hover: #E6352B;
+    --color-error-bg: rgba(255, 59, 48, 0.1);
+    --color-info: var(--apple-teal);
+    --color-info-hover: #4AB8E8;
+    --color-info-bg: rgba(90, 200, 250, 0.1);
 
-    /* ========== Neutral Colors ========== */
-    --color-text-primary: #1e293b;      /* Slate 800 */
-    --color-text-secondary: #64748b;     /* Slate 500 */
-    --color-text-tertiary: #94a3b8;      /* Slate 400 */
-    --color-text-disabled: #cbd5e1;      /* Slate 300 */
-    --color-text-inverse: #ffffff;       /* 反色文本 */
-    
-    --color-border: #e2e8f0;             /* Slate 200 */
-    --color-border-light: #f1f5f9;       /* Slate 100 */
-    --color-border-dark: #cbd5e1;        /* Slate 300 */
-    --color-divider: #f1f5f9;           /* Slate 100 */
-    
-    --color-bg-base: #f8fafc;           /* Slate 50 */
-    --color-bg-container: #ffffff;
-    --color-bg-elevated: #ffffff;
-    --color-bg-layout: #f8fafc;
-    --color-bg-hover: #f1f5f9;          /* Slate 100 */
-    --color-bg-active: #e2e8f0;         /* Slate 200 */
+    /* ========== Text Colors (Light Theme) ========== */
+    --color-text-primary: #000000;
+    --color-text-secondary: rgba(60, 60, 67, 0.85);
+    --color-text-tertiary: rgba(60, 60, 67, 0.6);
+    --color-text-quaternary: rgba(60, 60, 67, 0.3);
+    --color-text-placeholder: rgba(60, 60, 67, 0.3);
+    --color-text-disabled: rgba(60, 60, 67, 0.3);
+    --color-text-inverse: #FFFFFF;
+
+    /* ========== Background Colors (Light Theme) ========== */
+    --color-bg-base: #FFFFFF;
+    --color-bg-secondary: #F2F2F7;
+    --color-bg-tertiary: #E5E5EA;
+    --color-bg-container: #FFFFFF;
+    --color-bg-elevated: #FFFFFF;
+    --color-bg-layout: #F2F2F7;
+    --color-bg-grouped: #F2F2F7;
+    --color-bg-hover: rgba(60, 60, 67, 0.05);
+    --color-bg-active: rgba(60, 60, 67, 0.1);
+
+    /* ========== Border & Separator Colors (Light Theme) ========== */
+    --color-separator: rgba(60, 60, 67, 0.12);
+    --color-separator-opaque: #C6C6C8;
+    --color-border: rgba(60, 60, 67, 0.12);
+    --color-border-light: rgba(60, 60, 67, 0.08);
+    --color-border-dark: rgba(60, 60, 67, 0.2);
+    --color-divider: rgba(60, 60, 67, 0.12);
+
+    /* ========== Fill Colors (Light Theme) ========== */
+    --color-fill-primary: rgba(120, 120, 128, 0.2);
+    --color-fill-secondary: rgba(120, 120, 128, 0.16);
+    --color-fill-tertiary: rgba(118, 118, 128, 0.12);
+    --color-fill-quaternary: rgba(116, 116, 128, 0.08);
+
+    /* ========== Glassmorphism (Light Theme) ========== */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-bg-thick: rgba(255, 255, 255, 0.85);
+    --glass-bg-thin: rgba(255, 255, 255, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-blur: 20px;
+    --glass-blur-sm: 10px;
+    --glass-blur-lg: 30px;
 
     /* ========== Layout Variables ========== */
-    --sidebar-bg: #0f172a;              /* Slate 900 */
-    --sidebar-width: 250px;
-    --sidebar-collapsed-width: 80px;
-    --header-bg: rgba(255, 255, 255, 0.9);
-    --header-height: 64px;
-    --header-z-index: 1000;
-    --sidebar-z-index: 1001;
+    --sidebar-bg: var(--color-bg-secondary);
+    --sidebar-width: 240px;
+    --sidebar-collapsed-width: 72px;
+    --header-bg: var(--glass-bg);
+    --header-height: 52px;
+    --header-z-index: 100;
+    --sidebar-z-index: 101;
 
-    /* ========== Spacing System ========== */
+
+    /* ========== Spacing System (4px base) ========== */
     --spacing-0: 0;
-    --spacing-xs: 4px;
-    --spacing-sm: 8px;
-    --spacing-md: 16px;
-    --spacing-lg: 24px;
-    --spacing-xl: 32px;
-    --spacing-xxl: 48px;
-    --spacing-xxxl: 64px;
+    --spacing-1: 4px;
+    --spacing-2: 8px;
+    --spacing-3: 12px;
+    --spacing-4: 16px;
+    --spacing-5: 20px;
+    --spacing-6: 24px;
+    --spacing-8: 32px;
+    --spacing-10: 40px;
+    --spacing-12: 48px;
+    --spacing-16: 64px;
+
+    /* Semantic Spacing */
+    --spacing-xs: var(--spacing-1);   /* 4px */
+    --spacing-sm: var(--spacing-2);   /* 8px */
+    --spacing-md: var(--spacing-4);   /* 16px */
+    --spacing-lg: var(--spacing-6);   /* 24px */
+    --spacing-xl: var(--spacing-8);   /* 32px */
+    --spacing-xxl: var(--spacing-12); /* 48px */
+    --spacing-xxxl: var(--spacing-16); /* 64px */
 
     /* ========== Typography ========== */
-    --font-family-base: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-    --font-family-mono: 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
-    
-    --font-size-xs: 12px;
-    --font-size-sm: 13px;
-    --font-size-base: 14px;
-    --font-size-lg: 16px;
-    --font-size-xl: 18px;
-    --font-size-xxl: 20px;
-    --font-size-xxxl: 24px;
-    
+    --font-family-base: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", 
+                        "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
+    --font-family-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Monaco, 
+                        "Cascadia Mono", "Segoe UI Mono", monospace;
+
+    /* Font Sizes - Apple Style */
+    --font-size-xs: 11px;      /* Caption 2 */
+    --font-size-sm: 12px;      /* Caption 1 */
+    --font-size-base: 14px;    /* Subheadline */
+    --font-size-md: 15px;      /* Body */
+    --font-size-lg: 17px;      /* Headline */
+    --font-size-xl: 20px;      /* Title 3 */
+    --font-size-xxl: 22px;     /* Title 2 */
+    --font-size-xxxl: 28px;    /* Title 1 */
+    --font-size-display: 34px; /* Large Title */
+
+    /* Font Weights */
+    --font-weight-regular: 400;
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
-    
-    --line-height-tight: 1.25;
-    --line-height-normal: 1.5;
-    --line-height-relaxed: 1.75;
 
-    /* ========== Border Radius ========== */
+    /* Line Heights */
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.47;  /* Apple standard */
+    --line-height-relaxed: 1.6;
+
+    /* Letter Spacing */
+    --letter-spacing-tight: -0.02em;
+    --letter-spacing-normal: -0.01em;
+    --letter-spacing-wide: 0.02em;
+
+    /* ========== Border Radius - Apple Style (larger) ========== */
     --radius-none: 0;
-    --radius-sm: 4px;
-    --radius-base: 8px;
-    --radius-md: 10px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
-    --radius-2xl: 20px;
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-base: 10px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
     --radius-full: 9999px;
 
-    /* ========== Shadows ========== */
-    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 6px 12px -2px rgba(0, 0, 0, 0.1), 0 3px 6px -1px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
-    --shadow-glow-lg: 0 0 40px rgba(99, 102, 241, 0.4);
+    /* ========== Shadows - Apple Style (softer) ========== */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+    --shadow-base: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.16);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 20px rgba(0, 122, 255, 0.2);
+    --shadow-glow-lg: 0 0 40px rgba(0, 122, 255, 0.3);
 
-    /* ========== Gradients ========== */
-    --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, #818cf8 100%);
-    --gradient-primary-dark: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
-    --gradient-dark: linear-gradient(-45deg, #0f172a, #1e3a5f, #312e81, #1e1b4b);
-    --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    --gradient-success: linear-gradient(135deg, var(--color-success) 0%, #34d399 100%);
-    --gradient-error: linear-gradient(135deg, var(--color-error) 0%, #f87171 100%);
+    /* ========== Transitions - Apple Style ========== */
+    --duration-fast: 0.15s;
+    --duration-normal: 0.25s;
+    --duration-slow: 0.35s;
 
-    /* ========== Glassmorphism ========== */
-    --glass-bg: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-blur: blur(20px);
-    --glass-blur-sm: blur(10px);
-    --glass-blur-lg: blur(30px);
+    --ease-default: cubic-bezier(0.25, 0.1, 0.25, 1);
+    --ease-in: cubic-bezier(0.42, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.58, 1);
+    --ease-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-    /* ========== Transitions ========== */
-    --transition-base: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
-    --transition-fast: all 0.2s ease-in-out;
-    --transition-slow: all 0.5s cubic-bezier(0.645, 0.045, 0.355, 1);
-    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-base: all var(--duration-normal) var(--ease-default);
+    --transition-fast: all var(--duration-fast) var(--ease-default);
+    --transition-slow: all var(--duration-slow) var(--ease-default);
+    --transition-bounce: all 0.4s var(--ease-spring);
+    --transition-spring: all 0.5s var(--ease-spring);
 
     /* ========== Z-Index Scale ========== */
     --z-index-base: 1;
-    --z-index-dropdown: 1000;
-    --z-index-sticky: 1020;
-    --z-index-fixed: 1030;
-    --z-index-modal-backdrop: 1040;
-    --z-index-modal: 1050;
-    --z-index-popover: 1060;
-    --z-index-tooltip: 1070;
+    --z-index-dropdown: 50;
+    --z-index-sticky: 100;
+    --z-index-fixed: 200;
+    --z-index-modal-backdrop: 400;
+    --z-index-modal: 500;
+    --z-index-popover: 600;
+    --z-index-tooltip: 700;
 
     /* ========== Responsive Breakpoints ========== */
     --breakpoint-xs: 480px;
@@ -145,44 +208,112 @@
     --breakpoint-lg: 1024px;
     --breakpoint-xl: 1280px;
     --breakpoint-2xl: 1536px;
+
+    /* ========== Gradients ========== */
+    --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, #409CFF 100%);
+    --gradient-success: linear-gradient(135deg, var(--color-success) 0%, #5BD778 100%);
+    --gradient-error: linear-gradient(135deg, var(--color-error) 0%, #FF6961 100%);
 }
 
-/* ========== Dark Mode ========== */
+
+/* ========== Dark Theme ========== */
 [data-theme='dark'] {
-    /* Text Colors */
-    --color-text-primary: rgba(255, 255, 255, 0.9);
-    --color-text-secondary: rgba(255, 255, 255, 0.65);
-    --color-text-tertiary: rgba(255, 255, 255, 0.45);
-    --color-text-disabled: rgba(255, 255, 255, 0.25);
-    --color-text-inverse: #1e293b;
-    
-    /* Border Colors */
-    --color-border: rgba(255, 255, 255, 0.1);
-    --color-border-light: rgba(255, 255, 255, 0.05);
-    --color-border-dark: rgba(255, 255, 255, 0.15);
-    --color-divider: rgba(255, 255, 255, 0.08);
-    
-    /* Background Colors */
-    --color-bg-base: #0f172a;           /* Slate 900 */
-    --color-bg-container: #1e293b;       /* Slate 800 */
-    --color-bg-elevated: #334155;       /* Slate 700 */
-    --color-bg-layout: #0f172a;         /* Slate 900 */
+    /* Apple System Colors (Dark) - slightly brighter */
+    --apple-blue: #0A84FF;
+    --apple-green: #30D158;
+    --apple-indigo: #5E5CE6;
+    --apple-orange: #FF9F0A;
+    --apple-pink: #FF375F;
+    --apple-purple: #BF5AF2;
+    --apple-red: #FF453A;
+    --apple-teal: #64D2FF;
+    --apple-yellow: #FFD60A;
+    --apple-gray: #8E8E93;
+    --apple-gray2: #636366;
+    --apple-gray3: #48484A;
+    --apple-gray4: #3A3A3C;
+    --apple-gray5: #2C2C2E;
+    --apple-gray6: #1C1C1E;
+
+    /* Semantic Colors */
+    --color-primary: var(--apple-blue);
+    --color-primary-hover: #409CFF;
+    --color-primary-active: #66B3FF;
+    --color-primary-bg: rgba(10, 132, 255, 0.15);
+    --color-primary-light: rgba(10, 132, 255, 0.08);
+
+    /* Functional Colors */
+    --color-success: var(--apple-green);
+    --color-success-hover: #4AE06A;
+    --color-success-bg: rgba(48, 209, 88, 0.15);
+    --color-warning: var(--apple-orange);
+    --color-warning-hover: #FFB340;
+    --color-warning-bg: rgba(255, 159, 10, 0.15);
+    --color-error: var(--apple-red);
+    --color-error-hover: #FF6961;
+    --color-error-bg: rgba(255, 69, 58, 0.15);
+    --color-info: var(--apple-teal);
+    --color-info-hover: #8ADDFF;
+    --color-info-bg: rgba(100, 210, 255, 0.15);
+
+    /* Text Colors (Dark Theme) */
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: rgba(235, 235, 245, 0.6);
+    --color-text-tertiary: rgba(235, 235, 245, 0.3);
+    --color-text-quaternary: rgba(235, 235, 245, 0.18);
+    --color-text-placeholder: rgba(235, 235, 245, 0.3);
+    --color-text-disabled: rgba(235, 235, 245, 0.18);
+    --color-text-inverse: #000000;
+
+    /* Background Colors (Dark Theme) */
+    --color-bg-base: #000000;
+    --color-bg-secondary: #1C1C1E;
+    --color-bg-tertiary: #2C2C2E;
+    --color-bg-container: #1C1C1E;
+    --color-bg-elevated: #2C2C2E;
+    --color-bg-layout: #000000;
+    --color-bg-grouped: #1C1C1E;
     --color-bg-hover: rgba(255, 255, 255, 0.05);
     --color-bg-active: rgba(255, 255, 255, 0.1);
-    
+
+    /* Border & Separator Colors (Dark Theme) */
+    --color-separator: rgba(84, 84, 88, 0.65);
+    --color-separator-opaque: #38383A;
+    --color-border: rgba(84, 84, 88, 0.65);
+    --color-border-light: rgba(84, 84, 88, 0.4);
+    --color-border-dark: rgba(84, 84, 88, 0.8);
+    --color-divider: rgba(84, 84, 88, 0.65);
+
+    /* Fill Colors (Dark Theme) */
+    --color-fill-primary: rgba(120, 120, 128, 0.36);
+    --color-fill-secondary: rgba(120, 120, 128, 0.32);
+    --color-fill-tertiary: rgba(118, 118, 128, 0.24);
+    --color-fill-quaternary: rgba(116, 116, 128, 0.18);
+
+    /* Glassmorphism (Dark Theme) */
+    --glass-bg: rgba(28, 28, 30, 0.72);
+    --glass-bg-thick: rgba(28, 28, 30, 0.85);
+    --glass-bg-thin: rgba(28, 28, 30, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.08);
+
     /* Layout */
-    --header-bg: rgba(15, 23, 42, 0.8);
-    --sidebar-bg: #0a0f1c;
-    
-    /* Shadows (lighter in dark mode) */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
-    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.5);
-    
-    /* Glassmorphism */
-    --glass-bg: rgba(0, 0, 0, 0.2);
-    --glass-border: rgba(255, 255, 255, 0.05);
+    --sidebar-bg: var(--color-bg-secondary);
+    --header-bg: var(--glass-bg);
+
+    /* Shadows (Dark Theme) */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-base: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(10, 132, 255, 0.3);
+    --shadow-glow-lg: 0 0 40px rgba(10, 132, 255, 0.4);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, #409CFF 100%);
 }
 
 /* ========== Reduced Motion Support ========== */
@@ -194,7 +325,7 @@
         --transition-bounce: none;
         --transition-spring: none;
     }
-    
+
     *,
     *::before,
     *::after {
@@ -209,6 +340,12 @@
     :root {
         --color-border: #000000;
         --color-border-dark: #000000;
-        --shadow-base: 0 2px 4px rgba(0, 0, 0, 0.3);
+        --color-text-secondary: #000000;
+    }
+
+    [data-theme='dark'] {
+        --color-border: #FFFFFF;
+        --color-border-dark: #FFFFFF;
+        --color-text-secondary: #FFFFFF;
     }
 }

@@ -1,23 +1,167 @@
 /**
  * 按钮组件样式
- * Ant Design Button 组件增强样式
+ * Apple 风格 - 简约设计
  */
 
+/* ========== 基础按钮 ========== */
 .ant-btn {
-    border-radius: var(--radius-base);
-    font-weight: 500;
-    transition: var(--transition-base);
+    height: 36px;
+    padding: 0 var(--spacing-4);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    transition: all var(--duration-fast) var(--ease-default);
+    box-shadow: none;
 }
 
+.ant-btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* ========== 主按钮 ========== */
 .ant-btn-primary {
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    box-shadow: none;
 }
 
 .ant-btn-primary:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    transform: scale(1.02);
 }
 
 .ant-btn-primary:active:not(:disabled) {
-    transform: translateY(0);
+    background: var(--color-primary-active);
+    border-color: var(--color-primary-active);
+    transform: scale(0.98);
+}
+
+/* ========== 默认按钮 ========== */
+.ant-btn-default {
+    background: var(--color-fill-tertiary);
+    border-color: transparent;
+    color: var(--color-primary);
+}
+
+.ant-btn-default:hover:not(:disabled) {
+    background: var(--color-fill-secondary);
+    border-color: transparent;
+    color: var(--color-primary);
+}
+
+.ant-btn-default:active:not(:disabled) {
+    background: var(--color-fill-primary);
+    transform: scale(0.98);
+}
+
+/* ========== 文本按钮 ========== */
+.ant-btn-text {
+    color: var(--color-primary);
+}
+
+.ant-btn-text:hover:not(:disabled) {
+    background: var(--color-fill-tertiary);
+    color: var(--color-primary-hover);
+}
+
+/* ========== 链接按钮 ========== */
+.ant-btn-link {
+    color: var(--color-primary);
+    padding: 0;
+    height: auto;
+}
+
+.ant-btn-link:hover:not(:disabled) {
+    color: var(--color-primary-hover);
+}
+
+/* ========== 危险按钮 ========== */
+.ant-btn-dangerous {
+    color: var(--color-error);
+    border-color: var(--color-error);
+}
+
+.ant-btn-dangerous:hover:not(:disabled) {
+    color: var(--color-error-hover);
+    border-color: var(--color-error-hover);
+    background: var(--color-error-bg);
+}
+
+.ant-btn-dangerous.ant-btn-primary {
+    background: var(--color-error);
+    border-color: var(--color-error);
+    color: white;
+}
+
+.ant-btn-dangerous.ant-btn-primary:hover:not(:disabled) {
+    background: var(--color-error-hover);
+    border-color: var(--color-error-hover);
+}
+
+/* ========== 按钮尺寸 ========== */
+.ant-btn-sm {
+    height: 28px;
+    padding: 0 var(--spacing-3);
+    font-size: var(--font-size-sm);
+    border-radius: var(--radius-xs);
+}
+
+.ant-btn-lg {
+    height: 44px;
+    padding: 0 var(--spacing-5);
+    font-size: var(--font-size-md);
+    border-radius: var(--radius-md);
+}
+
+/* ========== 图标按钮 ========== */
+.ant-btn-icon-only {
+    width: 36px;
+    padding: 0;
+}
+
+.ant-btn-icon-only.ant-btn-sm {
+    width: 28px;
+}
+
+.ant-btn-icon-only.ant-btn-lg {
+    width: 44px;
+}
+
+/* ========== 按钮组 ========== */
+.ant-btn-group .ant-btn {
+    border-radius: 0;
+}
+
+.ant-btn-group .ant-btn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.ant-btn-group .ant-btn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ========== 禁用状态 ========== */
+.ant-btn:disabled,
+.ant-btn.ant-btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ========== 加载状态 ========== */
+.ant-btn-loading {
+    opacity: 0.8;
+}
+
+/* ========== 暗色模式 ========== */
+[data-theme="dark"] .ant-btn-default {
+    background: var(--color-fill-tertiary);
+    border-color: transparent;
+    color: var(--color-primary);
+}
+
+[data-theme="dark"] .ant-btn-default:hover:not(:disabled) {
+    background: var(--color-fill-secondary);
+    color: var(--color-primary);
 }
