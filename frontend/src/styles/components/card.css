@@ -28,7 +28,7 @@
 /* 任务卡片悬停效果 - 看板专用 */
 .task-card {
     position: relative;
-    border: 1px solid #e8e8e8;
+    border: 1px solid var(--color-border);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -36,7 +36,7 @@
     transform: translateY(-4px);
     box-shadow: 0 12px 28px -8px rgba(99, 102, 241, 0.25);
     border-color: var(--color-primary);
-    background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+    background: linear-gradient(135deg, var(--color-bg-container) 0%, var(--color-primary-light) 100%);
 }
 
 .task-card:hover .task-card-menu {

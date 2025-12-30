@@ -153,8 +153,10 @@ export const preloadRoute = (path: string) => {
 
 
 
+import '../styles/utilities/common.css'
+
 const Loading = () => (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+    <div className="loading-container">
         <Spin size="large" />
     </div>
 )

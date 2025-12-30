@@ -1,0 +1,158 @@
+/**
+ * 通用工具类
+ * 提供常用的组合工具类和文本样式
+ */
+
+/* ========== 布局组合工具类 ========== */
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.inline-flex-center {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* ========== 宽度工具类 ========== */
+.w-half {
+    width: 50%;
+}
+
+/* ========== 交互工具类 ========== */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.cursor-default {
+    cursor: default;
+}
+
+.cursor-not-allowed {
+    cursor: not-allowed;
+}
+
+/* ========== 文本颜色工具类 ========== */
+.text-muted {
+    color: var(--color-text-tertiary);
+}
+
+.text-success {
+    color: var(--color-success);
+}
+
+.text-error {
+    color: var(--color-error);
+}
+
+.text-warning {
+    color: var(--color-warning);
+}
+
+.text-primary {
+    color: var(--color-primary);
+}
+
+.text-info {
+    color: var(--color-info);
+}
+
+.text-secondary {
+    color: var(--color-text-secondary);
+}
+
+/* ========== 字体粗细工具类 ========== */
+.font-normal {
+    font-weight: var(--font-weight-normal);
+}
+
+.font-medium {
+    font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+    font-weight: var(--font-weight-semibold);
+}
+
+.font-bold {
+    font-weight: var(--font-weight-bold);
+}
+
+/* ========== 文本对齐工具类 ========== */
+.text-left {
+    text-align: left;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+/* ========== 文本截断工具类 ========== */
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ========== 加载容器 ========== */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+/* ========== 错误边界样式 ========== */
+.error-details {
+    margin-top: var(--spacing-md);
+    text-align: left;
+}
+
+.error-details-summary {
+    cursor: pointer;
+    margin-bottom: var(--spacing-sm);
+}
+
+.error-details-content {
+    background: var(--color-bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-base);
+    font-size: var(--font-size-xs);
+    max-height: 200px;
+    overflow: auto;
+}
+
+.error-stack {
+    margin-top: var(--spacing-sm);
+}
+
+.error-stack pre {
+    margin-top: 4px;
+    white-space: pre-wrap;
+}

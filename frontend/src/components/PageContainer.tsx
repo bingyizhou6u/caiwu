@@ -53,7 +53,7 @@ export function PageContainer({
                                     title: item.path ? (
                                         <Link to={item.path}>{item.title}</Link>
                                     ) : item.onClick ? (
-                                        <span style={{ cursor: 'pointer' }} onClick={item.onClick}>
+                                        <span className="cursor-pointer" onClick={item.onClick}>
                                             {item.title}
                                         </span>
                                     ) : (

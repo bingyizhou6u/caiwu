@@ -45,9 +45,8 @@ export function HeaderClock() {
     return (
         <>
             <div
-                className="header-clock"
+                className="header-clock cursor-pointer"
                 onClick={() => setCalendarOpen(true)}
-                style={{ cursor: 'pointer' }}
                 title="点击打开日历"
             >
                 <ClockCircleOutlined className="clock-icon" />

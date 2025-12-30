@@ -12,18 +12,33 @@
     background: transparent;
 }
 
-/* NProgress Customization */
+/* ========== NProgress Customization ========== */
 #nprogress .bar {
-    background: #6366f1 !important; /* Primary Indigo */
+    background: var(--color-primary) !important;
     height: 3px !important;
-    box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
+    box-shadow: 0 0 10px var(--color-primary), 0 0 5px var(--color-primary);
 }
 
 #nprogress .peg {
-    box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
+    box-shadow: 0 0 10px var(--color-primary), 0 0 5px var(--color-primary);
 }
 
 #nprogress .spinner-icon {
-    border-top-color: #6366f1;
-    border-left-color: #6366f1;
+    border-top-color: var(--color-primary);
+    border-left-color: var(--color-primary);
+}
+
+/* Dark Mode NProgress */
+[data-theme="dark"] #nprogress .bar {
+    background: var(--color-primary-hover) !important;
+    box-shadow: 0 0 10px var(--color-primary-hover), 0 0 5px var(--color-primary-hover);
+}
+
+[data-theme="dark"] #nprogress .peg {
+    box-shadow: 0 0 10px var(--color-primary-hover), 0 0 5px var(--color-primary-hover);
+}
+
+[data-theme="dark"] #nprogress .spinner-icon {
+    border-top-color: var(--color-primary-hover);
+    border-left-color: var(--color-primary-hover);
 }

@@ -32,7 +32,7 @@ export function SensitiveField({
     const canView = !permission || hasPermission(parts[0], parts[1], parts[2])
 
     if (!canView) {
-        return <span style={{ color: '#999' }}>—— 无权查看 ——</span>
+        return <span className="text-muted">—— 无权查看 ——</span>
     }
 
     // 生成脱敏值
@@ -56,7 +56,7 @@ export function SensitiveField({
     const displayValue = visible ? value : getMaskedValue()
 
     return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span className="inline-flex-center">
             <span>{displayValue}</span>
             <Tooltip title={visible ? '隐藏' : '显示'}>
                 <Button

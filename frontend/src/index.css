@@ -36,6 +36,7 @@
 @import './styles/utilities/states.css';
 @import './styles/utilities/responsive.css';
 @import './styles/utilities/accessibility.css';
+@import './styles/utilities/common.css';
 
 /* ========== 6. 第三方样式 ========== */
 @import 'nprogress/nprogress.css';
@@ -64,46 +65,6 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-}
-
-/* Ant Design Overrides for Premium Feel */
-.ant-layout-sider {
-  box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.1);
-}
-
-.ant-menu-dark {
-  background: transparent;
-}
-
-/* NProgress Premium Style */
-#nprogress .bar {
-  background: #6366f1 !important; /* Primary Indigo */
-  height: 3px !important;
-  box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
-}
-
-#nprogress .peg {
-  box-shadow: 0 0 10px #6366f1, 0 0 5px #6366f1;
-}
-
-#nprogress .spinner-icon {
-  border-top-color: #6366f1;
-  border-left-color: #6366f1;
-}
-
-/* Dark Mode NProgress */
-[data-theme="dark"] #nprogress .bar {
-  background: #818cf8 !important; /* Lighter Indigo for dark mode */
-  box-shadow: 0 0 10px #818cf8, 0 0 5px #818cf8;
-}
-
-[data-theme="dark"] #nprogress .peg {
-  box-shadow: 0 0 10px #818cf8, 0 0 5px #818cf8;
-}
-
-[data-theme="dark"] #nprogress .spinner-icon {
-  border-top-color: #818cf8;
-  border-left-color: #818cf8;
 }
 
 /* Menu Tooltip Enhancement */

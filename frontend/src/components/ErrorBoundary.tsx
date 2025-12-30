@@ -71,23 +71,16 @@ export class ErrorBoundary extends React.Component<Props, State> {
                         <div>
                             <p>抱歉，页面加载出现问题</p>
                             {this.props.showDetails && (
-                                <details style={{ marginTop: 16, textAlign: 'left' }}>
-                                    <summary style={{ cursor: 'pointer', marginBottom: 8 }}>
+                                <details className="error-details">
+                                    <summary className="error-details-summary">
                                         错误详情
                                     </summary>
-                                    <div style={{
-                                        background: '#f5f5f5',
-                                        padding: 12,
-                                        borderRadius: 4,
-                                        fontSize: 12,
-                                        maxHeight: 200,
-                                        overflow: 'auto'
-                                    }}>
+                                    <div className="error-details-content">
                                         <div><strong>错误信息:</strong> {errorMessage}</div>
                                         {errorStack && (
-                                            <div style={{ marginTop: 8 }}>
+                                            <div className="error-stack">
                                                 <strong>堆栈信息:</strong>
-                                                <pre style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                                                <pre>
                                                     {errorStack}
                                                 </pre>
                                             </div>
