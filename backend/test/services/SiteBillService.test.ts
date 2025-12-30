@@ -4,7 +4,7 @@ import { env } from 'cloudflare:test'
 import { SiteBillService } from '../../src/services/finance/SiteBillService.js'
 import { createDb } from '../../src/utils/db'
 import { uuid } from '../../src/utils/db'
-import { sites, employees, siteBills } from '../../src/db/schema'
+import { sites, employees, siteBills, projects } from '../../src/db/schema'
 import schemaSql from '../../src/db/schema.sql?raw'
 
 async function applySchema(db: any) {
@@ -24,6 +24,7 @@ describe('SiteBillService', () => {
   let db: any
   let siteId: string
   let userId: string
+  let projectId: string
 
   beforeAll(async () => {
     const rawDb = env.DB
@@ -33,6 +34,21 @@ describe('SiteBillService', () => {
     // Create base data
     userId = uuid()
     siteId = uuid()
+    projectId = uuid()
+
+    // Create project first
+    await db
+      .insert(projects)
+      .values({
+        id: projectId,
+        code: 'TEST-PROJ-SB',
+        name: 'Test Project SB',
+        active: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      .execute()
+
     await db
       .insert(employees)
       .values({
@@ -51,7 +67,7 @@ describe('SiteBillService', () => {
         id: siteId,
         siteCode: 'TEST-SB',
         name: 'Test Site SB',
-        departmentId: 'dept-123',
+        projectId: projectId,
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),

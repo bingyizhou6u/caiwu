@@ -178,7 +178,7 @@ describe('Finance Core Routes', () => {
         id: siteId,
         name: 'Test Site',
         siteCode: 'TS001',
-        departmentId,
+        projectId: departmentId,
         active: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -201,6 +201,7 @@ describe('Finance Core Routes', () => {
     await db
       .insert(employees)
       .values({
+        id: uuid(),
         email: 'test2@example.com',
         name: 'Test User 2',
         active: 1,
@@ -239,7 +240,7 @@ describe('Finance Core Routes', () => {
             amountCents: 1000,
             categoryId: categoryId,
             siteId: siteId,
-            orgDepartmentId: departmentId,
+            projectId: departmentId,
             memo: 'Test Expense',
             voucherUrls: ['http://example.com/voucher.jpg'],
           }),

@@ -159,11 +159,12 @@ describe('PositionService', () => {
       expect(result.results.map(p => p.code)).not.toContain('INACTIVE_POS')
     })
 
-    it('应该按 dataScope 分组', async () => {
+    it('应该按 level 分组', async () => {
       const hqPos = {
         id: uuid(),
         code: 'HQ_POS',
         name: '总部职位',
+        level: 1,
         dataScope: 'all',
         permissions: '{}',
         sortOrder: 1,
@@ -175,6 +176,7 @@ describe('PositionService', () => {
         id: uuid(),
         code: 'PROJ_POS',
         name: '项目职位',
+        level: 2,
         dataScope: 'project',
         permissions: '{}',
         sortOrder: 1,
@@ -186,7 +188,7 @@ describe('PositionService', () => {
 
       const result = await service.getAvailablePositions()
 
-      expect(result.grouped['全公司职位']).toHaveLength(1)
+      expect(result.grouped['总部职位']).toHaveLength(1)
       expect(result.grouped['项目职位']).toHaveLength(1)
     })
   })

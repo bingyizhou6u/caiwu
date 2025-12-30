@@ -30,6 +30,8 @@ describe('Audit Routes', () => {
       // @ts-ignore
       c.set('userId', 'user123')
       // @ts-ignore
+      c.set('employeeId', 'user123')
+      // @ts-ignore
       c.set('services', {
         audit: mockAuditService,
       } as any)

@@ -83,6 +83,8 @@ describe('Employees API Integration', () => {
       })
       c.set('userPosition', {
         id: 'pos-admin',
+        dataScope: 'all',
+        level: 1,
       })
       c.set('db', db)
       await next()

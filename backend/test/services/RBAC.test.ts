@@ -16,14 +16,14 @@ import { drizzle } from 'drizzle-orm/d1'
 const createMockContext = (
   position: Partial<Position>,
   employee: Partial<Employee>,
-  projectModules: string[] = ['*'],
+  departmentModules: string[] = ['*'],
   dbMock: any = null
 ) => {
   return {
     get: (key: string) => {
       if (key === 'userPosition') return position
       if (key === 'userEmployee') return employee
-      if (key === 'projectModules') return projectModules
+      if (key === 'departmentModules') return departmentModules
       return undefined
     },
     env: {

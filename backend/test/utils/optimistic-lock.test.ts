@@ -14,10 +14,10 @@ describe('OptimisticLock', () => {
       expect(() => validateVersion(5, 3)).toThrow()
     })
 
-    it('应该允许 null 版本号（向后兼容）', () => {
-      expect(() => validateVersion(null, null)).not.toThrow()
-      expect(() => validateVersion(1, null)).not.toThrow()
-      expect(() => validateVersion(null, 1)).not.toThrow()
+    it('应该拒绝 null 版本号（强制并发控制）', () => {
+      expect(() => validateVersion(null, null)).toThrow('缺少版本号')
+      expect(() => validateVersion(1, null)).toThrow('缺少版本号')
+      expect(() => validateVersion(null, 1)).toThrow('缺少版本号')
     })
 
     it('应该抛出正确的错误信息', () => {

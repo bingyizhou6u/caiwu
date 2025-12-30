@@ -39,6 +39,7 @@ describe('Approval Routes', () => {
     // Mock Middleware
     app.use('*', async (c, next) => {
       c.set('userId', 'approver-id')
+      c.set('employeeId', 'approver-id')
       c.set('services', {
         approval: mockApprovalService,
         employee: mockEmployeeService,
@@ -46,10 +47,15 @@ describe('Approval Routes', () => {
       c.set('userPosition', {
         id: 'pos-id',
         code: 'manager',
+        canManageSubordinates: 1,
         permissions: {
           hr: { reimbursement: ['approve'] },
           finance: { borrowing: ['approve'] },
         },
+      })
+      c.set('userEmployee', {
+        id: 'approver-id',
+        name: 'Approver',
       })
       await next()
     })

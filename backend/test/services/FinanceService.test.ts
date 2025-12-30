@@ -120,6 +120,7 @@ describe('FinanceService', () => {
     await db
       .insert(employees)
       .values({
+        id: uuid(),
         email: 'test2@example.com',
         name: 'Test User',
         active: 1,
