@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { csvImportQuerySchema } from '../../schemas/common.schema.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
@@ -67,9 +68,10 @@ const importCsvRoute = createRoute({
 })
 
 importRoutes.openapi(importCsvRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, 'finance', 'flow', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+  const permCtx = createPermissionContext(c)
+  if (!permCtx || !permCtx.hasPermission(PermissionModule.FINANCE, 'flow', PermissionAction.CREATE)) {
+    throw Errors.FORBIDDEN()
+  }
 
   const { kind } = c.req.valid('query') as { kind: string }
   const csvContent = await c.req.text()

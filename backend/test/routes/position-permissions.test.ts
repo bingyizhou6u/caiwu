@@ -9,14 +9,19 @@ vi.mock('../../src/utils/audit.js', () => ({
   logAuditAction: vi.fn(),
 }))
 
-// Mock permissions
-vi.mock('../../src/utils/permissions.js', async () => {
-  const actual = await vi.importActual('../../src/utils/permissions.js')
-  return {
-    ...actual,
+// Mock permission context
+vi.mock('../../src/utils/permission-context.js', () => ({
+  createPermissionContext: vi.fn(() => ({
     hasPermission: vi.fn(() => true),
-  }
-})
+    employee: { id: 'user123', projectId: 'proj1', orgDepartmentId: 'dept1' },
+    dataScope: 'all',
+    canManageSubordinates: true,
+    allowedModules: ['*'],
+    isModuleAllowed: vi.fn(() => true),
+    position: { id: 'pos1', code: 'admin', name: 'Admin' },
+    toJSON: vi.fn(),
+  })),
+}))
 
 const mockPositionService = {
   getPositions: vi.fn(),
@@ -176,8 +181,17 @@ describe('Position Permissions Routes', () => {
   })
 
   it('should return 403 when permission denied', async () => {
-    const { hasPermission } = await import('../../src/utils/permissions.js')
-    vi.mocked(hasPermission).mockReturnValue(false)
+    const { createPermissionContext } = await import('../../src/utils/permission-context.js')
+    vi.mocked(createPermissionContext).mockReturnValue({
+      hasPermission: vi.fn(() => false),
+      employee: { id: 'user123', projectId: 'proj1', orgDepartmentId: 'dept1' },
+      dataScope: 'all',
+      canManageSubordinates: true,
+      allowedModules: ['*'],
+      isModuleAllowed: vi.fn(() => true),
+      position: { id: 'pos1', code: 'admin', name: 'Admin' },
+      toJSON: vi.fn(),
+    } as any)
 
     const res = await app.request('/position-permissions', {
       method: 'POST',

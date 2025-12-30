@@ -35,6 +35,9 @@ function extractAuthToken(c: Context) {
 const logoutRoute = createRoute({
   method: 'post',
   path: '/auth/logout',
+  tags: ['Auth'],
+  summary: '用户登出',
+  description: '销毁当前会话。前端需同时重定向到 CF Access 登出页面以完全注销。',
   responses: {
     200: {
       content: {
@@ -45,7 +48,7 @@ const logoutRoute = createRoute({
           }),
         },
       },
-      description: 'Logout result',
+      description: '登出成功',
     },
   },
 })
@@ -71,6 +74,9 @@ authRoutes.openapi(logoutRoute, createRouteHandler(async c => {
 const meRoute = createRoute({
   method: 'get',
   path: '/auth/me',
+  tags: ['Auth'],
+  summary: '获取当前用户信息',
+  description: '根据 JWT Token 获取当前登录用户的基本信息和职位权限。',
   responses: {
     200: {
       content: {
@@ -85,7 +91,7 @@ const meRoute = createRoute({
           }),
         },
       },
-      description: 'User info',
+      description: '用户信息（未登录时 user 为 null）',
     },
   },
 })
@@ -144,6 +150,9 @@ authRoutes.get('/me', handleGetMe)
 const myPermissionsRoute = createRoute({
   method: 'get',
   path: '/my-permissions',
+  tags: ['Auth'],
+  summary: '获取当前用户权限',
+  description: '获取当前登录用户的完整权限配置，用于前端权限控制。',
   responses: {
     200: {
       content: {
@@ -154,7 +163,7 @@ const myPermissionsRoute = createRoute({
           }),
         },
       },
-      description: 'User permissions',
+      description: '用户权限配置',
     },
   },
 })
@@ -178,6 +187,9 @@ authRoutes.openapi(myPermissionsRoute, createRouteHandler(async c => {
 const cfSessionRoute = createRoute({
   method: 'post',
   path: '/auth/cf-session',
+  tags: ['Auth'],
+  summary: 'Cloudflare Access 登录',
+  description: '通过 Cloudflare Access JWT 建立应用会话。用户需先通过 CF Access 验证，请求头中携带 CF-Access-JWT-Assertion。',
   responses: {
     200: {
       content: {
@@ -189,7 +201,31 @@ const cfSessionRoute = createRoute({
           }),
         },
       },
-      description: 'CF Access session result',
+      description: '登录成功，返回应用 JWT Token 和用户信息',
+    },
+    401: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            error: z.string(),
+            code: z.string().optional(),
+          }),
+        },
+      },
+      description: 'CF Access 验证失败',
+    },
+    403: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            error: z.string(),
+            code: z.string().optional(),
+          }),
+        },
+      },
+      description: '员工记录不存在或已停用',
     },
   },
 })

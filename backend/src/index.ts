@@ -1,12 +1,12 @@
-// Framework imports
+// 框架导入
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { swaggerUI } from '@hono/swagger-ui'
 import { cors } from 'hono/cors'
 
-// Type imports
+// 类型定义导入
 import type { Env, AppVariables } from './types/index.js'
 
-// Middleware imports
+// 中间件导入
 import { createAuthMiddleware } from './middleware.js'
 
 import { di } from './middleware/di.js'
@@ -16,7 +16,7 @@ import { securityHeaders } from './middleware/security.js'
 import { performanceMonitor } from './middleware/performance.js'
 import { createVersionMiddleware } from './middleware/version.js'
 
-// Utility imports
+// 工具类导入
 import { errorHandlerV2, Errors } from './utils/errors.js'
 import { Logger } from './utils/logger.js'
 import { apiSuccess, jsonResponse } from './utils/response.js'
@@ -25,11 +25,11 @@ import { DepartmentService } from './services/system/DepartmentService.js'
 import { AuditService } from './services/system/AuditService.js'
 import { initMonitoringService, getMonitoringService } from './utils/monitoring.js'
 
-// Initialize monitoring service at startup (singleton)
+// 应用启动时初始化监控服务（单例）
 initMonitoringService()
 Logger.info('[App] Monitoring service initialized at startup')
 
-// Route imports (V2 only)
+// 路由导入 (仅限 V2)
 import { authRoutes as authRoutesV2 } from './routes/v2/auth.js'
 import { masterDataRoutes as masterDataRoutesV2 } from './routes/v2/master-data.js'
 import { flowsRoutes as flowsRoutesV2 } from './routes/v2/flows.js'
@@ -57,10 +57,10 @@ import permissionConfigRoutesV2 from './routes/v2/permission-config.js'
 import pmRoutesV2 from './routes/v2/pm/index.js'
 import notificationsRoutesV2 from './routes/v2/notifications.js'
 
-// App initialization
+// 应用初始化
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
-// Global middleware
+// 全局中间件
 app.use('*', createRequestIdMiddleware())
 app.use('*', securityHeaders()) // 安全响应头
 app.use('*', performanceMonitor()) // 性能监控
@@ -106,7 +106,7 @@ app.use(
 // 通用 API 速率限制（基于 IP）
 
 
-// Log request start
+// 记录请求开始
 app.use('*', async (c, next) => {
   const start = Date.now()
   await next()
@@ -125,7 +125,7 @@ app.use('*', async (c, next) => {
 
 app.get('/', c => c.json({ ok: true, name: 'caiwu-backend' }))
 
-// 健康检查和版本信息（不需要认证）
+// 健康检查和版本信息（无需认证）
 app.get('/api/health', async c => {
   const checks = {
     db: false,
@@ -133,7 +133,7 @@ app.get('/api/health', async c => {
     r2: false,
   }
 
-  // 1. Check DB
+  // 1. 检查数据库 (DB)
   try {
     const r = await Promise.race([
       c.env.DB.prepare('select 1 as ok').first<{ ok: number }>(),
@@ -144,7 +144,7 @@ app.get('/api/health', async c => {
     Logger.error('Health check DB error', { error })
   }
 
-  // 2. Check KV (Sessions)
+  // 2. 检查 KV (Sessions)
   try {
     await Promise.race([
       c.env.SESSIONS_KV.list({ limit: 1 }),
@@ -155,7 +155,7 @@ app.get('/api/health', async c => {
     Logger.error('Health check KV error', { error })
   }
 
-  // 3. Check R2 (Vouchers)
+  // 3. 检查 R2 (Vouchers)
   try {
     await Promise.race([
       c.env.VOUCHERS.list({ limit: 1 }),
@@ -372,14 +372,14 @@ app.post('/api/v2/init-if-empty', async c => {
   }
 })
 
-// --- Versioning Setup ---
+// --- 接口版本配置 ---
 
 const v2 = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
-// Error Handlers
+// 错误处理器
 v2.onError(errorHandlerV2)
 
-// Middleware for API routes
+// API 路由中间件
 const apiMiddleware = [
   createVersionMiddleware(), // 版本检测（最先执行）
   di,                        // 依赖注入（必须在依赖服务的中间件之前）
@@ -390,7 +390,7 @@ const apiMiddleware = [
 
 v2.use('*', ...apiMiddleware)
 
-// --- Route Registration (V2) ---
+// --- 路由注册 (V2) ---
 v2.route('/', authRoutesV2)
 v2.route('/', masterDataRoutesV2)
 v2.route('/', flowsRoutesV2)
@@ -418,7 +418,7 @@ v2.route('/permission-config', permissionConfigRoutesV2)
 v2.route('/pm', pmRoutesV2)
 v2.route('/notifications', notificationsRoutesV2)
 
-// Mount versions to app
+// 挂载版本到应用
 // Default: /api/* -> v2
 app.route('/api', v2)
 // Explicit v2: /api/v2/* -> v2

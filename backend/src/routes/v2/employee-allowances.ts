@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'
@@ -11,6 +12,22 @@ export const employeeAllowancesRoutes = new OpenAPIHono<{
   Bindings: Env
   Variables: AppVariables
 }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireAllowancePermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  // 津贴管理使用 hr.salary 权限
+  if (!permCtx.hasPermission(PermissionModule.HR, 'salary', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schema 定义
 const employeeAllowanceResponseSchema = z.object({

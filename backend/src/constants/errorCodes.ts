@@ -1,30 +1,30 @@
 /**
- * Standard Application Error Codes
+ * 标准应用错误代码
  */
 
 export enum ErrorCodes {
-  // Authentication & Authorization (AUTH)
-  AUTH_UNAUTHORIZED = 'AUTH_UNAUTHORIZED', // Not logged in or invalid token
-  AUTH_TOKEN_EXPIRED = 'AUTH_TOKEN_EXPIRED', // Token expired
-  AUTH_FORBIDDEN = 'AUTH_FORBIDDEN', // Logged in but no permission
+  // 认证与授权 (AUTH)
+  AUTH_UNAUTHORIZED = 'AUTH_UNAUTHORIZED', // 未登录或 Token 无效
+  AUTH_TOKEN_EXPIRED = 'AUTH_TOKEN_EXPIRED', // Token 已过期
+  AUTH_FORBIDDEN = 'AUTH_FORBIDDEN', // 已登录但无权限
 
 
   // Validation (VAL) -> VALIDATION
-  VAL_BAD_REQUEST = 'VALIDATION_BAD_REQUEST', // Schema validation failed or bad input
+  VAL_BAD_REQUEST = 'VALIDATION_BAD_REQUEST', // Schema 校验失败或输入错误
   VALIDATION_REQUIRED_FIELD = 'VALIDATION_REQUIRED_FIELD',
   VALIDATION_INVALID_FORMAT = 'VALIDATION_INVALID_FORMAT',
 
-  // Business Logic (BUS) -> BUSINESS
-  BUS_GENERAL = 'BUSINESS_GENERAL', // Generic business error
-  BUS_NOT_FOUND = 'BUSINESS_NOT_FOUND', // Resource not found
-  BUS_DUPLICATE = 'BUSINESS_DUPLICATE', // Resource already exists
-  BUS_STATE_INVALID = 'BUSINESS_STATE_INVALID', // Invalid state transition
-  BUS_ACTION_FAILED = 'BUSINESS_ACTION_FAILED', // Action failed due to business rules
+  // 业务逻辑 (BUS) -> 业务
+  BUS_GENERAL = 'BUSINESS_GENERAL', // 通用业务错误
+  BUS_NOT_FOUND = 'BUSINESS_NOT_FOUND', // 资源未找到
+  BUS_DUPLICATE = 'BUSINESS_DUPLICATE', // 资源已存在
+  BUS_STATE_INVALID = 'BUSINESS_STATE_INVALID', // 状态切换无效
+  BUS_ACTION_FAILED = 'BUSINESS_ACTION_FAILED', // 由于业务规则导致操作失败
   BUSINESS_INSUFFICIENT_BALANCE = 'BUSINESS_INSUFFICIENT_BALANCE',
   BUS_CONCURRENT_MODIFICATION = 'BUSINESS_CONCURRENT_MODIFICATION', // 并发修改冲突
 
-  // System (SYS) -> SYSTEM
-  SYS_INTERNAL_ERROR = 'SYSTEM_INTERNAL_ERROR', // Unhandled exception
-  SYS_DB_ERROR = 'SYSTEM_DB_ERROR', // Database specific error
-  SYS_EXTERNAL_API = 'SYSTEM_EXTERNAL_API', // External service failure
+  // 系统 (SYS) -> 系统
+  SYS_INTERNAL_ERROR = 'SYSTEM_INTERNAL_ERROR', // 未处理的异常
+  SYS_DB_ERROR = 'SYSTEM_DB_ERROR', // 数据库特定错误
+  SYS_EXTERNAL_API = 'SYSTEM_EXTERNAL_API', // 外部服务故障
 }

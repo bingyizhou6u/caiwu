@@ -1,11 +1,27 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { getUserPosition, hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { apiSuccess, jsonResponse } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
 export const employeesLeavesRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireLeavePermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.HR, 'leave', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 const LeaveSchema = z.object({
   id: z.string(),
@@ -71,7 +87,9 @@ const listEmployeeLeavesRoute = createRoute({
 employeesLeavesRoutes.openapi(
   listEmployeeLeavesRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    // 使用 PermissionContext 检查认证
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { employeeId, status } = c.req.valid('query')
@@ -113,9 +131,9 @@ const createEmployeeLeaveRoute = createRoute({
 employeesLeavesRoutes.openapi(
   createEmployeeLeaveRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'leave', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireLeavePermission(c, PermissionAction.CREATE)
+
     const body = c.req.valid('json')
     const newLeave = await c.var.services.employeeLeave.createLeave(body)
     return newLeave
@@ -158,9 +176,9 @@ const updateEmployeeLeaveStatusRoute = createRoute({
 employeesLeavesRoutes.openapi(
   updateEmployeeLeaveStatusRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'hr', 'leave', 'approve')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireLeavePermission(c, PermissionAction.APPROVE)
+
     const { id } = c.req.valid('param')
     const { status, memo } = c.req.valid('json') as { status: string; memo?: string }
     const userId = c.get('employeeId')

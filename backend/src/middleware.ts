@@ -10,6 +10,8 @@ import {
 } from './utils/jwt.js'
 import { isPublicPath } from './config/paths.js'
 import { Logger } from './utils/logger.js'
+import { createPermissionContextFromData, type PositionInfo, type EmployeeInfo } from './utils/permission-context.js'
+import type { DataScopeType } from './constants/permissions.js'
 
 // Auth middleware
 // 使用 JWT + 数据库 session 组合的方式校验用户身份
@@ -110,6 +112,34 @@ export function createAuthMiddleware() {
     }
     // 部门允许的功能模块
     c.set('departmentModules', sessionData.departmentModules || ['*'])
+
+    // 创建并注入 PermissionContext
+    if (sessionData.position && sessionData.employee) {
+      const position: PositionInfo = {
+        id: sessionData.position.id,
+        code: sessionData.position.code,
+        name: sessionData.position.name,
+        canManageSubordinates: sessionData.position.canManageSubordinates,
+        dataScope: (sessionData.position.dataScope as DataScopeType) || 'self',
+        permissions: sessionData.position.permissions || {},
+      }
+
+      const employee: EmployeeInfo = {
+        id: sessionData.employee.id,
+        orgDepartmentId: sessionData.employee.orgDepartmentId,
+        projectId: sessionData.employee.projectId,
+      }
+
+      const permissionContext = createPermissionContextFromData(
+        sessionData.session.employeeId,
+        position,
+        employee,
+        sessionData.departmentModules || ['*'],
+        c.env.DB
+      )
+
+      c.set('permissionContext', permissionContext)
+    }
 
     await next()
   }

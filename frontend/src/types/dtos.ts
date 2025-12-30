@@ -1,9 +1,9 @@
 /**
- * Data Transfer Objects (DTOs) for API requests
- * Used to ensure type safety for mutation payloads
+ * API 请求的数据传输对象 (DTOs)
+ * 用于确保变更请求负载的类型安全
  */
 
-// Employee DTOs
+// 员工 DTOs
 export interface RegularizeEmployeeDTO {
     regularDate: string
 }
@@ -42,7 +42,7 @@ export interface ToggleUserActiveDTO {
     active: number
 }
 
-// Fixed Asset DTOs
+// 固定资产 DTOs
 export interface CreateFixedAssetDTO {
     assetCode: string
     name: string
@@ -92,7 +92,7 @@ export interface ReturnFixedAssetDTO {
     memo?: string
 }
 
-// AR/AP DTOs
+// 应收应付 DTOs
 export interface CreateAPDocDTO {
     partyId: string
     issueDate: string
@@ -124,7 +124,7 @@ export interface SettleARDocDTO {
     settleAmountCents: number
 }
 
-// Expense DTOs
+// 报销 DTOs
 export interface CreateExpenseDTO {
     employeeId: string
     expenseType: string

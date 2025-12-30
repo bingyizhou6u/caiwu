@@ -1,18 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  getDataAccessFilterSQL,
-  // canViewEmployee, // Removed as per instruction
-  hasPermission,
-  Position,
-  Employee,
-} from '../../src/utils/permissions'
+import { checkPermission } from '../../src/middleware/permission'
 import { PermissionService } from '../../src/services/hr/PermissionService.js'
-import { createDb } from '../../src/utils/db'
-import * as schema from '../../src/db/schema'
-import { employees } from '../../src/db/schema'
-import { drizzle } from 'drizzle-orm/d1'
 
-// Mock Hono Context
+// Position and Employee interfaces for testing
+interface Position {
+  id: string
+  code: string
+  name: string
+  canManageSubordinates: number
+  dataScope: string
+  permissions: Record<string, Record<string, string[]>>
+}
+
+interface Employee {
+  id: string
+  email: string
+  name: string
+  positionId: string
+  projectId: string | null
+  orgDepartmentId: string | null
+}
+
+// Mock Hono Context (kept for reference, but tests now use checkPermission directly)
 const createMockContext = (
   position: Partial<Position>,
   employee: Partial<Employee>,
@@ -38,6 +47,21 @@ const createMockContext = (
       },
     },
   } as any
+}
+
+/**
+ * Helper function to test permission checking using the new checkPermission function
+ * This replaces the old hasPermission function tests
+ */
+function testHasPermission(
+  permissions: Record<string, Record<string, string[]>>,
+  departmentModules: string[],
+  dataScope: string,
+  module: string,
+  subModule: string,
+  action: string
+): boolean {
+  return checkPermission(permissions, departmentModules, dataScope, { module, subModule, action })
 }
 
 
@@ -145,7 +169,7 @@ describe('RBAC (Role-Based Access Control)', () => {
     })
   })
 
-  describe('hasPermission', () => {
+  describe('hasPermission (using checkPermission)', () => {
     const permissions = {
       finance: {
         flow: ['view', 'create'],
@@ -156,44 +180,48 @@ describe('RBAC (Role-Based Access Control)', () => {
     }
 
     it('should allow if module allowed and permission exists', () => {
-      const ctx = createMockContext(
-        { level: 2, permissions, dataScope: 'project' } as any,
-        { id: 'u1' } as unknown as Employee,
-        ['finance.*', 'hr.*'] // Department allows finance and hr
+      const result = testHasPermission(
+        permissions,
+        ['finance.*', 'hr.*'], // Department allows finance and hr
+        'project',
+        'finance', 'flow', 'create'
       )
 
-      expect(hasPermission(ctx, 'finance', 'flow', 'create')).toBe(true)
+      expect(result).toBe(true)
     })
 
     it('should deny if module NOT allowed by department', () => {
-      const ctx = createMockContext(
-        { level: 2, permissions, dataScope: 'project' } as any,
-        { id: 'u1' } as unknown as Employee,
-        ['hr.*'] // Department ONLY allows hr
+      const result = testHasPermission(
+        permissions,
+        ['hr.*'], // Department ONLY allows hr
+        'project',
+        'finance', 'flow', 'create'
       )
 
       // User has permission in JSON, but department disallows module
-      expect(hasPermission(ctx, 'finance', 'flow', 'create')).toBe(false)
+      expect(result).toBe(false)
     })
 
     it('should deny if permission does not exist in position', () => {
-      const ctx = createMockContext(
-        { level: 2, permissions, dataScope: 'project' } as any,
-        { id: 'u1' } as unknown as Employee,
-        ['*']
+      const result = testHasPermission(
+        permissions,
+        ['*'],
+        'project',
+        'finance', 'flow', 'delete'
       )
 
-      expect(hasPermission(ctx, 'finance', 'flow', 'delete')).toBe(false)
+      expect(result).toBe(false)
     })
 
     it('Level 1 (HQ) should bypass department module restrictions', () => {
-      const ctx = createMockContext(
-        { level: 1, permissions, dataScope: 'all' } as any, // HQ Level 1
-        { id: 'u1' } as unknown as Employee,
-        ['hr.*'] // Even if context says restricted modules (unlikely for HQ but testing logic)
+      const result = testHasPermission(
+        permissions,
+        ['hr.*'], // Even if context says restricted modules (unlikely for HQ but testing logic)
+        'all', // HQ dataScope = 'all'
+        'finance', 'flow', 'view'
       )
 
-      expect(hasPermission(ctx, 'finance', 'flow', 'view')).toBe(true)
+      expect(result).toBe(true)
     })
   })
 })

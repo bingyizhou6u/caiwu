@@ -10,7 +10,7 @@ export function createDb(d1: D1Database) {
   return drizzle(d1, { schema })
 }
 
-// getUserByEmail now queries employees table by personalEmail
+// getUserByEmail 现在通过 personalEmail 查询 employees 表
 
 export async function createSession(db: DrizzleD1Database<typeof schema>, employeeId: string) {
   const id = uuid()
@@ -37,7 +37,7 @@ export async function getSession(db: DrizzleD1Database<typeof schema>, id: strin
   return s
 }
 
-// getUserEmployeeId - since users and employees are merged, just return the id
+// getUserEmployeeId - 由于用户和员工已合并，直接返回 ID
 
 // 获取用户的职位信息（从员工记录获取）
 

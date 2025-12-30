@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
-import { hasPermission } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { PermissionModule, PermissionAction, DataScope } from '../../../constants/permissions.js'
 import { logAuditAction } from '../../../utils/audit.js'
 import { Errors } from '../../../utils/errors.js'
 import {
@@ -16,6 +17,34 @@ import { createQueryCache, cacheKeys, cacheTTL } from '../../../utils/query-cach
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 export const departmentsRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查部门权限
+ */
+function requireDepartmentPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SYSTEM, 'department', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+/**
+ * 辅助函数：检查站点权限
+ */
+function requireSitePermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SITE, 'info', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // ========== 部门相关 ==========
 
@@ -80,9 +109,7 @@ const createDepartmentRoute = createRoute({
 departmentsRoutes.openapi(
   createDepartmentRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'department', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireDepartmentPermission(c, PermissionAction.CREATE)
     const body = c.req.valid('json')
     const service = c.var.services.masterData
 
@@ -144,9 +171,7 @@ const updateDepartmentRoute = createRoute({
 departmentsRoutes.openapi(
   updateDepartmentRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'department', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireDepartmentPermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.masterData
@@ -190,9 +215,7 @@ const deleteDepartmentRoute = createRoute({
 departmentsRoutes.openapi(
   deleteDepartmentRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'department', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireDepartmentPermission(c, PermissionAction.DELETE)
     const id = c.req.param('id')
     const service = c.var.services.masterData
 
@@ -283,9 +306,7 @@ const createSiteRoute = createRoute({
 departmentsRoutes.openapi(
   createSiteRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'site', 'info', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireSitePermission(c, PermissionAction.CREATE)
     const body = c.req.valid('json')
     const service = c.var.services.masterData
 
@@ -345,9 +366,7 @@ const updateSiteRoute = createRoute({
 departmentsRoutes.openapi(
   updateSiteRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'site', 'info', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireSitePermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.masterData
@@ -390,9 +409,7 @@ const deleteSiteRoute = createRoute({
 departmentsRoutes.openapi(
   deleteSiteRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'site', 'info', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireSitePermission(c, PermissionAction.DELETE)
     const id = c.req.param('id')
     const service = c.var.services.masterData
 

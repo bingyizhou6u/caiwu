@@ -8,12 +8,42 @@ vi.mock('../../src/utils/audit.js', () => ({
   logAuditAction: vi.fn(),
 }))
 
-// Mock permissions
-vi.mock('../../src/utils/permissions.js', () => ({
-  hasPermission: vi.fn(() => true),
-  getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager', function_role: 'admin' })),
-  getUserEmployee: vi.fn(() => ({ id: 'emp1', name: 'Test User', departmentId: 'dept1' })),
-  getUserId: vi.fn(() => 'user1'),
+// Mock permission-context - return a mock PermissionContext
+vi.mock('../../src/utils/permission-context.js', () => ({
+  createPermissionContext: vi.fn(() => ({
+    employeeId: 'emp123',
+    dataScope: 'all',
+    canManageSubordinates: true,
+    allowedModules: ['*'],
+    permissions: {
+      asset: {
+        fixed: ['view', 'create', 'update', 'delete', 'allocate'],
+        rental: ['view', 'create', 'update', 'delete'],
+      },
+    },
+    position: {
+      id: 'pos1',
+      code: 'MGR',
+      name: 'Manager',
+      canManageSubordinates: 1,
+      dataScope: 'all',
+      permissions: {
+        asset: {
+          fixed: ['view', 'create', 'update', 'delete', 'allocate'],
+          rental: ['view', 'create', 'update', 'delete'],
+        },
+      },
+    },
+    employee: {
+      id: 'emp123',
+      orgDepartmentId: 'dept1',
+      projectId: 'proj1',
+    },
+    hasPermission: vi.fn(() => true),
+    isModuleAllowed: vi.fn(() => true),
+    checkPermissions: vi.fn(() => true),
+    toJSON: vi.fn(() => ({})),
+  })),
 }))
 
 const mockFixedAssetService = {
@@ -61,6 +91,26 @@ describe('Fixed Assets Routes', () => {
     // Mock middleware - must set services before routes
     app.use('*', async (c, next) => {
       c.set('userId', 'user123')
+      c.set('employeeId', 'emp123')
+      c.set('userPosition', {
+        id: 'pos1',
+        code: 'MGR',
+        name: 'Manager',
+        canManageSubordinates: 1,
+        dataScope: 'all',
+        permissions: {
+          asset: {
+            fixed: ['view', 'create', 'update', 'delete', 'allocate'],
+            rental: ['view', 'create', 'update', 'delete'],
+          },
+        },
+      })
+      c.set('userEmployee', {
+        id: 'emp123',
+        orgDepartmentId: 'dept1',
+        projectId: 'proj1',
+      })
+      c.set('departmentModules', ['*'])
       c.set('services', {
         fixedAsset: mockFixedAssetService,
         fixedAssetAllocation: mockFixedAssetAllocationService,

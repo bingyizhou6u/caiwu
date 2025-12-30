@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
-import { hasPermission } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../../constants/permissions.js'
 import { logAuditAction } from '../../../utils/audit.js'
 import { Errors } from '../../../utils/errors.js'
 import {
@@ -13,6 +14,20 @@ import { createQueryCache, cacheKeys, cacheTTL } from '../../../utils/query-cach
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 export const currenciesRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ */
+function requireCurrencyPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SYSTEM, 'currency', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 const listCurrenciesRoute = createRoute({
   method: 'get',
@@ -90,9 +105,7 @@ const createCurrencyRoute = createRoute({
 currenciesRoutes.openapi(
   createCurrencyRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'currency', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireCurrencyPermission(c, PermissionAction.CREATE)
     const body = c.req.valid('json')
     const service = c.var.services.masterData
 
@@ -145,9 +158,7 @@ const updateCurrencyRoute = createRoute({
 currenciesRoutes.openapi(
   updateCurrencyRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'currency', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireCurrencyPermission(c, PermissionAction.UPDATE)
     const code = c.req.param('code')
     const body = c.req.valid('json')
     const service = c.var.services.masterData
@@ -189,9 +200,7 @@ const deleteCurrencyRoute = createRoute({
 currenciesRoutes.openapi(
   deleteCurrencyRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'currency', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireCurrencyPermission(c, PermissionAction.DELETE)
     const code = c.req.param('code')
     const service = c.var.services.masterData
 
@@ -239,7 +248,8 @@ currenciesRoutes.openapi(
   createRouteHandler(async (c: any) => {
     // 权限检查：简单起见，只要有 update 权限就可以执行 batch (包括 delete)
     // 更细粒度的控制可以在 service 内部或这里根据 operation 类型拆分
-    if (!hasPermission(c, 'system', 'currency', 'update')) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.SYSTEM, 'currency', PermissionAction.UPDATE)) {
       throw Errors.FORBIDDEN()
     }
 
@@ -247,7 +257,7 @@ currenciesRoutes.openapi(
     const service = c.var.services.masterData
 
     // 如果是 delete 操作，需要检查 delete 权限
-    if (body.operation === 'delete' && !hasPermission(c, 'system', 'currency', 'delete')) {
+    if (body.operation === 'delete' && !permCtx.hasPermission(PermissionModule.SYSTEM, 'currency', PermissionAction.DELETE)) {
       throw Errors.FORBIDDEN()
     }
 

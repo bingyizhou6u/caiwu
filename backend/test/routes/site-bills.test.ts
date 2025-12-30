@@ -8,15 +8,6 @@ vi.mock('../../src/utils/audit.js', () => ({
   logAuditAction: vi.fn(),
 }))
 
-// Mock permissions
-vi.mock('../../src/utils/permissions.js', () => ({
-  hasPermission: vi.fn(() => true),
-  getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager' })),
-  getUserId: vi.fn(() => 'user1'),
-  isTeamMember: vi.fn(() => false),
-  getDataAccessFilter: vi.fn(() => undefined),
-}))
-
 const mockSiteBillService = {
   list: vi.fn(),
   create: vi.fn(),
@@ -48,6 +39,28 @@ describe('Site Bills Routes', () => {
     // Mock middleware
     app.use('*', async (c, next) => {
       c.set('userId', 'user123')
+      c.set('employeeId', 'user123')
+      c.set('userPosition', {
+        id: 'pos1',
+        code: 'MANAGER',
+        name: 'Manager',
+        canManageSubordinates: 1,
+        dataScope: 'all',
+        permissions: {
+          finance: {
+            site_bill: ['view', 'create', 'update', 'delete'],
+          },
+          site: {
+            bill: ['view', 'create', 'update', 'delete'],
+          },
+        },
+      })
+      c.set('userEmployee', {
+        id: 'user123',
+        orgDepartmentId: null,
+        projectId: null,
+      })
+      c.set('departmentModules', ['*'])
       c.set('services', {
         siteBill: mockSiteBillService,
       } as any)

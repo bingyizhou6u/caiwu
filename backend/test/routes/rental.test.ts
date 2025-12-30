@@ -8,10 +8,42 @@ vi.mock('../../src/utils/audit.js', () => ({
   logAuditAction: vi.fn(),
 }))
 
-// Mock permissions
-vi.mock('../../src/utils/permissions.js', () => ({
-  hasPermission: vi.fn(() => true),
-  getUserPosition: vi.fn(() => ({ id: 'pos1', name: 'Manager' })),
+// Mock permission-context - return a mock PermissionContext
+vi.mock('../../src/utils/permission-context.js', () => ({
+  createPermissionContext: vi.fn(() => ({
+    employeeId: 'emp123',
+    dataScope: 'all',
+    canManageSubordinates: true,
+    allowedModules: ['*'],
+    permissions: {
+      asset: {
+        rental: ['view', 'create', 'update', 'delete'],
+        fixed: ['view', 'create', 'update', 'delete', 'allocate'],
+      },
+    },
+    position: {
+      id: 'pos1',
+      code: 'MGR',
+      name: 'Manager',
+      canManageSubordinates: 1,
+      dataScope: 'all',
+      permissions: {
+        asset: {
+          rental: ['view', 'create', 'update', 'delete'],
+          fixed: ['view', 'create', 'update', 'delete', 'allocate'],
+        },
+      },
+    },
+    employee: {
+      id: 'emp123',
+      orgDepartmentId: 'dept1',
+      projectId: 'proj1',
+    },
+    hasPermission: vi.fn(() => true),
+    isModuleAllowed: vi.fn(() => true),
+    checkPermissions: vi.fn(() => true),
+    toJSON: vi.fn(() => ({})),
+  })),
 }))
 
 const mockRentalService = {
@@ -29,6 +61,7 @@ const mockRentalService = {
   deletePayment: vi.fn(),
   generatePayableBills: vi.fn(),
   listPayableBills: vi.fn(),
+  markBillPaid: vi.fn(),
 }
 
 describe('Rental Routes', () => {
@@ -45,6 +78,26 @@ describe('Rental Routes', () => {
     // Mock middleware
     app.use('*', async (c, next) => {
       c.set('userId', 'user123')
+      c.set('employeeId', 'emp123')
+      c.set('userPosition', {
+        id: 'pos1',
+        code: 'MGR',
+        name: 'Manager',
+        canManageSubordinates: 1,
+        dataScope: 'all',
+        permissions: {
+          asset: {
+            rental: ['view', 'create', 'update', 'delete'],
+            fixed: ['view', 'create', 'update', 'delete', 'allocate'],
+          },
+        },
+      })
+      c.set('userEmployee', {
+        id: 'emp123',
+        orgDepartmentId: 'dept1',
+        projectId: 'proj1',
+      })
+      c.set('departmentModules', ['*'])
       c.set('services', {
         rental: mockRentalService,
       } as any)
@@ -308,5 +361,19 @@ describe('Rental Routes', () => {
     // V2 响应格式
     expect(data.success).toBe(true)
     expect(data.data.results).toEqual(mockResult)
+  })
+
+  it('should mark bill as paid', async () => {
+    mockRentalService.markBillPaid.mockResolvedValue({ ok: true })
+
+    const res = await app.request(`/rental-payable-bills/${validId}/mark-paid`, {
+      method: 'POST',
+    })
+
+    expect(res.status).toBe(200)
+    const data = (await res.json()) as any
+    // V2 响应格式
+    expect(data.success).toBe(true)
+    expect(data.data.ok).toBe(true)
   })
 })

@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission, getUserPosition, getUserEmployee, getDataAccessFilterSQL, canViewEmployee } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { createDataAccessFilterSQL } from '../../utils/data-access-filter.js'
 import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
@@ -17,6 +18,21 @@ import { employees } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireEmployeePermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.HR, 'employee', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 export const employeesRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
@@ -47,8 +63,9 @@ const listEmployeesRoute = createRoute({
 employeesRoutes.openapi(
   listEmployeesRoute,
   createRouteHandler(async (c: any) => {
-    const position = getUserPosition(c)
-    if (!position) {
+    // 使用 PermissionContext 进行权限检查和数据访问过滤
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
 
@@ -56,13 +73,22 @@ employeesRoutes.openapi(
     const service = c.var.services.employee
 
     const filters: any = { ...query }
-    const employee = c.get('userEmployee')
 
-    // 使用统一的权限过滤工具函数
-    // 使用 getDataAccessFilterSQL 获取安全的 SQL 对象
-    const accessFilter = getDataAccessFilterSQL(c, 'employees', {
-      deptColumn: 'projectId',
-      orgDeptColumn: 'orgDepartmentId',
+    // 使用新的 createDataAccessFilterSQL 获取数据访问过滤条件
+    // employees 表使用 'project_id' 和 'org_department_id' 列
+    const accessFilter = createDataAccessFilterSQL({
+      dataScope: permCtx.dataScope,
+      user: {
+        id: permCtx.employee.id,
+        projectId: permCtx.employee.projectId,
+        orgDepartmentId: permCtx.employee.orgDepartmentId,
+      },
+      fieldMapping: {
+        employeeId: 'id',
+        projectId: 'projectId',
+        orgDepartmentId: 'orgDepartmentId',
+      },
+      selfField: 'employeeId',
     })
 
     const results = await service.getAll(filters, accessFilter)
@@ -100,13 +126,14 @@ employeesRoutes.openapi(
   createRouteHandler(async (c: any) => {
     const { id } = c.req.valid('param')
 
-    const position = getUserPosition(c)
-    const employee = getUserEmployee(c)
-    if (!position || !employee) {
+    // 使用 PermissionContext 进行权限检查
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.UNAUTHORIZED()
     }
 
-    const canView = await c.var.services.permission.canViewEmployee(employee, position, id)
+    // 检查是否可以访问该员工数据
+    const canView = await permCtx.canAccessData(id)
 
     if (!canView) {
       throw Errors.FORBIDDEN('无权查看该员工信息')
@@ -154,9 +181,8 @@ const createEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   createEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.CREATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.CREATE)
 
     const body = c.req.valid('json')
     const service = c.var.services.employee
@@ -247,9 +273,8 @@ const updateEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   updateEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.UPDATE)
 
     const id = c.req.param('id')
     const body = c.req.valid('json')
@@ -313,9 +338,9 @@ const regularizeEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   regularizeEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.UPDATE)
+
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.employee
@@ -356,9 +381,9 @@ const leaveEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   leaveEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.UPDATE)
+
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.employee
@@ -399,9 +424,9 @@ const rejoinEmployeeRoute = createRoute({
 employeesRoutes.openapi(
   rejoinEmployeeRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.UPDATE)
+
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.employee
@@ -451,9 +476,9 @@ const getEmployeeProjectsRoute = createRoute({
 employeesRoutes.openapi(
   getEmployeeProjectsRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.VIEW)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.VIEW)
+
     const { id } = c.req.valid('param')
     const projects = await c.var.services.employeeProject.getEmployeeProjects(id)
     return projects
@@ -498,9 +523,9 @@ const addEmployeeProjectRoute = createRoute({
 employeesRoutes.openapi(
   addEmployeeProjectRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.UPDATE)
+
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
     const result = await c.var.services.employeeProject.addEmployeeProject({
@@ -542,9 +567,9 @@ const removeEmployeeProjectRoute = createRoute({
 employeesRoutes.openapi(
   removeEmployeeProjectRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.UPDATE)
+
     const { id, projectId } = c.req.valid('param')
     const result = await c.var.services.employeeProject.removeEmployeeProject(id, projectId)
     return result
@@ -579,9 +604,9 @@ const setEmployeePrimaryProjectRoute = createRoute({
 employeesRoutes.openapi(
   setEmployeePrimaryProjectRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.HR, 'employee', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireEmployeePermission(c, PermissionAction.UPDATE)
+
     const { id, projectId } = c.req.valid('param')
     const result = await c.var.services.employeeProject.setPrimaryProject(id, projectId)
     return result

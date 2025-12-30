@@ -14,14 +14,25 @@ vi.mock('../../../src/middleware.js', async () => {
     ...actual,
     createAuthMiddleware: () => async (c: any, next: any) => {
       c.set('userId', 'user-admin')
+      c.set('employeeId', 'user-admin')
       c.set('userPosition', {
         id: 'pos-admin',
+        code: 'ADMIN',
+        name: 'Admin',
+        canManageSubordinates: 1,
+        dataScope: 'all',
         permissions: {
           system: {
-            currency: ['create', 'read', 'update', 'delete'],
+            currency: ['view', 'create', 'update', 'delete'],
           },
         },
       })
+      c.set('userEmployee', {
+        id: 'user-admin',
+        orgDepartmentId: null,
+        projectId: null,
+      })
+      c.set('departmentModules', ['*'])
       await next()
     },
   }

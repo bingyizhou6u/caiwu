@@ -58,6 +58,7 @@
     "better-sqlite3": "^12.5.0",
     "drizzle-kit": "^0.31.7",
     "eslint": "^9.39.2",
+    "fast-check": "^4.5.2",
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "tsx": "^4.19.2",

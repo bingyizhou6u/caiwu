@@ -1,7 +1,8 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { sql } from 'drizzle-orm'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission, getUserPosition, getDataAccessFilterSQL } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { createDataAccessFilterSQL } from '../../utils/data-access-filter.js'
 import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
@@ -16,6 +17,21 @@ import { getPagination } from '../../utils/pagination.js'
 import { createRouteHandler, createPaginatedHandler, parsePagination } from '../../utils/route-helpers.js'
 
 export const arApRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查 AR 权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireArPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.FINANCE, 'ar', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // 定义 Schema
 const arApDocResponseSchema = z.object({
@@ -93,13 +109,28 @@ const listArApDocsRoute = createRoute({
 arApRoutes.openapi(
   listArApDocsRoute,
   createPaginatedHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    // 使用 PermissionContext 进行数据访问过滤
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { kind, status } = c.req.valid('query')
     const { page, limit } = parsePagination(c)
 
-    const accessFilter = getDataAccessFilterSQL(c, 'ar_ap_docs', { skipOrgDept: true })
+    // 使用新的 createDataAccessFilterSQL 获取数据访问过滤条件
+    const accessFilter = createDataAccessFilterSQL({
+      dataScope: permCtx.dataScope,
+      user: {
+        id: permCtx.employee.id,
+        projectId: permCtx.employee.projectId,
+        orgDepartmentId: permCtx.employee.orgDepartmentId,
+      },
+      fieldMapping: {
+        projectId: 'project_id',
+      },
+      tableAlias: 'ar_ap_docs',
+      skipOrgDept: true,
+    })
 
     const conditions: any[] = []
 
@@ -110,8 +141,7 @@ arApRoutes.openapi(
       conditions.push(sql`ar_ap_docs.status = ${status}`)
     }
 
-    // 添加数据访问过滤条件（如果不是允许所有数据）
-    // 检查是否是允许所有数据的条件（1=1）
+    // 添加数据访问过滤条件
     conditions.push(accessFilter)
 
     let whereClause = sql``
@@ -185,9 +215,9 @@ const createArApDocRoute = createRoute({
 })
 
 arApRoutes.openapi(createArApDocRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, PermissionModule.FINANCE, 'ar', PermissionAction.CREATE)) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requireArPermission(c, PermissionAction.CREATE)
+
   const body = c.req.valid('json') as any
 
   const result = await c.var.services.arAp.create({
@@ -240,7 +270,8 @@ const listSettlementsRoute = createRoute({
 arApRoutes.openapi(
   listSettlementsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { docId } = c.req.valid('query')
@@ -285,9 +316,9 @@ const createSettlementRoute = createRoute({
 arApRoutes.openapi(
   createSettlementRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.FINANCE, 'ar', PermissionAction.CREATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireArPermission(c, PermissionAction.CREATE)
+
     const body = c.req.valid('json')
 
     const result = await c.var.services.arAp.settle({
@@ -332,9 +363,10 @@ const getStatementRoute = createRoute({
 })
 
 arApRoutes.openapi(getStatementRoute, async c => {
-  if (!getUserPosition(c)) {
-      throw Errors.FORBIDDEN()
-    }
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
   const { docId } = c.req.valid('query')
 
   // 优化：并行查询文档和settlements
@@ -396,9 +428,15 @@ const confirmArApDocRoute = createRoute({
 })
 
 arApRoutes.openapi(confirmArApDocRoute, async c => {
-  if (!hasPermission(c, PermissionModule.FINANCE, 'ar', PermissionAction.CREATE)) {
-      throw Errors.FORBIDDEN()
-    }
+  // 使用 PermissionContext 检查权限
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.FINANCE, 'ar', PermissionAction.CREATE)) {
+    throw Errors.FORBIDDEN()
+  }
+
   const body = c.req.valid('json')
 
   const result = await c.var.services.arAp.confirm({
@@ -465,13 +503,28 @@ arApRoutes.openapi(
     },
   }),
   createPaginatedHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    // 使用 PermissionContext 进行数据访问过滤
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { status } = c.req.valid('query')
     const { page, limit } = parsePagination(c)
 
-    const accessFilter = getDataAccessFilterSQL(c, 'ar_ap_docs', { skipOrgDept: true })
+    // 使用新的 createDataAccessFilterSQL 获取数据访问过滤条件
+    const accessFilter = createDataAccessFilterSQL({
+      dataScope: permCtx.dataScope,
+      user: {
+        id: permCtx.employee.id,
+        projectId: permCtx.employee.projectId,
+        orgDepartmentId: permCtx.employee.orgDepartmentId,
+      },
+      fieldMapping: {
+        projectId: 'project_id',
+      },
+      tableAlias: 'ar_ap_docs',
+      skipOrgDept: true,
+    })
 
     const conditions: any[] = [sql`ar_ap_docs.kind = 'AP'`]
     if (status) {
@@ -544,7 +597,8 @@ arApRoutes.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { docId } = c.req.valid('query')
@@ -578,7 +632,8 @@ arApRoutes.openapi(
     },
   }),
   async c => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { docId } = c.req.valid('query')

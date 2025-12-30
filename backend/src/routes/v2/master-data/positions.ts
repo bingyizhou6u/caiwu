@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
-import { getUserPosition } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { DataScope } from '../../../constants/permissions.js'
 import { Errors } from '../../../utils/errors.js'
 import {
   positionSchema,
@@ -35,7 +36,8 @@ const listPositionsRoute = createRoute({
 positionsRoutes.openapi(
   listPositionsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const service = c.var.services.masterData
@@ -71,7 +73,8 @@ const getAvailablePositionsRoute = createRoute({
 positionsRoutes.openapi(
   getAvailablePositionsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const orgDepartmentId = c.req.query('orgDepartmentId')

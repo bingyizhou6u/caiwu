@@ -1,7 +1,11 @@
 # 权限系统文档
 
 > **架构**：5 层权限体系  
-> **核心文件**：`backend/src/utils/permissions.ts`、`backend/src/constants/permissions.ts`
+> **核心文件**：
+> - `backend/src/utils/permission-context.ts` - 权限上下文
+> - `backend/src/utils/data-access-filter.ts` - 数据访问过滤
+> - `backend/src/middleware/permission.ts` - 权限守卫中间件
+> - `backend/src/constants/permissions.ts` - 权限常量定义
 
 ---
 
@@ -32,88 +36,156 @@
 | `group` | 本组数据 | 组长 |
 | `self` | 仅本人数据 | 普通员工 |
 
-### 使用示例
-
-```typescript
-import { getDataAccessFilterSQL } from '../utils/permissions.js'
-
-// 在查询中应用数据范围过滤
-const filter = getDataAccessFilterSQL(c, 'e', {
-  deptColumn: 'departmentId',
-  ownerColumn: 'employeeId'
-})
-
-const employees = await db
-  .select()
-  .from(employees)
-  .where(filter)
-```
-
 ---
 
-## 🛡️ RBAC 权限配置
+## 🛡️ 权限检查 API
 
-### 权限模块
+### 1. PermissionContext（推荐）
 
-| 模块 | 子模块 | 操作 |
-|------|--------|------|
-| **finance** | flow, transfer, ar, ap, salary, allowance, site_bill | view, create, update, delete, export |
-| **hr** | employee, salary, leave, reimbursement | view, create, update, delete, approve, view_sensitive |
-| **asset** | fixed, rental | view, create, update, delete, allocate |
-| **site** | info, bill | view, create, update, delete |
-| **report** | view, export | view, export |
-| **system** | user, position, department, audit, config | view, create, update, delete |
-| **self** | leave, reimbursement, salary, asset | view, create |
-
-### 权限检查
+使用 `createPermissionContext` 创建权限上下文，提供统一的权限检查接口：
 
 ```typescript
-import { hasPermission, requirePermission } from '../utils/permissions.js'
+import { createPermissionContext } from '../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../constants/permissions.js'
 
-// 中间件方式
-app.post('/api/employees', requirePermission('hr', 'employee', 'create'), handler)
+// 在路由处理器中
+const permCtx = createPermissionContext(c)
+if (!permCtx) {
+  throw Errors.UNAUTHORIZED()
+}
 
-// 函数方式
-if (!hasPermission(c, 'finance', 'flow', 'create')) {
+// 检查单个权限
+if (!permCtx.hasPermission(PermissionModule.FINANCE, 'flow', PermissionAction.CREATE)) {
   throw Errors.FORBIDDEN()
 }
+
+// 检查数据访问范围
+if (!permCtx.canAccessData('project', targetProjectId)) {
+  throw Errors.FORBIDDEN()
+}
+
+// 检查审批权限
+if (!permCtx.canApprove()) {
+  throw Errors.FORBIDDEN('没有审批权限')
+}
+
+// 获取权限信息供前端使用
+const permissionInfo = permCtx.toJSON()
+```
+
+### 2. 权限守卫中间件
+
+使用 `createPermissionGuard` 创建中间件进行路由级权限检查：
+
+```typescript
+import { createPermissionGuard } from '../middleware/permission.js'
+
+// 单个权限检查
+app.post('/api/flows', 
+  createPermissionGuard({ 
+    permissions: { module: 'finance', subModule: 'flow', action: 'create' } 
+  }),
+  handler
+)
+
+// 多个权限 AND 逻辑（必须同时满足）
+app.post('/api/sensitive-operation',
+  createPermissionGuard({
+    permissions: [
+      { module: 'finance', subModule: 'flow', action: 'create' },
+      { module: 'finance', subModule: 'flow', action: 'approve' }
+    ],
+    logic: 'AND'
+  }),
+  handler
+)
+
+// 多个权限 OR 逻辑（满足任一即可）
+app.get('/api/reports',
+  createPermissionGuard({
+    permissions: [
+      { module: 'report', subModule: 'finance', action: 'view' },
+      { module: 'report', subModule: 'hr', action: 'view' }
+    ],
+    logic: 'OR'
+  }),
+  handler
+)
+
+// 跳过权限检查（公开接口）
+app.get('/api/public',
+  createPermissionGuard({ permissions: [], skip: true }),
+  handler
+)
+```
+
+### 3. 数据访问过滤
+
+使用 `createDataAccessFilterSQL` 生成数据范围过滤 SQL：
+
+```typescript
+import { createDataAccessFilterSQL } from '../utils/data-access-filter.js'
+
+// 基本用法
+const filter = createDataAccessFilterSQL(c)
+const employees = await db
+  .select()
+  .from(employeesTable)
+  .where(filter)
+
+// 自定义字段映射
+const filter = createDataAccessFilterSQL(c, {
+  projectColumn: 'department_id',  // 项目字段
+  groupColumn: 'team_id',          // 组字段
+  ownerColumn: 'created_by',       // 所有者字段
+  tableAlias: 'e'                  // 表别名
+})
+
+// 跳过组级别检查（用于没有 group 字段的表）
+const filter = createDataAccessFilterSQL(c, {
+  skipGroup: true
+})
 ```
 
 ---
 
-## 🔑 核心函数
+## 🔑 权限模块和操作
 
-| 函数 | 说明 |
+### 权限模块 (PermissionModule)
+
+| 模块 | 说明 |
 |------|------|
-| `hasPermission(c, module, sub, action)` | 检查操作权限 |
-| `canViewEmployee(c, targetId)` | 检查员工数据访问权限 |
-| `canApproveApplication(c, applicantId)` | 检查审批权限 |
-| `getDataAccessFilterSQL(c, alias, options)` | 获取 SQL 过滤条件 |
-| `getUserPosition(c)` | 获取当前用户职位 |
-| `canManageSubordinates(c)` | 检查下属管理权限 |
+| `finance` | 财务模块 |
+| `hr` | 人事模块 |
+| `asset` | 资产模块 |
+| `site` | 站点模块 |
+| `report` | 报表模块 |
+| `system` | 系统模块 |
+| `pm` | 项目管理模块 |
+| `self` | 个人模块 |
 
----
+### 权限操作 (PermissionAction)
 
-## ⚠️ 重要规范
+| 操作 | 说明 |
+|------|------|
+| `view` | 查看 |
+| `create` | 创建 |
+| `update` | 更新 |
+| `delete` | 删除 |
+| `approve` | 审批 |
+| `export` | 导出 |
+| `reverse` | 冲正 |
 
-> [!CAUTION]
-> **禁止硬编码职位代码**  
-> 永远不要使用 `position.code === 'ceo'` 这样的判断。  
-> 应使用 `position.dataScope === 'all'` 或 `hasPermission()` 函数。
+### 子模块示例
 
-### ✅ 正确
-
-```typescript
-if (position.dataScope === DataScope.ALL) { ... }
-if (hasPermission(c, 'hr', 'employee', 'view')) { ... }
-```
-
-### ❌ 错误
-
-```typescript
-if (position.code === 'ceo') { ... }
-if (position.code === 'finance_director') { ... }
-```
+| 模块 | 子模块 |
+|------|--------|
+| **finance** | flow, transfer, ar, ap, salary, allowance, site_bill, reimbursement |
+| **hr** | employee, salary, leave, reimbursement |
+| **asset** | fixed, rental |
+| **site** | info, bill |
+| **report** | finance, salary, hr, dashboard |
+| **system** | user, position, department, audit, config, currency, account, vendor, category |
 
 ---
 
@@ -134,4 +206,150 @@ if (position.code === 'finance_director') { ... }
 
 ---
 
-**最后更新**：2025-12-27
+## 📝 路由权限检查示例
+
+### 推荐模式：辅助函数
+
+```typescript
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
+import { Errors } from '../../utils/errors.js'
+
+// 创建辅助函数
+function requireFlowPermission(c: any, action: string) {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.FINANCE, 'flow', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+// 在路由中使用
+flowRoutes.openapi(createFlowRoute, createRouteHandler(async (c) => {
+  requireFlowPermission(c, PermissionAction.CREATE)
+  // ... 业务逻辑
+}))
+
+flowRoutes.openapi(listFlowsRoute, createRouteHandler(async (c) => {
+  requireFlowPermission(c, PermissionAction.VIEW)
+  
+  // 应用数据范围过滤
+  const filter = createDataAccessFilterSQL(c, { projectColumn: 'projectId' })
+  const flows = await db.select().from(cashFlows).where(filter)
+  // ...
+}))
+```
+
+---
+
+## ⚠️ 重要规范
+
+> [!CAUTION]
+> **禁止硬编码职位代码**  
+> 永远不要使用 `position.code === 'ceo'` 这样的判断。  
+> 应使用 `permCtx.dataScope === 'all'` 或 `permCtx.hasPermission()` 方法。
+
+### ✅ 正确
+
+```typescript
+const permCtx = createPermissionContext(c)
+if (permCtx?.dataScope === 'all') { ... }
+if (permCtx?.hasPermission('hr', 'employee', 'view')) { ... }
+```
+
+### ❌ 错误
+
+```typescript
+if (position.code === 'ceo') { ... }
+if (position.code === 'finance_director') { ... }
+```
+
+---
+
+## 🔄 权限缓存
+
+权限信息通过 KV 缓存优化性能：
+
+- 缓存键：`perm:session:{sessionId}`
+- 缓存 TTL：5 分钟
+- 失效时机：
+  - 用户登出
+  - 职位权限变更
+  - 员工职位变更
+  - 部门模块权限变更
+
+```typescript
+import { PermissionCache } from '../utils/permission-cache.js'
+
+// 权限变更时清除缓存
+await PermissionCache.invalidateByEmployeeId(kv, employeeId)
+await PermissionCache.invalidateByPositionId(kv, db, positionId)
+await PermissionCache.invalidateByDepartmentId(kv, db, departmentId)
+```
+
+---
+
+## 📊 权限审计
+
+权限变更会自动记录到审计日志：
+
+```typescript
+import { PermissionAuditService } from '../services/system/PermissionAuditService.js'
+
+// 记录权限变更
+await permissionAuditService.logPermissionChange({
+  entityType: 'position',
+  entityId: positionId,
+  changeType: 'update',
+  oldValue: oldPermissions,
+  newValue: newPermissions,
+  operatorId: currentUserId,
+  reason: '更新职位权限'
+})
+
+// 查询权限变更历史
+const history = await permissionAuditService.getPermissionHistory({
+  entityType: 'position',
+  entityId: positionId,
+  limit: 10
+})
+```
+
+---
+
+## 🌐 前端权限接口
+
+### GET /api/v2/my/permissions
+
+返回当前用户的完整权限信息：
+
+```json
+{
+  "success": true,
+  "data": {
+    "permissions": {
+      "finance": {
+        "flow": ["view", "create", "update"]
+      },
+      "hr": {
+        "employee": ["view"]
+      }
+    },
+    "dataScope": "project",
+    "canManageSubordinates": true,
+    "allowedModules": ["finance.*", "hr.*"],
+    "employee": {
+      "id": "emp-123",
+      "projectId": "proj-456",
+      "orgDepartmentId": "dept-789"
+    }
+  }
+}
+```
+
+---
+
+**最后更新**: 2025-12-30

@@ -10,6 +10,55 @@ import * as schema from '../../src/db/schema.js'
 import schemaSql from '../../src/db/schema.sql?raw'
 import { v4 as uuid } from 'uuid'
 
+// Mock permission-context to return a context with full permissions
+vi.mock('../../src/utils/permission-context.js', async () => {
+  const actual = await vi.importActual<any>('../../src/utils/permission-context.js')
+  return {
+    ...actual,
+    createPermissionContext: (c: any) => {
+      // Return a mock PermissionContext with full permissions
+      return {
+        employeeId: c.get('employeeId') || 'emp-admin',
+        dataScope: 'all',
+        canManageSubordinates: true,
+        allowedModules: ['*'],
+        permissions: {
+          hr: {
+            employee: ['view', 'create', 'update', 'delete'],
+            salary: ['view', 'create'],
+            leave: ['view', 'create', 'update', 'delete', 'approve'],
+          },
+        },
+        position: {
+          id: 'pos-admin',
+          code: 'ADMIN',
+          name: 'Admin',
+          canManageSubordinates: 1,
+          dataScope: 'all',
+          permissions: {
+            hr: {
+              employee: ['view', 'create', 'update', 'delete'],
+              salary: ['view', 'create'],
+              leave: ['view', 'create', 'update', 'delete', 'approve'],
+            },
+          },
+        },
+        employee: {
+          id: c.get('employeeId') || 'emp-admin',
+          projectId: 'dept-1',
+          orgDepartmentId: 'org-dept-1',
+        },
+        hasPermission: () => true,
+        isModuleAllowed: () => true,
+        checkPermissions: () => true,
+        canAccessData: async () => true,
+        canApprove: async () => true,
+        toJSON: () => ({}),
+      }
+    },
+  }
+})
+
 // Mock permissions utils specifically for the route handlers that import them directly
 vi.mock('../../src/utils/permissions.js', async () => {
   const actual = await vi.importActual<any>('../../src/utils/permissions.js')

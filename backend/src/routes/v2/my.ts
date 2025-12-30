@@ -4,6 +4,7 @@ import { Errors } from '../../utils/errors.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { getBusinessDate } from '../../utils/timezone.js'
 import { createRouteHandler, createProtectedHandler } from '../../utils/route-helpers.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
 
 export const myRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
 
@@ -183,6 +184,22 @@ const updateProfileSchema = z.object({
   phone: z.string().optional(),
   emergencyContact: z.string().optional(),
   emergencyPhone: z.string().optional(),
+})
+
+// 权限信息 Schema
+const permissionsResponseSchema = z.object({
+  employeeId: z.string(),
+  position: z.object({
+    id: z.string(),
+    code: z.string(),
+    name: z.string(),
+  }),
+  permissions: z.record(z.string(), z.record(z.string(), z.array(z.string()))),
+  dataScope: z.enum(['all', 'project', 'group', 'self']),
+  canManageSubordinates: z.boolean(),
+  allowedModules: z.array(z.string()),
+  projectId: z.string().nullable(),
+  orgDepartmentId: z.string().nullable(),
 })
 
 const attendanceRecordSchema = z.object({
@@ -506,6 +523,52 @@ myRoutes.openapi(updateProfileRoute, createProtectedHandler(async (c, employeeId
   const result = await c.var.services.my.updateProfile(employeeId, body)
   logAuditAction(c, 'update', 'my_profile', employeeId, JSON.stringify(body))
   return result
+}))
+
+// 权限信息
+const getPermissionsRoute = createRoute({
+  method: 'get',
+  path: '/my/permissions',
+  tags: ['My'],
+  summary: 'Get current user permissions',
+  description: '获取当前用户的完整权限信息，包括权限配置、数据范围、是否可管理下属、允许的模块等',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: permissionsResponseSchema,
+          }),
+        },
+      },
+      description: 'User permissions data',
+    },
+    401: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            error: z.object({
+              code: z.string(),
+              message: z.string(),
+            }),
+          }),
+        },
+      },
+      description: 'Unauthorized - user not logged in',
+    },
+  },
+})
+
+myRoutes.openapi(getPermissionsRoute, createProtectedHandler(async (c, _employeeId) => {
+  const permissionContext = createPermissionContext(c)
+  
+  if (!permissionContext) {
+    throw Errors.UNAUTHORIZED('无法获取权限信息，请重新登录')
+  }
+  
+  return permissionContext.toJSON()
 }))
 
 // 考勤

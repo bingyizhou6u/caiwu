@@ -4,10 +4,38 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
 import { Errors } from '../../../utils/errors.js'
-import { hasPermission, validateProjectAccess } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { validateProjectAccess } from '../../../utils/permissions.js'
+import { PermissionModule, PermissionAction } from '../../../constants/permissions.js'
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireTimelogPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.PM, 'timelog', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+/**
+ * 辅助函数：仅检查认证，不检查具体权限
+ */
+function requireAuthenticated(c: any): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schema 定义
 const timelogResponseSchema = z.object({
@@ -38,12 +66,13 @@ const updateTimelogSchema = z.object({
 
 // 获取我的工时
 app.get('/my', async c => {
+    const permCtx = requireAuthenticated(c)
     const timelogService = c.var.services.taskTimelog
-    const userId = c.get('employeeId')
+    const userId = permCtx.employee.id
     const startDate = c.req.query('startDate')
     const endDate = c.req.query('endDate')
 
-    const timelogs = await timelogService.getMyTimelogs(userId as string, startDate, endDate)
+    const timelogs = await timelogService.getMyTimelogs(userId, startDate, endDate)
     return c.json({ success: true, data: timelogs })
 })
 
@@ -79,9 +108,8 @@ const teamSummaryRoute = createRoute({
 })
 
 app.openapi(teamSummaryRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'timelog', 'view')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTimelogPermission(c, PermissionAction.VIEW)
     const { projectId, startDate, endDate } = c.req.valid('query')
     // Data Scope 验证
     if (!await validateProjectAccess(c, projectId)) {
@@ -118,9 +146,8 @@ const listRoute = createRoute({
 })
 
 app.openapi(listRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'timelog', 'view')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTimelogPermission(c, PermissionAction.VIEW)
     const { taskId, employeeId } = c.req.valid('query')
     const timelogs = await c.var.services.taskTimelog.list({ taskId, employeeId })
     return timelogs
@@ -128,9 +155,10 @@ app.openapi(listRoute, createRouteHandler(async (c: any) => {
 
 // 获取单个工时记录
 app.get('/:id', async c => {
+    const permCtx = requireAuthenticated(c)
     const timelogService = c.var.services.taskTimelog
     const id = c.req.param('id')
-    const userId = c.get('employeeId')
+    const userId = permCtx.employee.id
 
     const timelog = await timelogService.getById(id)
     if (!timelog) {
@@ -138,7 +166,7 @@ app.get('/:id', async c => {
     }
 
     // 检查权限：有 pm.timelog.view 权限，或者是自己的工时
-    const canView = hasPermission(c, 'pm', 'timelog', 'view') || timelog.employeeId === userId
+    const canView = permCtx.hasPermission(PermissionModule.PM, 'timelog', PermissionAction.VIEW) || timelog.employeeId === userId
     if (!canView) {
         throw Errors.FORBIDDEN('无权限查看此工时记录')
     }
@@ -177,8 +205,10 @@ const createRoute_ = createRoute({
 })
 
 app.openapi(createRoute_, createRouteHandler(async (c: any) => {
+    // 创建工时记录只需要认证，不需要特定权限
+    const permCtx = requireAuthenticated(c)
     const data = c.req.valid('json')
-    const userId = c.get('employeeId')
+    const userId = permCtx.employee.id
 
     const timelog = await c.var.services.taskTimelog.create(data, userId)
     return timelog
@@ -218,14 +248,15 @@ const updateRoute = createRoute({
 app.openapi(updateRoute, createRouteHandler(async (c: any) => {
     const { id } = c.req.valid('param')
     const data = c.req.valid('json')
-    const userId = c.get('employeeId')
+    const permCtx = requireAuthenticated(c)
+    const userId = permCtx.employee.id
 
     const existing = await c.var.services.taskTimelog.getById(id)
     if (!existing) {
         throw Errors.NOT_FOUND('工时记录')
     }
 
-    const canUpdate = hasPermission(c, 'pm', 'timelog', 'update') || existing.employeeId === userId
+    const canUpdate = permCtx.hasPermission(PermissionModule.PM, 'timelog', PermissionAction.UPDATE) || existing.employeeId === userId
     if (!canUpdate) {
         throw Errors.FORBIDDEN('无权限修改此工时记录')
     }
@@ -259,14 +290,15 @@ const deleteRoute = createRoute({
 
 app.openapi(deleteRoute, createRouteHandler(async (c: any) => {
     const { id } = c.req.valid('param')
-    const userId = c.get('employeeId')
+    const permCtx = requireAuthenticated(c)
+    const userId = permCtx.employee.id
 
     const existing = await c.var.services.taskTimelog.getById(id)
     if (!existing) {
         throw Errors.NOT_FOUND('工时记录')
     }
 
-    const canDelete = hasPermission(c, 'pm', 'timelog', 'delete') || existing.employeeId === userId
+    const canDelete = permCtx.hasPermission(PermissionModule.PM, 'timelog', PermissionAction.DELETE) || existing.employeeId === userId
     if (!canDelete) {
         throw Errors.FORBIDDEN('无权限删除此工时记录')
     }

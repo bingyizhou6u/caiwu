@@ -9,9 +9,15 @@ import { eq, and, inArray } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { Errors } from '../../utils/errors.js'
+import { PermissionAuditService } from './PermissionAuditService.js'
+import { PermissionCache } from '../../utils/permission-cache.js'
 
 export class OrgDepartmentService {
-  constructor(private db: DrizzleD1Database<typeof schema>) { }
+  constructor(
+    private db: DrizzleD1Database<typeof schema>,
+    private permissionAuditService?: PermissionAuditService,
+    private permissionCache?: PermissionCache
+  ) { }
 
   async getOrgDepartments(projectId?: string) {
     // 使用别名表处理自连接
@@ -205,12 +211,19 @@ export class OrgDepartmentService {
       defaultPositionId?: string | null
       sortOrder?: number
       active?: number
-    }
+    },
+    operatorId?: string,
+    ip?: string
   ) {
     const existing = await this.getOrgDepartment(id)
     if (!existing) {
       throw Errors.NOT_FOUND('部门不存在')
     }
+
+    // 记录模块权限变更前的信息
+    const oldAllowedModules = existing.allowedModules
+    const modulesChanged = data.allowedModules !== undefined &&
+      JSON.stringify(data.allowedModules) !== JSON.stringify(oldAllowedModules)
 
     const updateData: Record<string, any> = {
       updatedAt: Date.now(),
@@ -231,6 +244,33 @@ export class OrgDepartmentService {
     if (data.active !== undefined) updateData.active = data.active
 
     await this.db.update(orgDepartments).set(updateData).where(eq(orgDepartments.id, id))
+
+    // 记录模块权限变更审计
+    if (modulesChanged && this.permissionAuditService && operatorId) {
+      await this.permissionAuditService.logPermissionChange({
+        changeType: 'department_module_update',
+        entityType: 'org_department',
+        entityId: id,
+        beforeData: {
+          allowedModules: oldAllowedModules,
+          name: existing.name,
+        },
+        afterData: {
+          allowedModules: data.allowedModules,
+          name: data.name ?? existing.name,
+        },
+        operatorId,
+        ip,
+      })
+    }
+
+    // 失效权限缓存（如果模块权限有变更）
+    if (modulesChanged && this.permissionCache) {
+      // 异步失效缓存，不阻塞响应
+      this.permissionCache.invalidateByDepartmentId(id).catch(err => {
+        // 静默失败，已在 PermissionCache 中记录日志
+      })
+    }
 
     return this.getOrgDepartment(id)
   }

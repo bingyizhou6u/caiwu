@@ -8,9 +8,18 @@ vi.mock('../../src/utils/audit.js', () => ({
   logAuditAction: vi.fn(),
 }))
 
-// Mock permissions
-vi.mock('../../src/utils/permissions.js', () => ({
-  hasPermission: vi.fn(() => true),
+// Mock permission context
+vi.mock('../../src/utils/permission-context.js', () => ({
+  createPermissionContext: vi.fn(() => ({
+    hasPermission: vi.fn(() => true),
+    employee: { id: 'user123', projectId: 'proj1', orgDepartmentId: 'dept1' },
+    dataScope: 'all',
+    canManageSubordinates: true,
+    allowedModules: ['*'],
+    isModuleAllowed: vi.fn(() => true),
+    position: { id: 'pos1', code: 'admin', name: 'Admin' },
+    toJSON: vi.fn(),
+  })),
 }))
 
 const mockAuditService = {

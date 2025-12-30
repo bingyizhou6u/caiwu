@@ -4,10 +4,38 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
 import { Errors } from '../../../utils/errors.js'
-import { hasPermission, validateProjectAccess, getAccessibleProjectIds } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { validateProjectAccess, getAccessibleProjectIds } from '../../../utils/permissions.js'
+import { PermissionModule, PermissionAction } from '../../../constants/permissions.js'
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireTaskPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.PM, 'task', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+/**
+ * 辅助函数：仅检查认证，不检查具体权限
+ */
+function requireAuthenticated(c: any): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schema 定义
 const taskResponseSchema = z.object({
@@ -101,9 +129,8 @@ const nextCodeRoute = createRoute({
 })
 
 app.openapi(nextCodeRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'task', 'create')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTaskPermission(c, PermissionAction.CREATE)
     const { projectId } = c.req.valid('query')
     // Data Scope 验证
     if (!await validateProjectAccess(c, projectId)) {
@@ -137,9 +164,8 @@ const kanbanRoute = createRoute({
 })
 
 app.openapi(kanbanRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'task', 'view')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTaskPermission(c, PermissionAction.VIEW)
     const { projectId } = c.req.valid('query')
     // Data Scope 验证
     if (!await validateProjectAccess(c, projectId)) {
@@ -151,8 +177,9 @@ app.openapi(kanbanRoute, createRouteHandler(async (c: any) => {
 
 // 获取我的任务
 app.get('/my', async c => {
+    const permCtx = requireAuthenticated(c)
     const taskService = c.var.services.task
-    const userId = c.get('employeeId') as string
+    const userId = permCtx.employee.id
     const tasks = await taskService.getMyTasks(userId)
     return c.json({ success: true, data: tasks })
 })
@@ -186,9 +213,8 @@ const listRoute = createRoute({
 })
 
 app.openapi(listRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'task', 'view')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTaskPermission(c, PermissionAction.VIEW)
     let { projectId, requirementId, status, assigneeId } = c.req.valid('query')
 
     // Data Scope 过滤：如果指定了 projectId，验证权限；否则限制为用户可访问的项目
@@ -233,9 +259,8 @@ const getRoute = createRoute({
 })
 
 app.openapi(getRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'task', 'view')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTaskPermission(c, PermissionAction.VIEW)
     const { id } = c.req.valid('param')
     const task = await c.var.services.task.getById(id)
     if (!task) {
@@ -275,11 +300,10 @@ const createRoute_ = createRoute({
 })
 
 app.openapi(createRoute_, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'task', 'create')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireTaskPermission(c, PermissionAction.CREATE)
     const data = c.req.valid('json')
-    const userId = c.get('employeeId')
+    const userId = permCtx.employee.id
 
     if (!data.code) {
         data.code = await c.var.services.task.getNextCode(data.projectId)
@@ -321,9 +345,8 @@ const updateRoute = createRoute({
 })
 
 app.openapi(updateRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'task', 'update')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTaskPermission(c, PermissionAction.UPDATE)
     const { id } = c.req.valid('param')
     const data = c.req.valid('json')
 
@@ -367,7 +390,8 @@ const updateStatusRoute = createRoute({
 
 app.openapi(updateStatusRoute, createRouteHandler(async (c: any) => {
     const { id } = c.req.valid('param')
-    const userId = c.get('employeeId')
+    const permCtx = requireAuthenticated(c)
+    const userId = permCtx.employee.id
 
     // 检查权限：有 pm.task.update 权限，或者是任务的负责人
     const task = await c.var.services.task.getById(id)
@@ -393,7 +417,7 @@ app.openapi(updateStatusRoute, createRouteHandler(async (c: any) => {
         isAssignee = task.assigneeIds.includes(userId)
     }
 
-    const canUpdate = hasPermission(c, 'pm', 'task', 'update') || isAssignee
+    const canUpdate = permCtx.hasPermission(PermissionModule.PM, 'task', PermissionAction.UPDATE) || isAssignee
     if (!canUpdate) {
         throw Errors.FORBIDDEN('无权限更新此任务')
     }
@@ -427,9 +451,8 @@ const deleteRoute = createRoute({
 })
 
 app.openapi(deleteRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'task', 'delete')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTaskPermission(c, PermissionAction.DELETE)
     const { id } = c.req.valid('param')
 
     await c.var.services.task.delete(id)

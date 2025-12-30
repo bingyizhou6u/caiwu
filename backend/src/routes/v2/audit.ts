@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { getBusinessDate, formatBusinessTime } from '../../utils/timezone.js'
 import { Errors } from '../../utils/errors.js'
@@ -8,6 +9,32 @@ import { auditLogQuerySchema } from '../../schemas/common.schema.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
 export const auditRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireAuditPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SYSTEM, 'audit', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+/**
+ * 辅助函数：仅检查认证，不检查具体权限
+ */
+function requireAuthenticated(c: any): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.UNAUTHORIZED()
+  }
+  return permCtx
+}
 
 // Schema 定义
 const auditLogItemSchema = z.object({
@@ -52,9 +79,8 @@ const getAuditLogsRoute = createRoute({
 })
 
 auditRoutes.openapi(getAuditLogsRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, 'system', 'audit', 'view')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requireAuditPermission(c, PermissionAction.VIEW)
 
   const query = c.req.valid('query')
   return await c.var.services.audit.getAuditLogs(query)
@@ -92,9 +118,8 @@ const getAuditLogOptionsRoute = createRoute({
 })
 
 auditRoutes.openapi(getAuditLogOptionsRoute, createRouteHandler(async c => {
-  if (!hasPermission(c, 'system', 'audit', 'view')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requireAuditPermission(c, PermissionAction.VIEW)
 
   return await c.var.services.audit.getAuditLogOptions()
 }))
@@ -116,9 +141,8 @@ const exportAuditLogsRoute = createRoute({
 })
 
 auditRoutes.openapi(exportAuditLogsRoute, async c => {
-  if (!hasPermission(c, 'system', 'audit', 'export')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requireAuditPermission(c, 'export')
 
   const query = c.req.valid('query')
   const exportQuery = { ...query, limit: 10000, offset: 0 }
@@ -212,9 +236,8 @@ const createAuditLogRoute = createRoute({
 })
 
 auditRoutes.openapi(createAuditLogRoute, createRouteHandler(async (c: any) => {
-  if (!c.get('employeeId')) {
-    throw Errors.UNAUTHORIZED()
-  }
+  // 使用 PermissionContext 检查认证
+  requireAuthenticated(c)
 
   const body = c.req.valid('json') as { action: string; entity: string; entityId?: string; detail?: string }
 

@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
-import { hasPermission } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../../constants/permissions.js'
 import { logAuditAction } from '../../../utils/audit.js'
 import { Errors } from '../../../utils/errors.js'
 import {
@@ -13,6 +14,20 @@ import { createQueryCache, cacheKeys, cacheTTL } from '../../../utils/query-cach
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 export const categoriesRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ */
+function requireCategoryPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SYSTEM, 'category', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 const listCategoriesRoute = createRoute({
   method: 'get',
@@ -75,9 +90,7 @@ const createCategoryRoute = createRoute({
 categoriesRoutes.openapi(
   createCategoryRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'category', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireCategoryPermission(c, PermissionAction.CREATE)
     const body = c.req.valid('json')
     const service = c.var.services.masterData
 
@@ -139,9 +152,7 @@ const updateCategoryRoute = createRoute({
 categoriesRoutes.openapi(
   updateCategoryRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'category', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireCategoryPermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.masterData
@@ -183,9 +194,7 @@ const deleteCategoryRoute = createRoute({
 categoriesRoutes.openapi(
   deleteCategoryRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'category', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireCategoryPermission(c, PermissionAction.DELETE)
     const id = c.req.param('id')
     const service = c.var.services.masterData
 

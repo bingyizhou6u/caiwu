@@ -32,6 +32,40 @@ vi.mock('../../src/utils/permissions', async () => {
   }
 })
 
+// Mock permission-context
+vi.mock('../../src/utils/permission-context', async () => {
+  const actual = await vi.importActual<any>('../../src/utils/permission-context')
+  return {
+    ...actual,
+    createPermissionContext: () => ({
+      employeeId: '550e8400-e29b-41d4-a716-446655440000',
+      dataScope: 'all',
+      canManageSubordinates: true,
+      allowedModules: ['*'],
+      permissions: {},
+      position: {
+        id: 'pos-1',
+        code: 'ADMIN',
+        name: 'Admin',
+        canManageSubordinates: 1,
+        dataScope: 'all',
+        permissions: {},
+      },
+      employee: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        orgDepartmentId: null,
+        projectId: null,
+      },
+      hasPermission: () => true,
+      isModuleAllowed: () => true,
+      checkPermissions: () => true,
+      canAccessData: async () => true,
+      canApprove: async () => true,
+      toJSON: () => ({}),
+    }),
+  }
+})
+
 // Mock middleware
 vi.mock('../../src/middleware', async () => {
   return {

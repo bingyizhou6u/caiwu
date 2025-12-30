@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { createPositionSchema, updatePositionSchema } from '../../schemas/business.schema.js'
@@ -10,6 +11,21 @@ export const positionPermissionsRoutes = new OpenAPIHono<{
   Bindings: Env
   Variables: AppVariables
 }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requirePositionPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SYSTEM, 'position', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schemas
 const positionResponseSchema = z.object({
@@ -50,9 +66,8 @@ const getAllPositionsRoute = createRoute({
 })
 
 positionPermissionsRoutes.openapi(getAllPositionsRoute, createRouteHandler(async c => {
-  if (!hasPermission(c, 'system', 'position', 'view')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requirePositionPermission(c, PermissionAction.VIEW)
   const results = await c.var.services.position.getPositions()
   return { results }
 }))
@@ -84,9 +99,8 @@ const getPositionRoute = createRoute({
 })
 
 positionPermissionsRoutes.openapi(getPositionRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, 'system', 'position', 'view')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requirePositionPermission(c, PermissionAction.VIEW)
   const id = c.req.param('id')
   if (!id) {
     throw Errors.VALIDATION_ERROR('Position ID is required')
@@ -130,9 +144,8 @@ const createPositionRoute = createRoute({
 })
 
 positionPermissionsRoutes.openapi(createPositionRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, 'system', 'position', 'create')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requirePositionPermission(c, PermissionAction.CREATE)
   const body = c.req.valid('json')
 
   const result = await c.var.services.position.createPosition({
@@ -182,9 +195,8 @@ const updatePositionRoute = createRoute({
 })
 
 positionPermissionsRoutes.openapi(updatePositionRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, 'system', 'position', 'update')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requirePositionPermission(c, PermissionAction.UPDATE)
   const id = c.req.param('id')
   if (!id) {
     throw Errors.VALIDATION_ERROR('Position ID is required')
@@ -270,9 +282,8 @@ const deletePositionRoute = createRoute({
 })
 
 positionPermissionsRoutes.openapi(deletePositionRoute, createRouteHandler(async (c: any) => {
-  if (!hasPermission(c, 'system', 'position', 'delete')) {
-    throw Errors.FORBIDDEN()
-  }
+  // 使用 PermissionContext 检查权限
+  requirePositionPermission(c, PermissionAction.DELETE)
   const id = c.req.param('id')
   if (!id) {
     throw Errors.VALIDATION_ERROR('Position ID is required')

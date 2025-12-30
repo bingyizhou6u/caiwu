@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
 import { Errors } from '../../utils/errors.js'
-import { getUserPosition, hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
 import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
@@ -9,6 +9,21 @@ export const expenseReimbursementsRoutes = new OpenAPIHono<{
   Bindings: Env
   Variables: AppVariables
 }>()
+
+/**
+ * 辅助函数：检查报销权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireReimbursementPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission('finance', 'reimbursement', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 const ReimbursementSchema = z.object({
   id: z.string(),
@@ -77,7 +92,8 @@ const listExpenseReimbursementsRoute = createRoute({
 expenseReimbursementsRoutes.openapi(
   listExpenseReimbursementsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { employeeId, status } = c.req.valid('query')
@@ -122,9 +138,9 @@ const createExpenseReimbursementRoute = createRoute({
 expenseReimbursementsRoutes.openapi(
   createExpenseReimbursementRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'reimbursement', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireReimbursementPermission(c, 'create')
+
     const body = c.req.valid('json')
     const userId = c.get('employeeId')
 
@@ -173,9 +189,9 @@ const updateExpenseReimbursementStatusRoute = createRoute({
 expenseReimbursementsRoutes.openapi(
   updateExpenseReimbursementStatusRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'reimbursement', 'approve')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireReimbursementPermission(c, 'approve')
+
     const { id } = c.req.valid('param')
     const { status, memo } = c.req.valid('json')
     const userId = c.get('employeeId')
@@ -218,9 +234,9 @@ const payExpenseReimbursementRoute = createRoute({
 expenseReimbursementsRoutes.openapi(
   payExpenseReimbursementRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'reimbursement', 'pay')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireReimbursementPermission(c, 'pay')
+
     const { id } = c.req.valid('param')
 
     await c.var.services.expenseReimbursement.payReimbursement(id)

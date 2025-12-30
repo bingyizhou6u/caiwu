@@ -1,67 +1,46 @@
 # Project Structure
 
+> 详细文档: [知识库索引](../../docs/README.md)
+
 ## Monorepo Layout
+
 ```
 /
 ├── backend/           # Cloudflare Workers API
 ├── frontend/          # React SPA
 ├── email-worker/      # Email service worker
-└── docs/              # Documentation
+└── docs/              # 📚 知识库文档
 ```
 
 ## Backend (`/backend/src`)
-```
-src/
-├── index.ts           # App entry, middleware chain, route mounting
-├── middleware/        # Auth, DI, security, performance monitoring
-├── routes/v2/         # API routes (OpenAPI + Hono)
-├── services/          # Business logic by domain
-│   ├── assets/        # Fixed assets, rentals
-│   ├── auth/          # Authentication, sessions
-│   ├── common/        # Accounts, cash flows, vendors
-│   ├── finance/       # AR/AP, settlements, reports
-│   ├── hr/            # Employees, salaries, leaves
-│   ├── pm/            # Project management
-│   ├── reports/       # Dashboard, financial reports
-│   └── system/        # Config, audit, permissions
-├── schemas/           # Zod validation schemas
-├── db/
-│   ├── schema.ts      # Drizzle table definitions
-│   └── migration_*.sql # SQL migrations
-├── utils/             # Helpers (errors, logger, batch-query, etc.)
-└── types/             # TypeScript types
-```
+
+| 目录 | 说明 | 文档 |
+|------|------|------|
+| `routes/v2/` | API 路由 (OpenAPI) | [API 参考](../../docs/backend/api-reference.md) |
+| `services/` | 业务逻辑（按域分组） | [服务架构](../../docs/backend/services.md) |
+| `middleware/` | 认证、权限、监控 | [权限系统](../../docs/backend/permissions.md) |
+| `db/` | Schema + 迁移 | [数据库设计](../../docs/backend/database.md) |
+| `schemas/` | Zod 验证 | - |
+| `utils/` | 工具函数 | - |
+
+服务按域分组: `assets/`, `auth/`, `common/`, `finance/`, `hr/`, `pm/`, `reports/`, `system/`
 
 ## Frontend (`/frontend/src`)
-```
-src/
-├── main.tsx           # App entry with providers
-├── router/            # Route definitions (lazy loaded)
-├── features/          # Feature modules by domain
-│   ├── auth/          # Login, session
-│   ├── employees/     # Employee management
-│   ├── finance/       # Cash flows, AR/AP
-│   ├── assets/        # Fixed assets
-│   ├── hr/            # Salaries, leaves
-│   ├── pm/            # Project management
-│   ├── reports/       # Reports
-│   ├── sites/         # Site management
-│   └── system/        # System settings
-├── components/        # Shared components
-│   ├── common/        # DataTable, SearchFilters
-│   ├── form/          # Form inputs (AmountInput, selects)
-│   └── layout/        # Layout components
-├── hooks/             # Custom hooks (business/, forms/)
-├── api/               # HTTP client config
-├── store/             # Zustand stores
-├── types/             # TypeScript types + OpenAPI generated
-├── utils/             # Utilities
-├── validations/       # Zod form schemas
-└── config/            # App config (menu, theme, API)
-```
+
+| 目录 | 说明 | 文档 |
+|------|------|------|
+| `features/` | 业务模块（按域划分） | - |
+| `components/` | 公共组件 | [表单组件](../../docs/frontend/form-components.md) |
+| `hooks/` | 自定义 Hooks | [Hooks 文档](../../docs/frontend/hooks.md) |
+| `router/` | 路由配置 | [路由配置](../../docs/frontend/router.md) |
+| `store/` | Zustand 状态 | - |
+| `types/` | TypeScript 类型 | - |
 
 ## Key Patterns
-- **Services**: One service per business entity, grouped by domain
-- **Routes**: OpenAPI-first with zod-openapi validation
-- **Features**: Self-contained modules with pages, hooks, components
-- **Hooks**: Business logic hooks in `hooks/business/`, form hooks in `hooks/forms/`
+
+- **Services**: 一个服务对应一个业务实体，按域分组
+- **Routes**: OpenAPI-first，zod-openapi 验证
+- **Features**: 自包含模块（pages, hooks, components）
+- **Hooks**: 业务逻辑在 `hooks/business/`，表单在 `hooks/forms/`
+
+详见 [开发规范](../../docs/standards/development.md) | [架构评审](../../docs/architecture/review.md)

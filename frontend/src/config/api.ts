@@ -143,6 +143,7 @@ export const api = {
     allowances: `${API_BASE}/api/v2/my/allowances`,
     assets: `${API_BASE}/api/v2/my/assets`,
     profile: `${API_BASE}/api/v2/my/profile`,
+    permissions: `${API_BASE}/api/v2/my/permissions`,
     attendance: {
       today: `${API_BASE}/api/v2/my/attendance/today`,
       clockIn: `${API_BASE}/api/v2/my/attendance/clock-in`,

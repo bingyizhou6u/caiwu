@@ -8,7 +8,7 @@ import {
   idParamSchema,
 } from '../../schemas/common.schema.js'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission, getUserPosition } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
 import { PermissionModule, PermissionAction, DataScope } from '../../constants/permissions.js'
 import { Errors } from '../../utils/errors.js'
 import { apiSuccess } from '../../utils/response.js'
@@ -22,15 +22,15 @@ function validateScope(
   c: Context<{ Bindings: Env; Variables: AppVariables }>,
   requestedProjectId?: string
 ): string | undefined {
-  const position = getUserPosition(c)
+  const permCtx = createPermissionContext(c)
   const employee = c.get('userEmployee')
 
-  if (!position) {
+  if (!permCtx) {
     return '00000000-0000-0000-0000-000000000000'
   }
 
   // 总部 - 无限制
-  if (position.dataScope === DataScope.ALL) {
+  if (permCtx.dataScope === DataScope.ALL) {
     return requestedProjectId
   }
 
@@ -96,7 +96,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { projectId } = c.req.valid('query')
@@ -136,7 +137,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, projectIds } = c.req.valid('query')
@@ -211,7 +213,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, projectId } = c.req.valid('query')
@@ -256,7 +259,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, projectId } = c.req.valid('query')
@@ -300,7 +304,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, projectId } = c.req.valid('query')
@@ -340,7 +345,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, projectId } = c.req.valid('query')
@@ -379,7 +385,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, projectId } = c.req.valid('query')
@@ -419,7 +426,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, projectId } = c.req.valid('query')
@@ -460,7 +468,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, category_id, projectId } = c.req.valid('query')
@@ -499,7 +508,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { asOf } = c.req.valid('query')
@@ -539,7 +549,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { start, end, days, projectId } = c.req.valid('query')
@@ -580,7 +591,8 @@ app.openapi(
   }),
   createRouteHandler(async (c: any) => {
     // 允许有 report.salary.view 权限或 report.finance.view 权限的用户访问
-    if (!hasPermission(c, PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || (!permCtx.hasPermission(PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW))) {
       throw Errors.FORBIDDEN()
     }
     const { year, month, projectId } = c.req.valid('query')
@@ -620,7 +632,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'hr', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || !permCtx.hasPermission(PermissionModule.REPORT, 'hr', PermissionAction.VIEW)) {
       throw Errors.FORBIDDEN()
     }
     const { projectId, orgDepartmentId } = c.req.valid('query')
@@ -628,10 +641,9 @@ app.openapi(
     const validDeptId = validateScope(c, projectId)
     let validOrgDeptId = orgDepartmentId
 
-    const position = getUserPosition(c)
     const employee = c.get('userEmployee')
 
-    if (position && position.dataScope === DataScope.GROUP) {
+    if (permCtx.dataScope === DataScope.GROUP) {
       if (employee?.orgDepartmentId) {
         if (validOrgDeptId && validOrgDeptId !== employee.orgDepartmentId) {
           throw Errors.FORBIDDEN('Cannot access other groups')
@@ -673,7 +685,8 @@ app.openapi(
   }),
   async c => {
     // 允许有 report.salary.view 权限或 report.finance.view 权限的用户访问
-    if (!hasPermission(c, PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || (!permCtx.hasPermission(PermissionModule.REPORT, 'salary', PermissionAction.VIEW) && !permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW))) {
       throw Errors.FORBIDDEN()
     }
     const { year, month, projectId } = c.req.valid('query')
@@ -734,7 +747,8 @@ app.openapi(
     },
   }),
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !hasPermission(c, PermissionModule.REPORT, 'hr', PermissionAction.VIEW)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || (!permCtx.hasPermission(PermissionModule.REPORT, 'finance', PermissionAction.VIEW) && !permCtx.hasPermission(PermissionModule.REPORT, 'hr', PermissionAction.VIEW))) {
       throw Errors.FORBIDDEN()
     }
     const { entityType, entityId, limit } = c.req.valid('query')

@@ -12,11 +12,12 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
 import type { Env } from '../types/index.js'
 
-// Service imports
+// 服务类导入
 import { SystemConfigService } from '../services/system/SystemConfigService.js'
 import { KVCachedMasterDataService } from '../services/system/KVCachedMasterDataService.js'
 import { AuditService } from '../services/system/AuditService.js'
 import { OperationHistoryService } from '../services/system/OperationHistoryService.js'
+import { PermissionAuditService } from '../services/system/PermissionAuditService.js'
 import { OrgDepartmentService } from '../services/system/OrgDepartmentService.js'
 import { EmployeeService } from '../services/hr/EmployeeService.js'
 import { PositionService } from '../services/hr/PositionService.js'
@@ -49,6 +50,7 @@ import { NotificationService } from '../services/common/NotificationService.js'
 import { MyService } from '../services/common/MyService.js'
 import { EmailService } from '../services/common/EmailService.js'
 import { ProjectService, TaskService, TaskTimelogService } from '../services/pm/index.js'
+import { PermissionCache, createPermissionCache } from '../utils/permission-cache.js'
 
 /**
  * 服务容器类
@@ -56,11 +58,11 @@ import { ProjectService, TaskService, TaskTimelogService } from '../services/pm/
  */
 export class ServiceContainer {
   private _cache = new Map<string, any>()
-  
+
   constructor(
     private db: DrizzleD1Database<typeof schema>,
     private env: Env
-  ) {}
+  ) { }
 
   /**
    * 获取或创建服务实例（懒加载）
@@ -72,16 +74,16 @@ export class ServiceContainer {
     return this._cache.get(key) as T
   }
 
-  // ==================== System Services ====================
-  
+  // ==================== 系统服务 (System Services) ====================
+
   get systemConfig(): SystemConfigService {
-    return this.getOrCreate('systemConfig', () => 
+    return this.getOrCreate('systemConfig', () =>
       new SystemConfigService(this.db, this.env.SESSIONS_KV)
     )
   }
 
   get masterData(): KVCachedMasterDataService {
-    return this.getOrCreate('masterData', () => 
+    return this.getOrCreate('masterData', () =>
       new KVCachedMasterDataService(this.db, this.env.SESSIONS_KV)
     )
   }
@@ -95,25 +97,35 @@ export class ServiceContainer {
   }
 
   get orgDepartment(): OrgDepartmentService {
-    return this.getOrCreate('orgDepartment', () => new OrgDepartmentService(this.db))
+    return this.getOrCreate('orgDepartment', () => new OrgDepartmentService(this.db, this.permissionAudit, this.permissionCache))
   }
 
-  // ==================== Auth Services ====================
+  get permissionAudit(): PermissionAuditService {
+    return this.getOrCreate('permissionAudit', () => new PermissionAuditService(this.db))
+  }
+
+  get permissionCache(): PermissionCache {
+    return this.getOrCreate('permissionCache', () =>
+      createPermissionCache(this.env.SESSIONS_KV, this.db)
+    )
+  }
+
+  // ==================== 认证服务 (Auth Services) ====================
 
   get auth(): AuthService {
-    return this.getOrCreate('auth', () => 
+    return this.getOrCreate('auth', () =>
       new AuthService(this.db, this.env.SESSIONS_KV, this.audit)
     )
   }
 
-  // ==================== Common Services ====================
+  // ==================== 通用服务 (Common Services) ====================
 
   get email(): EmailService {
     return this.getOrCreate('email', () => new EmailService(this.env as any))
   }
 
   get notification(): NotificationService {
-    return this.getOrCreate('notification', () => 
+    return this.getOrCreate('notification', () =>
       new NotificationService(this.db, this.email, this.systemConfig)
     )
   }
@@ -122,14 +134,14 @@ export class ServiceContainer {
     return this.getOrCreate('permission', () => new PermissionService(this.db))
   }
 
-  // ==================== HR Services ====================
+  // ==================== 人事服务 (HR Services) ====================
 
   get employee(): EmployeeService {
-    return this.getOrCreate('employee', () => new EmployeeService(this.db, this.email))
+    return this.getOrCreate('employee', () => new EmployeeService(this.db, this.email, this.permissionAudit, this.permissionCache))
   }
 
   get position(): PositionService {
-    return this.getOrCreate('position', () => new PositionService(this.db))
+    return this.getOrCreate('position', () => new PositionService(this.db, this.permissionAudit, this.permissionCache))
   }
 
   get salary(): SalaryService {
@@ -137,19 +149,19 @@ export class ServiceContainer {
   }
 
   get salaryPayment(): SalaryPaymentService {
-    return this.getOrCreate('salaryPayment', () => 
+    return this.getOrCreate('salaryPayment', () =>
       new SalaryPaymentService(this.db, this.operationHistory)
     )
   }
 
   get salaryPaymentGeneration(): SalaryPaymentGenerationService {
-    return this.getOrCreate('salaryPaymentGeneration', () => 
+    return this.getOrCreate('salaryPaymentGeneration', () =>
       new SalaryPaymentGenerationService(this.db)
     )
   }
 
   get salaryPaymentProcessing(): SalaryPaymentProcessingService {
-    return this.getOrCreate('salaryPaymentProcessing', () => 
+    return this.getOrCreate('salaryPaymentProcessing', () =>
       new SalaryPaymentProcessingService(this.db, this.operationHistory, this.salaryPayment)
     )
   }
@@ -182,7 +194,7 @@ export class ServiceContainer {
     return this.getOrCreate('employeeProject', () => new EmployeeProjectService(this.db))
   }
 
-  // ==================== Finance Services ====================
+  // ==================== 财务服务 (Finance Services) ====================
 
   get finance(): FinanceService {
     return this.getOrCreate('finance', () => new FinanceService(this.db))
@@ -201,12 +213,12 @@ export class ServiceContainer {
   }
 
   get accountTransfer(): AccountTransferService {
-    return this.getOrCreate('accountTransfer', () => 
+    return this.getOrCreate('accountTransfer', () =>
       new AccountTransferService(this.db, this.finance)
     )
   }
 
-  // ==================== Asset Services ====================
+  // ==================== 资产服务 (Asset Services) ====================
 
   get fixedAsset(): FixedAssetService {
     return this.getOrCreate('fixedAsset', () => new FixedAssetService(this.db))
@@ -228,18 +240,18 @@ export class ServiceContainer {
     return this.getOrCreate('rental', () => new RentalService(this.db))
   }
 
-  // ==================== Report Services ====================
+  // ==================== 报表服务 (Report Services) ====================
 
   get report(): ReportService {
-    return this.getOrCreate('report', () => 
+    return this.getOrCreate('report', () =>
       new ReportService(this.db, this.annualLeave, this.env.SESSIONS_KV)
     )
   }
 
-  // ==================== Approval Services ====================
+  // ==================== 审批服务 (Approval Services) ====================
 
   get approval(): ApprovalService {
-    return this.getOrCreate('approval', () => 
+    return this.getOrCreate('approval', () =>
       new ApprovalService(
         this.db,
         this.permission,
@@ -251,10 +263,10 @@ export class ServiceContainer {
     )
   }
 
-  // ==================== My Services ====================
+  // ==================== 个人服务 (My Services) ====================
 
   get my(): MyService {
-    return this.getOrCreate('my', () => 
+    return this.getOrCreate('my', () =>
       new MyService(
         this.db,
         this.employeeLeave,
@@ -271,7 +283,7 @@ export class ServiceContainer {
     )
   }
 
-  // ==================== PM Services ====================
+  // ==================== 项目管理服务 (PM Services) ====================
 
   get project(): ProjectService {
     return this.getOrCreate('project', () => new ProjectService(this.db))
@@ -285,7 +297,7 @@ export class ServiceContainer {
     return this.getOrCreate('taskTimelog', () => new TaskTimelogService(this.db))
   }
 
-  // ==================== Debug ====================
+  // ==================== 调试 (Debug) ====================
 
   /**
    * 获取已创建的服务数量（用于调试）

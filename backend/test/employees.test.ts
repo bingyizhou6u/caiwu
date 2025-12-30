@@ -19,8 +19,11 @@ const mockUserPosition = {
   name: 'HQ Admin',
   function_role: 'admin',
   can_manage_subordinates: 1,
+  canManageSubordinates: 1,
+  dataScope: 'all',
   permissions: {
-    hr: { employee: ['read', 'create', 'update'] },
+    hr: { employee: ['view', 'create', 'update', 'delete'] },
+    finance: { flow: ['view', 'create', 'update', 'delete'] },
   },
 }
 
@@ -30,14 +33,51 @@ const mockUserEmployee = {
   projectId: 'dept-1', // Changed departmentId to projectId
 }
 
+// Mock permission-context to return a context with full permissions
+vi.mock('../src/utils/permission-context.js', async () => {
+  const actual = await vi.importActual<any>('../src/utils/permission-context.js')
+  return {
+    ...actual,
+    createPermissionContext: (c: any) => {
+      // Return a mock PermissionContext with full permissions
+      return {
+        employeeId: c.get('employeeId') || 'emp-1',
+        dataScope: 'all',
+        canManageSubordinates: true,
+        allowedModules: ['*'],
+        permissions: {
+          hr: {
+            employee: ['view', 'create', 'update', 'delete'],
+            salary: ['view', 'create'],
+            leave: ['view', 'create', 'update', 'delete', 'approve'],
+          },
+          finance: {
+            flow: ['view', 'create', 'update', 'delete'],
+          },
+        },
+        position: mockUserPosition,
+        employee: mockUserEmployee,
+        hasPermission: () => true,
+        isModuleAllowed: () => true,
+        checkPermissions: () => true,
+        canAccessData: async () => true,
+        canApprove: async () => true,
+        toJSON: () => ({}),
+      }
+    },
+  }
+})
+
 vi.mock('../src/middleware.js', async () => {
   const actual = await vi.importActual<any>('../src/middleware.js')
   return {
     ...actual,
     createAuthMiddleware: () => async (c: any, next: any) => {
       c.set('userId', 'user-1')
+      c.set('employeeId', 'emp-1')
       c.set('userPosition', mockUserPosition)
       c.set('userEmployee', mockUserEmployee)
+      c.set('departmentModules', ['*'])
       await next()
     },
   }

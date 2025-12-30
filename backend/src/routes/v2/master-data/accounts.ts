@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
-import { hasPermission } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../../constants/permissions.js'
 import { logAuditAction } from '../../../utils/audit.js'
 import { Errors } from '../../../utils/errors.js'
 import {
@@ -15,6 +16,20 @@ import { getPagination } from '../../../utils/pagination.js'
 import { createRouteHandler, createPaginatedHandler, parsePagination } from '../../../utils/route-helpers.js'
 
 export const accountsRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ */
+function requireAccountPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SYSTEM, 'account', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 const listAccountsRoute = createRoute({
   method: 'get',
@@ -48,9 +63,7 @@ const listAccountsRoute = createRoute({
 accountsRoutes.openapi(
   listAccountsRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'account', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAccountPermission(c, PermissionAction.VIEW)
     const { activeOnly, accountType, currency, search } = c.req.valid('query')
     const service = c.var.services.masterData
     let results = await service.getAccounts(search)
@@ -118,9 +131,7 @@ const listAccountTransactionsRoute = createRoute({
 accountsRoutes.openapi(
   listAccountTransactionsRoute,
   createPaginatedHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'account', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAccountPermission(c, PermissionAction.VIEW)
     const id = c.req.param('id')
     const { page, limit } = parsePagination(c)
 
@@ -177,9 +188,7 @@ const createAccountRoute = createRoute({
 accountsRoutes.openapi(
   createAccountRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'account', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAccountPermission(c, PermissionAction.CREATE)
     const body = c.req.valid('json')
     const service = c.var.services.masterData
 
@@ -247,9 +256,7 @@ const updateAccountRoute = createRoute({
 accountsRoutes.openapi(
   updateAccountRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'account', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAccountPermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.masterData
@@ -295,9 +302,7 @@ const deleteAccountRoute = createRoute({
 accountsRoutes.openapi(
   deleteAccountRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'account', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAccountPermission(c, PermissionAction.DELETE)
     const id = c.req.param('id')
     const service = c.var.services.masterData
 

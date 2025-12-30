@@ -1,52 +1,44 @@
 # Tech Stack
 
+> 详细文档: [知识库索引](../../docs/README.md)
+
 ## Backend (`/backend`)
-- **Runtime**: Cloudflare Workers
-- **Framework**: Hono with OpenAPI (zod-openapi)
-- **Database**: Cloudflare D1 (SQLite)
-- **ORM**: Drizzle ORM
-- **Storage**: Cloudflare R2 (vouchers), KV (sessions/cache)
-- **Validation**: Zod schemas
-- **API Docs**: Swagger UI at `/api/ui`
+
+| 技术 | 说明 | 文档 |
+|------|------|------|
+| Runtime | Cloudflare Workers | [部署指南](../../docs/guides/deploy.md) |
+| Framework | Hono + OpenAPI | [API 参考](../../docs/backend/api-reference.md) |
+| Database | D1 (SQLite) + Drizzle | [数据库设计](../../docs/backend/database.md) |
+| Storage | R2 (文件), KV (缓存) | - |
+| Validation | Zod schemas | - |
 
 ## Frontend (`/frontend`)
-- **Framework**: React 18 + TypeScript
-- **Build**: Vite
-- **UI Library**: Ant Design 5
-- **State**: Zustand (app state), React Query (server state)
-- **Routing**: React Router 7
-- **Testing**: Vitest (unit), Playwright (E2E)
-- **Deployment**: Cloudflare Pages
 
-## Common Commands
+| 技术 | 说明 | 文档 |
+|------|------|------|
+| Framework | React 18 + TypeScript | [路由配置](../../docs/frontend/router.md) |
+| Build | Vite | - |
+| UI | Ant Design 5 | [表单组件](../../docs/frontend/form-components.md) |
+| State | Zustand + React Query | [Hooks](../../docs/frontend/hooks.md) |
+| Testing | Vitest + Playwright | [测试指南](../../docs/guides/testing.md) |
 
-### Backend
+## Quick Commands
+
 ```bash
-cd backend
-npm run dev              # Start dev server (port 8787)
-npm test                 # Run tests
-npm run test:coverage    # Tests with coverage
-npm run typecheck        # TypeScript check
-npm run lint             # ESLint
-npm run format           # Prettier
-npm run migrate:up       # Apply migrations (local)
-npm run migrate:up:remote # Apply migrations (production)
-npm run db:generate      # Generate Drizzle migrations
-npm run gen:openapi      # Export OpenAPI spec
-npm run deploy           # Deploy to Workers
+# 开发
+cd backend && npm run dev    # :8787
+cd frontend && npm run dev   # :5173
+
+# 测试
+npm test                     # 单元测试
+npm run test:coverage        # 覆盖率
+
+# 数据库
+npm run migrate:up           # 本地迁移
+npm run migrate:up:remote    # 远程迁移
+
+# 部署
+npm run deploy               # 部署 Workers
 ```
 
-### Frontend
-```bash
-cd frontend
-npm run dev              # Start dev server (port 5173)
-npm run build            # Production build
-npm test                 # Unit tests
-npm run test:e2e         # Playwright E2E tests
-npm run typecheck        # TypeScript check
-npm run gen:types        # Generate types from OpenAPI
-```
-
-## Key Dependencies
-- Backend: hono, drizzle-orm, zod, @hono/zod-openapi
-- Frontend: react, antd, @tanstack/react-query, zustand, dayjs, zod
+详见 [开发规范](../../docs/standards/development.md) | [测试指南](../../docs/guides/testing.md)

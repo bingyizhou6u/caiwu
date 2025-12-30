@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { and, eq, gte, lte } from 'drizzle-orm'
 import { accountTransfers } from '../../db/schema.js'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { createAccountTransferSchema } from '../../schemas/business.schema.js'
@@ -11,6 +11,21 @@ import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
 export const accountTransfersRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查转账权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireTransferPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission('finance', 'transfer', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schemas
 const accountTransferResponseSchema = z.object({
@@ -67,9 +82,8 @@ const listAccountTransfersRoute = createRoute({
 accountTransfersRoutes.openapi(
   listAccountTransfersRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'transfer', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTransferPermission(c, 'view')
 
     const query = c.req.valid('query')
     const fromAccountId = query.fromAccountId
@@ -149,9 +163,9 @@ const createAccountTransferRoute = createRoute({
 accountTransfersRoutes.openapi(
   createAccountTransferRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'transfer', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTransferPermission(c, 'create')
+
     const body = c.req.valid('json')
 
     const result = await c.var.services.accountTransfer.create({
@@ -209,9 +223,9 @@ const getAccountTransferRoute = createRoute({
 accountTransfersRoutes.openapi(
   getAccountTransferRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'finance', 'transfer', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireTransferPermission(c, 'view')
+
     const { id } = c.req.valid('param')
 
     const row = await c.var.services.accountTransfer.getById(id)

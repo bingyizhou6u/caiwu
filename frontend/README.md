@@ -1,116 +1,86 @@
-# Caiwu App Frontend
+# AR公司财务管理系统 - 前端
 
-企业管理系统前端项目，基于 React + TypeScript + Vite 构建。
-
-## 🛠 技术栈
-
-- **核心框架**: React 18, TypeScript
-- **构建工具**: Vite
-- **UI 组件库**: Ant Design 5
-- **状态管理**: Zustand (App Store), React Query (Server State)
-- **表单处理**: React Hook Form + Zod
-- **路由**: React Router 6
-- **测试**: Vitest (单元测试), Playwright (E2E 测试)
-- **部署**: Cloudflare Pages
-
-## ✨ 主要功能
-
-- **员工管理**: 员工入职、离职、转正、薪资调整、补贴管理。
-- **固定资产**: 资产录入、折旧、调拨、处置、盘点。
-- **财务管理**: 应收/应付账款 (AR/AP)、费用报销、借款管理。
-- **系统设置**: 部门、职位、站点配置、权限管理。
-- **全局搜索**: 支持跨模块（员工、资产、供应商、账户）快速搜索。
+> 基于 React 18 + TypeScript + Vite 构建的企业管理系统前端  
+> 📚 完整文档: [知识库索引](../docs/README.md)
 
 ## 🚀 快速开始
 
-### 安装依赖
+### 安装与运行
 
 ```bash
+# 安装依赖
 npm install
-```
 
-### 启动开发服务器
-
-```bash
+# 启动开发服务器 (端口 5173)
 npm run dev
-```
 
-### 构建生产版本
-
-```bash
+# 构建生产版本
 npm run build
 ```
 
-### 运行测试
+### 常用命令
 
 ```bash
-# 单元测试
-npm test
+# 开发
+npm run dev              # 启动开发服务器
+npm run typecheck        # 类型检查
+npm run lint             # 代码检查
 
-# E2E 测试
-npx playwright test
+# 测试
+npm test                 # 单元测试
+npm run test:e2e         # E2E 测试
+
+# 构建
+npm run build            # 生产构建
+npm run gen:types        # 从 OpenAPI 生成类型
 ```
+
+## 🛠 技术栈
+
+| 技术 | 说明 |
+|------|------|
+| React 18 | 核心框架 |
+| TypeScript | 类型安全 |
+| Vite | 构建工具 |
+| Ant Design 5 | UI 组件库 |
+| React Query | 服务端状态 |
+| Zustand | 客户端状态 |
+| React Router 7 | 路由 |
 
 ## 📁 项目结构
 
 ```
 src/
-├── api/            # API 客户端配置
-├── assets/         # 静态资源
-├── components/     # 公共组件 (GlobalSearch, MultiTabs 等)
-├── config/         # 配置文件 (API, 菜单, 常量)
-├── features/       # 业务模块 (按领域划分: employees, finance, system 等)
-├── hooks/          # 自定义 Hooks (业务逻辑 & 工具)
-├── layouts/        # 布局组件
+├── features/       # 业务模块（按域划分）
+├── components/     # 公共组件
+├── hooks/          # 自定义 Hooks
 ├── router/         # 路由配置
-├── store/          # 全局状态 (Zustand)
-├── types/          # TypeScript 类型定义 (包括 OpenAPI 生成的类型)
+├── store/          # 状态管理
+├── types/          # TypeScript 类型
 └── utils/          # 工具函数
 ```
 
-## 📚 类型定义
+## 📚 详细文档
 
-本项目使用 OpenAPI 自动生成类型定义。
-后端 API 定义位于 `../backend/openapi.json`。
+| 主题 | 文档 |
+|------|------|
+| 自定义 Hooks | [docs/frontend/hooks.md](../docs/frontend/hooks.md) |
+| 路由配置 | [docs/frontend/router.md](../docs/frontend/router.md) |
+| 表单组件 | [docs/frontend/form-components.md](../docs/frontend/form-components.md) |
+| 组件拆分 | [docs/frontend/component-split.md](../docs/frontend/component-split.md) |
+| 样式架构 | [docs/frontend/styles.md](../docs/frontend/styles.md) |
+| 测试指南 | [docs/guides/testing.md](../docs/guides/testing.md) |
+| 开发规范 | [docs/standards/development.md](../docs/standards/development.md) |
 
-生成/更新类型：
+## ✅ 组件使用规范
 
-```bash
-npm run gen:types
-```
+**必须使用的公共组件**:
+- `PageContainer` - 所有页面
+- `DataTable` - 所有列表页面
+- `AmountInput` / `AccountSelect` / `EmployeeSelect` - 表单组件
 
-## 🔍 代码规范
+详见 [表单组件文档](../docs/frontend/form-components.md)
 
-- **Lint**: ESLint
-- **Format**: Prettier
-- **Commit**: Conventional Commits
+---
 
-### 组件使用规范
-
-**重要**: 所有页面必须使用公共组件，详见 [组件使用指南](./docs/COMPONENT_USAGE_GUIDE.md)
-
-#### 必须使用的组件
-
-- ✅ **PageContainer**: 所有页面组件
-- ✅ **DataTable**: 所有列表页面
-- ✅ **Form 表单组件**: 所有表单页面
-  - `AccountSelect` - 账户选择
-  - `AmountInput` - 金额输入
-  - `CurrencySelect` - 币种选择
-  - `DepartmentSelect` - 部门选择
-  - `EmployeeSelect` - 员工选择
-  - `VendorSelect` - 供应商选择
-
-#### 应该使用的组件
-
-- ✅ **SearchFilters**: 列表页面搜索筛选
-- ✅ **FormModal**: 弹窗表单
-- ✅ **AmountDisplay**: 金额显示
-- ✅ **SensitiveField**: 敏感信息显示
-
-详细使用指南请参考：[组件使用指南](./docs/COMPONENT_USAGE_GUIDE.md)  
-代码审查检查清单：[代码审查检查清单](./docs/CODE_REVIEW_CHECKLIST.md)
-
-## 📄 许可证
-
-Private
+**最后更新**: 2025-12-30

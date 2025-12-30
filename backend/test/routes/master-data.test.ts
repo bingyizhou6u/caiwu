@@ -51,28 +51,35 @@ describe('MasterData Routes', () => {
         import: {} as any,
         report: {} as any,
       })
-      // Mock permissions
+      // Mock permissions - must include all required fields for createPermissionContext
+      c.set('employeeId', 'emp-admin')
       // @ts-ignore
       c.set('userPosition', {
         id: 'pos1',
         code: 'ADMIN',
         name: 'Admin',
-        function_role: 'admin',
-        can_manage_subordinates: 1,
+        canManageSubordinates: 1,
+        dataScope: 'all',
         permissions: {
           system: {
-            headquarters: ['create', 'read', 'update', 'delete'],
-            department: ['create', 'read', 'update', 'delete'],
-            site: ['create', 'read', 'update', 'delete'],
-            account: ['create', 'read', 'update', 'delete'],
-            currency: ['create', 'read', 'update', 'delete'],
-            category: ['create', 'read', 'update', 'delete'],
-            position: ['create', 'read', 'update', 'delete'],
-            org_department: ['create', 'read', 'update', 'delete'],
-            vendor: ['create', 'read', 'update', 'delete'],
+            headquarters: ['view', 'create', 'update', 'delete'],
+            department: ['view', 'create', 'update', 'delete'],
+            site: ['view', 'create', 'update', 'delete'],
+            account: ['view', 'create', 'update', 'delete'],
+            currency: ['view', 'create', 'update', 'delete'],
+            category: ['view', 'create', 'update', 'delete'],
+            position: ['view', 'create', 'update', 'delete'],
+            org_department: ['view', 'create', 'update', 'delete'],
+            vendor: ['view', 'create', 'update', 'delete'],
           },
         },
       })
+      c.set('userEmployee', {
+        id: 'emp-admin',
+        orgDepartmentId: null,
+        projectId: null,
+      })
+      c.set('departmentModules', ['*'])
       await next()
     })
 
@@ -176,11 +183,26 @@ describe('MasterData Routes', () => {
 
   describe('Vendors', () => {
     it('POST /api/master-data/vendors should create vendor', async () => {
-      const res = await app.request('/api/v2/master-data/vendors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Vendor A' }),
-      })
+      const tasks: Promise<any>[] = []
+      const executionCtx = {
+        waitUntil: (promise: Promise<any>) => {
+          tasks.push(promise)
+        },
+        passThroughOnException: () => { },
+      }
+
+      const res = await app.request(
+        '/api/v2/master-data/vendors',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Vendor A' }),
+        },
+        env,
+        executionCtx as any
+      )
+
+      await Promise.all(tasks)
 
       expect(res.status).toBe(200)
       const response = (await res.json()) as any

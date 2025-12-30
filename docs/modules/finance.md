@@ -92,4 +92,4 @@ const displayAmount = amountCents / 100
 
 ---
 
-**最后更新**：2025-12-27
+**最后更新**: 2025-12-27

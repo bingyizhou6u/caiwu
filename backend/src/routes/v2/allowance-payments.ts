@@ -1,6 +1,8 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission, getUserPosition, getUserId, isTeamMember } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { createDataAccessFilterSQL } from '../../utils/data-access-filter.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { Logger } from '../../utils/logger.js'
@@ -8,6 +10,23 @@ import { apiSuccess, jsonResponse } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
 export const allowancePaymentsRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：获取用户ID
+ */
+function getUserId(c: any): string | undefined {
+  return c.get('employeeId')
+}
+
+/**
+ * 辅助函数：检查是否为普通员工（非管理员）
+ */
+function isTeamMember(c: any): boolean {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) return true
+  // 如果没有财务津贴管理权限，则视为普通员工
+  return !permCtx.hasPermission(PermissionModule.FINANCE, 'allowance', PermissionAction.VIEW)
+}
 
 // Schema 定义
 const allowancePaymentResponseSchema = z.object({

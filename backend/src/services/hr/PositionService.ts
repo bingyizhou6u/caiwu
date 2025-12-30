@@ -8,9 +8,15 @@ import { positions, orgDepartments, projects, employees } from '../../db/schema.
 import { eq, and, or, asc, desc } from 'drizzle-orm'
 import { Errors } from '../../utils/errors.js'
 import { v4 as uuid } from 'uuid'
+import { PermissionAuditService } from '../system/PermissionAuditService.js'
+import { PermissionCache } from '../../utils/permission-cache.js'
 
 export class PositionService {
-  constructor(private db: DrizzleD1Database<typeof schema>) { }
+  constructor(
+    private db: DrizzleD1Database<typeof schema>,
+    private permissionAuditService?: PermissionAuditService,
+    private permissionCache?: PermissionCache
+  ) { }
 
   async getPositions() {
     const positionsList = await this.db
@@ -174,7 +180,9 @@ export class PositionService {
       permissions?: string
       sortOrder?: number
       active?: number
-    }
+    },
+    operatorId?: string,
+    ip?: string
   ) {
     const position = await this.db.query.positions.findFirst({
       where: eq(positions.id, id),
@@ -206,6 +214,50 @@ export class PositionService {
     if (data.active !== undefined) updates.active = data.active
 
     await this.db.update(positions).set(updates).where(eq(positions.id, id)).execute()
+
+    // 记录权限变更审计（如果权限字段有变更）
+    if (data.permissions !== undefined && this.permissionAuditService && operatorId) {
+      let beforePermissions = null
+      let afterPermissions = null
+      try {
+        beforePermissions = position.permissions ? JSON.parse(position.permissions) : null
+        afterPermissions = data.permissions ? JSON.parse(data.permissions) : null
+      } catch (e) {
+        // JSON 解析失败，忽略
+      }
+
+      await this.permissionAuditService.logPermissionChange({
+        changeType: 'position_permission_update',
+        entityType: 'position',
+        entityId: id,
+        beforeData: {
+          permissions: beforePermissions,
+          dataScope: position.dataScope,
+          canManageSubordinates: position.canManageSubordinates,
+        },
+        afterData: {
+          permissions: afterPermissions,
+          dataScope: data.dataScope ?? position.dataScope,
+          canManageSubordinates: data.canManageSubordinates ?? position.canManageSubordinates,
+        },
+        operatorId,
+        ip,
+      })
+    }
+
+    // 失效权限缓存（如果权限相关字段有变更）
+    const permissionRelatedFieldsChanged = 
+      data.permissions !== undefined ||
+      data.dataScope !== undefined ||
+      data.canManageSubordinates !== undefined
+
+    if (permissionRelatedFieldsChanged && this.permissionCache) {
+      // 异步失效缓存，不阻塞响应
+      this.permissionCache.invalidateByPositionId(id).catch(err => {
+        // 静默失败，已在 PermissionCache 中记录日志
+      })
+    }
+
     return { ok: true }
   }
 

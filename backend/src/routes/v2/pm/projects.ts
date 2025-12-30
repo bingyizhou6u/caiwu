@@ -5,11 +5,38 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
 import { apiSuccess } from '../../../utils/response.js'
 import { Errors } from '../../../utils/errors.js'
-import { hasPermission, validateProjectAccess, getAccessibleProjectIds, getUserPosition, getUserEmployee } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { validateProjectAccess, getAccessibleProjectIds } from '../../../utils/permissions.js'
 import { PermissionModule, PermissionAction, DataScope } from '../../../constants/permissions.js'
 import { createRouteHandler } from '../../../utils/route-helpers.js'
 
 const app = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireProjectPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.PM, 'project', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+/**
+ * 辅助函数：仅检查认证，不检查具体权限
+ */
+function requireAuthenticated(c: any): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schema 定义
 const projectResponseSchema = z.object({
@@ -84,9 +111,8 @@ const nextCodeRoute = createRoute({
 })
 
 app.openapi(nextCodeRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'project', 'create')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireProjectPermission(c, PermissionAction.CREATE)
     const code = await c.var.services.project.getNextCode()
     return { code }
 }) as any)
@@ -112,9 +138,8 @@ const listRoute = createRoute({
 })
 
 app.openapi(listRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'project', 'view')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireProjectPermission(c, PermissionAction.VIEW)
     // Data Scope 过滤：获取用户可访问的项目 IDs
     const accessibleIds = await getAccessibleProjectIds(c)
     const projects = await c.var.services.project.list()
@@ -150,9 +175,8 @@ const getRoute = createRoute({
 })
 
 app.openapi(getRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'project', 'view')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireProjectPermission(c, PermissionAction.VIEW)
     const { id } = c.req.valid('param')
     const project = await c.var.services.project.getById(id)
     if (!project) {
@@ -196,11 +220,10 @@ const createRoute_ = createRoute({
 })
 
 app.openapi(createRoute_, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'project', 'create')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireProjectPermission(c, PermissionAction.CREATE)
     const data = c.req.valid('json')
-    const userId = c.get('employeeId')
+    const userId = permCtx.employee.id
 
     // 如果没有提供 code，自动生成
     if (!data.code) {
@@ -243,9 +266,8 @@ const updateRoute = createRoute({
 })
 
 app.openapi(updateRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'project', 'update')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireProjectPermission(c, PermissionAction.UPDATE)
     const { id } = c.req.valid('param')
     const data = c.req.valid('json')
 
@@ -287,9 +309,8 @@ const deleteRoute = createRoute({
 })
 
 app.openapi(deleteRoute, createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'pm', 'project', 'delete')) {
-        throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireProjectPermission(c, PermissionAction.DELETE)
     const { id } = c.req.valid('param')
 
     // 先获取项目以验证权限

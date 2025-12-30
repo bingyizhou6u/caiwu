@@ -1,12 +1,8 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { sql } from 'drizzle-orm'
 import type { Env, AppVariables } from '../../types/index.js'
-import {
-  hasPermission,
-  getUserPosition,
-  getUserEmployee,
-  getDataAccessFilterSQL,
-} from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { createDataAccessFilterSQL } from '../../utils/data-access-filter.js'
 import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
@@ -18,6 +14,21 @@ import { createRouteHandler, createPaginatedHandler, parsePagination } from '../
 import type { R2Bucket } from '@cloudflare/workers-types'
 
 export const flowsRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireFlowPermission(c: any, action: string): ReturnType<typeof createPermissionContext> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.FINANCE, 'flow', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schema 定义
 const cashFlowResponseSchema = z.object({
@@ -123,18 +134,27 @@ const listCashFlowsRoute = createRoute({
 flowsRoutes.openapi(
   listCashFlowsRoute,
   createPaginatedHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    // 使用 PermissionContext 进行数据访问过滤
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const { page, limit } = parsePagination(c)
 
-    // 使用 getDataAccessFilterSQL 获取数据访问过滤条件（返回 SQL 对象，更安全）
+    // 使用新的 createDataAccessFilterSQL 获取数据访问过滤条件
     // cash_flows 表使用 'created_by' 和 'project_id' 列
-    // 它没有 org_department_id，所以我们跳过那一层
-    const accessFilter = getDataAccessFilterSQL(c, 'cash_flows', {
-      ownerColumn: 'created_by',
-      deptColumn: 'project_id',
-      skipOrgDept: true,
+    const accessFilter = createDataAccessFilterSQL({
+      dataScope: permCtx.dataScope,
+      user: {
+        id: permCtx.employee.id,
+        projectId: permCtx.employee.projectId,
+        orgDepartmentId: permCtx.employee.orgDepartmentId,
+      },
+      fieldMapping: {
+        employeeId: 'created_by',
+        projectId: 'project_id',
+      },
+      selfField: 'createdBy',
     })
 
     const whereClause = accessFilter
@@ -214,9 +234,8 @@ const uploadVoucherRoute = createRoute({
 flowsRoutes.openapi(
   uploadVoucherRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.CREATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireFlowPermission(c, PermissionAction.CREATE)
 
     const formData = await c.req.formData()
     const file = formData.get('file') as File
@@ -269,7 +288,9 @@ flowsRoutes.openapi(
 
 // 下载凭证
 flowsRoutes.get('/vouchers/*', async c => {
-  if (!getUserPosition(c)) {
+  // 使用 PermissionContext 检查认证
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
     throw Errors.FORBIDDEN()
   }
 
@@ -336,9 +357,9 @@ const createCashFlowRoute = createRoute({
 flowsRoutes.openapi(
   createCashFlowRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.CREATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireFlowPermission(c, PermissionAction.CREATE)
+
     const body = c.req.valid('json')
 
     // projectId 的逻辑：从 siteId 或直接传入的 projectId 获取
@@ -418,9 +439,9 @@ const updateVoucherRoute = createRoute({
 flowsRoutes.openapi(
   updateVoucherRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.UPDATE)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireFlowPermission(c, PermissionAction.UPDATE)
+
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
 
@@ -489,8 +510,12 @@ const reverseFlowRoute = createRoute({
 flowsRoutes.openapi(
   reverseFlowRoute,
   createRouteHandler(async (c: any) => {
-    // 权限检查 - 仅财务主管和会计可冲正
-    if (!hasPermission(c, PermissionModule.FINANCE, 'flow', PermissionAction.REVERSE)) {
+    // 使用 PermissionContext 检查权限 - 仅财务主管和会计可冲正
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
+      throw Errors.FORBIDDEN()
+    }
+    if (!permCtx.hasPermission(PermissionModule.FINANCE, 'flow', PermissionAction.REVERSE)) {
       throw Errors.FORBIDDEN('无权进行流水冲正操作')
     }
 

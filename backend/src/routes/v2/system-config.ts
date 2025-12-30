@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { updateSystemConfigSchema } from '../../schemas/business.schema.js'
@@ -8,6 +9,21 @@ import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
 export const systemConfigRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireConfigPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.SYSTEM, 'config', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // Schema Definitions
 const SystemConfigSchema = z.object({
@@ -96,9 +112,8 @@ const getSystemConfigRoute = createRoute({
 systemConfigRoutes.openapi(
   getSystemConfigRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'config', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireConfigPermission(c, PermissionAction.VIEW)
 
     const service = c.var.services.systemConfig
     const results = await service.getAll()
@@ -161,9 +176,8 @@ const updateSystemConfigRoute = createRoute({
 systemConfigRoutes.openapi(
   updateSystemConfigRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'config', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireConfigPermission(c, PermissionAction.UPDATE)
 
     const key = c.req.param('key')
     if (!key) {
@@ -171,7 +185,7 @@ systemConfigRoutes.openapi(
     }
     const body = c.req.valid('json') as { value: any; description?: string | null }
 
-    const userId = c.get('employeeId') as string | undefined
+    const userId = permCtx.employee.id
 
     const service = c.var.services.systemConfig
 
@@ -225,9 +239,8 @@ const getSystemConfigByKeyRoute = createRoute({
 systemConfigRoutes.openapi(
   getSystemConfigByKeyRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'system', 'config', 'view')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireConfigPermission(c, PermissionAction.VIEW)
 
     const key = c.req.param('key')
     if (!key) {
@@ -277,10 +290,8 @@ const syncAccessPolicyRoute = createRoute({
 systemConfigRoutes.openapi(
   syncAccessPolicyRoute,
   createRouteHandler(async (c: any) => {
-    // 仅 hq_admin 可操作
-    if (!hasPermission(c, 'system', 'config', 'manage')) {
-      throw Errors.FORBIDDEN('需要系统管理权限')
-    }
+    // 使用 PermissionContext 检查权限 - 仅 hq_admin 可操作
+    requireConfigPermission(c, 'manage')
 
     const db = c.var.db
     const syncService = new AccessPolicySyncService(db, c.env.CF_ACCESS_TOKEN)

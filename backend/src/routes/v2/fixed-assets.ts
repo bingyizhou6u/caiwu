@@ -1,12 +1,8 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import {
-  hasPermission,
-  getUserPosition,
-  getUserEmployee,
-  getUserId,
-} from '../../utils/permissions.js'
-import { requirePermission, protectRoute } from '../../middleware/permission.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { createDataAccessFilterSQL } from '../../utils/data-access-filter.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import {
@@ -24,10 +20,35 @@ import {
   fixedAssetAllocationQuerySchema,
   idParamSchema,
 } from '../../schemas/common.schema.js'
-import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
 export const fixedAssetsRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireAssetPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.ASSET, 'fixed', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+/**
+ * 辅助函数：仅检查认证，不检查具体权限
+ */
+function requireAuthenticated(c: any): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // 列出固定资产
 const listFixedAssetsRoute = createRoute({
@@ -57,22 +78,34 @@ const listFixedAssetsRoute = createRoute({
 fixedAssetsRoutes.openapi(
   listFixedAssetsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 进行数据访问过滤
+    const permCtx = requireAuthenticated(c)
     const query = c.req.valid('query')
 
-    const position = getUserPosition(c)
-    const employee = getUserEmployee(c)
+    // 使用新的 createDataAccessFilterSQL 获取数据访问过滤条件
+    // fixed_assets 表使用 'created_by' 和 'project_id' 列
+    const accessFilter = createDataAccessFilterSQL({
+      dataScope: permCtx.dataScope,
+      user: {
+        id: permCtx.employee.id,
+        projectId: permCtx.employee.projectId,
+        orgDepartmentId: permCtx.employee.orgDepartmentId,
+      },
+      fieldMapping: {
+        employeeId: 'created_by',
+        projectId: 'project_id',
+      },
+      selfField: 'createdBy',
+    })
+
+    // 根据数据范围确定过滤参数
     let projectId = undefined
     let createdBy = undefined
 
-    if (position && employee) {
-      if (position.dataScope === 'project') {
-        projectId = employee.projectId || undefined
-      } else if (position.dataScope === 'group' || position.dataScope === 'self') {
-        createdBy = employee.id
-      }
+    if (permCtx.dataScope === 'project') {
+      projectId = permCtx.employee.projectId || undefined
+    } else if (permCtx.dataScope === 'group' || permCtx.dataScope === 'self') {
+      createdBy = permCtx.employee.id
     }
 
     const rows = await c.var.services.fixedAsset.list({
@@ -139,9 +172,7 @@ const listCategoriesRoute = createRoute({
 fixedAssetsRoutes.openapi(
   listCategoriesRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAuthenticated(c)
     const results = await c.var.services.fixedAsset.getCategories()
     return { results }
   }) as any
@@ -175,9 +206,7 @@ const listAllocationsRoute = createRoute({
 fixedAssetsRoutes.openapi(
   listAllocationsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAuthenticated(c)
     const query = c.req.valid('query')
 
     const rows = await c.var.services.fixedAssetAllocation.listAllocations({
@@ -236,9 +265,7 @@ const getFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   getFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAuthenticated(c)
     const { id } = c.req.valid('param')
 
     const asset = await c.var.services.fixedAsset.get(id)
@@ -345,11 +372,9 @@ const createFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   createFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireAssetPermission(c, PermissionAction.CREATE)
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     const result = await c.var.services.fixedAsset.create({
       assetCode: body.assetCode,
@@ -366,7 +391,7 @@ fixedAssetsRoutes.openapi(
       depreciationMethod: body.depreciationMethod,
       usefulLifeYears: body.usefulLifeYears,
       memo: body.memo,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(
@@ -417,12 +442,10 @@ const updateFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   updateFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireAssetPermission(c, PermissionAction.UPDATE)
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     await c.var.services.fixedAsset.update(id, {
       name: body.name,
@@ -436,7 +459,7 @@ fixedAssetsRoutes.openapi(
       custodian: body.custodian,
       status: body.status,
       memo: body.memo,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(c, 'update', 'fixed_asset', id, JSON.stringify(body))
@@ -471,9 +494,8 @@ const deleteFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   deleteFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireAssetPermission(c, PermissionAction.DELETE)
     const { id } = c.req.valid('param')
 
     await c.var.services.fixedAsset.delete(id)
@@ -517,18 +539,16 @@ const createDepreciationRoute = createRoute({
 fixedAssetsRoutes.openapi(
   createDepreciationRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'depreciate')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限 - 折旧需要 update 权限
+    const permCtx = requireAssetPermission(c, PermissionAction.UPDATE)
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     const result = await c.var.services.fixedAssetDepreciation.createDepreciation(id, {
       depreciationDate: body.depreciationDate,
       amountCents: body.amountCents,
       memo: body.memo,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(
@@ -578,12 +598,10 @@ const transferFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   transferFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'transfer')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限 - 转移需要 update 权限
+    const permCtx = requireAssetPermission(c, PermissionAction.UPDATE)
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     await c.var.services.fixedAssetChange.transfer(id, {
       toProjectId: body.toProjectId,
@@ -591,7 +609,7 @@ fixedAssetsRoutes.openapi(
       toCustodian: body.toCustodian,
       transferDate: body.transferDate,
       memo: body.memo,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(
@@ -646,11 +664,9 @@ const purchaseFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   purchaseFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireAssetPermission(c, PermissionAction.CREATE)
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     const result = await c.var.services.fixedAsset.purchase({
       assetCode: body.assetCode,
@@ -669,7 +685,7 @@ fixedAssetsRoutes.openapi(
       voucherUrl: body.voucherUrl,
       depreciationMethod: body.depreciationMethod,
       usefulLifeYears: body.usefulLifeYears,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(
@@ -727,12 +743,10 @@ const sellFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   sellFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'dispose')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限 - 变卖需要 delete 权限
+    const permCtx = requireAssetPermission(c, PermissionAction.DELETE)
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     const result = await c.var.services.fixedAsset.sell(id, {
       saleDate: body.saleDate,
@@ -744,7 +758,7 @@ fixedAssetsRoutes.openapi(
       saleBuyer: body.saleBuyer,
       saleMemo: body.saleMemo,
       memo: body.memo,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(
@@ -796,11 +810,9 @@ const allocateFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   allocateFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'allocate')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireAssetPermission(c, PermissionAction.ALLOCATE)
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     const result = await c.var.services.fixedAssetAllocation.allocate(body.assetId, {
       employeeId: body.employeeId,
@@ -808,7 +820,7 @@ fixedAssetsRoutes.openapi(
       allocationType: body.allocationType,
       expectedReturnDate: body.expectedReturnDate,
       memo: body.memo,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(
@@ -858,18 +870,16 @@ const returnFixedAssetRoute = createRoute({
 fixedAssetsRoutes.openapi(
   returnFixedAssetRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'fixed', 'allocate')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireAssetPermission(c, PermissionAction.ALLOCATE)
     const { id } = c.req.valid('param')
     const body = c.req.valid('json')
-    const userId = getUserId(c)
 
     await c.var.services.fixedAssetAllocation.return(id, {
       returnDate: body.returnDate,
       returnType: body.returnType,
       memo: body.memo,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(

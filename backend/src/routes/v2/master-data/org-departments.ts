@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../../types/index.js'
-import { getUserPosition } from '../../../utils/permissions.js'
+import { createPermissionContext } from '../../../utils/permission-context.js'
+import { DataScope } from '../../../constants/permissions.js'
 import { Errors } from '../../../utils/errors.js'
 import { orgDepartmentSchema } from '../../../schemas/master-data.schema.js'
 import { apiSuccess, jsonResponse } from '../../../utils/response.js'
@@ -43,7 +44,8 @@ const listOrgDepartmentsRoute = createRoute({
 orgDepartmentsRoutes.openapi(
   listOrgDepartmentsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const projectId = c.req.query('project_id')
@@ -100,7 +102,8 @@ const getOrgDepartmentRoute = createRoute({
 orgDepartmentsRoutes.openapi(
   getOrgDepartmentRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
       throw Errors.FORBIDDEN()
     }
     const id = c.req.param('id')
@@ -166,8 +169,8 @@ const createOrgDepartmentRoute = createRoute({
 orgDepartmentsRoutes.openapi(
   createOrgDepartmentRoute,
   createRouteHandler(async (c: any) => {
-    const position = getUserPosition(c)
-    if (!position || position.dataScope !== 'all') {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || permCtx.dataScope !== DataScope.ALL) {
       throw Errors.FORBIDDEN('无权限创建组织部门')
     }
     const body = await c.req.json()
@@ -222,8 +225,8 @@ const updateOrgDepartmentRoute = createRoute({
 orgDepartmentsRoutes.openapi(
   updateOrgDepartmentRoute,
   createRouteHandler(async (c: any) => {
-    const position = getUserPosition(c)
-    if (!position || position.dataScope !== 'all') {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || permCtx.dataScope !== DataScope.ALL) {
       throw Errors.FORBIDDEN('无权限更新组织部门')
     }
     const id = c.req.param('id')
@@ -261,8 +264,8 @@ const deleteOrgDepartmentRoute = createRoute({
 orgDepartmentsRoutes.openapi(
   deleteOrgDepartmentRoute,
   createRouteHandler(async (c: any) => {
-    const position = getUserPosition(c)
-    if (!position || position.dataScope !== 'all') {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx || permCtx.dataScope !== DataScope.ALL) {
       throw Errors.FORBIDDEN('无权限删除组织部门')
     }
     const id = c.req.param('id')

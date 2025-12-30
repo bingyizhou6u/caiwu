@@ -2,6 +2,7 @@ import { DrizzleD1Database } from 'drizzle-orm/d1'
 import * as schema from '../db/schema.js'
 import { MonitoringService } from '../utils/monitoring.js'
 import type { ServiceContainer } from '../middleware/service-container.js'
+import type { PermissionContext } from '../utils/permission-context.js'
 
 export type Env = {
   DB: D1Database
@@ -13,16 +14,16 @@ export type Env = {
   // 邮件发送配置（可选，如果配置了Resend API Key）
   RESEND_API_KEY?: string
   // Cloudflare 服务专用 API Tokens
-  CF_IP_LISTS_TOKEN?: string // IP Lists 管理 (Account Rule Lists Write)
+  CF_IP_LISTS_TOKEN?: string // IP 列表管理 (Account Rule Lists Write)
   CF_EMAIL_TOKEN?: string // Email Routing (Account + Zone 权限)
-  CF_FIREWALL_TOKEN?: string // Firewall Rules (Zone Firewall Services Write)
+  CF_FIREWALL_TOKEN?: string // 防火墙规则 (Zone Firewall Services Write)
   CF_ACCOUNT_ID?: string // Cloudflare Account ID
   CF_ZONE_ID?: string // Zone ID（创建自定义规则需要）
   CF_IP_LIST_ID?: string // IP List ID（如果已创建，可指定）
-  CF_ACCESS_TOKEN?: string // Access Policy 同步 Token
+  CF_ACCESS_TOKEN?: string // Access 策略同步 Token
   CF_ACCESS_APP_ID?: string // Access Application ID
   CF_ACCESS_AUD?: string // Access Application Audience Tag
-  CF_ACCESS_TEAM_DOMAIN?: string // Access Team Domain (e.g. ar-teams.cloudflareaccess.com)
+  CF_ACCESS_TEAM_DOMAIN?: string // Access 团队域名 (例如 ar-teams.cloudflareaccess.com)
   AUTH_JWT_SECRET: string
   INIT_ADMIN_EMAIL?: string
 }
@@ -49,10 +50,13 @@ export type AppVariables = {
   }
   departmentModules?: string[] // 部门允许的功能模块列表
 
-  // Monitoring service (initialized at startup)
+  // Permission Context - 权限上下文（认证成功后自动注入）
+  permissionContext?: PermissionContext
+
+  // 监控服务（已在启动时初始化）
   monitoring: MonitoringService
 
-  // Dependency Injection - 使用懒加载的服务容器
+  // 依赖注入 - 使用懒加载的服务容器
   db: DrizzleD1Database<typeof schema>
   services: ServiceContainer
 }

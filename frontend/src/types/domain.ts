@@ -85,7 +85,7 @@ export interface Employee {
     positionName?: string
     positionDataScope?: 'all' | 'project' | 'group' | 'self'  // 数据范围
 
-    // Salary/allowance data (joined from latest config)
+    // 薪资/津贴数据（从最新配置关联）
     probationSalaryCents?: AmountCents
     regularSalaryCents?: AmountCents
     livingAllowanceCents?: AmountCents
@@ -147,7 +147,7 @@ export interface Site {
     name: string
     code?: string
     location?: string
-    // Extended fields from API
+    // 接口扩展字段
     projectId?: ID
     siteCode?: string
     themeStyle?: string
@@ -169,11 +169,11 @@ export interface Account {
     alias?: string
     accountNumber?: string
     currency: CurrencyCode
-    currencyName?: string  // Join from currency table
+    unitName?: string  // 从币种表关联
     accountType: 'cash' | 'bank' | 'credit_card' | 'other'
-    type?: 'cash' | 'bank' | 'credit_card' | 'other'  // Alias for accountType
+    type?: 'cash' | 'bank' | 'credit_card' | 'other'  // accountType 的别名
     balanceCents: AmountCents
-    manager?: string  // Manager name
+    manager?: string  // 负责人姓名
     active: ActiveStatus
     createdAt?: Timestamp
     updatedAt?: Timestamp
@@ -241,7 +241,7 @@ export interface Vendor {
     id: ID
     name: string
     code?: string
-    contact?: string  // Contact information (simplified from multiple fields)
+    contact?: string  // 联系信息（由多个字段简化而来）
     contactPerson?: string
     contactPhone?: string
     contactEmail?: string
@@ -330,7 +330,7 @@ export interface Borrowing {
     id: ID
     userId: ID
     userName?: string
-    // Extended fields from API join
+    // 接口关联扩展字段
     borrowerName?: string
     borrowerEmail?: string
     amountCents: AmountCents

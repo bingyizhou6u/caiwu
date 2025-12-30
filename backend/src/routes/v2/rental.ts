@@ -1,25 +1,48 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission, getUserPosition } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { createDataAccessFilterSQL } from '../../utils/data-access-filter.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import {
-  createRentalPropertySchema,
   updateRentalPropertySchema,
-  createRentalPaymentSchema,
   updateRentalPaymentSchema,
-  allocateDormitorySchema,
-  returnDormitorySchema,
 } from '../../schemas/business.schema.js'
 import {
   rentalPropertyQuerySchema,
   rentalPayableBillQuerySchema,
   uuidSchema,
 } from '../../schemas/common.schema.js'
-import { apiSuccess } from '../../utils/response.js'
 import { createRouteHandler } from '../../utils/route-helpers.js'
 
 export const rentalRoutes = new OpenAPIHono<{ Bindings: Env; Variables: AppVariables }>()
+
+/**
+ * 辅助函数：检查权限并返回 PermissionContext
+ * 如果没有权限则抛出 FORBIDDEN 错误
+ */
+function requireRentalPermission(c: any, action: string): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  if (!permCtx.hasPermission(PermissionModule.ASSET, 'rental', action)) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
+
+/**
+ * 辅助函数：仅检查认证，不检查具体权限
+ */
+function requireAuthenticated(c: any): NonNullable<ReturnType<typeof createPermissionContext>> {
+  const permCtx = createPermissionContext(c)
+  if (!permCtx) {
+    throw Errors.FORBIDDEN()
+  }
+  return permCtx
+}
 
 // --- Rental Properties ---
 
@@ -58,6 +81,8 @@ const listPropertiesRoute = createRoute({
 rentalRoutes.openapi(
   listPropertiesRoute,
   createRouteHandler(async (c: any) => {
+    // 使用 PermissionContext 进行数据访问过滤
+    const permCtx = requireAuthenticated(c)
     const query = c.req.valid('query') as any
     const service = c.var.services.rental
     const results = await service.listProperties(query)
@@ -108,6 +133,7 @@ const listAllocationsRoute = createRoute({
 rentalRoutes.openapi(
   listAllocationsRoute,
   createRouteHandler(async (c: any) => {
+    requireAuthenticated(c)
     const query = c.req.valid('query') as any
     const service = c.var.services.rental
 
@@ -154,6 +180,8 @@ const allocateDormitoryRoute = createRoute({
 rentalRoutes.openapi(
   allocateDormitoryRoute,
   createRouteHandler(async (c: any) => {
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireRentalPermission(c, PermissionAction.CREATE)
     const id = c.req.param('id')
     const raw = await c.req.json()
     const body = {
@@ -164,7 +192,6 @@ rentalRoutes.openapi(
       monthlyRentCents: raw.monthlyRentCents ?? raw.monthly_rent_cents,
       memo: raw.memo,
     }
-    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     try {
@@ -176,7 +203,7 @@ rentalRoutes.openapi(
         allocationDate: body.allocationDate,
         monthlyRentCents: body.monthlyRentCents || undefined,
         memo: body.memo || undefined,
-        createdBy: userId,
+        createdBy: permCtx.employee.id,
       })
 
       if (result?.id) {
@@ -231,6 +258,8 @@ const returnDormitoryRoute = createRoute({
 rentalRoutes.openapi(
   returnDormitoryRoute,
   createRouteHandler(async (c: any) => {
+    // 使用 PermissionContext 检查权限
+    requireRentalPermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const raw = await c.req.json()
     const body = {
@@ -277,6 +306,7 @@ const getPropertyRoute = createRoute({
 rentalRoutes.openapi(
   getPropertyRoute,
   createRouteHandler(async c => {
+    requireAuthenticated(c)
     const id = c.req.param('id')
     const service = c.var.services.rental
     const result = await service.getProperty(id)
@@ -315,6 +345,8 @@ const createPropertyRoute = createRoute({
 rentalRoutes.openapi(
   createPropertyRoute,
   createRouteHandler(async (c: any) => {
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireRentalPermission(c, PermissionAction.CREATE)
     const raw = await c.req.json()
     const body = {
       propertyCode: raw.propertyCode ?? raw.property_code,
@@ -340,13 +372,12 @@ rentalRoutes.openapi(
       memo: raw.memo,
       contractFileUrl: raw.contractFileUrl ?? raw.contract_file_url,
     }
-    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     try {
       const result = await service.createProperty({
         ...body,
-        createdBy: userId,
+        createdBy: permCtx.employee.id,
       })
 
       if (result?.id) {
@@ -402,6 +433,8 @@ const updatePropertyRoute = createRoute({
 rentalRoutes.openapi(
   updatePropertyRoute,
   createRouteHandler(async (c: any) => {
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireRentalPermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const raw = await c.req.json()
     const body = {
@@ -427,12 +460,11 @@ rentalRoutes.openapi(
       memo: raw.memo,
       contractFileUrl: raw.contractFileUrl ?? raw.contract_file_url,
     }
-    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     await service.updateProperty(id, {
       ...body,
-      createdBy: userId,
+      createdBy: permCtx.employee.id,
     })
 
     logAuditAction(c, 'update', 'rental_property', id, JSON.stringify(body))
@@ -465,6 +497,8 @@ const deletePropertyRoute = createRoute({
 rentalRoutes.openapi(
   deletePropertyRoute,
   createRouteHandler(async (c: any) => {
+    // 使用 PermissionContext 检查权限
+    requireRentalPermission(c, PermissionAction.DELETE)
     const id = c.req.param('id')
     const service = c.var.services.rental
 
@@ -524,6 +558,7 @@ const listPaymentsRoute = createRoute({
 rentalRoutes.openapi(
   listPaymentsRoute,
   createRouteHandler(async (c: any) => {
+    requireAuthenticated(c)
     const query = c.req.valid('query') as any
     const service = c.var.services.rental
     const results = await service.listPayments({
@@ -566,8 +601,9 @@ const createPaymentRoute = createRoute({
 rentalRoutes.openapi(
   createPaymentRoute,
   createRouteHandler(async (c: any) => {
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireRentalPermission(c, PermissionAction.CREATE)
     const body = await c.req.json()
-    const userId = c.get('employeeId')
     const service = c.var.services.rental
 
     try {
@@ -583,7 +619,7 @@ rentalRoutes.openapi(
         paymentMethod: body.paymentMethod,
         voucherUrl: body.voucherUrl,
         memo: body.memo,
-        createdBy: userId,
+        createdBy: permCtx.employee.id,
       })
 
       if (result?.id) {
@@ -645,9 +681,8 @@ const updatePaymentRoute = createRoute({
 rentalRoutes.openapi(
   updatePaymentRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'rental', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireRentalPermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const body = c.req.valid('json')
     const service = c.var.services.rental
@@ -689,9 +724,8 @@ const deletePaymentRoute = createRoute({
 rentalRoutes.openapi(
   deletePaymentRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'rental', 'delete')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireRentalPermission(c, PermissionAction.DELETE)
     const id = c.req.param('id')
     const service = c.var.services.rental
 
@@ -739,13 +773,11 @@ const generatePayableBillsRoute = createRoute({
 rentalRoutes.openapi(
   generatePayableBillsRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'rental', 'create')) {
-      throw Errors.FORBIDDEN()
-    }
-    const userId = c.get('employeeId')
+    // 使用 PermissionContext 检查权限
+    const permCtx = requireRentalPermission(c, PermissionAction.CREATE)
     const service = c.var.services.rental
 
-    const result = await service.generatePayableBills(userId)
+    const result = await service.generatePayableBills(permCtx.employee.id)
 
     logAuditAction(
       c,
@@ -797,9 +829,7 @@ const listPayableBillsRoute = createRoute({
 rentalRoutes.openapi(
   listPayableBillsRoute,
   createRouteHandler(async (c: any) => {
-    if (!getUserPosition(c)) {
-      throw Errors.FORBIDDEN()
-    }
+    requireAuthenticated(c)
     const query = c.req.valid('query') as any
     const service = c.var.services.rental
 
@@ -839,9 +869,8 @@ const markBillPaidRoute = createRoute({
 rentalRoutes.openapi(
   markBillPaidRoute,
   createRouteHandler(async (c: any) => {
-    if (!hasPermission(c, 'asset', 'rental', 'update')) {
-      throw Errors.FORBIDDEN()
-    }
+    // 使用 PermissionContext 检查权限
+    requireRentalPermission(c, PermissionAction.UPDATE)
     const id = c.req.param('id')
     const service = c.var.services.rental
     const result = await service.markBillPaid(id)

@@ -10,11 +10,15 @@ import { EmailService } from '../common/EmailService.js'
 import { query } from '../../utils/query-helpers.js'
 import type { Context } from 'hono'
 import type { Env, AppVariables } from '../../types/index.js'
+import { PermissionAuditService } from '../system/PermissionAuditService.js'
+import { PermissionCache } from '../../utils/permission-cache.js'
 
 export class EmployeeService {
   constructor(
     private db: DrizzleD1Database<typeof schema>,
-    private emailService: EmailService
+    private emailService: EmailService,
+    private permissionAuditService?: PermissionAuditService,
+    private permissionCache?: PermissionCache
   ) { }
 
   /**
@@ -599,7 +603,9 @@ export class EmployeeService {
       annualLeaveCycleMonths?: number
       annualLeaveDays?: number
     },
-    c?: Context<{ Bindings: Env; Variables: AppVariables }>
+    c?: Context<{ Bindings: Env; Variables: AppVariables }>,
+    operatorId?: string,
+    ip?: string
   ) {
     // D1 不支持 begin/transaction，这里改为顺序执行
     const employee = await query(
@@ -611,6 +617,10 @@ export class EmployeeService {
     if (!employee) {
       throw Errors.NOT_FOUND('员工')
     }
+
+    // 记录职位变更前的信息
+    const oldPositionId = employee.positionId
+    const positionChanged = data.positionId !== undefined && data.positionId !== oldPositionId
 
     const updateData: any = { updatedAt: Date.now() }
     if (data.name !== undefined) { updateData.name = data.name }
@@ -637,6 +647,59 @@ export class EmployeeService {
     }
 
     await this.db.update(employees).set(updateData).where(eq(employees.id, id)).run()
+
+    // 记录职位变更审计
+    if (positionChanged && this.permissionAuditService && operatorId) {
+      // 获取新旧职位信息
+      let oldPosition = null
+      let newPosition = null
+
+      if (oldPositionId) {
+        oldPosition = await this.db
+          .select({ id: positions.id, name: positions.name, code: positions.code })
+          .from(positions)
+          .where(eq(positions.id, oldPositionId))
+          .get()
+      }
+
+      if (data.positionId) {
+        newPosition = await this.db
+          .select({ id: positions.id, name: positions.name, code: positions.code })
+          .from(positions)
+          .where(eq(positions.id, data.positionId))
+          .get()
+      }
+
+      await this.permissionAuditService.logPermissionChange({
+        changeType: 'employee_position_change',
+        entityType: 'employee',
+        entityId: id,
+        beforeData: {
+          positionId: oldPositionId,
+          positionName: oldPosition?.name || null,
+          positionCode: oldPosition?.code || null,
+        },
+        afterData: {
+          positionId: data.positionId,
+          positionName: newPosition?.name || null,
+          positionCode: newPosition?.code || null,
+        },
+        operatorId,
+        ip,
+      })
+    }
+
+    // 失效权限缓存（如果权限相关字段有变更）
+    const permissionRelatedFieldsChanged = 
+      data.positionId !== undefined ||
+      data.orgDepartmentId !== undefined
+
+    if (permissionRelatedFieldsChanged && this.permissionCache) {
+      // 异步失效缓存，不阻塞响应
+      this.permissionCache.invalidateByEmployeeId(id).catch(err => {
+        // 静默失败，已在 PermissionCache 中记录日志
+      })
+    }
 
     return { id }
   }

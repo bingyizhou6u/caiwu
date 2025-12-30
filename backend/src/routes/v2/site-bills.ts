@@ -2,7 +2,8 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import { and, eq, gte, lte } from 'drizzle-orm'
 import { siteBills } from '../../db/schema.js'
 import type { Env, AppVariables } from '../../types/index.js'
-import { hasPermission } from '../../utils/permissions.js'
+import { createPermissionContext } from '../../utils/permission-context.js'
+import { PermissionModule, PermissionAction } from '../../constants/permissions.js'
 import { logAuditAction } from '../../utils/audit.js'
 import { Errors } from '../../utils/errors.js'
 import { siteBillQuerySchema, idParamSchema } from '../../schemas/common.schema.js'
@@ -311,13 +312,16 @@ const updateSiteBillRoute = createRoute({
 siteBillsRoutes.openapi(
   updateSiteBillRoute,
   createRouteHandler(async (c: any) => {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
+      throw Errors.FORBIDDEN()
+    }
     if (
-      !hasPermission(c, 'finance', 'site_bill', 'update') &&
-      !hasPermission(c, 'site', 'bill', 'update')
-    )
-      {
-        throw Errors.FORBIDDEN()
-      }
+      !permCtx.hasPermission(PermissionModule.FINANCE, 'site_bill', PermissionAction.UPDATE) &&
+      !permCtx.hasPermission(PermissionModule.SITE, 'bill', PermissionAction.UPDATE)
+    ) {
+      throw Errors.FORBIDDEN()
+    }
     const params = c.req.valid('param')
     const id = params.id
     const body = c.req.valid('json')
@@ -395,13 +399,16 @@ const deleteSiteBillRoute = createRoute({
 siteBillsRoutes.openapi(
   deleteSiteBillRoute,
   createRouteHandler(async (c: any) => {
+    const permCtx = createPermissionContext(c)
+    if (!permCtx) {
+      throw Errors.FORBIDDEN()
+    }
     if (
-      !hasPermission(c, 'finance', 'site_bill', 'delete') &&
-      !hasPermission(c, 'site', 'bill', 'delete')
-    )
-      {
-        throw Errors.FORBIDDEN()
-      }
+      !permCtx.hasPermission(PermissionModule.FINANCE, 'site_bill', PermissionAction.DELETE) &&
+      !permCtx.hasPermission(PermissionModule.SITE, 'bill', PermissionAction.DELETE)
+    ) {
+      throw Errors.FORBIDDEN()
+    }
     const params = c.req.valid('param')
     const id = params.id
 
